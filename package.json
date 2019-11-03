@@ -1,0 +1,30 @@
+{
+  "name": "extension",
+  "version": "1.0.0",
+  "main": "chrome.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "webpack --watch",
+    "prop-watch": "webpack --config webpack.prod.config.js --watch",
+    "prop": "webpack --config webpack.prod.config.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "_"
+  },
+  "description": "",
+  "dependencies": {
+    "hotkeys-js": "^3.3.8",
+    "terser-webpack-plugin": "^1.1.0",
+    "uglify-es": "^3.3.9",
+    "webpack": "^4.25.1",
+    "webpack-obfuscator": "^0.18.0"
+  },
+  "devDependencies": {
+    "extract-text-webpack-plugin": "^4.0.0-beta.0",
+    "uglifyjs-webpack-plugin": "^2.0.1",
+    "webpack-cli": "^3.1.2"
+  }
+}

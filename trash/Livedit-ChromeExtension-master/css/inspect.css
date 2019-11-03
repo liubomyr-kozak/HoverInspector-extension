@@ -1,0 +1,19 @@
+#dialog {
+    display: none;
+    position: relative;
+    top: 5px;
+    left: 15px;
+    font-size: 16px;
+    font-weight: normal;
+    background: #DDD;
+    padding: 5px 10px;
+    width: 300px;
+    z-index: 3;
+    border: 3px solid #999;
+}
+
+.dh_hover {
+    opacity: 0.8;
+    position: relative;
+    background-color: #A0C5E8;
+}
