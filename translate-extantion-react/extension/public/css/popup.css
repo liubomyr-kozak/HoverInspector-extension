@@ -1,0 +1,12 @@
+body{
+    min-width:460px;
+}
+
+#userImage{
+    height: 100%;
+    display: block;
+}
+
+#userImage.dn{
+    display:none;
+}

@@ -1,0 +1,210 @@
+[
+  {
+    "tl": "uk",
+    "succeeded": true,
+    "word": "red",
+    "sl": "en",
+    "fistTransation": {
+      "trans": "червоний",
+      "orig": "red",
+      "backend": 3
+    },
+    "translation": [
+      {
+        "pos": "noun",
+        "meanings": [
+          "червоний колір"
+        ]
+      },
+      {
+        "pos": "adjective",
+        "meanings": [
+          "рудий",
+          "рум'яний",
+          "червоний"
+        ]
+      }
+    ]
+  },
+  {
+    "tl": "uk",
+    "succeeded": true,
+    "word": "free",
+    "sl": "en",
+    "fistTransation": {
+      "trans": "безкоштовно",
+      "orig": "free",
+      "backend": 3
+    },
+    "translation": [
+      {
+        "pos": "verb",
+        "meanings": [
+          "визволити",
+          "визволювати",
+          "відпускати",
+          "звільняти",
+          "визволяти"
+        ]
+      },
+      {
+        "pos": "adverb",
+        "meanings": [
+          "безкоштовно",
+          "вільно",
+          "безплатно",
+          "даремно"
+        ]
+      },
+      {
+        "pos": "adjective",
+        "meanings": [
+          "безкоштовний",
+          "вакантний",
+          "визвольний",
+          "виметний",
+          "вільний",
+          "добровільний",
+          "незайнятий",
+          "звільнений",
+          "незалежний",
+          "привільний",
+          "франко"
+        ]
+      }
+    ]
+  },
+  {
+    "tl": "uk",
+    "succeeded": true,
+    "word": "pre",
+    "sl": "en",
+    "fistTransation": {
+      "trans": "попередньо",
+      "orig": "pre",
+      "backend": 3
+    },
+    "translation": [
+      {
+        "pos": "prefix",
+        "meanings": [
+          "до-",
+          "перед-"
+        ]
+      }
+    ]
+  },
+  {
+    "tl": "uk",
+    "succeeded": true,
+    "word": "gold",
+    "sl": "en",
+    "fistTransation": {
+      "trans": "золото",
+      "orig": "gold",
+      "backend": 3
+    },
+    "translation": [
+      {
+        "pos": "noun",
+        "meanings": [
+          "багатства",
+          "золото"
+        ]
+      },
+      {
+        "pos": "adjective",
+        "meanings": [
+          "золотий"
+        ]
+      }
+    ]
+  },
+  {
+    "tl": "uk",
+    "succeeded": true,
+    "word": "love",
+    "sl": "en",
+    "fistTransation": {
+      "trans": "любов",
+      "orig": "love",
+      "backend": 3
+    },
+    "translation": [
+      {
+        "pos": "verb",
+        "meanings": [
+          "діставати задоволення",
+          "кохати",
+          "любувати",
+          "любити"
+        ]
+      },
+      {
+        "pos": "noun",
+        "meanings": [
+          "влюбленість",
+          "закоханість",
+          "любов",
+          "кохана",
+          "коханий",
+          "кохання"
+        ]
+      }
+    ]
+  },
+  {
+    "tl": "uk",
+    "succeeded": true,
+    "word": "like",
+    "sl": "en",
+    "fistTransation": {
+      "trans": "люблю",
+      "orig": "like",
+      "backend": 1
+    },
+    "translation": [
+      {
+        "pos": "verb",
+        "meanings": [
+          "любити",
+          "віддавати перевагу",
+          "подобатися",
+          "симпатизувати",
+          "підходити",
+          "сподобатися"
+        ]
+      },
+      {
+        "pos": "noun",
+        "meanings": [
+          "щось подібне",
+          "потяг"
+        ]
+      },
+      {
+        "pos": "conjunction",
+        "meanings": [
+          "мов",
+          "ніби",
+          "як",
+          "немов"
+        ]
+      },
+      {
+        "pos": "adverb",
+        "meanings": [
+          "неначе"
+        ]
+      },
+      {
+        "pos": "adjective",
+        "meanings": [
+          "однаковий",
+          "подібний",
+          "схожий"
+        ]
+      }
+    ]
+  }
+]

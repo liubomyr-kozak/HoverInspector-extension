@@ -1,30 +1,38 @@
 {
-  "name": "extension",
+  "name": "hover_inspector",
   "version": "1.0.0",
-  "main": "chrome.js",
+  "author": "Liubomyr",
+  "license": "MIT",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "webpack --watch",
-    "prop-watch": "webpack --config webpack.prod.config.js --watch",
-    "prop": "webpack --config webpack.prod.config.js"
+    "build": "webpack --config webpack.config.prod.js ",
+    "dev": "webpack-dev-server --open --config webpack.config.dev.js --host 0.0.0.0",
+    "dev:hot": "npm run dev -- --hot",
+    "dev-prod:hot": "npm run build -- --watch --open --hot"
   },
-  "author": "",
-  "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "_"
-  },
-  "description": "",
   "dependencies": {
-    "hotkeys-js": "^3.3.8",
-    "terser-webpack-plugin": "^1.1.0",
-    "uglify-es": "^3.3.9",
-    "webpack": "^4.25.1",
-    "webpack-obfuscator": "^0.18.0"
+    "hotkeys-js": "^3.7.2",
+    "lodash": "^4.17.11",
+    "material-icons": "^0.3.1",
+    "ramda": "^0.26.1",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-hot-loader": "^4.8.4",
+    "webpack": "^4.31.0"
   },
   "devDependencies": {
-    "extract-text-webpack-plugin": "^4.0.0-beta.0",
-    "uglifyjs-webpack-plugin": "^2.0.1",
-    "webpack-cli": "^3.1.2"
+    "@babel/cli": "^7.4.4",
+    "@babel/core": "^7.4.4",
+    "@babel/plugin-proposal-class-properties": "^7.4.4",
+    "@babel/preset-env": "^7.4.4",
+    "@babel/preset-react": "^7.0.0",
+    "babel-loader": "^8.0.6",
+    "css-loader": "^2.1.1",
+    "html-webpack-plugin": "^3.2.0",
+    "node-sass": "^4.12.0",
+    "sass-loader": "^7.1.0",
+    "style-loader": "^0.23.1",
+    "webpack-cli": "^3.3.2",
+    "webpack-dev-server": "^3.3.1",
+    "webpack-merge": "^4.2.1"
   }
 }

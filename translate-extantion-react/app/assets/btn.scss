@@ -1,0 +1,37 @@
+@import "_variable.scss";
+
+.btn,
+.btn-large,
+.btn-small,
+.btn-flat {
+  border: none;
+  border-radius: 2px;
+  display: inline-block;
+  //height: 36px;
+  //line-height: 36px;
+  //padding: 0 16px;
+  //text-transform: uppercase;
+  vertical-align: middle;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+
+  outline: none;
+
+}
+
+.hover-title{
+  display: none;
+}
+
+.btn-transp{
+  background: transparent;
+  padding: 0;
+  height: initial;
+  line-height: initial;
+}
+
+.btn-delete{
+  &:hover{
+    color: $bittersweet-dark!important;
+  }
+}

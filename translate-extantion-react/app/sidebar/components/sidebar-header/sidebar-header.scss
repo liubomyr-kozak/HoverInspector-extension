@@ -1,0 +1,32 @@
+@import "../../../assets/_variable.scss";
+
+.wb-sidebar-header{
+  color: $white;
+  height: 60px;
+  padding: 0 15px;
+  flex: none;
+  //background: linear-gradient(to bottom right, #e87677 0%, #b76ca9 30%, #7257e4 60%,  #4900d8 100%);
+  background: linear-gradient(to bottom right, #e87677 0%, #b76ca9 40%, #7257e4 70%, #4900d8 100%);
+  //background: linear-gradient(to bottom right, #b687f1fc 0%, #4900d8 100%);
+}
+
+.wb-sidebar-header-logo{
+  width: 100%;
+  text-align: center;
+  font-size: 34px;
+  text-shadow: 0 0px 14px #4b04d8;
+  font-family: $font-family-cookie;
+}
+
+.wb-sidebar-close-btn{
+  color: $white;
+}
+
+.wb-sidebar-header-logo-mode{
+  display: block;
+  font-size: 15px;
+  color: #e07480;
+  font-family: "Open Sans", arial, x-locale-body, sans-serif;
+  text-shadow: none;
+  margin-top: -10px;
+}
