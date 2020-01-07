@@ -129,15 +129,6 @@ const markBoxAsSelected = (boxArr) => {
 // };
 //
 //
-// registerBox('hovered', createBox());
-// registerBox('selected', createBox());
-//
-// Zt.addToRender(boxTypes.hovered.all);
-// Zt.addToRender(boxTypes.selected.all);
-// Zt.addToRender(boxTypes.containerPadding);
-// Zt.addToRender(boxTypes.containerMargin);
-//
-//
 // Zt.stateChange((state) => {
 //
 //     if (state.action === 'hover') {
