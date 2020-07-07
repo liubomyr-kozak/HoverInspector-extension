@@ -97,11 +97,14 @@ function onMouseDown(e) {
 
 export const EventListenerProvider = ({children}) => {
   const [state, dispatch] = useStateValue();
+
   const onInputMoveListener = (e) => dispatch(onInputMove(e));
   const onMouseDownListener = (e) => dispatch(onMouseDown(e));
   const onScrollListener = (e) => dispatch(onScroll(e));
+
   useEffect(() => {
     const all = document.body.getElementsByTagName('*');
+
     if (state.isActive) {
       window.addEventListener('mousemove', onInputMoveListener);
       window.addEventListener('mousedown', onMouseDownListener);
@@ -109,6 +112,7 @@ export const EventListenerProvider = ({children}) => {
 
       Array.from(all).forEach(el => el.addEventListener('click', Zt.helpers.preventOnClick));
     }
+
     if (!state.isActive) {
       window.removeEventListener('mousemove', onInputMoveListener);
       window.removeEventListener('mousedown', onMouseDownListener);
@@ -118,5 +122,6 @@ export const EventListenerProvider = ({children}) => {
       Array.from(all).forEach(el => el.removeEventListener('click', Zt.helpers.preventOnClick));
     }
   }, [state.isActive])
+
   return (<>{children}</>)
 }

@@ -1,32 +1,88 @@
-import Zt from '../core/Zt';
-import {DOMModule} from "./dom.module";
+import {useRef} from "react";
 
 
-const createDistanceLine = () => {
-    const reducer = (boxObject, vector) => {
-        const lineNode = document.createElement('div');
-        lineNode.className = `zToolDistanceLine_${vector}`;
-
-        const textNode = document.createElement('span');
-        textNode.className = 'zToolDistanceLineLabel';
-
-        lineNode.appendChild(textNode);
-        boxObject[vector] = lineNode;
-        boxObject['all'].push(boxObject[vector]);
-        return boxObject
-    };
-    return ['x', 'x1', 'y', 'y1'].reduce(reducer, {all: []})
+const isFloat = (n) => {
+    return Number(n) === n && n % 1 !== 0;
 };
 
-const distanceLineAndLabels = createDistanceLine();
+const ifNumberFloatCut = (number) => {
+    return isFloat(number) ? number.toFixed(2) : number;
+};
 
-const normalizeSideName = sideName => {
+
+export const setPadding = (containerPadding, {top, bottom, right, left, height, width}, hoverNodeParams) => {
+    if (hoverNodeParams) {
+        containerPadding.style.top = `${top}px`;
+        containerPadding.style.left = `${left}px`;
+        containerPadding.style.width = `${width}px`;
+        containerPadding.style.height = `${height}px`;
+
+        containerPadding.style.borderTopWidth = `${hoverNodeParams['padding-top']}`;
+        containerPadding.style.borderBottomWidth = `${hoverNodeParams['padding-bottom']}`;
+        containerPadding.style.borderLeftWidth = `${hoverNodeParams['padding-left']}`;
+        containerPadding.style.borderRightWidth = `${hoverNodeParams['padding-right']}`;
+    }
+};
+
+export const setMargin = (containerMargin, {top, bottom, right, left, height, width}, hoverNodeParams) => {
+    if (hoverNodeParams) {
+        const topBorder = parseInt(hoverNodeParams['margin-top']);
+        const leftBorder = parseInt(hoverNodeParams['margin-left']);
+        const rightBorder = parseInt(hoverNodeParams['margin-right']);
+        const bottomBorder = parseInt(hoverNodeParams['margin-bottom']);
+
+        containerMargin.style.top = `${top - topBorder}px`;
+        containerMargin.style.left = `${left - leftBorder}px`;
+        containerMargin.style.width = `${width + leftBorder + rightBorder + 1}px`;
+        containerMargin.style.height = `${height + topBorder + bottomBorder + 1}px`;
+
+        containerMargin.style.borderTopWidth = `${hoverNodeParams['margin-top']}`;
+        containerMargin.style.borderBottomWidth = `${hoverNodeParams['margin-bottom']}`;
+        containerMargin.style.borderLeftWidth = `${hoverNodeParams['margin-left']}`;
+        containerMargin.style.borderRightWidth = `${hoverNodeParams['margin-right']}`;
+    }
+};
+
+export const setParamsToNode = (
+    {topRef, bottomRef, leftRef, rightRef},
+    {top, bottom, right, left, height, width}
+) => {
+
+    leftRef.current.style.top = `${top}px`;
+    leftRef.current.style.left = `${right}px`;
+    leftRef.current.style.width = "1px";
+    leftRef.current.style.height = `${height}px`;
+
+    rightRef.current.style.top = `${top}px`;
+    rightRef.current.style.left = `${left}px`;
+    rightRef.current.style.width = "1px";
+    rightRef.current.style.height = `${height}px`;
+
+    topRef.current.style.top = `${top}px`;
+    topRef.current.style.left = `${left}px`;
+    topRef.current.style.width = `${width}px`;
+    topRef.current.style.height = "1px";
+
+    bottomRef.current.style.top = `${bottom}px`;
+    bottomRef.current.style.left = `${left}px`;
+    bottomRef.current.style.width = `${width}px`;
+    bottomRef.current.style.height = "1px";
+};
+
+export const use4SideNodeRef = () => {
+    const topRef = useRef(null);
+    const bottomRef = useRef(null);
+    const leftRef = useRef(null);
+    const rightRef = useRef(null);
+
+    return {topRef, bottomRef, leftRef, rightRef}
+}
+
+export const normalizeSideName = sideName => {
     return sideName.split('_')[0]
 };
 
-const getSideValue = (sideName, selectedElData, hoveredElData) => {
-
-
+export const getSideValue = (sideName, selectedElData, hoveredElData) => {
     switch (sideName) {
         case 'left_ | ->':
             return {
@@ -110,7 +166,7 @@ const getSideValue = (sideName, selectedElData, hoveredElData) => {
     }
 };
 
-const calculateDistance = (hoveredElData, selectedElData) => {
+export const calculateDistance = (hoveredElData, selectedElData) => {
     if (!selectedElData) {
         return
     }
@@ -202,39 +258,37 @@ const calculateDistance = (hoveredElData, selectedElData) => {
     );
 };
 
-const dispatchDistanceLineAndLabel = data => {
-
-
+export const dispatchDistanceLineAndLabel = ({topRef, bottomRef, leftRef, rightRef}, data) => {
     if (data.right) {
-        const {side, type} = data.right;
+        const {side} = data.right;
 
-        distanceLineAndLabels.x.style.display = `block`;
-        distanceLineAndLabels.x.style.height = '1px';
-        distanceLineAndLabels.x.style.width = `${Math.abs(side.value)}px`;
-        distanceLineAndLabels.x.style.top = `${data.x}px`;
-        distanceLineAndLabels.x.style.left = `${Math.abs(side.coord)}px`;
+        rightRef.current.style.display = `block`;
+        rightRef.current.style.height = '0px';
+        rightRef.current.style.width = `${Math.abs(side.value)}px`;
+        rightRef.current.style.top = `${data.x}px`;
+        rightRef.current.style.left = `${Math.abs(side.coord)}px`;
 
-        distanceLineAndLabels.x.childNodes[0].innerHTML = `${Zt.helpers.ifNumberFloatCut(Math.abs(side.value))}px`;
+        rightRef.current.childNodes[0].innerHTML = `${ifNumberFloatCut(Math.abs(side.value))}px`;
     } else {
-        distanceLineAndLabels.x.style.display = `none`;
+        rightRef.current.style.display = `none`;
     }
 
     if (data.left) {
-        const {side, type} = data.left;
+        const {side} = data.left;
 
-        distanceLineAndLabels.x1.style.display = `block`;
-        distanceLineAndLabels.x1.style.height = '1px';
-        distanceLineAndLabels.x1.style.width = `${Math.abs(side.value)}px`;
-        distanceLineAndLabels.x1.style.top = `${data.x}px`;
-        distanceLineAndLabels.x1.style.left = `${Math.abs(side.coord)}px`;
+        leftRef.current.style.display = `block`;
+        leftRef.current.style.height = '0px';
+        leftRef.current.style.width = `${Math.abs(side.value)}px`;
+        leftRef.current.style.top = `${data.x}px`;
+        leftRef.current.style.left = `${Math.abs(side.coord)}px`;
 
-        distanceLineAndLabels.x1.childNodes[0].innerHTML = `${Zt.helpers.ifNumberFloatCut(Math.abs(side.value))}px`
+        leftRef.current.childNodes[0].innerHTML = `${ifNumberFloatCut(Math.abs(side.value))}px`
     } else {
-        distanceLineAndLabels.x1.style.display = `none`;
+        leftRef.current.style.display = `none`;
     }
 
     if (data.top) {
-        const {side, type} = data.top;
+        const {side} = data.top;
         const isTopCoordinateOutVisibility = side.coord < 0;
         const windowHeight = _ => window.innerHeight;
         const clearValue = _ => Math.abs(side.value);
@@ -255,23 +309,23 @@ const dispatchDistanceLineAndLabel = data => {
         const isLabelVisible = lineHeight < 0 && topCoordinate <= 0;
 
         if (isLabelVisible) {
-            distanceLineAndLabels.y.style.display = `none`;
+            topRef.current.style.display = `none`;
         } else {
-            distanceLineAndLabels.y.style.display = `block`;
-            distanceLineAndLabels.y.style.height = `${Math.abs(lineHeight)}px`;
-            distanceLineAndLabels.y.style.width = '1px';
-            distanceLineAndLabels.y.style.top = `${topCoordinate}px`;
-            distanceLineAndLabels.y.style.left = `${Math.abs(data.y)}px`;
+            topRef.current.style.display = `block`;
+            topRef.current.style.height = `${Math.abs(lineHeight)}px`;
+            topRef.current.style.width = '0px';
+            topRef.current.style.top = `${topCoordinate}px`;
+            topRef.current.style.left = `${Math.abs(data.y)}px`;
 
-            distanceLineAndLabels.y.childNodes[0].innerHTML = `${Zt.helpers.ifNumberFloatCut(Math.abs(side.value))}px`;
+            topRef.current.childNodes[0].innerHTML = `${ifNumberFloatCut(Math.abs(side.value))}px`;
         }
     } else {
-        distanceLineAndLabels.y.style.display = `none`;
+        topRef.current.style.display = `none`;
     }
 
 
     if (data.bottom) {
-        const {side, type} = data.bottom;
+        const {side} = data.bottom;
         const isTopCoordinateOutVisibility = side.coord < 0;
         const topCoordinate = isTopCoordinateOutVisibility ? 0 : side.coord;
         const windowHeight = _ => window.innerHeight;
@@ -289,60 +343,20 @@ const dispatchDistanceLineAndLabel = data => {
         const isLabelVisible = lineHeight < 0;
 
         if (isLabelVisible) {
-            distanceLineAndLabels.y1.style.display = `none`;
+            bottomRef.current.style.display = `none`;
         } else {
-            distanceLineAndLabels.y1.style.display = `block`;
-            distanceLineAndLabels.y1.style.height = `${lineHeight}px`;
-            distanceLineAndLabels.y1.style.width = '1px';
-            distanceLineAndLabels.y1.style.top = `${topCoordinate}px`;
-            distanceLineAndLabels.y1.style.left = `${Math.abs(data.y)}px`;
-            distanceLineAndLabels.y1.childNodes[0].innerHTML = `${Zt.helpers.ifNumberFloatCut(Math.abs(side.value))}px`;
+            bottomRef.current.style.display = `block`;
+            bottomRef.current.style.height = `${lineHeight}px`;
+            bottomRef.current.style.width = '0px';
+            bottomRef.current.style.top = `${topCoordinate}px`;
+            bottomRef.current.style.left = `${Math.abs(data.y)}px`;
+            bottomRef.current.childNodes[0].innerHTML = `${ifNumberFloatCut(Math.abs(side.value))}px`;
         }
     } else {
-        distanceLineAndLabels.y1.style.display = `none`;
+        bottomRef.current.style.display = `none`;
     }
 };
 
-
-const toggleLinesAndLabels = (flag) => {
-    distanceLineAndLabels.all.forEach(el => el.style.display = flag === 'hide' ? 'none' : 'block');
-};
-
-Zt.addToRender(distanceLineAndLabels.all);
-Zt.stateChange((state) => {
-    if (state.action === 'hover') {
-        let distance = calculateDistance(
-            DOMModule.getBoundingElRect('hovered'),
-            DOMModule.getBoundingElRect('selected')
-        );
-
-        if (distance) {
-            dispatchDistanceLineAndLabel(distance);
-        }
-    }
-
-    if (state.action === 'select') {
-        toggleLinesAndLabels('hide');
-    }
-
-
-    if (state.action === 'scroll') {
-        if (!DOMModule.getBoundingElRect('hovered')) {
-            return;
-        }
-
-        let distance = calculateDistance(
-            DOMModule.getBoundingElRect('hovered'),
-            DOMModule.getBoundingElRect('selected')
-        );
-
-        if (distance) {
-            dispatchDistanceLineAndLabel(distance);
-        }
-    }
-});
-
-
-export const DistanceLineAndLabelModule = {
-    toggleLinesAndLabels
+export const toggleLinesAndLabels = (distanceLineAndLabels, flag) => {
+    distanceLineAndLabels.forEach(el => el.current.style.display = flag === 'hide' ? 'none' : 'block');
 };

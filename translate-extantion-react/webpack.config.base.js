@@ -4,8 +4,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const config = {
     mode: 'development',
     entry: {
-        inject_launcher: path.join(__dirname, './app/index.js'),
-        background_popup_script: path.join(__dirname, './background_popup_script/index.js')
+        inject_launcher: path.join(__dirname, './app/utils.js'),
+        background_popup_script: path.join(__dirname, './background_popup_script/utils.js')
     },
     output: {
         path: path.join(__dirname, 'dist'),

@@ -30,11 +30,11 @@ npm manifest:
   {
     "name": "app",
     "version": "1.0.0",
-    "main": "index.js",
+    "main": "utils.js",
     "author": "Liubomyr",
     "license": "MIT",
     "scripts": {
-      "start": "webpack-dev-server app/index.js"
+      "start": "webpack-dev-server app/utils.js"
     },
     "dependencies": {
       "react": "^16.8.6",

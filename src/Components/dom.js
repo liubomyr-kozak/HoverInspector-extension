@@ -1,5 +1,3 @@
-import Zt from '../core/Zt';
-
 const styleRules = [
     'padding-right', 'padding-left', 'padding-top', 'padding-bottom',
     'margin-right', 'margin-left', 'margin-top', 'margin-bottom',
@@ -10,8 +8,7 @@ const getStyle = (oElm, strCssRule) => {
     var strValue = "";
     if (document.defaultView && document.defaultView.getComputedStyle) {
         strValue = document.defaultView.getComputedStyle(oElm, "").getPropertyValue(strCssRule);
-    }
-    else if (oElm.currentStyle) {
+    } else if (oElm.currentStyle) {
         strCssRule = strCssRule.replace(/\-(\w)/g, function (strMatch, p1) {
             return p1.toUpperCase();
         });
@@ -47,25 +44,22 @@ const getTargetElByType = type => {
     return boundingElRect[type] && boundingElRect[type].target;
 };
 
-// Zt.addToRender(boxTypes.selected.all);
-
-
-Zt.stateChange((state) => {
-    if (state.action === 'hover') {
+const onStateChange = ((state) => {
+    if (state.type === 'hover') {
         addBoundingElRect('hovered', {
             target: state.hoverElement,
             clientRect: state.clientRectHoveredNode
         });
     }
 
-    if (state.action === 'select') {
+    if (state.type === 'select') {
         addBoundingElRect('selected', {
             target: state.clickedElement,
             clientRect: state.clientRectNode
         });
     }
 
-    if (state.action === 'scroll') {
+    if (state.type === 'scroll') {
         addBoundingElRect('selected', {
             target: state.selectedNode,
             clientRect: state.clientRectSelectedNode
@@ -82,5 +76,6 @@ export const DOMModule = {
     getStyleByNode,
     addBoundingElRect,
     getTargetElByType,
-    getBoundingElRect
+    getBoundingElRect,
+    onStateChange
 };
