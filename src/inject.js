@@ -17,10 +17,6 @@ const BootstrapApp = () => {
       case 'select':
       case 'scroll':
       case 'scrollWithoutSelected':
-        return {
-          ...state,
-          ...action
-        };
       case 'labelRendered':
         return {
           ...state,
