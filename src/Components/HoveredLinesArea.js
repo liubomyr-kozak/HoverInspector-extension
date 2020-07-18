@@ -11,7 +11,6 @@ export const HoveredLinesArea = () => {
     useEffect(() => {
         if (!state.type) return
 
-        console.log(state)
         setParamsToNode(
             sideNodeRef,
             state.clientRectHoveredNode

@@ -63,10 +63,9 @@ const getStyleByNode = (nodeEl) => {
     let nodeStyle = styleRules.reduce((options, ruleName) => {
             const value = getStyle(nodeEl, ruleName);
 
-            console.log(ruleName, value)
             if(value === 'rgba(0, 0, 0, 0)') return options;
 
-            options[ruleName] = value
+            options[ruleName] = value;
             return options
         },
         {}

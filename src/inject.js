@@ -21,6 +21,11 @@ const BootstrapApp = () => {
           ...state,
           ...action
         };
+      case 'labelRendered':
+        return {
+          ...state,
+          ...action
+        };
       default:
         return state;
     }

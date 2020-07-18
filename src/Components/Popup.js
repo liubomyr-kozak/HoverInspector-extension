@@ -56,16 +56,16 @@ const getTagMeta = (tag, id, className) => {
 }
 
 const arrowHeight = 8;
+const arrowWidth = 15;
 
 function isChildText(childNode) {
-    console.log(childNode[0])
     if (!childNode) return;
     return !!Array.prototype.slice.call(childNode).find(el => el.nodeType === 3);
 }
 
 
 function componentToHex(c) {
-    var hex = c.toString(16);
+    const hex = c.toString(16);
     return hex.length == 1 ? "0" + hex : hex;
 }
 
@@ -81,21 +81,102 @@ const targetColorStringToHex = (value) => {
         .split(',')
         .map(v => Number(v))
 
-    if(color[3]) return value;
+    if (color[3]) return value;
     return rgbToHex(color[0], color[1], color[2]);
+}
+
+
+const getLabelMEtaData = (el, type) => {
+    const isVisible = document.defaultView.getComputedStyle(el, "").display !== 'none';
+
+    return {
+        el,
+        top: el.offsetTop,
+        left: el.offsetLeft,
+        bottom: el.offsetTop + el.offsetHeight,
+        right: el.offsetLeft + el.offsetWidth,
+        type,
+        isVisible
+    }
+}
+
+const getLeftPosition = (popupAndHovered) => {
+    if(!popupAndHovered.popup.hasTopPosition && !popupAndHovered.popup.hasBottomPosition){
+        return popupAndHovered.popup.left
+    }
+
+    const topLabelNode = document.getElementsByClassName('zToolDistanceLine top')[0]
+    const bottomLabelNode = document.getElementsByClassName('zToolDistanceLine bottom')[0]
+
+    const labelTopContainer = topLabelNode.offsetTop;
+    const labelTop =topLabelNode.children[0].offsetTop;
+    const labelBottomContainer = bottomLabelNode.offsetTop;
+    const labelBottom = bottomLabelNode.children[0].offsetTop;
+
+    const coveredLabelTopPx = popupAndHovered.popup.hasBottomPosition
+        ? labelBottom + labelBottomContainer
+        : labelTop + labelTopContainer;
+
+    // if (popupAndHovered.popup.hasTopPosition && labelTop) {
+    //     const isPopupCoverLabel1 =
+    //         popupAndHovered.popup.top <= labelTop.top + labelTopContainer.top &&
+    //         (popupAndHovered.popup.top + popupAndHovered.popup.height) > labelTop.top + labelTopContainer.top
+    //
+    //     if (!isPopupCoverLabel1) return popupAndHovered.popup.left
+    //
+    //     return popupAndHovered.popup.left
+    //         + cutPx(popupAndHovered.hovered.width)
+    //         + popupAndHovered.hovered.marginLeft
+    //         + popupAndHovered.hovered.paddingLeft
+    //         + popupAndHovered.hovered.paddingRight
+    //         - arrowWidth;
+    // }
+    //
+    // if (popupAndHovered.popup.hasBottomPosition && labelBottom) {
+    //     const isPopupCoverLabel =
+    //         popupAndHovered.popup.top <= labelBottom.top + labelBottomContainer.top &&
+    //         (popupAndHovered.popup.top + popupAndHovered.popup.height) > labelBottom.top + labelBottomContainer.top
+    //
+    //     if (!isPopupCoverLabel) return popupAndHovered.popup.left
+    //
+    //
+    //     return popupAndHovered.popup.left
+    //         + cutPx(popupAndHovered.hovered.width)
+    //         + popupAndHovered.hovered.marginLeft
+    //         + popupAndHovered.hovered.paddingLeft
+    //         + popupAndHovered.hovered.paddingRight
+    //         - arrowWidth;
+    // }
+
+    const isPopupCoverLabel =
+        popupAndHovered.popup.top <= coveredLabelTopPx &&
+        (popupAndHovered.popup.top + popupAndHovered.popup.height) > coveredLabelTopPx
+
+    if (!isPopupCoverLabel) return popupAndHovered.popup.left
+
+    return popupAndHovered.popup.left
+        + cutPx(popupAndHovered.hovered.width)
+        + popupAndHovered.hovered.marginLeft
+        + popupAndHovered.hovered.paddingLeft
+        + popupAndHovered.hovered.paddingRight
+        - arrowWidth;
 }
 
 export const Popup = () => {
     const nodeRef = useRef(null);
     const [state] = useStateValue();
 
-    if (!state.clientRectHoveredNode) return <div/>
+    console.log(state)
+
+    if (!state.clientRectHoveredNode) return <div ref={nodeRef}/>
 
     const {height, width, tag, className, id, padding, margin} = state.hoverNodeParams;
     const {top, bottom, left} = state.clientRectHoveredNode;
     const marginBottom = cutPx(state.hoverNodeParams['margin-bottom']);
     const marginTop = cutPx(state.hoverNodeParams['margin-top']);
     const marginLeft = cutPx(state.hoverNodeParams['margin-left']);
+    const paddingLeft = cutPx(state.hoverNodeParams['padding-left']);
+    const paddingRight = cutPx(state.hoverNodeParams['padding-right']);
     const color = state.hoverNodeParams['color'];
     const backgroundColor = state.hoverNodeParams['background-color'];
     const font = state.hoverNodeParams['font'];
@@ -119,14 +200,30 @@ export const Popup = () => {
         bottom: clientWindow.bottom > (popupMeta.position.bottom + popupHeight),
     }
 
-
-    popupMeta.css.top = isPopupVisible.bottom
+    const topPositionProposal = isPopupVisible.bottom
         ? popupMeta.position.bottom
         : !isPopupVisible.bottom && isPopupVisible.top
             ? popupMeta.position.top
             : 10;
 
-    popupMeta.css.left = isPopupVisible.bottom || isPopupVisible.top ? left - marginLeft : 10;
+    const leftProposal = isPopupVisible.bottom || isPopupVisible.top ? left - marginLeft : 10;
+
+    popupMeta.css.top = topPositionProposal
+    popupMeta.css.left = getLeftPosition({
+        popup: {
+            top: topPositionProposal,
+            height: popupHeight,
+            left: leftProposal,
+            hasTopPosition: !isPopupVisible.bottom && isPopupVisible.top,
+            hasBottomPosition: isPopupVisible.bottom
+        },
+        hovered: {
+            paddingLeft,
+            marginLeft,
+            paddingRight,
+            width
+        },
+    });
 
     return (<>
             <div ref={nodeRef}

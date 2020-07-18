@@ -9,9 +9,9 @@ import {
 
 import {DOMModule} from "../core/dom";
 
-export const DistanceAndLebel = () => {
+export const DistanceAndLabel = () => {
     const sideNodeRef = use4SideNodeRef()
-    const [state] = useStateValue();
+    const [state, dispatch] = useStateValue();
     const {topRef, bottomRef, leftRef, rightRef} = sideNodeRef
 
     useEffect(() => {
@@ -25,6 +25,7 @@ export const DistanceAndLebel = () => {
 
             if (distance) {
                 dispatchDistanceLineAndLabel(sideNodeRef, distance);
+                dispatch({type: "labelRendered"})
             }
         }
 
@@ -45,6 +46,7 @@ export const DistanceAndLebel = () => {
 
             if (distance) {
                 dispatchDistanceLineAndLabel(sideNodeRef, distance);
+                dispatch({type: "labelRendered"})
             }
         }
     }, [state]);

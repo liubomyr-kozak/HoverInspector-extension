@@ -314,6 +314,7 @@ export const dispatchDistanceLineAndLabel = ({topRef, bottomRef, leftRef, rightR
             topRef.current.style.height = `${Math.abs(lineHeight)}px`;
             topRef.current.style.width = '0px';
             topRef.current.style.top = `${topCoordinate}px`;
+
             topRef.current.style.left = `${Math.abs(data.y)}px`;
 
             topRef.current.childNodes[0].innerHTML = `${ifNumberFloatCut(Math.abs(side.value))}px`;

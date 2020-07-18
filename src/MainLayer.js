@@ -3,7 +3,7 @@ import React, {useEffect, useRef} from "react";
 import {setMargin, setPadding} from "./core/utils";
 import {SelectedBox} from "./Components/SelectedBox";
 import {HoveredLinesArea} from "./Components/HoveredLinesArea";
-import {DistanceAndLebel} from "./Components/DistanceAndLebel";
+import {DistanceAndLabel} from "./Components/DistanceAndLabel";
 import {Popup} from "./Components/Popup";
 
 export const MainLayer = () => {
@@ -34,7 +34,7 @@ export const MainLayer = () => {
         <>
             <SelectedBox/>
             <HoveredLinesArea/>
-            <DistanceAndLebel/>
+            <DistanceAndLabel/>
             <Popup/>
             <div ref={paddingRef} className="zToolTooltipPadding"/>
             <div ref={marginRef} className="zToolTooltipMargin"/>
