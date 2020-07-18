@@ -1,8 +1,5 @@
 import {BoxModule} from "./modules/box.module";
-import {InfoTopBarModule} from "./modules/info-top-bar.module";
-import {DistanceLineAndLabelModule} from "./modules/distance-line-and-label.module";
 import {DOMModule} from "./modules/dom.module";
-import {BoxLabelsModule} from "./modules/box-labels.module";
 
 let position = 'top';
 

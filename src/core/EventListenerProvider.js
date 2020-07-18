@@ -1,18 +1,23 @@
 import React, {useEffect} from 'react';
 import {useStateValue} from "./appState";
-import Zt from "./old/webpage/core/Zt";
-import {DOMModule} from "./old/webpage/modules/dom.module";
+import {DOMModule} from "./dom.js";
 
-let position = 'top';
+let preNodeTarget = null
+let countRepeat = 0
 
 function onInputMove(e) {
   const hoverElement = e.target;
   // in SVG className is Object
 
-  if (typeof hoverElement.className === 'string'
-    && hoverElement.className.indexOf('zToolOptionToggleIcon') >= 0) {
-    position = position === 'bottom' ? 'top' : 'bottom';
+  if(preNodeTarget !== hoverElement){
+    preNodeTarget = hoverElement;
+    countRepeat = 0;
+  } else if (countRepeat < 1) { // I need get height of hovered element, this is very fast dirty hack
+      countRepeat++;
+  } else {
+    return {}
   }
+
 
   if (typeof hoverElement.className === 'string'
     && hoverElement.className.indexOf('zTool') >= 0
@@ -22,12 +27,12 @@ function onInputMove(e) {
   }
 
   const clientRectHoveredNode = hoverElement.getBoundingClientRect();
+
   const hoverNodeParams = DOMModule.getStyleByNode(hoverElement);
 
   return {
     type: 'hover',
     clientRectHoveredNode,
-    position,
     hoverElement,
     hoverNodeParams
   }
@@ -35,15 +40,19 @@ function onInputMove(e) {
 
 function onScroll(e) {
   let selectedNode = DOMModule.getTargetElByType('selected');
+
   if (!selectedNode) {
     selectedNode = DOMModule.getTargetElByType('hovered');
 
-    const clientRectHoveredNode = selectedNode.getBoundingClientRect();
+    const clientRectSelectedNode = selectedNode.getBoundingClientRect();
+    const hoveredNode = DOMModule.getTargetElByType('hovered');
     const selectedNodeParams = DOMModule.getStyleByNode(selectedNode);
+    const clientRectHoveredNode = hoveredNode.getBoundingClientRect();
+
 
     return {
-      type: 'scrollSimple',
-      position,
+      type: 'scrollWithoutSelected',
+      clientRectSelectedNode,
       clientRectHoveredNode,
       hoverNodeParams: selectedNodeParams,
     };
@@ -58,7 +67,6 @@ function onScroll(e) {
 
   return {
     type: 'scroll',
-    position,
     selectedNode,
     clientRectSelectedNode,
     hoveredNode,
@@ -74,25 +82,23 @@ function onMouseDown(e) {
   if (typeof clickedElement.className === 'string'
     && clickedElement.className.indexOf('zTool') >= 0) {
 
-
     return true;
   }
-  const clientRectNode = clickedElement.getBoundingClientRect();
+  const clientRectSelectedNode = clickedElement.getBoundingClientRect();
   const selectedNodeParams = DOMModule.getStyleByNode(clickedElement);
 
   return {
     type: 'select',
     event: e,
-    clientRectNode,
+    clientRectSelectedNode,
     clickedElement,
-    position,
     selectedNodeParams,
   }
+}
 
-  // Zt.port.postMessage({
-  //     actionType: 'highlightNode',
-  //     data: getQuerySelector(clickedElement)
-  // });
+const preventOnClick = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 }
 
 export const EventListenerProvider = ({children}) => {
@@ -110,7 +116,7 @@ export const EventListenerProvider = ({children}) => {
       window.addEventListener('mousedown', onMouseDownListener);
       window.addEventListener('scroll', onScrollListener);
 
-      Array.from(all).forEach(el => el.addEventListener('click', Zt.helpers.preventOnClick));
+      Array.from(all).forEach(el => el.addEventListener('click', preventOnClick));
     }
 
     if (!state.isActive) {
@@ -119,7 +125,7 @@ export const EventListenerProvider = ({children}) => {
       window.removeEventListener('scroll', onScrollListener);
 
       Array.from(document.getElementsByClassName("zTool")).forEach(el => el.remove());
-      Array.from(all).forEach(el => el.removeEventListener('click', Zt.helpers.preventOnClick));
+      Array.from(all).forEach(el => el.removeEventListener('click', preventOnClick));
     }
   }, [state.isActive])
 

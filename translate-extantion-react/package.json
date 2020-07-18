@@ -11,6 +11,7 @@
     "dev-prod:hot": "npm run build -- --watch --open --hot"
   },
   "dependencies": {
+    "classnames": "^2.2.6",
     "lodash": "^4.17.11",
     "material-icons": "^0.3.1",
     "ramda": "^0.26.1",

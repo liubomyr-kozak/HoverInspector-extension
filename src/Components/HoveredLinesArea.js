@@ -1,21 +1,21 @@
-import {useStateValue} from "../../../appState";
+import {useStateValue} from "../core/appState";
 import React, {useEffect} from "react";
-import {setParamsToNode, use4SideNodeRef} from "../utils";
+import {setParamsToNode, use4SideNodeRef} from "../core/utils";
 
-
-export const Hovered = () => {
+export const HoveredLinesArea = () => {
     const sideNodeRef = use4SideNodeRef()
     const {topRef, bottomRef, leftRef, rightRef} = sideNodeRef
 
     const [state] = useStateValue();
 
     useEffect(() => {
-        if (state.type === "hover") {
-            setParamsToNode(
-                sideNodeRef,
-                state.clientRectHoveredNode
-            );
-        }
+        if (!state.type) return
+
+        console.log(state)
+        setParamsToNode(
+            sideNodeRef,
+            state.clientRectHoveredNode
+        );
     }, [state]);
 
     return (<>

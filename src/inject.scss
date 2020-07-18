@@ -1,53 +1,52 @@
 .zToolBoxLabel {
-  padding: 0 10px;
-  height: 25px;
-  line-height: 25px !important;
   box-sizing: border-box;
-  color: #fff;
-  font-size: 14px;
-  text-align: center;
   position: fixed;
-  z-index: 2147483645;
+  z-index: 2147483647;
+  box-shadow: 0 1px 5px 0 rgba(67, 67, 67, 0.47), 0 5px 5px 0 rgba(154, 160, 185, 0.05), 0 5px 30px 0 rgba(166, 173, 201, 0.22);
+  background: #fff;
+  border-radius: 4px;
+
+  &:before {
+    content: '';
+    background: #f1f1f1;
+    color: #f1f1f1;
+    position: absolute;
+    display: block;
+    padding: 2px;
+    border-width: 0px 7px 7px 0px;
+    border-style: solid;
+    box-shadow: 0 1px 5px 0 rgba(67, 67, 67, 0.47);
+    z-index: 0;
+  }
+
+  &.zToolBoxLabel_arrow_bottom:before {
+    transform: rotate(45deg);
+    -webkit-transform: rotate(45deg);
+    bottom: -5px;
+    left: 10px;
+  }
+
+
+  &.zToolBoxLabel_arrow_top:before {
+    transform: rotate(-135deg);
+    -webkit-transform: rotate(-135deg);
+    top: -5px;
+    left: 10px;
+  }
 }
 
-.zToolBoxLabel:before {
-  content: '';
-  position: absolute;
-  z-index: 2147483645;
-  display: block;
-  padding: 2px;
-  border-width: 0px 7px 7px 0px;
-  border-style: solid;
-
+.zToolBoxLabelContainer {
+  color: #333;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+  position: relative;
+  z-index: 1;
+  text-align: left;
+  padding: 5px 10px;
+  min-height: 20px;
+  min-width: 170px;
 }
-
-
-.zToolBoxLabel_arrow_bottom:before {
-  transform: rotate(45deg);
-  -webkit-transform: rotate(45deg);
-  margin: 20px 0 0px -3px;
-}
-
-.zToolBoxLabel_arrow_top:before {
-  transform: rotate(-135deg);
-  -webkit-transform: rotate(-135deg);
-  margin: -4px 0 0 -3px;
-}
-
-/*.right {*/
-/*transform: rotate(-45deg);*/
-/*-webkit-transform: rotate(-45deg);*/
-/*}*/
-
-/*.left {*/
-/*transform: rotate(135deg);*/
-/*-webkit-transform: rotate(135deg);*/
-/*}*/
-
-/*.up {*/
-/*transform: rotate(-135deg);*/
-/*-webkit-transform: rotate(-135deg);*/
-/*}*/
 
 
 .zToolBoxBoxHover {
@@ -57,74 +56,58 @@
   z-index: 2147483646;
 }
 
-.zToolBoxLabel_hovered {
-  background: #4ba5ff;
-
-}
-
-.zToolBoxLabel_hovered:before {
-  border-color: #4ba5ff;
-}
-
 
 .zToolBoxBoxSelected {
   background: #ff5e2f;
   box-shadow: 0 0 0 0.3px #ff5e2f;
   position: fixed;
   z-index: 2147483645;
-}
 
-.zToolBoxLabel_selected{
-    background: #ff5e2f;
-}
-.zToolBoxLabel_selected:before {
-    border-color: #ff5e2f;
-}
+  &.left:after {
+    position: fixed;
+    top: 0;
+    height: 100%;
+    width: 0;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
 
+  &.right:after {
+    position: fixed;
+    top: 0;
+    height: 100%;
+    width: 0;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
 
-.zToolBoxBoxSelected.left:after{
-  position: fixed;
-  top: 0;
-  height: 100%;
-  width: 0px;
-  border: 0.1px dashed #ff5e2f;
-  box-shadow: 0 0 0 0.2px #ff5e2f;
-  display: block;
-  content: "";
-}
-.zToolBoxBoxSelected.right:after {
-  position: fixed;
-  top: 0;
-  height: 100%;
-  width: 0px;
-  border: 0.1px dashed #ff5e2f;
-  box-shadow: 0 0 0 0.2px #ff5e2f;
-  display: block;
-  content: "";
-}
+  &.top:after {
+    position: fixed;
+    left: 0;
+    top: initial;
+    height: 0;
+    width: 100%;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
 
-.zToolBoxBoxSelected.top:after{
-  position: fixed;
-  left: 0;
-  top: initial;
-  height: 0px;
-  width: 100%;
-  border: 0.1px dashed #ff5e2f;
-  box-shadow: 0 0 0 0.2px #ff5e2f;
-  display: block;
-  content: "";
-}
-
-.zToolBoxBoxSelected.bottom:after {
-  position: fixed;
-  left: 0;
-  top: initial;
-  height: 0px;
-  width: 100%;
-  border: 0.1px dashed #ff5e2f;
-  box-shadow: 0 0 0 0.2px #ff5e2f;
-  display: block;
-  content: "";
+  &.bottom:after {
+    position: fixed;
+    left: 0;
+    top: initial;
+    height: 0;
+    width: 100%;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
 }
 
 [class^="zToolDistanceLine"] {
@@ -142,7 +125,7 @@
 
 [class^="zTool"] * {
   font-family: Helvetica, Arial, sans-serif;
-  font-size: 15px;
+  font-size: 15px!important;
 }
 
 .zToolDistanceLineLabel {
@@ -168,7 +151,7 @@
 }
 
 .zToolInfoBox {
-  padding: 0px 5px;
+  padding: 0 5px;
   line-height: 30px;
   box-sizing: border-box;
   height: 30px;
@@ -183,56 +166,6 @@
   font-size: 16px;
   font-family: Helvetica, Arial, sans-serif;
 }
-
-.zToolSelection {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-}
-
-.zToolOptionSelection {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 30px;
-  background: #2471A3;
-  z-index: 1;
-  height: 100%;
-}
-
-.zToolInfoBoxSelectedLabel .zToolInfoBoxValueLabel {
-  background: rgb(204, 126, 117);
-}
-
-.zToolInfoBoxHoveredLabel .zToolInfoBoxValueLabel {
-  background: rgb(91, 162, 210);
-}
-
-.zToolOptionToggleIcon {
-  background-image: url(data:image/svg+xml;utf8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pgo8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMTYuMC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogNi4wMCBCdWlsZCAwKSAgLS0+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjI0cHgiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDQ1OSA0NTkiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDQ1OSA0NTk7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPGc+Cgk8ZyBpZD0ic3dhcC12ZXJ0Ij4KCQk8cGF0aCBkPSJNMzMxLjUsMzU3VjE3OC41aC01MVYzNTdIMjA0bDEwMiwxMDJsMTAyLTEwMkgzMzEuNXogTTE1MywwTDUxLDEwMmg3Ni41djE3OC41aDUxVjEwMkgyNTVMMTUzLDB6IiBmaWxsPSIjRkZGRkZGIi8+Cgk8L2c+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPGc+CjwvZz4KPC9zdmc+Cg==);
-  position: absolute;
-  height: 100%;
-  width: 100%;
-  background-repeat: no-repeat;
-  background-position: 50%;
-  top: 0;
-  z-index: 1;
-}
-
-.zToolOptionVersion {
-  color: #fff;
-  display: block;
-  width: 100%;
-  text-align: center;
-  font-size: 7px;
-  padding: 2px;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  color: rgba(255, 255, 255, 0.44);
-}
-
 
 .zToolBoxLabel,
 .zToolBoxBoxHover,
@@ -254,7 +187,7 @@
 
 .zToolTooltipMargin {
   position: fixed;
-  z-index: 2147483646;
+  z-index: 2147483644;
   box-sizing: border-box;
   border-color: rgba(230, 125, 33, 0.31);
   border-style: solid;

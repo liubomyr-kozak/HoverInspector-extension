@@ -10,6 +10,7 @@
     "dev-prod:hot": "npm run build -- --watch --open --hot"
   },
   "dependencies": {
+    "classnames": "^2.2.6",
     "hotkeys-js": "^3.7.2",
     "lodash": "^4.17.11",
     "material-icons": "^0.3.1",

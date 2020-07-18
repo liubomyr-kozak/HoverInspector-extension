@@ -2,9 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './inject.scss';
 
-import {Box} from "./Components/box";
-import {StateProvider} from './appState';
-import {EventListenerProvider} from "./EventListenerProvider";
+import {MainLayer} from "./MainLayer";
+import {StateProvider} from './core/appState';
+import {EventListenerProvider} from "./core/EventListenerProvider";
 
 const BootstrapApp = () => {
   const initialState = {
@@ -12,31 +12,11 @@ const BootstrapApp = () => {
   };
 
   const reducer = (state, action) => {
-
-    console.log(action);
-
     switch (action.type) {
-      case 'changeActive':
-        return {
-          ...state,
-          ...action
-        };
       case 'hover':
-        return {
-          ...state,
-          ...action
-        };
       case 'select':
-        return {
-          ...state,
-          ...action
-        };
       case 'scroll':
-        return {
-          ...state,
-          ...action
-        };
-      case 'scrollSimple':
+      case 'scrollWithoutSelected':
         return {
           ...state,
           ...action
@@ -49,7 +29,7 @@ const BootstrapApp = () => {
   return (
     <StateProvider initialState={initialState} reducer={reducer}>
       <EventListenerProvider/>
-      <Box/>
+      <MainLayer/>
     </StateProvider>
   );
 };

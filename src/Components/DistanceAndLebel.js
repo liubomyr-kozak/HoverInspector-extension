@@ -1,13 +1,13 @@
-import {useStateValue} from "../../../appState";
+import {useStateValue} from "../core/appState";
 import React, {useEffect} from "react";
 import {
     calculateDistance,
     dispatchDistanceLineAndLabel,
     toggleLinesAndLabels,
     use4SideNodeRef
-} from "../utils";
+} from "../core/utils";
 
-import {DOMModule} from "../../dom";
+import {DOMModule} from "../core/dom";
 
 export const DistanceAndLebel = () => {
     const sideNodeRef = use4SideNodeRef()
@@ -19,8 +19,8 @@ export const DistanceAndLebel = () => {
 
         if (state.type === 'hover') {
             let distance = calculateDistance(
-                DOMModule.getBoundingElRect('hovered'),
-                DOMModule.getBoundingElRect('selected')
+                state.clientRectHoveredNode,
+                state.clientRectSelectedNode
             );
 
             if (distance) {
@@ -33,14 +33,14 @@ export const DistanceAndLebel = () => {
         }
 
 
-        if (state.type === 'scroll') {
-            if (!DOMModule.getBoundingElRect('hovered')) {
+        if (state.type === 'scroll' || state.type === 'scrollWithoutSelected') {
+            if (!state.clientRectHoveredNode) {
                 return;
             }
 
             let distance = calculateDistance(
-                DOMModule.getBoundingElRect('hovered'),
-                DOMModule.getBoundingElRect('selected')
+                state.clientRectHoveredNode,
+                state.clientRectSelectedNode
             );
 
             if (distance) {

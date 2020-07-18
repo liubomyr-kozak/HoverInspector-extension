@@ -1,15 +1,23 @@
-import {useStateValue} from "../../../appState";
 import React, {useEffect} from "react";
-import {setParamsToNode, use4SideNodeRef} from "../utils";
+import {useStateValue} from "../core/appState";
+import {setParamsToNode, use4SideNodeRef} from "../core/utils";
 
-export const Selected = () => {
+export const SelectedBox = () => {
     const sideNodeRef = use4SideNodeRef()
     const [state] = useStateValue();
     const {topRef, bottomRef, leftRef, rightRef} = sideNodeRef
 
     useEffect(() => {
+        if (state.type === 'scroll') {
+            setParamsToNode(sideNodeRef, state.clientRectSelectedNode);
+        }
+
         if (state.type === "select") {
-            setParamsToNode(sideNodeRef, state.clientRectNode);
+            setParamsToNode(sideNodeRef, state.clientRectSelectedNode);
+        }
+
+        if ((state.type === 'scroll' || state.type === 'scrollWithoutSelected') && state.clientRectSelectedNode) {
+            setParamsToNode(sideNodeRef, state.clientRectSelectedNode);
         }
     }, [state]);
 
