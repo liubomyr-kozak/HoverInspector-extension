@@ -117,37 +117,6 @@ const getLeftPosition = (popupAndHovered) => {
         ? labelBottom + labelBottomContainer
         : labelTop + labelTopContainer;
 
-    // if (popupAndHovered.popup.hasTopPosition && labelTop) {
-    //     const isPopupCoverLabel1 =
-    //         popupAndHovered.popup.top <= labelTop.top + labelTopContainer.top &&
-    //         (popupAndHovered.popup.top + popupAndHovered.popup.height) > labelTop.top + labelTopContainer.top
-    //
-    //     if (!isPopupCoverLabel1) return popupAndHovered.popup.left
-    //
-    //     return popupAndHovered.popup.left
-    //         + cutPx(popupAndHovered.hovered.width)
-    //         + popupAndHovered.hovered.marginLeft
-    //         + popupAndHovered.hovered.paddingLeft
-    //         + popupAndHovered.hovered.paddingRight
-    //         - arrowWidth;
-    // }
-    //
-    // if (popupAndHovered.popup.hasBottomPosition && labelBottom) {
-    //     const isPopupCoverLabel =
-    //         popupAndHovered.popup.top <= labelBottom.top + labelBottomContainer.top &&
-    //         (popupAndHovered.popup.top + popupAndHovered.popup.height) > labelBottom.top + labelBottomContainer.top
-    //
-    //     if (!isPopupCoverLabel) return popupAndHovered.popup.left
-    //
-    //
-    //     return popupAndHovered.popup.left
-    //         + cutPx(popupAndHovered.hovered.width)
-    //         + popupAndHovered.hovered.marginLeft
-    //         + popupAndHovered.hovered.paddingLeft
-    //         + popupAndHovered.hovered.paddingRight
-    //         - arrowWidth;
-    // }
-
     const isPopupCoverLabel =
         popupAndHovered.popup.top <= coveredLabelTopPx &&
         (popupAndHovered.popup.top + popupAndHovered.popup.height) > coveredLabelTopPx
@@ -166,8 +135,6 @@ export const Popup = () => {
     const nodeRef = useRef(null);
     const [state] = useStateValue();
 
-    console.log(state)
-
     if (!state.clientRectHoveredNode) return <div ref={nodeRef}/>
 
     const {height, width, tag, className, id, padding, margin} = state.hoverNodeParams;
@@ -181,9 +148,11 @@ export const Popup = () => {
     const backgroundColor = state.hoverNodeParams['background-color'];
     const font = state.hoverNodeParams['font'];
     const popupHeight = nodeRef.current ? nodeRef.current.offsetHeight : 0;
+    const popupWidth = nodeRef.current ? nodeRef.current.offsetWidth : 0;
 
     const clientWindow = {
         bottom: window.innerHeight || document.documentElement.clientHeight,
+        left: window.innerWidth || document.documentElement.clientWidth,
         top: 0
     }
 
@@ -195,7 +164,7 @@ export const Popup = () => {
         css: {}
     }
 
-    const isPopupVisible = {
+    let isPopupVisible = {
         top: clientWindow.top <= popupMeta.position.top,
         bottom: clientWindow.bottom > (popupMeta.position.bottom + popupHeight),
     }
@@ -224,6 +193,14 @@ export const Popup = () => {
             width
         },
     });
+
+    if(clientWindow.left <= popupMeta.css.left + popupWidth) {
+        popupMeta.css.left = 10;
+        popupMeta.css.top = 10;
+
+        isPopupVisible.bottom = false;
+        isPopupVisible.top = false;
+    }
 
     return (<>
             <div ref={nodeRef}
