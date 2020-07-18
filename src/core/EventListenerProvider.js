@@ -1,9 +1,22 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useStateValue} from "./appState";
 import {DOMModule} from "./dom.js";
 
 let preNodeTarget = null
 let countRepeat = 0
+
+// function debounce(func, wait = 100) {
+//   let timeout;
+//   return function(...args) {
+//     clearTimeout(timeout);
+//     timeout = setTimeout(() => {
+//       func.apply(this, args);
+//     }, wait);
+//   };
+// }
+//
+// const config = { attributes: true, childList: true, subtree: true };
+
 
 function onInputMove(e) {
   const hoverElement = e.target;
@@ -17,7 +30,6 @@ function onInputMove(e) {
   } else {
     return {}
   }
-
 
   if (typeof hoverElement.className === 'string'
     && hoverElement.className.indexOf('zTool') >= 0
@@ -101,6 +113,7 @@ const preventOnClick = (e) => {
   e.stopPropagation();
 }
 
+// let observer
 export const EventListenerProvider = ({children}) => {
   const [state, dispatch] = useStateValue();
 
@@ -112,9 +125,22 @@ export const EventListenerProvider = ({children}) => {
     const all = document.body.getElementsByTagName('*');
 
     if (state.isActive) {
+      // const callback = function(mutationsList, observer) {
+      //   // Use traditional 'for loops' for IE 11
+      //   for(let mutation of mutationsList) {
+      //     if (mutation.type === 'childList') {
+      //       debounce(dispatch({type: 'hover'}));
+      //     } else if (mutation.type === 'attributes') {
+      //       debounce(dispatch({type: 'hover'}));
+      //     }
+      //   }
+      // };
+
       window.addEventListener('mousemove', onInputMoveListener);
       window.addEventListener('mousedown', onMouseDownListener);
       window.addEventListener('scroll', onScrollListener);
+      // observer = new MutationObserver(callback);
+      // observer.observe(document.getElementsByTagName('body')[0], config);
 
       Array.from(all).forEach(el => el.addEventListener('click', preventOnClick));
     }
@@ -123,6 +149,7 @@ export const EventListenerProvider = ({children}) => {
       window.removeEventListener('mousemove', onInputMoveListener);
       window.removeEventListener('mousedown', onMouseDownListener);
       window.removeEventListener('scroll', onScrollListener);
+      // observer.disconnect();
 
       Array.from(document.getElementsByClassName("zTool")).forEach(el => el.remove());
       Array.from(all).forEach(el => el.removeEventListener('click', preventOnClick));

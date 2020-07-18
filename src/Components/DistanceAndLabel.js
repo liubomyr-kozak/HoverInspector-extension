@@ -9,6 +9,10 @@ import {
 
 import {DOMModule} from "../core/dom";
 
+const dnStyle = {
+    display: "none"
+}
+
 export const DistanceAndLabel = () => {
     const sideNodeRef = use4SideNodeRef()
     const [state, dispatch] = useStateValue();
@@ -52,16 +56,16 @@ export const DistanceAndLabel = () => {
     }, [state]);
 
     return (<>
-            <div ref={topRef} className='zToolDistanceLine top'>
+            <div style={dnStyle} ref={topRef} className='zToolDistanceLine top'>
                 <span className="zToolDistanceLineLabel"/>
             </div>
-            <div ref={bottomRef} className='zToolDistanceLine bottom'>
+            <div style={dnStyle} ref={bottomRef} className='zToolDistanceLine bottom'>
                 <span className="zToolDistanceLineLabel"/>
             </div>
-            <div ref={leftRef} className='zToolDistanceLine left'>
+            <div style={dnStyle} ref={leftRef} className='zToolDistanceLine left'>
                 <span className="zToolDistanceLineLabel"/>
             </div>
-            <div ref={rightRef} className='zToolDistanceLine right'>
+            <div style={dnStyle} ref={rightRef} className='zToolDistanceLine right'>
                 <span className="zToolDistanceLineLabel"/>
             </div>
         </>

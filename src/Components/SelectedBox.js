@@ -2,6 +2,10 @@ import React, {useEffect} from "react";
 import {useStateValue} from "../core/appState";
 import {setParamsToNode, use4SideNodeRef} from "../core/utils";
 
+const dnStyle = {
+    display: "none"
+}
+
 export const SelectedBox = () => {
     const sideNodeRef = use4SideNodeRef()
     const [state] = useStateValue();
@@ -22,10 +26,10 @@ export const SelectedBox = () => {
     }, [state]);
 
     return (<>
-            <div ref={topRef} className='zToolBoxBoxSelected top'/>
-            <div ref={bottomRef} className='zToolBoxBoxSelected bottom'/>
-            <div ref={leftRef} className='zToolBoxBoxSelected left'/>
-            <div ref={rightRef} className='zToolBoxBoxSelected right'/>
+            <div ref={topRef} style={dnStyle} className='zToolBoxBoxSelected top'/>
+            <div ref={bottomRef} style={dnStyle} className='zToolBoxBoxSelected bottom'/>
+            <div ref={leftRef} style={dnStyle} className='zToolBoxBoxSelected left'/>
+            <div ref={rightRef} style={dnStyle} className='zToolBoxBoxSelected right'/>
         </>
     )
 }

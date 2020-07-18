@@ -2,6 +2,10 @@ import {useStateValue} from "../core/appState";
 import React, {useEffect} from "react";
 import {setParamsToNode, use4SideNodeRef} from "../core/utils";
 
+const dnStyle = {
+    display: "none"
+}
+
 export const HoveredLinesArea = () => {
     const sideNodeRef = use4SideNodeRef()
     const {topRef, bottomRef, leftRef, rightRef} = sideNodeRef
@@ -18,10 +22,10 @@ export const HoveredLinesArea = () => {
     }, [state]);
 
     return (<>
-            <div ref={topRef} className='zToolBoxBoxHover top'/>
-            <div ref={bottomRef} className='zToolBoxBoxHover bottom'/>
-            <div ref={leftRef} className='zToolBoxBoxHover left'/>
-            <div ref={rightRef} className='zToolBoxBoxHover right'/>
+            <div ref={topRef} style={dnStyle} className='zToolBoxBoxHover top'/>
+            <div ref={bottomRef} style={dnStyle}  className='zToolBoxBoxHover bottom'/>
+            <div ref={leftRef} style={dnStyle} className='zToolBoxBoxHover left'/>
+            <div ref={rightRef} style={dnStyle}  className='zToolBoxBoxHover right'/>
         </>
     )
 }

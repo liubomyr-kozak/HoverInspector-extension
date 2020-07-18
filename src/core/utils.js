@@ -15,6 +15,7 @@ export const setPadding = (containerPadding, {top, bottom, right, left, height, 
         containerPadding.style.left = `${left}px`;
         containerPadding.style.width = `${width}px`;
         containerPadding.style.height = `${height}px`;
+        containerPadding.style.display = `block`;
 
         containerPadding.style.borderTopWidth = `${hoverNodeParams['padding-top']}`;
         containerPadding.style.borderBottomWidth = `${hoverNodeParams['padding-bottom']}`;
@@ -34,6 +35,7 @@ export const setMargin = (containerMargin, {top, bottom, right, left, height, wi
         containerMargin.style.left = `${left - leftBorder}px`;
         containerMargin.style.width = `${width + leftBorder + rightBorder + 1}px`;
         containerMargin.style.height = `${height + topBorder + bottomBorder + 1}px`;
+        containerMargin.style.display = `block`;
 
         containerMargin.style.borderTopWidth = `${hoverNodeParams['margin-top']}`;
         containerMargin.style.borderBottomWidth = `${hoverNodeParams['margin-bottom']}`;
@@ -51,21 +53,25 @@ export const setParamsToNode = (
     leftRef.current.style.left = `${right}px`;
     leftRef.current.style.width = "1px";
     leftRef.current.style.height = `${height}px`;
+    leftRef.current.style.display = `block`;
 
     rightRef.current.style.top = `${top}px`;
     rightRef.current.style.left = `${left}px`;
     rightRef.current.style.width = "1px";
     rightRef.current.style.height = `${height}px`;
+    rightRef.current.style.display = `block`;
 
     topRef.current.style.top = `${top}px`;
     topRef.current.style.left = `${left}px`;
     topRef.current.style.width = `${width}px`;
     topRef.current.style.height = "1px";
+    topRef.current.style.display = `block`;
 
     bottomRef.current.style.top = `${bottom}px`;
     bottomRef.current.style.left = `${left}px`;
     bottomRef.current.style.width = `${width}px`;
     bottomRef.current.style.height = "1px";
+    bottomRef.current.style.display = `block`;
 };
 
 export const use4SideNodeRef = () => {

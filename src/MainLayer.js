@@ -6,6 +6,11 @@ import {HoveredLinesArea} from "./Components/HoveredLinesArea";
 import {DistanceAndLabel} from "./Components/DistanceAndLabel";
 import {Popup} from "./Components/Popup";
 
+const dnStyle = {
+    display: "none"
+}
+
+
 export const MainLayer = () => {
     const [state] = useStateValue();
     const paddingRef = useRef();
@@ -36,8 +41,8 @@ export const MainLayer = () => {
             <HoveredLinesArea/>
             <DistanceAndLabel/>
             <Popup/>
-            <div ref={paddingRef} className="zToolTooltipPadding"/>
-            <div ref={marginRef} className="zToolTooltipMargin"/>
+            <div ref={paddingRef} style={dnStyle} className="zToolTooltipPadding"/>
+            <div ref={marginRef} style={dnStyle} className="zToolTooltipMargin"/>
         </>
     )
 }
