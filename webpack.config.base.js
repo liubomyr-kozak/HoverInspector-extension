@@ -5,7 +5,6 @@ const config = {
     mode: 'development',
     entry: {
         inject: path.join(__dirname, '/src/inject.js'),
-        background: path.join(__dirname, '/src/background.js')
     },
     output: {
         path: path.join(__dirname, '/dist'),

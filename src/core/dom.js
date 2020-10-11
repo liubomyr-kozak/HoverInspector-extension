@@ -1,7 +1,8 @@
 const styleRules = [
     'padding-right', 'padding-left', 'padding-top', 'padding-bottom',
     'margin-right', 'margin-left', 'margin-top', 'margin-bottom',
-    'height', 'width', 'font-size', 'color', 'background-color', 'font-family', 'font'
+    'height', 'width', 'font-size', 'color', 'background-color', 'font-family',
+    'font'
 ];
 
 const pxToNumber = (px) => {
@@ -13,14 +14,14 @@ const normalizePaddingMargin = (nodeStyle, rule) => {
     const top = pxToNumber(nodeStyle[`${rule}-top`]);
     const bottom = pxToNumber(nodeStyle[`${rule}-bottom`]);
 
-    if (!right || !left || !top || !bottom) {
+    if (!right && !left && !top && !bottom) {
         return false
     }
 
     const sideEqual = right === left
     const topBottomEqual = top === bottom
 
-    if (sideEqual === topBottomEqual && sideEqual !== false) {
+    if (sideEqual === topBottomEqual && right === bottom && top === left) {
         return `${top}px`
     }
 
@@ -52,12 +53,27 @@ const getCascadedStyle = function(element, style) {
 };
 
 
-const getStyle = function(element, style) {
+const getStyle_ = function(element, style) {
     return getComputedStyle(element, style) ||
         getCascadedStyle(element, style) ||
         (element.style && element.style[style]);
 };
 
+
+
+const getStyle = (oElm, strCssRule) => {
+    var strValue = "";
+    if (document.defaultView && document.defaultView.getComputedStyle) {
+        strValue = document.defaultView.getComputedStyle(oElm, "").getPropertyValue(strCssRule);
+    }
+    else if (oElm.currentStyle) {
+        strCssRule = strCssRule.replace(/\-(\w)/g, function (strMatch, p1) {
+            return p1.toUpperCase();
+        });
+        strValue = oElm.currentStyle[strCssRule];
+    }
+    return strValue;
+};
 
 const getStyleByNode = (nodeEl) => {
     let nodeStyle = styleRules.reduce((options, ruleName) => {
@@ -65,14 +81,21 @@ const getStyleByNode = (nodeEl) => {
 
             if(value === 'rgba(0, 0, 0, 0)') return options;
 
-            options[ruleName] = value;
+            if(ruleName === 'height' || ruleName === 'width'){
+                options[ruleName] = `${nodeEl.getBoundingClientRect()[ruleName]}px`;
+            } else {
+                options[ruleName] = value;
+            }
             return options
         },
         {}
     )
 
-    nodeStyle.className = nodeEl.className ? `.${nodeEl.className.replace(/\s+/gi, '.')}` : '';
-    nodeStyle.id = nodeEl.id ? `#${nodeEl.id}` : '';
+    const className = nodeEl.className && typeof nodeEl.className === "string" ? nodeEl.className : '';
+    const id = nodeEl.id || '';
+
+    nodeStyle.className = className ? `.${className.replace(/\s+/gi, '.')}` : '';
+    nodeStyle.id = id ? `#${id}` : '';
     nodeStyle.tag = nodeEl.localName;
 
     nodeStyle.padding = normalizePaddingMargin(nodeStyle, 'padding');

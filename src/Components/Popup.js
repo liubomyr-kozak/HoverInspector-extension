@@ -17,7 +17,8 @@ const colorBoxStyle = (bg) => ({
     verticalAlign: "middle",
     marginRight: "7px",
     fontSize: '12px !important',
-    background: bg
+    background: bg,
+    boxShadow: '0 0 0 1px #7b7b7b'
 })
 
 const tagStyle = {
@@ -85,21 +86,6 @@ const targetColorStringToHex = (value) => {
     return rgbToHex(color[0], color[1], color[2]);
 }
 
-
-const getLabelMEtaData = (el, type) => {
-    const isVisible = document.defaultView.getComputedStyle(el, "").display !== 'none';
-
-    return {
-        el,
-        top: el.offsetTop,
-        left: el.offsetLeft,
-        bottom: el.offsetTop + el.offsetHeight,
-        right: el.offsetLeft + el.offsetWidth,
-        type,
-        isVisible
-    }
-}
-
 const getLeftPosition = (popupAndHovered) => {
     if(!popupAndHovered.popup.hasTopPosition && !popupAndHovered.popup.hasBottomPosition){
         return popupAndHovered.popup.left
@@ -138,12 +124,14 @@ export const Popup = () => {
     if (!state.clientRectHoveredNode) return <div ref={nodeRef}/>
 
     const {height, width, tag, className, id, padding, margin} = state.hoverNodeParams;
+
     const {top, bottom, left} = state.clientRectHoveredNode;
     const marginBottom = cutPx(state.hoverNodeParams['margin-bottom']);
     const marginTop = cutPx(state.hoverNodeParams['margin-top']);
     const marginLeft = cutPx(state.hoverNodeParams['margin-left']);
     const paddingLeft = cutPx(state.hoverNodeParams['padding-left']);
     const paddingRight = cutPx(state.hoverNodeParams['padding-right']);
+
     const color = state.hoverNodeParams['color'];
     const backgroundColor = state.hoverNodeParams['background-color'];
     const font = state.hoverNodeParams['font'];

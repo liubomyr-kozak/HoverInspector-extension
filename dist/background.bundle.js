@@ -1,1 +1,223 @@
-!function(e){var t={};function n(o){if(t[o])return t[o].exports;var i=t[o]={i:o,l:!1,exports:{}};return e[o].call(i.exports,i,i.exports,n),i.l=!0,i.exports}n.m=e,n.c=t,n.d=function(e,t,o){n.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:o})},n.r=function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},n.t=function(e,t){if(1&t&&(e=n(e)),8&t)return e;if(4&t&&"object"==typeof e&&e&&e.__esModule)return e;var o=Object.create(null);if(n.r(o),Object.defineProperty(o,"default",{enumerable:!0,value:e}),2&t&&"string"!=typeof e)for(var i in e)n.d(o,i,function(t){return e[t]}.bind(null,i));return o},n.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return n.d(t,"a",t),t},n.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},n.p="",n(n.s=12)}({12:function(e,t){var n={};function o(e){var t;n[e.id]?(t=e.id,n[t].deactivate()):function(e){n[e.id]=Object.create(r),n[e.id].activate(e)}(e)}var i=null;chrome.browserAction.onClicked.addListener((function(e){i&&Date.now()-i<10||(o(e),i=Date.now())})),chrome.runtime.onConnect.addListener((function(e){n[e.sender.tab.id].initialize(e)})),chrome.runtime.onSuspend.addListener((function(){for(var e in n)n[e].deactivate(!0)}));var r={alive:!0,activate:function(e){this.tab=e,this.onBrowserDisconnectClosure=this.onBrowserDisconnect.bind(this);var t=chrome.app.getDetails().version;chrome.tabs.executeScript({code:"window.extension = {hoverInspector: {version : '".concat(t,"'} };")}),chrome.tabs.insertCSS(this.tab.id,{file:"webpage.chrome.css"}),chrome.tabs.executeScript(this.tab.id,{file:"webpage.chrome.js"}),chrome.browserAction.setIcon({tabId:this.tab.id,path:{16:"images/new_logo2/zTool-16-active.png",32:"images/new_logo2/zTool-32-active.png"}})},deactivate:function(e){this.port?(e||this.port.postMessage({actionType:"destroy"}),this.port.onDisconnect.removeListener(this.onBrowserDisconnectClosure),chrome.browserAction.setIcon({tabId:this.tab.id,path:{16:"images/new_logo2/zTool-16.png",32:"images/new_logo2/zTool-32.png"}}),window.removeTab(this.tab.id)):this.alive=!1},onBrowserDisconnect:function(){this.deactivate(!0)},initialize:function(e){if(this.port=e,this.alive){this.port.onDisconnect.addListener(this.onBrowserDisconnectClosure),this.port.postMessage({actionType:"init",debug:!0});var t=this;this.port.onMessage.addListener((function(e,n){"destroy"!==e.actionType?e.actionType:t.deactivate()}))}else this.deactivate()}}}});
+var debug = true;
+var tabs = {};
+
+var PATH_TO_CSS_FILE = 'webpage.chrome.css';
+var PATH_TO_JS_FILE = 'inject.bundle.js';
+var PATH_TO_ZTOOL_16LOGO_FILE = 'images/new_logo2/zTool-16.png';
+var PATH_TO_ZTOOL_16LOGO_ACTIVE_FILE = 'images/new_logo2/zTool-16-active.png';
+var PATH_TO_ZTOOL_32LOGO_FILE = 'images/new_logo2/zTool-32.png';
+var PATH_TO_ZTOOL_32LOGO_ACTIVE_FILE = 'images/new_logo2/zTool-32-active.png';
+
+function toggle(tab) {
+    if (!tabs[tab.id])
+        addTab(tab);
+    else
+        deactivateTab(tab.id);
+}
+
+function addTab(tab) {
+    tabs[tab.id] = Object.create(dimensions);
+    tabs[tab.id].activate(tab);
+}
+
+function deactivateTab(id) {
+    tabs[id].deactivate();
+}
+
+function removeTab(id) {
+    for (var tabId in tabs) {
+        if (tabId == id)
+            delete tabs[tabId];
+    }
+}
+
+var lastBrowserAction = null;
+
+
+chrome.runtime.onInstalled.addListener(function (details) {
+    const thisVersion = chrome.runtime.getManifest().version;
+    if (details.reason == "install") {
+        // console.info("First version installed");
+    } else if (details.reason == "update") {
+        console.info("Updated version: " + thisVersion);
+
+        //Send message to popup.html and notify/alert user
+        chrome.tabs.query({currentWindow: true, active: true}, function (tabs) {
+            for (var i = 0; i < tabs.length; i++) {
+                chrome.tabs.sendMessage(
+                    tabs[i].id,
+                    {
+                        name: "notifyOnUpdated",
+                        version: thisVersion
+                    }
+                );
+            }
+        });
+    }
+
+});
+
+chrome.browserAction.onClicked.addListener(function (tab) {
+    if (lastBrowserAction && Date.now() - lastBrowserAction < 10) {
+        // fix bug in Chrome Version 49.0.2623.87
+        // that triggers browserAction.onClicked twice
+        // when called from shortcut _execute_browser_action
+        return;
+    }
+    toggle(tab);
+    lastBrowserAction = Date.now();
+});
+
+chrome.runtime.onConnect.addListener(function (port) {
+    tabs[port.sender.tab.id].initialize(port);
+});
+
+chrome.runtime.onSuspend.addListener(function () {
+    for (var tabId in tabs) {
+        tabs[tabId].deactivate(true);
+    }
+});
+
+
+var dimensions = {
+    alive: true,
+
+    activate: function (tab) {
+        this.tab = tab;
+
+        this.onBrowserDisconnectClosure = this.onBrowserDisconnect.bind(this);
+
+
+        var extensionVersion = chrome.app.getDetails().version;
+
+        // chrome.tabs.executeScript({
+        //     code: `console.log(hover inspector v:'${extensionVersion}');`
+        // });
+
+        chrome.tabs.executeScript({
+            code: `window.extension = {hoverInspector: {version : '${extensionVersion}'} };`
+        });
+
+        chrome.tabs.insertCSS(this.tab.id, {file: PATH_TO_CSS_FILE});
+        chrome.tabs.executeScript(this.tab.id, {file: PATH_TO_JS_FILE});
+
+
+        // chrome.debugger.attach({tabId: this.tab.id}, "1.0");
+        chrome.browserAction.setIcon({
+            tabId: this.tab.id,
+            path: {
+                16: PATH_TO_ZTOOL_16LOGO_ACTIVE_FILE,
+                32: PATH_TO_ZTOOL_32LOGO_ACTIVE_FILE
+            }
+        });
+    },
+
+    deactivate: function (silent) {
+        if (!this.port) {
+            // not yet initialized
+            this.alive = false;
+            return;
+        }
+
+        if (!silent)
+            this.port.postMessage({actionType: 'destroy'});
+
+        this.port.onDisconnect.removeListener(this.onBrowserDisconnectClosure);
+
+        chrome.browserAction.setIcon({
+            tabId: this.tab.id,
+            path: {
+                16: PATH_TO_ZTOOL_16LOGO_FILE,
+                32: PATH_TO_ZTOOL_32LOGO_FILE
+            }
+        });
+        // chrome.debugger.detach({tabId: this.tab.id}, "Debugger");
+        window.removeTab(this.tab.id);
+    },
+
+    onBrowserDisconnect: function () {
+        this.deactivate(true);
+    },
+
+    initialize: function (port) {
+        this.port = port;
+
+        if (!this.alive) {
+            // was deactivated whilest still booting up
+            this.deactivate();
+            return;
+        }
+
+
+        this.port.onDisconnect.addListener(this.onBrowserDisconnectClosure);
+        this.port.postMessage({
+            actionType: 'init',
+            debug: debug
+        });
+
+
+        const self = this;
+        this.port.onMessage.addListener(function (event, data) {
+            if (event.actionType === "destroy") {
+                self.deactivate();
+                return;
+            }
+            // if (event.actionType === "highlightNode") {
+            //     var highlightConfig = {
+            //         showInfo: false,
+            //         contentColor: {r: 68, g: 143, b: 218},
+            //         paddingColor: {r: 28, g: 118, b: 175},
+            //         borderColor: {r: 255, g: 255, b: 255},
+            //         marginColor: {r: 232, g: 192, b: 29},
+            //     };
+            //     const getBodyDOM = function(responsedDOM){
+            //         for(var i = 0 ; i < responsedDOM.root.childNodeCount; i ++ ){
+            //             var firstRootChildren = responsedDOM.root.children[i];
+            //             for(var j = 0 ; j < firstRootChildren.childNodeCount; j ++){
+            //                 var secondChildren = firstRootChildren.children[j];
+            //                 if(secondChildren.localName == "body"){
+            //                     return secondChildren;
+            //                 }
+            //             }
+            //         }
+            //
+            //         return "";
+            //     }
+            //
+            //
+            //
+            //     var debuggee = {tabId: self.tab.id};
+            //
+            //
+            //
+            //     chrome.debugger.sendCommand(debuggee, "DOM.getDocument", function (response) {
+            //         debugger
+            //
+            //         var body = getBodyDOM(response);
+            //         var target = {nodeId: body.nodeId, selector: event.data}
+            //
+            //
+            //         console.log(target);
+            //
+            //         chrome.debugger.sendCommand(debuggee, "DOM.querySelector", target, function (response) {
+            //
+            //             if (!response) {
+            //                 debugger
+            //                 return
+            //             }
+            //
+            //             chrome.debugger.sendCommand(debuggee,"DOM.highlightNode", {
+            //                 "nodeId": response.nodeId,
+            //                 "highlightConfig": highlightConfig
+            //             }, function (response) {
+            //                 debugger
+            //                 console.log(response)
+            //             });
+            //         })
+            //     })
+            //     return;
+            // }
+        });
+
+    }
+};

@@ -2,7 +2,7 @@ var debug = true;
 var tabs = {};
 
 var PATH_TO_CSS_FILE = 'webpage.chrome.css';
-var PATH_TO_JS_FILE = 'webpage.chrome.js';
+var PATH_TO_JS_FILE = 'inject.bundle.js';
 var PATH_TO_ZTOOL_16LOGO_FILE = 'images/new_logo2/zTool-16.png';
 var PATH_TO_ZTOOL_16LOGO_ACTIVE_FILE = 'images/new_logo2/zTool-16-active.png';
 var PATH_TO_ZTOOL_32LOGO_FILE = 'images/new_logo2/zTool-32.png';
@@ -32,6 +32,30 @@ function removeTab(id) {
 }
 
 var lastBrowserAction = null;
+
+
+chrome.runtime.onInstalled.addListener(function (details) {
+    const thisVersion = chrome.runtime.getManifest().version;
+    if (details.reason == "install") {
+        // console.info("First version installed");
+    } else if (details.reason == "update") {
+        console.info("Updated version: " + thisVersion);
+
+        //Send message to popup.html and notify/alert user
+        chrome.tabs.query({currentWindow: true, active: true}, function (tabs) {
+            for (var i = 0; i < tabs.length; i++) {
+                chrome.tabs.sendMessage(
+                    tabs[i].id,
+                    {
+                        name: "notifyOnUpdated",
+                        version: thisVersion
+                    }
+                );
+            }
+        });
+    }
+
+});
 
 chrome.browserAction.onClicked.addListener(function (tab) {
     if (lastBrowserAction && Date.now() - lastBrowserAction < 10) {
@@ -138,63 +162,61 @@ var dimensions = {
                 self.deactivate();
                 return;
             }
-            if (event.actionType === "highlightNode") {
-                // var highlightConfig = {
-                //     showInfo: false,
-                //     contentColor: {r: 68, g: 143, b: 218},
-                //     paddingColor: {r: 28, g: 118, b: 175},
-                //     borderColor: {r: 255, g: 255, b: 255},
-                //     marginColor: {r: 232, g: 192, b: 29},
-                // };
-                // const getBodyDOM = function(responsedDOM){
-                //     for(var i = 0 ; i < responsedDOM.root.childNodeCount; i ++ ){
-                //         var firstRootChildren = responsedDOM.root.children[i];
-                //         for(var j = 0 ; j < firstRootChildren.childNodeCount; j ++){
-                //             var secondChildren = firstRootChildren.children[j];
-                //             if(secondChildren.localName == "body"){
-                //                 return secondChildren;
-                //             }
-                //         }
-                //     }
-                //
-                //     return "";
-                // }
-                //
-                //
-                //
-                // var debuggee = {tabId: self.tab.id};
-                //
-                //
-                //
-                // chrome.debugger.sendCommand(debuggee, "DOM.getDocument", function (response) {
-                //     debugger
-                //
-                //     var body = getBodyDOM(response);
-                //     var target = {nodeId: body.nodeId, selector: event.data}
-                //
-                //
-                //     console.log(target);
-                //
-                //     chrome.debugger.sendCommand(debuggee, "DOM.querySelector", target, function (response) {
-                //
-                //         if (!response) {
-                //             debugger
-                //             return
-                //         }
-                //
-                //         chrome.debugger.sendCommand(debuggee,"DOM.highlightNode", {
-                //             "nodeId": response.nodeId,
-                //             "highlightConfig": highlightConfig
-                //         }, function (response) {
-                //             debugger
-                //             console.log(response)
-                //         });
-                //     })
-                // })
-
-
-                return;
-            }
+            // if (event.actionType === "highlightNode") {
+            //     var highlightConfig = {
+            //         showInfo: false,
+            //         contentColor: {r: 68, g: 143, b: 218},
+            //         paddingColor: {r: 28, g: 118, b: 175},
+            //         borderColor: {r: 255, g: 255, b: 255},
+            //         marginColor: {r: 232, g: 192, b: 29},
+            //     };
+            //     const getBodyDOM = function(responsedDOM){
+            //         for(var i = 0 ; i < responsedDOM.root.childNodeCount; i ++ ){
+            //             var firstRootChildren = responsedDOM.root.children[i];
+            //             for(var j = 0 ; j < firstRootChildren.childNodeCount; j ++){
+            //                 var secondChildren = firstRootChildren.children[j];
+            //                 if(secondChildren.localName == "body"){
+            //                     return secondChildren;
+            //                 }
+            //             }
+            //         }
+            //
+            //         return "";
+            //     }
+            //
+            //
+            //
+            //     var debuggee = {tabId: self.tab.id};
+            //
+            //
+            //
+            //     chrome.debugger.sendCommand(debuggee, "DOM.getDocument", function (response) {
+            //         debugger
+            //
+            //         var body = getBodyDOM(response);
+            //         var target = {nodeId: body.nodeId, selector: event.data}
+            //
+            //
+            //         console.log(target);
+            //
+            //         chrome.debugger.sendCommand(debuggee, "DOM.querySelector", target, function (response) {
+            //
+            //             if (!response) {
+            //                 debugger
+            //                 return
+            //             }
+            //
+            //             chrome.debugger.sendCommand(debuggee,"DOM.highlightNode", {
+            //                 "nodeId": response.nodeId,
+            //                 "highlightConfig": highlightConfig
+            //             }, function (response) {
+            //                 debugger
+            //                 console.log(response)
+            //             });
+            //         })
+            //     })
+            //     return;
+            // }
         });
 
     }
