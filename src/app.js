@@ -36,13 +36,13 @@ export const MainLayer = () => {
     }, [state]);
 
     return (
-        <>
-            <SelectedBox/>
-            <HoveredLinesArea/>
-            <DistanceAndLabel/>
-            <Popup/>
-            <div ref={paddingRef} style={dnStyle} className="zToolTooltipPadding"/>
-            <div ref={marginRef} style={dnStyle} className="zToolTooltipMargin"/>
-        </>
+      <>
+          <SelectedBox/>
+          <HoveredLinesArea/>
+          <DistanceAndLabel/>
+          <Popup/>
+          <div ref={paddingRef} style={dnStyle} className="zToolTooltipPadding"/>
+          <div ref={marginRef} style={dnStyle} className="zToolTooltipMargin"/>
+      </>
     )
 }

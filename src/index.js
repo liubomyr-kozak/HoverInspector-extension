@@ -2,11 +2,11 @@ import React, {useEffect} from 'react';
 import ReactDOM from 'react-dom';
 import hotkeys from 'hotkeys-js';
 
-import {MainLayer} from "./MainLayer";
+import {MainLayer} from "./app";
 import {StateProvider} from './core/appState';
 import {EventListenerProvider} from "./core/EventListenerProvider";
 
-import './inject.scss';
+import './app.scss';
 
 let connectionClosed = false;
 const port = chrome.runtime.connect({name: "dimensions"});
