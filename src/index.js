@@ -1,78 +1,37 @@
-import React, {useEffect} from 'react';
-import ReactDOM from 'react-dom';
+import React from 'react';
 import hotkeys from 'hotkeys-js';
+import ExtensionManager from "./core/ExtensionManager";
+import ChromeBackgroundProvider from "./core/ChromeBackgroundProvider";
 
-import {MainLayer} from "./app";
-import {StateProvider} from './core/appState';
-import {EventListenerProvider} from "./core/EventListenerProvider";
+import { App } from "./app";
 
-import './app.scss';
+ExtensionManager.register({
+  extId: "zTool",
+  appReactRef: <App/>,
+  backgroundProvider: ChromeBackgroundProvider
+})
 
-let connectionClosed = false;
-const port = chrome.runtime.connect({name: "dimensions"});
+ExtensionManager.addBackgroundListener({
+  type: 'destroy',
+  action: ExtensionManager.destroy,
+})
 
-const BootstrapApp = () => {
-    const initialState = {
-        isActive: true,
-    };
+ExtensionManager.addBackgroundListener({
+  type: 'init',
+  action: ExtensionManager.render,
+})
 
-    useEffect(() => {
-        console.log('init');
-        return () => {
-            console.log('destroy');
-        }
-    }, [])
-    const reducer = (state, action) => {
-        switch (action.type) {
-            case 'hover':
-            case 'select':
-            case 'scroll':
-            case 'scrollWithoutSelected':
-            case 'labelRendered':
-                return {
-                    ...state,
-                    ...action
-                };
-            default:
-                return state;
-        }
-    };
+ExtensionManager.addBackgroundListener({
+  type: 'notifyOnUpdated',
+  action: ExtensionManager.destroy,
+})
 
-    return (
-        <StateProvider initialState={initialState} reducer={reducer}>
-            <EventListenerProvider/>
-            <MainLayer/>
-        </StateProvider>
-    );
-};
-
-const rootEl = document.createElement('div');
-rootEl.className = "zTool";
-document.body.appendChild(rootEl);
-
-
-port.onMessage.addListener(function (event) {
-    if (connectionClosed)
-        return;
-
-    switch (event.actionType) {
-        case 'init':
-            ReactDOM.render(<BootstrapApp/>, rootEl);
-            break;
-        case 'destroy':
-            ReactDOM.unmountComponentAtNode(rootEl);
-            break;
-        case 'notifyOnUpdated':
-            ReactDOM.unmountComponentAtNode(rootEl);
-            break;
-    }
-});
-
-// side effect.. I execute version in another script;
-window.extension.hoverInspector.version;
-
-hotkeys('esc', function () {
-    port.postMessage({
-        actionType: 'destroy'
+ExtensionManager.addBackgroundScript((provider) => {
+  hotkeys('esc', function () {
+    provider.postMessage({
+      actionType: 'destroy'
     })
-});
+  });
+})
+
+ExtensionManager.render()

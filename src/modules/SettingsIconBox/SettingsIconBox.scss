@@ -1,0 +1,212 @@
+.zTool-SettingsIconBox {
+  display: flex;
+  position: fixed;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  z-index: 2147483648;
+
+  right: 10px;
+  top: 10px;
+
+  .zTool-SettingsIconBox-close-icon {
+    display: none;
+
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    padding: 8px;
+    right: -9px;
+    top: -9px;
+    background: #fff;
+    box-shadow: 0 0 1px 1px #b7b7b7;
+    border-radius: 50%;
+    cursor: pointer;
+    box-sizing: border-box;
+
+    svg {
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+
+      path {
+        fill: #716f6f !important;
+      }
+    }
+  }
+
+  &.--open {
+    cursor: initial;
+    width: 200px;
+    height: auto;
+    background: #fff;
+    box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+    0 1px 10px 0 rgba(0, 0, 0, 0.12),
+    0 2px 4px -1px rgba(0, 0, 0, 0.20);
+    border-radius: 5px;
+
+    &:hover {
+      .zTool-SettingsIconBox-close-icon {
+        display: flex;
+      }
+    }
+  }
+
+  .zTool-SettingsIconBox-icon {
+    &.--close {
+      display: none;
+    }
+
+    width: 32px;
+    height: 32px;
+    position: relative;
+
+    .zTool-SettingsIconBox-main-icon {
+      display: none;
+    }
+
+    .zTool-SettingsIconBox-sub-icon {
+      top: 5px;
+      bottom: initial;
+      left: 5px;
+    }
+  }
+
+  .zTool-SettingsIconBox-setting {
+    display: none;
+    width: 100%;
+
+    &.--open {
+      display: block;
+
+      .zTool-SettingsIconBox-setting-title {
+        display: flex;
+        padding: 3px;
+        align-items: center;
+      }
+    }
+
+    .zTool-SettingsIconBox-setting-icon {
+      width: 38px;
+      height: 38px;
+      position: relative;
+      display: inline-block;
+      margin: 0 10px 0 0;
+
+      .zTool-SettingsIconBox-sub-icon {
+        top: 5px;
+        left: 5px;
+        width: 32px;
+        height: 32px;
+      }
+    }
+
+    .zTool-SettingsIconBox-setting-body {
+      padding: 5px;
+    }
+  }
+
+  .zTool-SettingsIconBox-sub-icon {
+    position: absolute;
+    width: 80%;
+    bottom: 0;
+    left: 0;
+  }
+
+
+  //.zTool-btn {
+  //  width: 100%;
+  //  cursor: pointer;
+  //  outline: none;
+  //  text-align: left;
+  //  border-radius: 0;
+  //  border: none;
+  //  height: 25px;
+  //  line-height: 25px;
+  //  margin-bottom: 5px;
+  //
+  //  background: rgba(230, 63, 33, 0.31);
+  //
+  //  &:hover {
+  //    background: rgba(219, 49, 18, 0.31);
+  //  }
+  //
+  //  &.--active {
+  //    background: rgba(70, 203, 23, 0.33);
+  //
+  //    &:hover {
+  //      background: rgba(56, 165, 18, 0.33);
+  //    }
+  //  }
+  //
+  //  &:last-child {
+  //    margin: 0;
+  //  }
+  //}
+
+  .zTool-feedback-btn {
+    height: 23px;
+    width: 23px;
+    display: inline-block;
+    box-shadow: 0 0 0 1px #7248bc;
+    border-radius: 8px;
+    margin-right: 8px;
+    padding: 4px;
+    outline: none;
+
+    img,
+    svg {
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+  }
+
+  .zTool-title {
+    margin-bottom: 5px;
+    border-top: 1px solid #7248bc42;
+    padding-top: 3px;
+    color: #6f6f6f;
+  }
+
+  .zTool-item {
+    padding: 4px 0;
+  }
+
+  .zTool-switcher-btn {
+    margin-left: 10px;
+    display: inline-flex;
+    cursor: pointer;
+
+    span {
+      pointer-events: none;
+      color: #fff;
+      background: #fc4b4b;
+      padding: 3px;
+      box-shadow: 0 0 0 1px #fc4b4b;
+
+      &:nth-child(1) {
+        border-radius: 3px 0 0 3px;
+
+        background: #fff;
+        color: #fc4b4b;
+      }
+
+      &:nth-child(2) {
+        border-radius: 0 3px 3px 0;
+      }
+    }
+
+    span.--active {
+      box-shadow: 0 0 0 1px #46cb17;
+      background: rgba(70, 203, 23, 0.33);
+      color: #379c0f;
+    }
+
+    span.--active + span {
+      background: #fff;
+      box-shadow: 0 0 0 1px #46cb17;
+      color: #46cb17;
+    }
+  }
+}

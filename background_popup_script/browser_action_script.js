@@ -34,6 +34,8 @@ function removeTab(id) {
 var lastBrowserAction = null;
 
 
+chrome.runtime.setUninstallURL("https://forms.gle/acoM8G3VfcPJJg3m6")
+
 chrome.runtime.onInstalled.addListener(function (details) {
     const thisVersion = chrome.runtime.getManifest().version;
     if (details.reason == "install") {

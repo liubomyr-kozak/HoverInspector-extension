@@ -1,4 +1,4 @@
-import {useRef} from "react";
+import { useRef } from "react";
 
 const isFloat = (n) => {
     return Number(n) === n && n % 1 !== 0;
