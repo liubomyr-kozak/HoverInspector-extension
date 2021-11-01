@@ -1,6 +1,7 @@
 export class FreezeSelect {
   count = 0;
   isFreeze = false;
+  isManualUnfreeze = false;
 
   increaseCount() {
     ++this.count;
@@ -19,5 +20,21 @@ export class FreezeSelect {
         this.isFreeze = false;
       }
     }
+  }
+
+  manualUnfreeze() {
+    this.isFreeze = false;
+    this.isManualUnfreeze = true;
+  }
+
+  manualFreeze() {
+    this.isFreeze = true;
+    this.isManualUnfreeze = false;
+  }
+
+  reset() {
+    this.count = 0;
+    this.isFreeze = false;
+    this.isManualUnfreeze = false;
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import cx from 'classnames';
 import { connect } from "react-redux";
 
@@ -11,12 +11,86 @@ import EmailIcon from './email.png'
 import "./SettingsIconBox.scss";
 import { closeSettingPopup, updatePopupSetting } from "../../store/app.action";
 
-// превент на в стор і в локал стор
-const SettingsIconBox = ({preventDefault, updatePopupSetting}) => {
-  const [isOpen, setIsOpen] = useState(false)
+// function useDragging() {
+//   const [isDragging, setIsDragging] = useState(false);
+//   const [pos, setPos] = useState({ x: 0, y: 0 });
+//   const ref = useRef(null);
+//
+//   function onMouseMove(e) {
+//     if (!isDragging) return;
+//     setPos({
+//       x: e.x - ref.current.offsetWidth / 2,
+//       y: e.y - ref.current.offsetHeight / 2,
+//     });
+//     e.stopPropagation();
+//     e.preventDefault();
+//   }
+//
+//   function onMouseUp(e) {
+//     setIsDragging(false);
+//     e.stopPropagation();
+//     e.preventDefault();
+//   }
+//
+//   function onMouseDown(e) {
+//     if (e.button !== 0) return;
+//     setIsDragging(true);
+//
+//     setPos({
+//       x: e.x - ref.current.offsetWidth / 2,
+//       y: e.y - ref.current.offsetHeight / 2,
+//     });
+//
+//     e.stopPropagation();
+//     e.preventDefault();
+//   }
+//
+//   // When the element mounts, attach an mousedown listener
+//   useEffect(() => {
+//     ref.current.addEventListener("mousedown", onMouseDown);
+//
+//     return () => {
+//       ref.current.removeEventListener("mousedown", onMouseDown);
+//     };
+//   }, [ref.current]);
+//
+//   // Everytime the isDragging state changes, assign or remove
+//   // the corresponding mousemove and mouseup handlers
+//   useEffect(() => {
+//     if (isDragging) {
+//       document.addEventListener("mouseup", onMouseUp);
+//       document.addEventListener("mousemove", onMouseMove);
+//     } else {
+//       document.removeEventListener("mouseup", onMouseUp);
+//       document.removeEventListener("mousemove", onMouseMove);
+//     }
+//     return () => {
+//       document.removeEventListener("mouseup", onMouseUp);
+//       document.removeEventListener("mousemove", onMouseMove);
+//     };
+//   }, [isDragging]);
+//
+//   return [ref, pos.x, pos.y, isDragging];
+// }
 
-  return <div
-    className={cx('zTool-SettingsIconBox', { "--open": isOpen })}>
+// превент на в стор і в локал стор
+const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  // const [ref, x, y, isDragging] = useDragging();
+  // const [pos, setPos] = useState({ top: 0 });
+
+  // useEffect(() => {
+  //   if (y <= 0) {
+  //     setPos({ top: 0 })
+  //   } else {
+  //
+  //
+  //     console.log(" -> y", y)
+  //     setPos({ top: y })
+  //   }
+  // }, [y])
+
+  return <div className={cx('zTool-SettingsIconBox', { "--open": isOpen })}>
     <div className="zTool-SettingsIconBox-close-icon" onClick={() => {
       setIsOpen(false);
     }}>
@@ -25,6 +99,8 @@ const SettingsIconBox = ({preventDefault, updatePopupSetting}) => {
     <div
       className={cx('zTool-SettingsIconBox-icon', { "--close": isOpen })}
       onClick={() => setIsOpen(true)}
+      // ref={ref}
+      // style={pos}
     >
       <img className="zTool-SettingsIconBox-main-icon" src={HoverIcon}/>
       <img className="zTool-SettingsIconBox-sub-icon" src={SettingIcon}/>

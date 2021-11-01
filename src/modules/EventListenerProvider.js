@@ -1,7 +1,12 @@
 import React, { useEffect } from 'react';
 import { connect } from "react-redux";
 import PopupSettingModel from "../core/Models/PopupSettingModel";
-import { USER_EVENT_HOVER, USER_EVENT_SCROLL, USER_EVENT_SELECT } from "../store/app.constant";
+import {
+  USER_EVENT_HOVER,
+  USER_EVENT_SCROLL,
+  USER_EVENT_SCROLL_CONFIRM,
+  USER_EVENT_SELECT
+} from "../store/app.constant";
 import DomNodeManager from "../core/DomNodeManager";
 
 let preNodeTarget = null
@@ -31,11 +36,10 @@ const onInputMove = (e) => dispatch => {
 }
 
 const onScroll = (e) => (dispatch) => {
-  return dispatch({ type: USER_EVENT_SCROLL });
+  return dispatch({ type: USER_EVENT_SCROLL_CONFIRM });
 }
 
 const onClick = (e) => () => {
-  console.log(" -> PopupSettingModel", PopupSettingModel)
   if (PopupSettingModel.preventDefault && !hasAppClass(e.target)) {
     e.preventDefault();
     e.stopPropagation();
@@ -43,7 +47,6 @@ const onClick = (e) => () => {
   }
 }
 const onMouseUp = (e) => () => {
-  console.log(" -> PopupSettingModel", PopupSettingModel)
   if (PopupSettingModel.preventDefault && !hasAppClass(e.target)) {
     e.preventDefault();
     e.stopPropagation();
@@ -52,8 +55,6 @@ const onMouseUp = (e) => () => {
 }
 
 const onMouseDown = (e) => (dispatch) => {
-
-  console.log(" -> PopupSettingModel", PopupSettingModel)
   if (PopupSettingModel.preventDefault && !hasAppClass(e.target)) {
     e.preventDefault();
     e.stopPropagation();

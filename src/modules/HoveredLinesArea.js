@@ -3,11 +3,8 @@ import { connect } from "react-redux";
 
 import { setMargin, setPadding, setParamsToNode, use4SideNodeRef } from "../core/utils";
 import DomNodeManager from "../core/DomNodeManager";
-import { renderStatus } from "../store/app.action";
-import { markAsRendered, markAsReRendered } from "../shared/helpers";
-import { USER_EVENT_HOVER_CONFIRM, USER_EVENT_SCROLL_CONFIRM } from "../store/app.constant";
 
-const HoveredLinesArea = ({ userAction, renderStatus }) => {
+const HoveredLinesArea = ({ userAction }) => {
   const sideNodeRef = use4SideNodeRef();
   const { topRef, bottomRef, leftRef, rightRef } = sideNodeRef
 
@@ -17,14 +14,6 @@ const HoveredLinesArea = ({ userAction, renderStatus }) => {
     const clientRectHoveredNode = DomNodeManager.getBoundingClientRec("hoverElement");
 
     if (!clientRectHoveredNode) return;
-
-    if (userAction.type === USER_EVENT_HOVER_CONFIRM) {
-      renderStatus(markAsRendered('hoveredLinesArea'));
-    }
-
-    if (userAction.type === USER_EVENT_SCROLL_CONFIRM) {
-      renderStatus(markAsReRendered('hoveredLinesArea'));
-    }
 
     setParamsToNode(
       sideNodeRef,
@@ -47,7 +36,6 @@ const mapStateToProps = (state) => ({
 })
 
 const mapDispatchToProps = {
-  renderStatus
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(HoveredLinesArea)

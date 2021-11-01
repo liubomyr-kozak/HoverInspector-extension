@@ -6,6 +6,7 @@ import DomNodeManager from "../../core/DomNodeManager";
 import { FreezeSelect } from "../../core/services/FreezeSelect";
 
 import {
+  REVERT_LAST_USER_ACTION,
   UPDATE_APP_SETTING,
   UPDATE_POPUP_SETTING,
   USER_EVENT_HOVER,
@@ -15,6 +16,8 @@ import {
   USER_EVENT_SELECT,
   USER_EVENT_SELECT_CONFIRM
 } from "../app.constant";
+
+const freezeSelect = new FreezeSelect();
 
 // *************************************
 // UPDATE_POPUP_SETTING
@@ -51,30 +54,49 @@ function* updateAppSettingWatcher() {
     });
 }
 
+export function* revertLastUserActionSaga() {
+  yield takeEvery(REVERT_LAST_USER_ACTION, revertLastUserActionWatcher);
+}
+
+function* revertLastUserActionWatcher() {
+  const selectedElement = DomNodeManager.get('selectedElement');
+  const hoverElement = DomNodeManager.get('hoverElement');
+
+  if (selectedElement && hoverElement && freezeSelect.isFreeze) {
+    DomNodeManager.remove('hoverElement');
+    const candidateToHoverElement = DomNodeManager.get('candidateToHoverElement');
+    if (candidateToHoverElement) {
+
+      DomNodeManager.update({ 'hoverElement': candidateToHoverElement });
+    }
+    yield put({ type: USER_EVENT_HOVER_CONFIRM });
+    freezeSelect.manualUnfreeze();
+    return
+  }
+
+  if (selectedElement && !freezeSelect.isFreeze) {
+    freezeSelect.reset();
+    DomNodeManager.remove('selectedElement');
+    yield put({ type: USER_EVENT_SELECT_CONFIRM });
+    return
+  }
+}
+
+
 // *************************************
 // USER_EVENT_HOVER USER_EVENT_SCROLL USER_EVENT_SELECT
 // *************************************
 
+
 export function* userEventHoverSaga() {
   yield takeEvery(USER_EVENT_HOVER, userEventWatcher);
-}
-
-export function* userEventScrollSaga() {
-  yield takeEvery(USER_EVENT_SCROLL, userEventWatcher);
 }
 
 export function* userEventSelectSaga() {
   yield takeEvery(USER_EVENT_SELECT, userEventWatcher);
 }
 
-const freezeSelect = new FreezeSelect();
-
 function* userEventWatcher({ type: userEventType }) {
-  if (userEventType === USER_EVENT_SCROLL) {
-    yield put({ type: USER_EVENT_SCROLL_CONFIRM });
-    return;
-  }
-
   freezeSelect.precessFreeze(userEventType === USER_EVENT_SELECT);
 
   if (freezeSelect.isFreeze) {
@@ -82,7 +104,17 @@ function* userEventWatcher({ type: userEventType }) {
   }
 
   if (userEventType === USER_EVENT_SELECT) {
-    DomNodeManager.update({ selectedElement: DomNodeManager.get('candidateToSelectedElement') });
+    const oldSelectedElement = DomNodeManager.get('selectedElement');
+    let selectedElement;
+
+    if (freezeSelect.isManualUnfreeze) {
+      selectedElement = oldSelectedElement || DomNodeManager.get('candidateToSelectedElement');
+      freezeSelect.manualFreeze();
+    } else {
+      selectedElement = DomNodeManager.get('candidateToSelectedElement');
+    }
+
+    DomNodeManager.update({ selectedElement });
     yield put({ type: USER_EVENT_SELECT_CONFIRM });
     // update hover when select and freeze element
     DomNodeManager.update({ hoverElement: DomNodeManager.get('candidateToHoverElement') });

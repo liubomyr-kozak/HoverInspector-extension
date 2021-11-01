@@ -3,31 +3,32 @@ import { connect } from "react-redux";
 import { setParamsToNode, use4SideNodeRef } from "../core/utils";
 import DomNodeManager from "../core/DomNodeManager";
 import { USER_EVENT_SCROLL_CONFIRM, USER_EVENT_SELECT_CONFIRM } from "../store/app.constant";
-import { renderStatus } from "../store/app.action";
-import { markAsRendered, markAsReRendered } from "../shared/helpers";
 
 const dnStyle = {
   display: "none"
 }
 
-const SelectedBox = ({ userAction, renderStatus }) => {
-  const sideNodeRef = use4SideNodeRef()
-  const { topRef, bottomRef, leftRef, rightRef } = sideNodeRef
+const SelectedBox = ({ userAction }) => {
+  const sideNodeRef = use4SideNodeRef();
+  const { topRef, bottomRef, leftRef, rightRef } = sideNodeRef;
 
   useEffect(() => {
-    const clientRectSelectedNode =  DomNodeManager.getBoundingClientRec("selectedElement");
+    const clientRectSelectedNode = DomNodeManager.getBoundingClientRec("selectedElement");
 
-    if (!clientRectSelectedNode) return;
+    console.log(" -> sideNodeRef", sideNodeRef)
 
     if (userAction.type === USER_EVENT_SELECT_CONFIRM) {
+      if (!clientRectSelectedNode) {
+        setParamsToNode(sideNodeRef, { top: 0, bottom: 0, right: 0, left: 0, height: 0, width: 0 })
+        return;
+      }
+
       setParamsToNode(sideNodeRef, clientRectSelectedNode);
-      renderStatus(markAsRendered('selectedBox'));
       return;
     }
 
     if (userAction.type === USER_EVENT_SCROLL_CONFIRM) {
       setParamsToNode(sideNodeRef, clientRectSelectedNode);
-      renderStatus(markAsReRendered('selectedBox'));
     }
   }, [userAction]);
 
@@ -44,8 +45,6 @@ const mapStateToProps = (state) => ({
   userAction: state.app.userAction || {}
 })
 
-const mapDispatchToProps = {
-  renderStatus
-}
+const mapDispatchToProps = {}
 
 export default connect(mapStateToProps, mapDispatchToProps)(SelectedBox)

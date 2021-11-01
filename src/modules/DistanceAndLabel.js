@@ -4,11 +4,9 @@ import { connect } from "react-redux";
 import { calculateDistance, dispatchDistanceLineAndLabel, toggleLinesAndLabels, use4SideNodeRef } from "../core/utils";
 import DomNodeManager from "../core/DomNodeManager";
 import { USER_EVENT_HOVER_CONFIRM, USER_EVENT_SCROLL_CONFIRM, USER_EVENT_SELECT_CONFIRM } from "../store/app.constant";
-import { renderStatus } from "../store/app.action";
-import { markAsRendered, markAsReRendered } from "../shared/helpers";
 
 
-const DistanceAndLabel = ({ userAction, renderStatus }) => {
+const DistanceAndLabel = ({ userAction }) => {
   const sideNodeRef = use4SideNodeRef()
   const { topRef, bottomRef, leftRef, rightRef } = sideNodeRef
 
@@ -17,15 +15,15 @@ const DistanceAndLabel = ({ userAction, renderStatus }) => {
       const clientRectSelectedNode = DomNodeManager.getBoundingClientRec('selectedElement');
       const clientRectHoveredNode = DomNodeManager.getBoundingClientRec('hoverElement');
 
-      const distance = calculateDistance(
-        clientRectHoveredNode,
-        clientRectSelectedNode
-      );
+      if (clientRectHoveredNode && clientRectSelectedNode) {
+        const distance = calculateDistance(
+          clientRectHoveredNode,
+          clientRectSelectedNode
+        );
 
-      if (distance) {
-
-        renderStatus(markAsRendered('distanceAndLabel'));
-        dispatchDistanceLineAndLabel(sideNodeRef, distance);
+        if (distance) {
+          dispatchDistanceLineAndLabel(sideNodeRef, distance);
+        }
       }
     }
 
@@ -48,7 +46,6 @@ const DistanceAndLabel = ({ userAction, renderStatus }) => {
       );
 
       if (distance) {
-        renderStatus(markAsReRendered('distanceAndLabel'));
         dispatchDistanceLineAndLabel(sideNodeRef, distance);
       }
     }
@@ -76,7 +73,6 @@ const mapStateToProps = (state) => ({
 })
 
 const mapDispatchToProps = {
-  renderStatus
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(DistanceAndLabel)

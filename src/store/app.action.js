@@ -1,6 +1,9 @@
 import {
   CLOSE_APP_POPUP,
-  GET_APP_SETTING, RENDER_STATUS, UPDATE_APP_SETTING, UPDATE_POPUP_SETTING,
+  GET_APP_SETTING,
+  REVERT_LAST_USER_ACTION,
+  UPDATE_APP_SETTING,
+  UPDATE_POPUP_SETTING,
 } from "./app.constant";
 import ExtensionStorageManager from "../core/services/ExtensionStorageManager";
 import PopupSettingModel from "../core/Models/PopupSettingModel";
@@ -36,7 +39,8 @@ export const updateAppSetting = () => (dispatch) => {
   dispatch({ type: UPDATE_APP_SETTING });
 };
 
-
-export const renderStatus = (data) => (dispatch) => {
-  dispatch({ type: RENDER_STATUS, payload: data });
+export const revertLastUserAction = () => (dispatch) => {
+  dispatch({ type: REVERT_LAST_USER_ACTION });
 };
+
+

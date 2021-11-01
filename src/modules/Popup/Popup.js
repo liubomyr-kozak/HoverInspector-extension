@@ -5,14 +5,11 @@ import { connect } from "react-redux";
 import { colorBoxStyle, flexChildRightStyle, flexStyle, targetSizeStyle, targetTitleStyle } from './PopupStyle'
 import { cutPx, getLeftPosition, getTagMeta, isChildText, targetColorStringToHex } from "./helpers";
 import DomNodeManager from "../../core/DomNodeManager";
-import { renderStatus } from "../../store/app.action";
-import { USER_EVENT_HOVER_CONFIRM, USER_EVENT_SCROLL_CONFIRM } from "../../store/app.constant";
-import { markAsRendered, markAsReRendered } from "../../shared/helpers";
 
 const arrowHeight = 8;
 
 // listen { listenChangeUserAction } events updates
-const Popup = ({ listenChangeUserAction, renderStatus }) => {
+const Popup = ({ listenChangeUserAction }) => {
   const nodeRef = useRef(null);
 
   const clientRectHoveredNode =  DomNodeManager.getBoundingClientRec("hoverElement");
@@ -89,14 +86,6 @@ const Popup = ({ listenChangeUserAction, renderStatus }) => {
     isPopupVisible.top = false;
   }
 
-  if (listenChangeUserAction.type === USER_EVENT_HOVER_CONFIRM) {
-    renderStatus(markAsRendered('popup'));
-  }
-
-  if (listenChangeUserAction.type === USER_EVENT_SCROLL_CONFIRM) {
-    renderStatus(markAsReRendered('popup'));
-  }
-
   return (<>
       <div ref={nodeRef}
            style={{
@@ -156,7 +145,6 @@ const mapStateToProps = (state) => ({
 })
 
 const mapDispatchToProps = {
-  renderStatus
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(Popup);

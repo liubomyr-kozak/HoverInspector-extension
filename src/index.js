@@ -4,6 +4,8 @@ import ExtensionManager from "./core/ExtensionManager";
 import ChromeBackgroundProvider from "./core/ChromeBackgroundProvider";
 
 import { App } from "./app";
+import ServiceReduxHandler from "./core/services/ServiceReduxHandler/ServiceReduxHandler";
+import { revertLastUserAction } from "./store/app.action";
 
 ExtensionManager.register({
   extId: "zTool",
@@ -31,6 +33,14 @@ ExtensionManager.addBackgroundScript((provider) => {
     provider.postMessage({
       actionType: 'destroy'
     })
+  });
+})
+
+ExtensionManager.addBackgroundScript(() => {
+  hotkeys('space', function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    ServiceReduxHandler.dispatch(revertLastUserAction())
   });
 })
 
