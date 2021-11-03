@@ -12,12 +12,12 @@ const arrowHeight = 8;
 const Popup = ({ listenChangeUserAction }) => {
   const nodeRef = useRef(null);
 
-  const clientRectHoveredNode =  DomNodeManager.getBoundingClientRec("hoverElement");
+  const clientRectHoveredNode = DomNodeManager.getBoundingClientRec("hoverElement");
 
   if (!clientRectHoveredNode) return <div ref={nodeRef}/>
 
-  const hoverNodeParams =  DomNodeManager.getStyleByNode("hoverElement");
-  const hoverElement =  DomNodeManager.get("hoverElement");
+  const hoverNodeParams = DomNodeManager.getStyleByNode("hoverElement");
+  const hoverElement = DomNodeManager.get("hoverElement");
 
   const { height, width, tag, className, id, padding, margin } = hoverNodeParams;
 
@@ -27,6 +27,7 @@ const Popup = ({ listenChangeUserAction }) => {
   const marginLeft = cutPx(hoverNodeParams['margin-left']);
   const paddingLeft = cutPx(hoverNodeParams['padding-left']);
   const paddingRight = cutPx(hoverNodeParams['padding-right']);
+  const border = hoverNodeParams.border;
 
   const color = hoverNodeParams['color'];
   const backgroundColor = hoverNodeParams['background-color'];
@@ -86,6 +87,8 @@ const Popup = ({ listenChangeUserAction }) => {
     isPopupVisible.top = false;
   }
 
+  console.log("Popup -> border", border)
+
   return (<>
       <div ref={nodeRef}
            style={{
@@ -112,6 +115,7 @@ const Popup = ({ listenChangeUserAction }) => {
             <div className="zTool-foo" style={targetTitleStyle}>Margin:</div>
             <div className="zTool-foo" style={flexChildRightStyle}>{margin}</div>
           </div>}
+
           {backgroundColor && <div className="zTool-foo" style={flexStyle}>
             <div className="zTool-foo" style={targetTitleStyle}>Background:</div>
             <div className="zTool-foo" style={flexChildRightStyle}>
@@ -133,6 +137,66 @@ const Popup = ({ listenChangeUserAction }) => {
               </div>
             </div>}
           </>}
+
+          {border && border.type === 'single' && <div className="zTool-foo" style={flexStyle}>
+            <div className="zTool-foo" style={targetTitleStyle}>Border:</div>
+            <div className="zTool-foo" style={flexChildRightStyle}>
+              {border.width}
+              {' '}
+              {border.style}
+              {' '}
+              <span className="zTool-foo" style={colorBoxStyle(border.color)}/>
+              {targetColorStringToHex(border.color)}
+            </div>
+          </div>}
+
+          {border && border.type === 'multiple' && <>
+            <div className="zTool-foo" style={flexStyle}>
+              <div className="zTool-foo" style={targetTitleStyle}>Border-Right:</div>
+              <div className="zTool-foo" style={flexChildRightStyle}>
+                {border.right.width}
+                {' '}
+                {border.right.style}
+                {' '}
+                <span className="zTool-foo" style={colorBoxStyle(border.right.color)}/>
+                {targetColorStringToHex(border.right.color)}
+              </div>
+            </div>
+            <div className="zTool-foo" style={flexStyle}>
+              <div className="zTool-foo" style={targetTitleStyle}>Border-Left:</div>
+              <div className="zTool-foo" style={flexChildRightStyle}>
+                {border.left.width}
+                {' '}
+                {border.left.style}
+                {' '}
+                <span className="zTool-foo" style={colorBoxStyle(border.left.color)}/>
+                {targetColorStringToHex(border.left.color)}
+              </div>
+            </div>
+            <div className="zTool-foo" style={flexStyle}>
+
+              <div className="zTool-foo" style={targetTitleStyle}>Border-Top:</div>
+              <div className="zTool-foo" style={flexChildRightStyle}>
+                {border.top.width}
+                {' '}
+                {border.top.style}
+                {' '}
+                <span className="zTool-foo" style={colorBoxStyle(border.top.color)}/>
+                {targetColorStringToHex(border.top.color)}
+              </div>
+            </div>
+            <div className="zTool-foo" style={flexStyle}>
+              <div className="zTool-foo" style={targetTitleStyle}>Border-Bottom:</div>
+              <div className="zTool-foo" style={flexChildRightStyle}>
+                {border.bottom.width}
+                {' '}
+                {border.bottom.style}
+                {' '}
+                <span className="zTool-foo" style={colorBoxStyle(border.bottom.color)}/>
+                {targetColorStringToHex(border.bottom.color)}
+              </div>
+            </div>
+          </>}
         </div>
       </div>
     </>
@@ -144,7 +208,6 @@ const mapStateToProps = (state) => ({
   listenChangeUserAction: state.app.userAction || {}
 })
 
-const mapDispatchToProps = {
-}
+const mapDispatchToProps = {}
 
 export default connect(mapStateToProps, mapDispatchToProps)(Popup);

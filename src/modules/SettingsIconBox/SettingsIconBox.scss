@@ -210,3 +210,69 @@
     }
   }
 }
+
+.zToolSettingTab{
+  margin: 0 -5px;
+
+
+  .zToolSettingTabHeader {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+
+    .zToolSettingTabHeaderItem {
+      padding: 7px 0;
+      cursor: pointer;
+      width: 48%;
+      background: #f9f9f9;
+      box-sizing: border-box;
+      text-align: center;
+      color: #333;
+
+      &.--active {
+        font-weight: bold;
+        background: #f9f9f9;
+        color: #f29d68;
+        box-shadow: 0px 3px 0 0px #f29d68;
+      }
+    }
+  }
+
+  .zToolSettingTabContainer {
+    display: none;
+
+    [class^="zTool"]  {
+      font-size: 13px!important;
+    }
+
+    background: #464e5d;
+
+    &.--active {
+      display: block;
+      padding: 4px 4px;
+    }
+
+    .zTool-css-key {
+      color: #2ceef9;
+
+      &:after {
+        content: ':';
+        display: inline-block;
+        color: #fff;
+        margin: 0 5px 0 2px;
+      }
+    }
+
+    .zTool-css-value {
+      color: #c0fd5c;
+
+      &:after {
+        content: ';';
+        display: inline-block;
+        color: #c0fd5c;
+        margin: 0 0 0 2px;
+      }
+    }
+  }
+}
+

@@ -15,7 +15,7 @@ const SelectedBox = ({ userAction }) => {
   useEffect(() => {
     const clientRectSelectedNode = DomNodeManager.getBoundingClientRec("selectedElement");
 
-    console.log(" -> sideNodeRef", sideNodeRef)
+    if (!clientRectSelectedNode) return;
 
     if (userAction.type === USER_EVENT_SELECT_CONFIRM) {
       if (!clientRectSelectedNode) {
@@ -31,6 +31,7 @@ const SelectedBox = ({ userAction }) => {
       setParamsToNode(sideNodeRef, clientRectSelectedNode);
     }
   }, [userAction]);
+
 
   return (<>
       <div ref={topRef} style={dnStyle} className='zToolBoxBoxSelected top'/>

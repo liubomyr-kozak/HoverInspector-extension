@@ -3,13 +3,15 @@ import cx from 'classnames';
 import { connect } from "react-redux";
 
 import HoverIcon from '../../../dist/images/new_logo2/zTool-32-active.png';
-import SettingIcon from './setting.png';
-import { ReactComponent as DiscordIcon } from './discord.svg'
-import { ReactComponent as GoogleFormIcon } from './forms-icon.svg'
-import { ReactComponent as CloseIcon } from './close.svg'
-import EmailIcon from './email.png'
-import "./SettingsIconBox.scss";
 import { closeSettingPopup, updatePopupSetting } from "../../store/app.action";
+
+import SettingIcon from './icons/setting.png';
+import { ReactComponent as DiscordIcon } from './icons/discord.svg'
+import { ReactComponent as GoogleFormIcon } from './icons/forms-icon.svg'
+import { ReactComponent as CloseIcon } from './icons/close.svg'
+import EmailIcon from './icons/email.png'
+import "./SettingsIconBox.scss";
+import HoverSelectedInfo from "./HoverSelectedInfo";
 
 // function useDragging() {
 //   const [isDragging, setIsDragging] = useState(false);
@@ -130,6 +132,8 @@ const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
           </span>
         </div>
         {/*<div className="zTool-title">History:</div>*/}
+        <div className="zTool-title">hover-selected info:</div>
+        <HoverSelectedInfo/>
         <div className="zTool-title">Give Feedback:</div>
         <a target="_blank" href="https://discord.gg/Skh3tnYKB7" className="zTool-feedback-btn"><DiscordIcon/></a>
         <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6"

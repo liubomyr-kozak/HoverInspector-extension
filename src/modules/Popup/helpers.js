@@ -12,7 +12,6 @@ export const getTagMeta = (tag, id, className) => {
   </div>
 }
 
-
 const arrowWidth = 15;
 
 export function isChildText(childNode) {
@@ -31,6 +30,7 @@ export function rgbToHex(r, g, b) {
 }
 
 export const targetColorStringToHex = (value) => {
+  if (!value) return '';
 
   const color = value
     .replace('rgb(', '')
