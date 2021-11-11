@@ -1,6 +1,6 @@
 {
   "name": "hover_inspector",
-  "version": "2.0.1",
+  "version": "3.0.1",
   "author": "Liubomyr",
   "license": "MIT",
   "scripts": {
@@ -11,7 +11,7 @@
     "start": "PORT=8099 node webpack/scripts/start.js --mode development",
     "build": "webpack --config webpack/webpack.config.prod.js --mode production",
     "build-as:dev": "webpack --config webpack/webpack.config.dev.js --mode development",
-    "zip": "zip -r archives/test.zip dist/"
+    "zip": "zip -r archives/3.0.1.zip dist/"
   },
   "dependencies": {
     "classnames": "^2.3.1",
@@ -41,7 +41,7 @@
     "@babel/preset-env": "^7.4.4",
     "@babel/preset-react": "^7.0.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.4.3",
-    "@svgr/webpack": "5.5.0",
+    "@svgr/webpack": "^5.5.0",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",

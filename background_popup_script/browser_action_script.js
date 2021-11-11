@@ -1,8 +1,9 @@
+import { actionsContext } from "./background_popup_script";
+
 var debug = true;
 var tabs = {};
 
-var PATH_TO_CSS_FILE = 'webpage.chrome.css';
-var PATH_TO_JS_FILE = 'inject.bundle.js';
+var PATH_TO_JS_FILE = 'inject_launcher.bundle.js';
 var PATH_TO_ZTOOL_16LOGO_FILE = 'images/new_logo2/zTool-16.png';
 var PATH_TO_ZTOOL_16LOGO_ACTIVE_FILE = 'images/new_logo2/zTool-16-active.png';
 var PATH_TO_ZTOOL_32LOGO_FILE = 'images/new_logo2/zTool-32.png';
@@ -100,7 +101,6 @@ var dimensions = {
             code: `window.extension = {hoverInspector: {version : '${extensionVersion}'} };`
         });
 
-        chrome.tabs.insertCSS(this.tab.id, {file: PATH_TO_CSS_FILE});
         chrome.tabs.executeScript(this.tab.id, {file: PATH_TO_JS_FILE});
 
 
@@ -223,3 +223,9 @@ var dimensions = {
 
     }
 };
+
+chrome.runtime.onMessage.addListener(
+  function (request, sender, sendResponse) {
+      actionsContext(request, sendResponse)
+  }
+)

@@ -1,17 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import cx from 'classnames';
 import { connect } from "react-redux";
 
 import HoverIcon from '../../../dist/images/new_logo2/zTool-32-active.png';
 import { closeSettingPopup, updatePopupSetting } from "../../store/app.action";
 
+import DiscordIcon  from './icons/discord.svg'
+import GoogleFormIcon  from './icons/forms-icon.svg'
+import CloseIcon  from './icons/close.svg'
 import SettingIcon from './icons/setting.png';
-import { ReactComponent as DiscordIcon } from './icons/discord.svg'
-import { ReactComponent as GoogleFormIcon } from './icons/forms-icon.svg'
-import { ReactComponent as CloseIcon } from './icons/close.svg'
 import EmailIcon from './icons/email.png'
-import "./SettingsIconBox.scss";
 import HoverSelectedInfo from "./HoverSelectedInfo";
+import "./SettingsIconBox.scss";
 
 // function useDragging() {
 //   const [isDragging, setIsDragging] = useState(false);
@@ -135,12 +135,14 @@ const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
         <div className="zTool-title">hover-selected info:</div>
         <HoverSelectedInfo/>
         <div className="zTool-title">Give Feedback:</div>
-        <a target="_blank" href="https://discord.gg/Skh3tnYKB7" className="zTool-feedback-btn"><DiscordIcon/></a>
-        <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6"
-           className="zTool-feedback-btn"><GoogleFormIcon/></a>
-        <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6" className="zTool-feedback-btn">
-          <img src={EmailIcon} alt=""/>
-        </a>
+        <div>
+          <a target="_blank" href="https://discord.gg/Skh3tnYKB7" className="zTool-feedback-btn"><DiscordIcon/></a>
+          <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6"
+             className="zTool-feedback-btn"><GoogleFormIcon/></a>
+          <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6" className="zTool-feedback-btn">
+            <img src={EmailIcon} alt=""/>
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -148,7 +150,7 @@ const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
 
 
 const mapStateToProps = (state) => ({
-  preventDefault: state.app?.settings?.preventDefault
+  preventDefault: state.app && state.app.settings && state.app.settings.preventDefault
 })
 
 const mapDispatchToProps = {

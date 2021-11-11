@@ -7,7 +7,7 @@ class ExtensionManager {
   backgroundListenerList = {};
   backgroundProvider = null;
 
-  register({ appReactRef, extId, backgroundProvider }) {
+  init({ appReactRef, extId, backgroundProvider, backgroundListener, backgroundScript }) {
     if (!this.extId) {
       this.extId = extId;
     }
@@ -18,6 +18,13 @@ class ExtensionManager {
 
     this.appReactRef = appReactRef;
     this.backgroundProvider = backgroundProvider;
+
+    if (backgroundListener) {
+      backgroundListener.forEach(this.addBackgroundListener);
+    }
+    if (backgroundScript) {
+      backgroundScript.forEach(this.addBackgroundScript);
+    }
   }
 
   render() {
@@ -44,7 +51,6 @@ class ExtensionManager {
   }
 
   addBackgroundListener = ({ type, action }) => {
-    if (this.isExtInjected) return;
     this.backgroundListenerList[type] = action;
     // window[type] = action
   }
@@ -55,7 +61,6 @@ class ExtensionManager {
   }
 
   addBackgroundScript = (fn) => {
-    if (this.isExtInjected) return;
     fn(this.backgroundProvider);
   }
 }

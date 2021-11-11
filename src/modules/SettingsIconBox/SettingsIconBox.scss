@@ -37,7 +37,7 @@
 
   &.--open {
     cursor: initial;
-    width: 200px;
+    width: 250px;
     height: auto;
     background: #fff;
     box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
@@ -60,6 +60,9 @@
     width: 32px;
     height: 32px;
     position: relative;
+
+    background: rgba(255, 255, 255, 48%);
+    border-radius: 5px;
 
     .zTool-SettingsIconBox-main-icon {
       display: none;
@@ -91,7 +94,7 @@
       height: 38px;
       position: relative;
       display: inline-block;
-      margin: 0 10px 0 0;
+      margin: 0 15% 0 0;
 
       .zTool-SettingsIconBox-sub-icon {
         top: 5px;
@@ -153,6 +156,8 @@
     margin-right: 8px;
     padding: 4px;
     outline: none;
+    box-sizing: initial;
+    vertical-align: middle;
 
     img,
     svg {
