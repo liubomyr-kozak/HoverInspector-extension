@@ -2,25 +2,25 @@ import { isProduction } from "../shared/helpers";
 
 class ChromeBackgroundProvider {
   providerOnMessage;
-  provider;
+  providerPort;
 
   constructor() {
     if (isProduction()) {
-      this.provider = chrome.runtime;
-      this.providerOnMessage = chrome.runtime.onMessage;
+      this.providerPort = chrome.runtime.connect({name: 'hoverInspector'});
+      // this.providerOnMessage = chrome.runtime.onMessage;
     }
   }
 
   addListener(fn) {
-    this.providerOnMessage && this.providerOnMessage.addListener(fn)
+    this.providerPort && this.providerPort.addListener(fn)
   }
 
   removeListener(fn) {
-    this.providerOnMessage && this.providerOnMessage.removeListener(fn)
+    this.providerPort && this.providerPort.removeListener(fn)
   }
 
   postMessage(fn) {
-    this.provider && this.provider.sendMessage(fn)
+    this.providerPort && this.providerPort.postMessage(fn)
   }
 }
 

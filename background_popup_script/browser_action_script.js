@@ -134,7 +134,7 @@ var dimensions = {
             }
         });
         // chrome.debugger.detach({tabId: this.tab.id}, "Debugger");
-        window.removeTab(this.tab.id);
+        // window.removeTab(this.tab.id);
     },
 
     onBrowserDisconnect: function () {
