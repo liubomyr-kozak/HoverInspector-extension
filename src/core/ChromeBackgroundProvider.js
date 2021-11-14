@@ -1,26 +1,74 @@
 import { isProduction } from "../shared/helpers";
 
-class ChromeBackgroundProvider {
-  providerOnMessage;
-  providerPort;
 
-  constructor() {
-    if (isProduction()) {
-      this.providerPort = chrome.runtime.connect({name: 'hoverInspector'});
-      // this.providerOnMessage = chrome.runtime.onMessage;
-    }
+class Provider {
+  provider
+  constructor(provider) {
+    this.provider = provider;
   }
 
   addListener(fn) {
-    this.providerPort && this.providerPort.addListener(fn)
+    this.provider && this.provider.addListener(fn)
   }
 
   removeListener(fn) {
-    this.providerPort && this.providerPort.removeListener(fn)
+    this.provider && this.provider.removeListener(fn)
+  }
+}
+
+class ProviderRuntime extends Provider {
+  sendMessage(fn) {
+    this.provider && this.provider.sendMessage(fn)
+  }
+}
+
+class ProviderPort extends Provider {
+  addListener(fn) {
+    this.provider && this.provider.onMessage.addListener(fn)
+  }
+
+  removeListener(fn) {
+    this.provider && this.provider.onMessage.removeListener(fn)
   }
 
   postMessage(fn) {
-    this.providerPort && this.providerPort.postMessage(fn)
+    this.provider && this.provider.postMessage(fn)
+  }
+}
+
+class ProviderExtension extends Provider {
+  sendMessage(fn) {
+    this.provider && this.provider.sendMessage(fn)
+  }
+}
+
+
+class ChromeBackgroundProvider {
+  port;
+  runtime;
+  extension;
+
+  constructor() {
+    if (isProduction()) {
+      this.port = chrome.runtime.connect({ name: 'hoverInspector' });
+      this.runtime = chrome.runtime;
+      this.extension = chrome.extension
+    }
+  }
+
+  // use(providerType){
+  create(providerType) {
+    if (providerType === 'port') {
+      return new ProviderPort(this.port)
+    }
+
+    if (providerType === 'runtime') {
+      return new ProviderRuntime(this.runtime)
+    }
+
+    if (providerType === 'extension') {
+      return new ProviderExtension(this.extension)
+    }
   }
 }
 

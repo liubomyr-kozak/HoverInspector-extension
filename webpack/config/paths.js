@@ -57,7 +57,7 @@ module.exports = {
   appBuild: resolveApp(buildPath),
   appPublic: resolveApp('webpack/public'),
   appHtml: resolveApp('webpack/public/index.html'),
-  appIndexJs: resolveModule(resolveApp, 'src/index'),
+  appIndexJs: resolveModule(resolveApp, 'src/index-develop'),
   appPackageJson: resolveApp('package.json'),
   appSrc: resolveApp('.'),
   appTsConfig: resolveApp('tsconfig.json'),

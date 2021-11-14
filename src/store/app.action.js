@@ -11,6 +11,7 @@ import PopupSettingModel from "../core/Models/PopupSettingModel";
 export const initAppSetting = () => (dispatch) => {
   ExtensionStorageManager.getSettings()
     .then((initData) => {
+      debugger
       PopupSettingModel.setPreventDefault(!!initData.settings.preventDefault);
       dispatch({
         type: GET_APP_SETTING,

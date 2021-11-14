@@ -1,12 +1,14 @@
 import { actionsContext } from "../../../background_popup_script/background_popup_script";
 import { isDevelopment, isProduction } from "../../shared/helpers";
 import { USER_STATUS_NEW } from "../../store/app.constant";
+import ChromeBackgroundProvider from "../ChromeBackgroundProvider";
 
 class ExtensionStorageManager {
+  backgroundProvider = ChromeBackgroundProvider.create('extension');
 
   requestProcessing = (data, callback) => {
     if (isProduction()) {
-      chrome.extension.sendMessage(data, callback);
+      this.backgroundProvider.sendMessage(data, callback);
     }
 
     if (isDevelopment()) {

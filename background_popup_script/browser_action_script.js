@@ -1,6 +1,5 @@
 import { actionsContext } from "./background_popup_script";
 
-var debug = true;
 var tabs = {};
 
 var PATH_TO_JS_FILE = 'inject_launcher.bundle.js';
@@ -122,7 +121,7 @@ var dimensions = {
         }
 
         if (!silent)
-            this.port.postMessage({actionType: 'destroy'});
+            this.port.postMessage({action: 'destroy'});
 
         this.port.onDisconnect.removeListener(this.onBrowserDisconnectClosure);
 
@@ -134,7 +133,7 @@ var dimensions = {
             }
         });
         // chrome.debugger.detach({tabId: this.tab.id}, "Debugger");
-        // window.removeTab(this.tab.id);
+        delete tabs[this.tab.id];
     },
 
     onBrowserDisconnect: function () {
@@ -150,17 +149,12 @@ var dimensions = {
             return;
         }
 
-
         this.port.onDisconnect.addListener(this.onBrowserDisconnectClosure);
-        this.port.postMessage({
-            actionType: 'init',
-            debug: debug
-        });
-
+        this.port.postMessage({ action: 'init' });
 
         const self = this;
         this.port.onMessage.addListener(function (event, data) {
-            if (event.actionType === "destroy") {
+            if (event.action === "destroy") {
                 self.deactivate();
                 return;
             }
@@ -226,6 +220,8 @@ var dimensions = {
 
 chrome.runtime.onMessage.addListener(
   function (request, sender, sendResponse) {
+
+      console.log("addListener -> requestProcessing",)
       actionsContext(request, sendResponse)
   }
 )

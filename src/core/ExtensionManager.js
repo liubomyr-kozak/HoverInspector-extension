@@ -4,64 +4,55 @@ class ExtensionManager {
   isExtInjected = null;
   appReactRef = null;
   extId = null;
-  backgroundListenerList = {};
-  backgroundProvider = null;
+  backgroundListeners = null;
+  backgroundProviders = null;
 
-  init({ appReactRef, extId, backgroundProvider, backgroundListener, backgroundScript }) {
-    if (!this.extId) {
-      this.extId = extId;
-    }
-
-    this.isExtInjected = Boolean(document.getElementById(extId));
-
-    if (this.isExtInjected) return;
-
+  init = ({ appReactRef, extId, backgroundProvider, backgroundListeners, backgroundScripts }) => {
     this.appReactRef = appReactRef;
-    this.backgroundProvider = backgroundProvider;
+    this.extId = extId;
+    this.backgroundProvider = backgroundProvider.create('port');
 
-    if (backgroundListener) {
-      backgroundListener.forEach(this.addBackgroundListener);
-    }
-    if (backgroundScript) {
-      backgroundScript.forEach(this.addBackgroundScript);
-    }
+    this.backgroundListeners = backgroundListeners.reduce((acc, { type, action }) => {
+      acc[type] = action;
+      return acc
+    }, {});
+
+    this.backgroundScripts = backgroundScripts;
+
+    this.backgroundProvider.addListener(this.onBackgroundAction);
+    this.backgroundScripts.forEach((fn) => {
+      fn(this.backgroundProvider);
+    })
   }
 
-  render() {
+  render = () => {
     if (this.isExtInjected) return;
 
     const extNode = document.createElement('div');
     extNode.id = this.extId;
 
+    this.isExtInjected = true;
+
     setTimeout(() => {
       document.body.appendChild(extNode);
       render(this.appReactRef, extNode);
     }, 200);
-
-    this.backgroundProvider.addListener(this.backgroundListener);
   }
-
 
   destroy = () => {
     const extensionNode = document.getElementById(this.extId);
     unmountComponentAtNode(extensionNode);
     document.body.removeChild(extensionNode);
 
-    this.backgroundProvider.removeListener(this.backgroundListener);
+    this.backgroundProvider.removeListener(this.onBackgroundAction);
   }
 
-  addBackgroundListener = ({ type, action }) => {
-    this.backgroundListenerList[type] = action;
-    // window[type] = action
-  }
-
-  backgroundListener = (request) => {
-    if (!this.backgroundListenerList[request.action]) return;
-    this.backgroundListenerList[request.action]();
-  }
-
-  addBackgroundScript = (fn) => {
-    fn(this.backgroundProvider);
+  onBackgroundAction = (request) => {
+    console.log("backgroundListener -> request", request)
+    if (!this.backgroundListeners[request.action]) return;
+    debugger
+    console.log("backgroundListener -> this.backgroundListenerList", this.backgroundListeners)
+    this.backgroundListeners[request.action]();
   }
 }
 

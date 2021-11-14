@@ -6,6 +6,7 @@ import { initAppSetting } from "../../store/app.action";
 
 class AppController extends Component {
   componentDidMount() {
+    console.log("componentDidMount -> AppController")
     ExtensionStorageManager
       .initInitialData()
       .then(() => {
