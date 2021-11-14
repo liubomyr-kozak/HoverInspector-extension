@@ -39,7 +39,7 @@ chrome.runtime.setUninstallURL("https://forms.gle/acoM8G3VfcPJJg3m6")
 chrome.runtime.onInstalled.addListener(function (details) {
     const thisVersion = chrome.runtime.getManifest().version;
     if (details.reason == "install") {
-        // console.info("First version installed");
+        console.info("First version installed");
     } else if (details.reason == "update") {
         console.info("Updated version: " + thisVersion);
 
@@ -133,7 +133,7 @@ var dimensions = {
             }
         });
         // chrome.debugger.detach({tabId: this.tab.id}, "Debugger");
-        delete tabs[this.tab.id];
+        removeTab(this.tab.id);
     },
 
     onBrowserDisconnect: function () {
@@ -220,8 +220,6 @@ var dimensions = {
 
 chrome.runtime.onMessage.addListener(
   function (request, sender, sendResponse) {
-
-      console.log("addListener -> requestProcessing",)
       actionsContext(request, sendResponse)
   }
 )

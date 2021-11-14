@@ -5,13 +5,10 @@ import { connect } from "react-redux";
 import HoverIcon from '../../../dist/images/new_logo2/zTool-32-active.png';
 import { closeSettingPopup, updatePopupSetting } from "../../store/app.action";
 
-// import DiscordIcon  from './icons/discord.svg'
-// import GoogleFormIcon  from './icons/forms-icon.svg'
-// import CloseIcon  from './icons/close.svg'
 import SettingIcon from './icons/setting.png';
 import { ReactComponent as DiscordIcon } from './icons/discord.svg'
-import { ReactComponent as GoogleFormIcon } from './icons/forms-icon.svg'
-import { ReactComponent as CloseIcon } from './icons/close.svg'
+import GoogleFormIcon  from './icons/google-forms.png'
+import CloseIcon from './icons/close.svg'
 import EmailIcon from './icons/email.png'
 import HoverSelectedInfo from "./HoverSelectedInfo";
 
@@ -87,14 +84,14 @@ const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
     <div className="zTool-SettingsIconBox-close-icon" onClick={() => {
       setIsOpen(false);
     }}>
-      <CloseIcon/>
+      <img className="zTool-foo" src={CloseIcon} alt="CloseIcon"/>
     </div>
     <div
       className={cx('zTool-SettingsIconBox-icon', { "--close": isOpen })}
       onClick={() => setIsOpen(true)}
     >
-      <img className="zTool-SettingsIconBox-main-icon" src={HoverIcon}/>
-      <img className="zTool-SettingsIconBox-sub-icon" src={SettingIcon}/>
+      <img className="zTool-SettingsIconBox-main-icon" src={HoverIcon} alt="HoverIcon"/>
+      <img className="zTool-SettingsIconBox-sub-icon" src={SettingIcon} alt="SettingIcon"/>
     </div>
 
     <div className={cx('zTool-SettingsIconBox-setting', {
@@ -102,7 +99,7 @@ const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
     })}>
       <div className="zTool-SettingsIconBox-setting-title">
         <span className="zTool-SettingsIconBox-setting-icon">
-          <img className="zTool-SettingsIconBox-sub-icon" src={SettingIcon}/>
+          <img className="zTool-SettingsIconBox-sub-icon" src={SettingIcon} alt="SettingIcon"/>
         </span>
         HoverInspector settings
       </div>
@@ -117,7 +114,7 @@ const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
           Prevent Default
           <span className='zTool-switcher-btn'>
             <span className={cx({ "--active": preventDefault })}>Yes</span>
-            <span>No</span>
+            <span className="zTool-foo">No</span>
           </span>
         </div>
         {/*<div className="zTool-title">History:</div>*/}
@@ -130,10 +127,10 @@ const SettingsIconBox = ({ preventDefault, updatePopupSetting }) => {
           </a>
           <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6"
              className="zTool-feedback-btn">
-            <GoogleFormIcon/>
+            <img className="zTool-foo" src={GoogleFormIcon} alt="GoogleFormIcon"/>
           </a>
           <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6" className="zTool-feedback-btn">
-            <img src={EmailIcon} alt=""/>
+            <img className="zTool-foo" src={EmailIcon} alt="EmailIcon"/>
           </a>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { USER_STATUS_NEW } from "../../store/app.constant";
 import ChromeBackgroundProvider from "../ChromeBackgroundProvider";
 
 class ExtensionStorageManager {
-  backgroundProvider = ChromeBackgroundProvider.create('extension');
+  backgroundProvider = ChromeBackgroundProvider.create('runtime');
 
   requestProcessing = (data, callback) => {
     if (isProduction()) {

@@ -30,7 +30,7 @@ ExtensionManager.init({
     (provider) => {
       hotkeys('esc', function () {
         provider.postMessage({
-          actionType: 'destroy'
+          action: 'destroy'
         })
       })
     },

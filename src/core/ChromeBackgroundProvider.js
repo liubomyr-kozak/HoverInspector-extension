@@ -1,6 +1,5 @@
 import { isProduction } from "../shared/helpers";
 
-
 class Provider {
   provider
   constructor(provider) {
@@ -17,8 +16,8 @@ class Provider {
 }
 
 class ProviderRuntime extends Provider {
-  sendMessage(fn) {
-    this.provider && this.provider.sendMessage(fn)
+  sendMessage(fn, callback) {
+    this.provider && this.provider.sendMessage(fn, callback)
   }
 }
 
@@ -31,14 +30,14 @@ class ProviderPort extends Provider {
     this.provider && this.provider.onMessage.removeListener(fn)
   }
 
-  postMessage(fn) {
-    this.provider && this.provider.postMessage(fn)
+  postMessage(fn, callback) {
+    this.provider && this.provider.postMessage(fn, callback)
   }
 }
 
 class ProviderExtension extends Provider {
-  sendMessage(fn) {
-    this.provider && this.provider.sendMessage(fn)
+  sendMessage(fn, callback) {
+    this.provider && this.provider.sendMessage(fn, callback)
   }
 }
 

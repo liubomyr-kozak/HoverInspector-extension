@@ -48,10 +48,7 @@ class ExtensionManager {
   }
 
   onBackgroundAction = (request) => {
-    console.log("backgroundListener -> request", request)
     if (!this.backgroundListeners[request.action]) return;
-    debugger
-    console.log("backgroundListener -> this.backgroundListenerList", this.backgroundListeners)
     this.backgroundListeners[request.action]();
   }
 }
