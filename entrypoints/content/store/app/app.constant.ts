@@ -1,0 +1,28 @@
+export const SET_DICTIONARY = "SET_DICTIONARY";
+
+// разом з бібліотекою обновляється і state....
+// зробив це для того щоб розлілити логіку чисту
+export const UPDATE_DICTIONARY_STATE = "UPDATE_DICTIONARY_STATE";
+export const UPDATE_USER_VOCAB = "UPDATE_USER_VOCAB";
+
+export const SET_APP_STATE = "SET_APP_STATE";
+export const UPDATE_WORDS_DATA_VERSION = "UPDATE_WORDS_DATA_VERSION";
+
+export const LOAD_WORD_LIST_FROM_CSV = "LOAD_WORD_LIST_FROM_CSV";
+
+
+export const APP_INIT = "APP_INIT";
+
+export const UPDATE_APP_SETTING = "UPDATE_APP_SETTING";
+export const GET_APP_SETTING = "GET_APP_SETTING";
+export const CLOSE_APP_POPUP = "CLOSE_APP_POPUP";
+export const UPDATE_POPUP_SETTING = "UPDATE_POPUP_SETTING";
+
+export const REVERT_LAST_USER_ACTION = "REVERT_LAST_USER_ACTION";
+
+export const USER_STATUS_NEW = "user_new";
+export const UPDATE_USER_STATUS = "UPDATE_USER_STATUS";
+
+export const USER_EVENT_SCROLL = "USER_EVENT_SCROLL";
+export const USER_EVENT_SCROLL_CONFIRM = "USER_EVENT_SCROLL_CONFIRM";
+export const USER_EVENT_SELECT_CONFIRM = "USER_EVENT_SELECT_CONFIRM";

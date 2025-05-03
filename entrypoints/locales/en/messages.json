@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "Hover inspector like in Zeplin, Figma"
+  },
+  "extDescription": {
+    "message": "Hover Inspector is the tool which mimic display dimension between selected and hover element. It would be good for designers, QA"
+  },
+  "extShortName": {
+    "message": "Hover Inspector"
+  }
+}

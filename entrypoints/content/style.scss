@@ -1,0 +1,150 @@
+
+.zToolBoxBoxHover {
+  background: #4ba5ff;
+  box-shadow: 0 0 0 0.3px #4ba5ff;
+  position: fixed;
+  z-index: 2;
+}
+
+
+.zToolBoxBoxSelected {
+  background: #ff5e2f;
+  box-shadow: 0 0 0 0.3px #ff5e2f;
+  position: fixed;
+  z-index: 1;
+
+  &.zTool_left:after {
+    position: fixed;
+    top: 0;
+    height: 100%;
+    width: 0;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
+
+  &.zTool_right:after {
+    position: fixed;
+    top: 0;
+    height: 100%;
+    width: 0;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
+
+  &.zTool_top:after {
+    position: fixed;
+    left: 0;
+    top: initial;
+    height: 0;
+    width: 100%;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
+
+  &.zTool_bottom:after {
+    position: fixed;
+    left: 0;
+    top: initial;
+    height: 0;
+    width: 100%;
+    border: 0.1px dashed #ff5e2f;
+    box-shadow: 0 0 0 0.2px #ff5e2f;
+    display: block;
+    content: "";
+  }
+}
+
+[class^="zToolDistanceLine"] {
+  position: fixed;
+  border: 0.1px solid #ff5e2f;
+  box-shadow: 0 0 0 0.3px #ff5e2f;
+  z-index: 2;
+}
+
+[class^="zTool"] {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: normal;
+}
+
+[class^="zTool"] * {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 15px !important;
+}
+
+.zToolDistanceLineLabel {
+  border: none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  position: absolute;
+  background: #f5f5f5;
+  color: #ff5e2f;
+  padding: 0 2px;
+  border-radius: 3px;
+  font-size: 13px;
+  box-shadow: 0 0 0 1px #ff5e2f;
+  z-index: 1;
+}
+
+.zToolInfoBoxContainer {
+  position: fixed;
+  width: 100%;
+  left: 0;
+  z-index: 2;
+}
+
+.zToolInfoBox {
+  padding: 0 5px;
+  line-height: 30px;
+  box-sizing: border-box;
+  height: 30px;
+  color: white;
+}
+
+.zToolInfoBoxValueLabel {
+  color: rgb(255, 254, 254);
+  padding: 0 4px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px #ffffff54;
+  font-size: 16px;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+//.zToolBoxLabel,
+.zToolBoxBoxHover,
+.zToolBoxBoxSelected,
+.zToolTooltipPadding,
+.zToolTooltipMargin,
+[class^="zToolDistanceLine"] {
+  pointer-events: none
+}
+
+.zToolTooltipPadding {
+  background: rgba(52, 152, 219, 0.2);
+  position: fixed;
+  z-index: 2;
+  box-sizing: border-box;
+  border-color: rgba(70, 203, 23, 0.33);
+  border-style: solid;
+}
+
+.zToolTooltipMargin {
+  position: fixed;
+  z-index: 1;
+  box-sizing: border-box;
+  border-color: rgba(230, 125, 33, 0.31);
+  border-style: solid;
+}
+
+.zTool {
+  & > * {
+    box-sizing: initial;
+  }
+}

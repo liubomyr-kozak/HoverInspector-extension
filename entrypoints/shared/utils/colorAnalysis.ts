@@ -1,0 +1,322 @@
+/**
+ * Utility functions for color analysis
+ * 
+ * This module provides functions for analyzing colors, calculating contrast ratios,
+ * and converting colors between different formats (RGB, HEX, HSL, HSV).
+ */
+
+/**
+ * Converts a CSS color to RGB format
+ * @param color The CSS color to convert
+ * @returns An object with r, g, b, and a properties
+ */
+export const colorToRgb = (color: string): { r: number, g: number, b: number, a: number } | null => {
+  // Default return if parsing fails
+  const defaultRgb = { r: 0, g: 0, b: 0, a: 1 };
+  
+  if (!color) return null;
+  
+  // Create a temporary element to use the browser's color parsing
+  const tempElement = document.createElement('div');
+  tempElement.style.color = color;
+  document.body.appendChild(tempElement);
+  
+  // Get the computed style
+  const computedColor = window.getComputedStyle(tempElement).color;
+  document.body.removeChild(tempElement);
+  
+  // Parse the computed color
+  const rgbMatch = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d*\.?\d+))?\)/);
+  
+  if (rgbMatch) {
+    return {
+      r: parseInt(rgbMatch[1], 10),
+      g: parseInt(rgbMatch[2], 10),
+      b: parseInt(rgbMatch[3], 10),
+      a: rgbMatch[4] ? parseFloat(rgbMatch[4]) : 1
+    };
+  }
+  
+  return defaultRgb;
+};
+
+/**
+ * Calculates the relative luminance of a color
+ * @param rgb The RGB values of the color
+ * @returns The relative luminance value between 0 and 1
+ */
+export const calculateLuminance = (rgb: { r: number, g: number, b: number }): number => {
+  // Convert RGB to sRGB
+  const sRGB = {
+    r: rgb.r / 255,
+    g: rgb.g / 255,
+    b: rgb.b / 255
+  };
+  
+  // Calculate the luminance
+  const r = sRGB.r <= 0.03928 ? sRGB.r / 12.92 : Math.pow((sRGB.r + 0.055) / 1.055, 2.4);
+  const g = sRGB.g <= 0.03928 ? sRGB.g / 12.92 : Math.pow((sRGB.g + 0.055) / 1.055, 2.4);
+  const b = sRGB.b <= 0.03928 ? sRGB.b / 12.92 : Math.pow((sRGB.b + 0.055) / 1.055, 2.4);
+  
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/**
+ * Calculates the contrast ratio between two colors
+ * @param color1 The first color
+ * @param color2 The second color
+ * @returns The contrast ratio between the two colors
+ */
+export const calculateContrastRatio = (color1: string, color2: string): number => {
+  const rgb1 = colorToRgb(color1);
+  const rgb2 = colorToRgb(color2);
+  
+  if (!rgb1 || !rgb2) return 1;
+  
+  const luminance1 = calculateLuminance(rgb1);
+  const luminance2 = calculateLuminance(rgb2);
+  
+  const lighter = Math.max(luminance1, luminance2);
+  const darker = Math.min(luminance1, luminance2);
+  
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+/**
+ * Determines if a color is light or dark
+ * @param color The color to check
+ * @returns True if the color is light, false if it's dark
+ */
+export const isLightColor = (color: string): boolean => {
+  const rgb = colorToRgb(color);
+  if (!rgb) return true;
+  
+  const luminance = calculateLuminance(rgb);
+  return luminance > 0.5;
+};
+
+/**
+ * Evaluates the readability of text with a given color on a given background
+ * @param textColor The text color
+ * @param backgroundColor The background color
+ * @returns An object with information about the readability
+ */
+export const evaluateReadability = (textColor: string, backgroundColor: string): {
+  contrastRatio: number;
+  isReadable: boolean;
+  wcagLevel: 'AAA' | 'AA' | 'Fail';
+  recommendation?: string;
+} => {
+  const contrastRatio = calculateContrastRatio(textColor, backgroundColor);
+  
+  // WCAG 2.0 levels
+  const isLargeText = false; // Assuming normal text size
+  const wcagAA = isLargeText ? 3 : 4.5;
+  const wcagAAA = isLargeText ? 4.5 : 7;
+  
+  let wcagLevel: 'AAA' | 'AA' | 'Fail' = 'Fail';
+  if (contrastRatio >= wcagAAA) {
+    wcagLevel = 'AAA';
+  } else if (contrastRatio >= wcagAA) {
+    wcagLevel = 'AA';
+  }
+  
+  const isReadable = contrastRatio >= wcagAA;
+  
+  let recommendation = '';
+  if (!isReadable) {
+    const textRgb = colorToRgb(textColor);
+    const bgRgb = colorToRgb(backgroundColor);
+    
+    if (textRgb && bgRgb) {
+      const textLuminance = calculateLuminance(textRgb);
+      const bgLuminance = calculateLuminance(bgRgb);
+      
+      if (textLuminance > bgLuminance) {
+        recommendation = 'Consider using a darker text color or a lighter background color.';
+      } else {
+        recommendation = 'Consider using a lighter text color or a darker background color.';
+      }
+    }
+  }
+  
+  return {
+    contrastRatio,
+    isReadable,
+    wcagLevel,
+    ...(recommendation ? { recommendation } : {})
+  };
+};
+
+/**
+ * Converts an RGB color to HEX format
+ * @param rgb The RGB values of the color
+ * @returns The color in HEX format (e.g., #FF5733)
+ */
+export const rgbToHex = (rgb: { r: number, g: number, b: number, a?: number }): string => {
+  const { r, g, b, a = 1 } = rgb;
+  
+  // Convert RGB components to HEX
+  const rHex = r.toString(16).padStart(2, '0');
+  const gHex = g.toString(16).padStart(2, '0');
+  const bHex = b.toString(16).padStart(2, '0');
+  
+  // If alpha is 1 (fully opaque), return standard 6-digit HEX
+  if (a === 1) {
+    return `#${rHex}${gHex}${bHex}`.toUpperCase();
+  }
+  
+  // Otherwise, include alpha channel in 8-digit HEX
+  const aHex = Math.round(a * 255).toString(16).padStart(2, '0');
+  return `#${rHex}${gHex}${bHex}${aHex}`.toUpperCase();
+};
+
+/**
+ * Converts an RGB color to HSL format
+ * @param rgb The RGB values of the color
+ * @returns The color in HSL format (e.g., hsl(0, 100%, 50%))
+ */
+export const rgbToHsl = (rgb: { r: number, g: number, b: number, a?: number }): string => {
+  const { r, g, b, a = 1 } = rgb;
+  
+  // Convert RGB to [0, 1] range
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+  
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  const delta = max - min;
+  
+  // Calculate HSL values
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  
+  if (delta !== 0) {
+    s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+    
+    if (max === rNorm) {
+      h = ((gNorm - bNorm) / delta + (gNorm < bNorm ? 6 : 0)) * 60;
+    } else if (max === gNorm) {
+      h = ((bNorm - rNorm) / delta + 2) * 60;
+    } else {
+      h = ((rNorm - gNorm) / delta + 4) * 60;
+    }
+  }
+  
+  // Round values
+  h = Math.round(h);
+  s = Math.round(s * 100);
+  const lPercent = Math.round(l * 100);
+  
+  // Return HSL string
+  if (a === 1) {
+    return `hsl(${h}, ${s}%, ${lPercent}%)`;
+  } else {
+    return `hsla(${h}, ${s}%, ${lPercent}%, ${a.toFixed(2)})`;
+  }
+};
+
+/**
+ * Converts an RGB color to HSV format
+ * @param rgb The RGB values of the color
+ * @returns The color in HSV format (e.g., hsv(0, 100%, 100%))
+ */
+export const rgbToHsv = (rgb: { r: number, g: number, b: number, a?: number }): string => {
+  const { r, g, b, a = 1 } = rgb;
+  
+  // Convert RGB to [0, 1] range
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+  
+  const max = Math.max(rNorm, gNorm, bNorm);
+  const min = Math.min(rNorm, gNorm, bNorm);
+  const delta = max - min;
+  
+  // Calculate HSV values
+  let h = 0;
+  let s = max === 0 ? 0 : delta / max;
+  const v = max;
+  
+  if (delta !== 0) {
+    if (max === rNorm) {
+      h = ((gNorm - bNorm) / delta + (gNorm < bNorm ? 6 : 0)) * 60;
+    } else if (max === gNorm) {
+      h = ((bNorm - rNorm) / delta + 2) * 60;
+    } else {
+      h = ((rNorm - gNorm) / delta + 4) * 60;
+    }
+  }
+  
+  // Round values
+  h = Math.round(h);
+  s = Math.round(s * 100);
+  const vPercent = Math.round(v * 100);
+  
+  // Return HSV string
+  if (a === 1) {
+    return `hsv(${h}, ${s}%, ${vPercent}%)`;
+  } else {
+    return `hsva(${h}, ${s}%, ${vPercent}%, ${a.toFixed(2)})`;
+  }
+};
+
+/**
+ * Converts a CSS color to multiple color formats
+ * @param color The CSS color to convert
+ * @returns An object with the color in different formats
+ */
+export const getColorInAllFormats = (color: string): {
+  rgb: string;
+  hex: string;
+  hsl: string;
+  hsv: string;
+} | null => {
+  const rgbObj = colorToRgb(color);
+  if (!rgbObj) return null;
+  
+  const { r, g, b, a } = rgbObj;
+  const rgbString = a === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
+  
+  return {
+    rgb: rgbString,
+    hex: rgbToHex(rgbObj),
+    hsl: rgbToHsl(rgbObj),
+    hsv: rgbToHsv(rgbObj)
+  };
+};
+
+/**
+ * Analyzes a button's colors for accessibility and usability
+ * @param element The button element to analyze
+ * @returns An object with information about the button's colors
+ */
+export const analyzeButtonColors = (element: Element): {
+  backgroundColor: string;
+  textColor: string;
+  borderColor: string;
+  isLightBackground: boolean;
+  contrastRatio: number;
+  isReadable: boolean;
+  wcagLevel: 'AAA' | 'AA' | 'Fail';
+  recommendation?: string;
+} => {
+  const computedStyle = window.getComputedStyle(element);
+  
+  const backgroundColor = computedStyle.backgroundColor;
+  const textColor = computedStyle.color;
+  const borderColor = computedStyle.borderColor;
+  
+  const isLightBackground = isLightColor(backgroundColor);
+  const readabilityInfo = evaluateReadability(textColor, backgroundColor);
+  
+  return {
+    backgroundColor,
+    textColor,
+    borderColor,
+    isLightBackground,
+    ...readabilityInfo
+  };
+};

@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@": [".."],
+      "@/*": ["../*"],
+      "@assets": ["../assets"],
+      "@assets/*": ["../assets/*"],
+      "@components": ["../components"],
+      "@components/*": ["../components/*"],
+      "@composables": ["../composables"],
+      "@composables/*": ["../composables/*"],
+      "@entrypoints": ["../entrypoints"],
+      "@entrypoints/*": ["../entrypoints/*"],
+      "@hooks": ["../hooks"],
+      "@hooks/*": ["../hooks/*"],
+      "@modules": ["../modules"],
+      "@modules/*": ["../modules/*"],
+      "@utils": ["../utils"],
+      "@utils/*": ["../utils/*"],
+      "~": [".."],
+      "~/*": ["../*"],
+      "@@": [".."],
+      "@@/*": ["../*"],
+      "~~": [".."],
+      "~~/*": ["../*"]
+    }
+  },
+  "include": [
+    "../**/*",
+    "./wxt.d.ts"
+  ],
+  "exclude": ["../dist"]
+}

@@ -1,0 +1,1 @@
+export const APP_STORE_STATE = "APP_STORE_STATE";

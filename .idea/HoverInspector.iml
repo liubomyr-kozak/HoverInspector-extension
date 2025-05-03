@@ -5,6 +5,12 @@
       <excludeFolder url="file://$MODULE_DIR$/.tmp" />
       <excludeFolder url="file://$MODULE_DIR$/temp" />
       <excludeFolder url="file://$MODULE_DIR$/tmp" />
+      <excludeFolder url="file://$MODULE_DIR$/ingnore" />
+      <excludeFolder url="file://$MODULE_DIR$/v4/dist_chrome" />
+      <excludeFolder url="file://$MODULE_DIR$/vite-web-extension/dist_chrome" />
+      <excludeFolder url="file://$MODULE_DIR$/background_popup_script" />
+      <excludeFolder url="file://$MODULE_DIR$/dist-standalone" />
+      <excludeFolder url="file://$MODULE_DIR$/playground/Inspecta - visual QA and CSS editor" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
