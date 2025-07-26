@@ -68,24 +68,6 @@ const ColorPaletteDefinition: React.FC = () => {
 
   // State for the color palette
   const [colorPalette, setColorPalette] = useState<ColorPalette>(defaultPalette);
-  
-  // State for the color being edited
-  const [editingColor, setEditingColor] = useState<{
-    category: keyof ColorPalette;
-    color: PaletteColor | null;
-  }>({
-    category: "primary",
-    color: null
-  });
-
-  // State for the new color being added
-  const [newColor, setNewColor] = useState<{
-    color: string;
-    name: string;
-  }>({
-    color: "#000000",
-    name: ""
-  });
 
   // State for extraction status
   const [extractionStatus, setExtractionStatus] = useState<{
@@ -397,101 +379,12 @@ const ColorPaletteDefinition: React.FC = () => {
     }));
   };
 
-  /**
-   * Adds a new color to the specified category
-   */
-  const addColor = (category: keyof ColorPalette) => {
-    // Check if we're at the maximum for primary colors (3)
-    if (category === 'primary' && colorPalette.primary.length >= 3) {
-      alert('You can only have a maximum of 3 primary colors.');
-      return;
-    }
+  // Color editing functions removed as per requirements
 
-    if (!newColor.name.trim()) {
-      alert('Please enter a name for the color.');
-      return;
-    }
-
-    const updatedPalette = { ...colorPalette };
-    const newId = `${category[0]}${updatedPalette[category].length + 1}`;
-    
-    updatedPalette[category] = [
-      ...updatedPalette[category],
-      { id: newId, color: newColor.color, name: newColor.name.trim() }
-    ];
-    
-    setColorPalette(updatedPalette);
-    setNewColor({ color: "#000000", name: "" });
-    setEditingColor({ category, color: null });
-  };
-
-  /**
-   * Removes a color from the palette
-   */
-  const removeColor = (category: keyof ColorPalette, id: string) => {
-    const updatedPalette = { ...colorPalette };
-    updatedPalette[category] = updatedPalette[category].filter(color => color.id !== id);
-    setColorPalette(updatedPalette);
-  };
-
-  /**
-   * Updates an existing color in the palette
-   */
-  const updateColor = (category: keyof ColorPalette, id: string, updatedColor: Partial<PaletteColor>) => {
-    const updatedPalette = { ...colorPalette };
-    updatedPalette[category] = updatedPalette[category].map(color => 
-      color.id === id ? { ...color, ...updatedColor } : color
-    );
-    setColorPalette(updatedPalette);
-  };
-
-  /**
-   * Starts editing a color
-   */
-  const startEditing = (category: keyof ColorPalette, color: PaletteColor) => {
-    setEditingColor({ category, color });
-    setNewColor({ color: color.color, name: color.name });
-  };
-
-  /**
-   * Saves the edited color
-   */
-  const saveEditedColor = () => {
-    if (!editingColor.color || !newColor.name.trim()) {
-      alert('Please enter a name for the color.');
-      return;
-    }
-
-    updateColor(editingColor.category, editingColor.color.id, {
-      color: newColor.color,
-      name: newColor.name.trim()
-    });
-
-    setEditingColor({ category: "primary", color: null });
-    setNewColor({ color: "#000000", name: "" });
-  };
-
-  /**
-   * Cancels the current edit operation
-   */
-  const cancelEdit = () => {
-    setEditingColor({ category: "primary", color: null });
-    setNewColor({ color: "#000000", name: "" });
-  };
-
-  // Run extraction on component mount if no colors are defined
+  // Run extraction on component mount automatically
   useEffect(() => {
-    // Check if we have any colors defined
-    const hasDefinedColors = 
-      colorPalette.primary.length > 0 || 
-      colorPalette.secondary.length > 0 || 
-      colorPalette.tertiary.length > 0 || 
-      colorPalette.neutral.length > 0;
-    
-    // If no colors are defined and we haven't extracted before, extract colors
-    if (!hasDefinedColors && !extractionStatus.lastExtracted) {
-      extractColorsFromPage();
-    }
+    // Always extract colors on component mount
+    extractColorsFromPage();
   }, []);
 
   // Navigate to a source element
@@ -547,9 +440,7 @@ const ColorPaletteDefinition: React.FC = () => {
   ) => {
     const colors = colorPalette[category];
     const isCollapsed = collapsedGroups[category];
-    const isEditing = editingColor.category === category && editingColor.color === null;
     const isPrimary = category === 'primary';
-    const maxReached = isPrimary && colors.length >= 3;
 
     return (
       <div className="mb-6">
@@ -570,158 +461,62 @@ const ColorPaletteDefinition: React.FC = () => {
             <p className="text-xs text-gray-600 ml-6 mb-2">{description}</p>
             
             <div className="ml-6 space-y-2">
-              {/* Existing colors */}
-              {colors.map(color => {
-                const isEditingThisColor = editingColor.color?.id === color.id && editingColor.category === category;
-                
-                return (
-                  <div key={color.id} className="flex items-center gap-2">
-                    {isEditingThisColor ? (
-                      // Edit mode
-                      <div className="flex-1 flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                        <input 
-                          type="color" 
-                          value={newColor.color}
-                          onChange={(e) => setNewColor({ ...newColor, color: e.target.value })}
-                          className="w-8 h-8 rounded cursor-pointer"
-                        />
-                        <input 
-                          type="text" 
-                          value={newColor.name}
-                          onChange={(e) => setNewColor({ ...newColor, name: e.target.value })}
-                          placeholder="Color name"
-                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                        />
-                        <button 
-                          onClick={saveEditedColor}
-                          className="p-1 text-green-600 hover:bg-green-50 rounded"
-                          title="Save"
-                        >
-                          <IconCheck size={18} />
-                        </button>
-                        <button 
-                          onClick={cancelEdit}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="Cancel"
-                        >
-                          <IconX size={18} />
-                        </button>
-                      </div>
-                    ) : (
-                      // Display mode
-                      <div className="flex-1 flex flex-col bg-white rounded border border-gray-200">
-                        <div className="flex items-center gap-2 p-2">
-                          <div 
-                            className="w-8 h-8 rounded border border-gray-300" 
-                            style={{ backgroundColor: color.color }}
-                            title={formatColor(color.color)}
-                          />
-                          <span className="flex-1 text-sm">{color.name}</span>
-                          <span className="text-xs text-gray-500">{formatColor(color.color)}</span>
-                          
-                          {/* Show frequency if available */}
-                          {color.frequency && (
-                            <span className="text-xs bg-gray-100 px-1 py-0.5 rounded text-gray-600">
-                              {color.frequency}x
+              {/* Display colors */}
+              {colors.map(color => (
+                <div key={color.id} className="flex items-center gap-2">
+                  <div className="flex-1 flex flex-col bg-white rounded border border-gray-200">
+                    <div className="flex items-center gap-2 p-2">
+                      <div 
+                        className="w-8 h-8 rounded border border-gray-300" 
+                        style={{ backgroundColor: color.color }}
+                        title={formatColor(color.color)}
+                      />
+                      <span className="flex-1 text-sm">{color.name}</span>
+                      <span className="text-xs text-gray-500">{formatColor(color.color)}</span>
+                      
+                      {/* Show frequency if available */}
+                      {color.frequency && (
+                        <span className="text-xs bg-gray-100 px-1 py-0.5 rounded text-gray-600">
+                          {color.frequency}x
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Source elements section */}
+                    {color.sourceElements && color.sourceElements.length > 0 && (
+                      <div className="border-t border-gray-100 p-2 bg-gray-50">
+                        <div className="text-xs text-gray-500 mb-1">
+                          Found in {color.sourceElements.length} elements:
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {color.sourceElements.slice(0, 5).map((element, idx) => {
+                            const tagName = element.tagName?.toLowerCase();
+                            const className = element.className ? `.${element.className.split(' ')[0]}` : '';
+                            const id = element.id ? `#${element.id}` : '';
+                            const displayName = id || className || tagName;
+                            
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => navigateToElement(element)}
+                                className="text-xs bg-white px-1 py-0.5 rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-200"
+                                title="Click to navigate to this element"
+                              >
+                                {displayName}
+                              </button>
+                            );
+                          })}
+                          {color.sourceElements.length > 5 && (
+                            <span className="text-xs text-gray-500">
+                              +{color.sourceElements.length - 5} more
                             </span>
                           )}
-                          
-                          <button 
-                            onClick={() => startEditing(category, color)}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                            title="Edit"
-                          >
-                            <IconEdit size={18} />
-                          </button>
-                          <button 
-                            onClick={() => removeColor(category, color.id)}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            title="Remove"
-                          >
-                            <IconTrash size={18} />
-                          </button>
                         </div>
-                        
-                        {/* Source elements section */}
-                        {color.sourceElements && color.sourceElements.length > 0 && (
-                          <div className="border-t border-gray-100 p-2 bg-gray-50">
-                            <div className="text-xs text-gray-500 mb-1">
-                              Found in {color.sourceElements.length} elements:
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {color.sourceElements.slice(0, 5).map((element, idx) => {
-                                const tagName = element.tagName?.toLowerCase();
-                                const className = element.className ? `.${element.className.split(' ')[0]}` : '';
-                                const id = element.id ? `#${element.id}` : '';
-                                const displayName = id || className || tagName;
-                                
-                                return (
-                                  <button
-                                    key={idx}
-                                    onClick={() => navigateToElement(element)}
-                                    className="text-xs bg-white px-1 py-0.5 rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-200"
-                                    title="Click to navigate to this element"
-                                  >
-                                    {displayName}
-                                  </button>
-                                );
-                              })}
-                              {color.sourceElements.length > 5 && (
-                                <span className="text-xs text-gray-500">
-                                  +{color.sourceElements.length - 5} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
-                );
-              })}
-              
-              {/* Add new color form */}
-              {isEditing ? (
-                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                  <input 
-                    type="color" 
-                    value={newColor.color}
-                    onChange={(e) => setNewColor({ ...newColor, color: e.target.value })}
-                    className="w-8 h-8 rounded cursor-pointer"
-                  />
-                  <input 
-                    type="text" 
-                    value={newColor.name}
-                    onChange={(e) => setNewColor({ ...newColor, name: e.target.value })}
-                    placeholder="Color name"
-                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                  />
-                  <button 
-                    onClick={() => addColor(category)}
-                    className="p-1 text-green-600 hover:bg-green-50 rounded"
-                    title="Add"
-                  >
-                    <IconCheck size={18} />
-                  </button>
-                  <button 
-                    onClick={cancelEdit}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded"
-                    title="Cancel"
-                  >
-                    <IconX size={18} />
-                  </button>
                 </div>
-              ) : (
-                !maxReached && (
-                  <button 
-                    onClick={() => setEditingColor({ category, color: null })}
-                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 p-1"
-                  >
-                    <IconPlus size={16} />
-                    Add {category} color
-                  </button>
-                )
-              )}
+              ))}
             </div>
           </>
         )}
@@ -729,20 +524,7 @@ const ColorPaletteDefinition: React.FC = () => {
     );
   };
 
-  // Run extraction on component mount if no colors are defined
-  useEffect(() => {
-    // Check if we have any colors defined
-    const hasDefinedColors = 
-      colorPalette.primary.length > 0 || 
-      colorPalette.secondary.length > 0 || 
-      colorPalette.tertiary.length > 0 || 
-      colorPalette.neutral.length > 0;
-    
-    // If no colors are defined and we haven't extracted before, extract colors
-    if (!hasDefinedColors && !extractionStatus.lastExtracted) {
-      extractColorsFromPage();
-    }
-  }, []);
+  // This duplicate useEffect has been removed as it's already handled above
 
   // Navigate to a source element
   // const navigateToElement = (element: Element) => {
@@ -790,27 +572,7 @@ const ColorPaletteDefinition: React.FC = () => {
   return (
     <div className="bg-gray-100 p-3 rounded-md mb-4">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-md font-medium flex items-center gap-2">
-          <IconPalette size={18} />
-          Define Your Color Palette
-        </h3>
-
         <div className="flex items-center gap-2">
-          {/* Extract Colors Button */}
-          <button
-            className={`flex items-center gap-1 text-xs px-3 py-1 rounded ${
-              extractionStatus.isExtracting 
-                ? 'bg-blue-100 text-blue-700 cursor-wait' 
-                : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
-            }`}
-            onClick={extractColorsFromPage}
-            disabled={extractionStatus.isExtracting}
-            title="Extract colors from page elements"
-          >
-            <IconColorPicker size={14} />
-            {extractionStatus.isExtracting ? 'Extracting...' : 'Extract Colors'}
-          </button>
-
           {/* Color System Selector */}
           <div className="relative">
             <button
@@ -841,29 +603,6 @@ const ColorPaletteDefinition: React.FC = () => {
       </div>
 
       <div className="text-sm">
-        {extractionStatus.lastExtracted ? (
-          <div className="bg-blue-50 border border-blue-100 rounded p-2 mb-4 text-xs text-blue-700">
-            <div className="flex items-center justify-between">
-              <span>
-                <IconRefresh size={14} className="inline mr-1" />
-                Colors extracted from page elements
-              </span>
-              <span className="text-blue-500">
-                {extractionStatus.totalElementsAnalyzed} elements analyzed, 
-                {extractionStatus.totalColorsFound} colors found
-              </span>
-            </div>
-            <div className="mt-1 text-xs text-blue-600">
-              Click on a color to see details and source elements. You can also manually edit colors.
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-600 mb-4">
-            Color plays a vital part in how your website and your brand are perceived and remembered. 
-            Extract colors from page elements or manually define your essential primary colors (maximum of three), 
-            along with secondary, tertiary, and neutral colors.
-          </p>
-        )}
 
         {renderColorCategory(
           'primary', 

@@ -41,38 +41,6 @@ const tabItems = [
         ),
         children: <TypographyRules />
     },
-    {
-        key: 'guidelines',
-        label: (
-            <span className="flex items-center gap-1">
-                <IconFileDescription size={16} />
-                Guidelines
-            </span>
-        ),
-        children: <GuidelinesViewer onElementSelect={(element) => {
-            // Highlight the selected element
-            if (element instanceof HTMLElement) {
-                const originalOutline = element.style.outline;
-                const originalTransition = element.style.transition;
-                const originalBoxShadow = element.style.boxShadow;
-
-                element.style.outline = "2px solid #f29d68";
-                element.style.outlineOffset = "2px";
-                element.style.transition = "all 0.25s ease-in-out";
-                element.style.boxShadow = "0 0 8px 2px rgba(242, 157, 104, 0.8)";
-
-                // Scroll the element into view
-                element.scrollIntoView({ behavior: "smooth", block: "center" });
-
-                // Reset styles after a delay
-                setTimeout(() => {
-                    element.style.outline = originalOutline;
-                    element.style.transition = originalTransition;
-                    element.style.boxShadow = originalBoxShadow;
-                }, 2000);
-            }
-        }} />
-    }
 ];
 
 export const AnalyzePageUI = () => {

@@ -135,6 +135,31 @@ const TypographyRules: React.FC = () => {
     
     return `<${tagName}${id}${className}>${text ? `...${text}...` : ''}</${tagName}>`;
   };
+  
+  // Find elements with a specific font family
+  const getElementsWithFontFamily = (family: string): TypographyElement[] => {
+    return typographyElements.filter(el => el.fontFamily === family);
+  };
+  
+  // Find elements with a specific font size
+  const getElementsWithFontSize = (size: string): TypographyElement[] => {
+    return typographyElements.filter(el => el.fontSize === size);
+  };
+  
+  // Find elements with a specific font weight
+  const getElementsWithFontWeight = (weight: string): TypographyElement[] => {
+    return typographyElements.filter(el => el.fontWeight === weight);
+  };
+  
+  // Get a display name for an element
+  const getElementDisplayName = (element: Element): string => {
+    const tagName = element.tagName?.toLowerCase();
+    const className = element.className && typeof element.className === 'string' 
+      ? `.${element.className.split(' ')[0]}` 
+      : '';
+    const id = element.id ? `#${element.id}` : '';
+    return id || className || tagName;
+  };
 
   // Filter rules by audience
   const getFilteredRules = () => {
@@ -181,11 +206,65 @@ const TypographyRules: React.FC = () => {
             {/* Font Families */}
             <div className="mb-4">
               <h5 className="font-medium text-sm mb-2">Font Families</h5>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {Array.from(aggregatedProperties.fontFamilies.entries()).map(([family, count], index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="font-mono truncate max-w-[70%]">{family}</div>
-                    <div className="text-gray-500">{count} elements</div>
+                  <div key={index} className="border border-gray-200 rounded-md overflow-hidden">
+                    <div className="flex items-center justify-between text-sm p-2 bg-gray-50">
+                      <div className="font-mono truncate max-w-[70%]">{family}</div>
+                      <div className="text-gray-500">{count} elements</div>
+                    </div>
+                    <div className="p-3 border-t border-gray-200">
+                      <p className="mb-2" style={{ fontFamily: family }}>
+                        <span className="text-lg">The quick brown fox jumps over the lazy dog.</span>
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded" style={{ fontFamily: family }}>
+                          ABCDEFGHIJKLMNOPQRSTUVWXYZ
+                        </span>
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded" style={{ fontFamily: family }}>
+                          abcdefghijklmnopqrstuvwxyz
+                        </span>
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded" style={{ fontFamily: family }}>
+                          0123456789
+                        </span>
+                      </div>
+                      
+                      {/* Element references section */}
+                      {(() => {
+                        const elementsWithFamily = getElementsWithFontFamily(family);
+                        if (elementsWithFamily.length > 0) {
+                          return (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="text-xs text-gray-500 mb-1">
+                                Found in {elementsWithFamily.length} elements:
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {elementsWithFamily.slice(0, 5).map((typographyEl, idx) => {
+                                  const displayName = getElementDisplayName(typographyEl.element);
+                                  
+                                  return (
+                                    <button
+                                      key={idx}
+                                      onClick={() => handleElementClick(typographyEl.element)}
+                                      className="text-xs bg-white px-1 py-0.5 rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-200"
+                                      title="Click to navigate to this element"
+                                    >
+                                      {displayName}
+                                    </button>
+                                  );
+                                })}
+                                {elementsWithFamily.length > 5 && (
+                                  <span className="text-xs text-gray-500">
+                                    +{elementsWithFamily.length - 5} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -194,11 +273,54 @@ const TypographyRules: React.FC = () => {
             {/* Font Sizes */}
             <div className="mb-4">
               <h5 className="font-medium text-sm mb-2">Font Sizes</h5>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {Array.from(aggregatedProperties.fontSizes.entries()).map(([size, count], index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="font-mono">{size}</div>
-                    <div className="text-gray-500">{count} elements</div>
+                  <div key={index} className="border border-gray-200 rounded-md overflow-hidden">
+                    <div className="flex items-center justify-between text-sm p-2 bg-gray-50">
+                      <div className="font-mono">{size}</div>
+                      <div className="text-gray-500">{count} elements</div>
+                    </div>
+                    <div className="p-3 border-t border-gray-200">
+                      <p style={{ fontSize: size }}>
+                        Example text at {size}
+                      </p>
+                      
+                      {/* Element references section */}
+                      {(() => {
+                        const elementsWithSize = getElementsWithFontSize(size);
+                        if (elementsWithSize.length > 0) {
+                          return (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="text-xs text-gray-500 mb-1">
+                                Found in {elementsWithSize.length} elements:
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {elementsWithSize.slice(0, 5).map((typographyEl, idx) => {
+                                  const displayName = getElementDisplayName(typographyEl.element);
+                                  
+                                  return (
+                                    <button
+                                      key={idx}
+                                      onClick={() => handleElementClick(typographyEl.element)}
+                                      className="text-xs bg-white px-1 py-0.5 rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-200"
+                                      title="Click to navigate to this element"
+                                    >
+                                      {displayName}
+                                    </button>
+                                  );
+                                })}
+                                {elementsWithSize.length > 5 && (
+                                  <span className="text-xs text-gray-500">
+                                    +{elementsWithSize.length - 5} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -207,11 +329,54 @@ const TypographyRules: React.FC = () => {
             {/* Font Weights */}
             <div className="mb-4">
               <h5 className="font-medium text-sm mb-2">Font Weights</h5>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {Array.from(aggregatedProperties.fontWeights.entries()).map(([weight, count], index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="font-mono">{weight}</div>
-                    <div className="text-gray-500">{count} elements</div>
+                  <div key={index} className="border border-gray-200 rounded-md overflow-hidden">
+                    <div className="flex items-center justify-between text-sm p-2 bg-gray-50">
+                      <div className="font-mono">{weight}</div>
+                      <div className="text-gray-500">{count} elements</div>
+                    </div>
+                    <div className="p-3 border-t border-gray-200">
+                      <p style={{ fontWeight: weight }}>
+                        This text has font weight {weight}
+                      </p>
+                      
+                      {/* Element references section */}
+                      {(() => {
+                        const elementsWithWeight = getElementsWithFontWeight(weight);
+                        if (elementsWithWeight.length > 0) {
+                          return (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="text-xs text-gray-500 mb-1">
+                                Found in {elementsWithWeight.length} elements:
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {elementsWithWeight.slice(0, 5).map((typographyEl, idx) => {
+                                  const displayName = getElementDisplayName(typographyEl.element);
+                                  
+                                  return (
+                                    <button
+                                      key={idx}
+                                      onClick={() => handleElementClick(typographyEl.element)}
+                                      className="text-xs bg-white px-1 py-0.5 rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-200"
+                                      title="Click to navigate to this element"
+                                    >
+                                      {displayName}
+                                    </button>
+                                  );
+                                })}
+                                {elementsWithWeight.length > 5 && (
+                                  <span className="text-xs text-gray-500">
+                                    +{elementsWithWeight.length - 5} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -54,8 +54,6 @@ class AppStorageService {
             }
         }
 
-        debugger;
-        
         return scenarios;
     };
     
