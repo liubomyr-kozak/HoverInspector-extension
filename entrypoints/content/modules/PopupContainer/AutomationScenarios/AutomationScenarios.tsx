@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { Form, message } from 'antd';
+import { Form, message, Progress, Tabs, Button } from 'antd';
+import { IconPlus } from '@tabler/icons-react';
 
 // Import types
-import { ScenarioMap, ScenarioStep, Scenario } from './types.ts';
+import { ScenarioMap, ScenarioStep, Scenario, FunctionMap, CustomFunction } from './types.ts';
 
 // Import styled components
 import { Title } from './styles.ts';
@@ -14,23 +15,41 @@ import {
   removeScenarioFromLocalStorage,
   generateUniqueId,
   saveScenarioToLocalStorage,
-  addStepToScenario
+  addStepToScenario,
+  getAllFunctionsFromLocalStorage,
+  removeFunctionFromLocalStorage,
+  saveFunctionToLocalStorage
 } from './utils/storage.ts';
 import { isExtensionElement, generateXPath } from './utils/dom.ts';
+import { StepExecutor } from './utils/stepExecutor.ts';
 
 // Import components
 import ScenarioList from './components/ScenarioList.tsx';
 import RecordingNotification from './components/RecordingNotification.tsx';
-import AddScenarioModal from './components/AddScenarioModal.tsx';
+import AddScenarioForm from './components/AddScenarioForm.tsx';
 import ActionButtons from './components/ActionButtons.tsx';
+import FunctionList from './components/FunctionList.tsx';
+import AddFunctionForm from './components/AddFunctionForm.tsx';
 
 // Main component
 const AutomationScenarios: React.FC = () => {
+  // Scenario state
   const [scenarios, setScenarios] = useState<ScenarioMap>({});
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [currentSteps, setCurrentSteps] = useState<ScenarioStep[]>([]);
+  
+  // Function state
+  const [functions, setFunctions] = useState<FunctionMap>({});
+  const [functionLoading, setFunctionLoading] = useState(true);
+  const [functionModalVisible, setFunctionModalVisible] = useState(false);
+  const [functionForm] = Form.useForm();
+  const [currentFunction, setCurrentFunction] = useState<CustomFunction | null>(null);
+  const [activeFunctionId, setActiveFunctionId] = useState<string | null>(null);
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState<string>('scenarios');
   
   // Recording state
   const [recording, setRecording] = useState(false);
@@ -39,6 +58,12 @@ const AutomationScenarios: React.FC = () => {
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
   const clickListenerRef = useRef<(e: MouseEvent) => void | any>(null);
   const changeListenerRef = useRef<(e: Event) => void | any>(null);
+  
+  // Execution state
+  const [executing, setExecuting] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
+  const [executionProgress, setExecutionProgress] = useState<number>(0);
+  const [executionError, setExecutionError] = useState<string | null>(null);
   
   // Check if this feature is active
   const { activeIcons = [] } = useSelector(
@@ -70,6 +95,29 @@ const AutomationScenarios: React.FC = () => {
     }
   }, [isActive]);
   
+  // Load functions from storage
+  useEffect(() => {
+    if (isActive) {
+      setFunctionLoading(true);
+      
+      // Define an async function to load functions
+      const loadFunctions = async () => {
+        try {
+          const loadedFunctions = await getAllFunctionsFromLocalStorage();
+          setFunctions(loadedFunctions);
+        } catch (error) {
+          console.error('Error loading functions:', error);
+          message.error('Failed to load functions');
+        } finally {
+          setFunctionLoading(false);
+        }
+      };
+      
+      // Call the async function
+      loadFunctions();
+    }
+  }, [isActive]);
+  
   // Cleanup effect to remove event listeners when component unmounts
   useEffect(() => {
     return () => {
@@ -81,30 +129,97 @@ const AutomationScenarios: React.FC = () => {
   }, [recording]);
   
   // Play a scenario
-  const playScenario = (id: string) => {
+  const playScenario = async (id: string) => {
     const scenarioId = id.replace('sc_', '');
     const scenario = scenarios[id];
     
     if (!scenario || !scenario.data || scenario.data.length === 0) {
-      alert(`"${scenario?.title || 'Scenario'}" has no steps to play.`);
+      message.warning(`"${scenario?.title || 'Scenario'}" has no steps to play.`);
       return;
     }
     
-    // Set this as the active scenario for recording
+    // Don't allow playing a scenario while another one is executing
+    if (executing) {
+      message.warning('Another scenario is currently executing. Please wait for it to complete.');
+      return;
+    }
+    
+    // Set this as the active scenario
     setActiveScenarioId(id);
     
-    // Here we would normally send a message to the background script
-    // For now, we'll just log the scenario
-    console.log('Playing scenario:', scenarioId, scenario);
-    alert(`Playing scenario: ${scenario.title}. This is now the active scenario for recording.`);
+    // Reset execution state
+    setExecuting(true);
+    setCurrentStepIndex(-1);
+    setExecutionProgress(0);
+    setExecutionError(null);
+    
+    try {
+      // Calculate total steps including repeats
+      const totalSteps = scenario.data.length * Math.max(1, scenario.repeat);
+      let stepsCompleted = 0;
+      
+      // Execute the scenario the specified number of times (minimum once)
+      const repeatCount = Math.max(1, scenario.repeat);
+      
+      message.info(`Starting execution of scenario "${scenario.title}"`);
+      
+      for (let i = 0; i < repeatCount; i++) {
+        // If this is a repeat, show a message
+        if (i > 0) {
+          message.info(`Repeating scenario "${scenario.title}" (${i + 1}/${repeatCount})`);
+        }
+        
+        // Execute all steps in the scenario
+        await StepExecutor.executeSteps(
+          scenario.data, 
+          (stepIndex) => {
+            // Update execution state after each step
+            setCurrentStepIndex(stepIndex);
+            stepsCompleted++;
+            setExecutionProgress(Math.round((stepsCompleted / totalSteps) * 100));
+          },
+          functions // Pass the functions map for function steps
+        );
+      }
+      
+      // Execution completed successfully
+      message.success(`Scenario "${scenario.title}" executed successfully`);
+    } catch (error) {
+      // Handle execution error
+      console.error('Error executing scenario:', error);
+      setExecutionError(error instanceof Error ? error.message : 'Unknown error');
+      message.error(`Error executing scenario: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      // Reset execution state
+      setExecuting(false);
+      setCurrentStepIndex(-1);
+      setExecutionProgress(0);
+    }
   };
   
   // Edit a scenario
   const editScenario = (id: string) => {
     const scenario = scenarios[id];
+    
+    // Set the current steps to the scenario's steps
+    setCurrentSteps([...scenario.data]);
+    
+    // Set the form values
+    form.setFieldsValue({
+      title: scenario.title,
+      repeat: scenario.repeat || 0
+    });
+    
+    // Set flag to indicate this is not from recording
+    setIsFromRecording(false);
+    
+    // Show the modal
+    setModalVisible(true);
+    
+    // Set this as the active scenario for editing
+    setActiveScenarioId(id);
+    
     console.log('Editing scenario:', id, scenario);
-    alert(`Editing scenario: ${scenario.title}`);
-    // In a real implementation, this would open an editor
   };
   
   // Delete a scenario
@@ -162,41 +277,53 @@ const AutomationScenarios: React.FC = () => {
   };
   
   /**
-   * Saves the new scenario using ExtensionStorageManager and updates the UI
-   * This function validates the form, generates a unique ID, creates a new scenario object,
+   * Saves the scenario using ExtensionStorageManager and updates the UI
+   * This function validates the form, creates a scenario object,
    * saves it using ExtensionStorageManager, and updates the component state
+   * If activeScenarioId is set, it updates the existing scenario; otherwise, it creates a new one
    */
   const saveScenario = () => {
     // Validate the form fields
     form.validateFields().then(async values => {
       try {
-        // Generate a unique ID for the new scenario
-        const id = await generateUniqueId();
-        
-        // Create the new scenario object
-        const newScenario: Scenario = {
+        // Create the scenario object
+        const scenarioToSave: Scenario = {
           title: values.title,
           repeat: values.repeat || 0,
           data: currentSteps
         };
         
-        // Save the scenario using ExtensionStorageManager
-        const success = await saveScenarioToLocalStorage(id, newScenario);
+        let success = false;
+        let scenarioId = '';
+        
+        // Check if we're updating an existing scenario or creating a new one
+        if (activeScenarioId) {
+          // Update existing scenario
+          success = await saveScenarioToLocalStorage(activeScenarioId, scenarioToSave);
+          scenarioId = activeScenarioId;
+        } else {
+          // Generate a unique ID for the new scenario
+          const id = await generateUniqueId();
+          success = await saveScenarioToLocalStorage(id, scenarioToSave);
+          scenarioId = `sc_${id}`;
+        }
         
         if (success) {
-          // Update the local state to include the new scenario
+          // Update the local state
           setScenarios(prev => ({
             ...prev,
-            [`sc_${id}`]: newScenario
+            [scenarioId]: scenarioToSave
           }));
           
           // Close the modal and reset the form
           setModalVisible(false);
           form.resetFields();
           setCurrentSteps([]);
+          setActiveScenarioId(null);
           
           // Show a success message
-          message.success(`Scenario "${newScenario.title}" has been saved.`);
+          const action = activeScenarioId ? 'updated' : 'saved';
+          message.success(`Scenario "${scenarioToSave.title}" has been ${action}.`);
         } else {
           // Show an error message if the save failed
           message.error('Failed to save scenario. Please try again.');
@@ -439,13 +566,151 @@ const AutomationScenarios: React.FC = () => {
   
   
   /**
-   * Handles canceling the modal
+   * Handles canceling the scenario modal
    * This closes the modal and resets the form and steps
    */
   const handleCancel = () => {
     setModalVisible(false);
     form.resetFields();
     setCurrentSteps([]);
+  };
+  
+  /**
+   * Opens the modal for adding a new function
+   * This resets the form and shows the modal
+   */
+  const addFunction = () => {
+    // Reset the form and current function
+    functionForm.resetFields();
+    setCurrentFunction(null);
+    
+    // Show the modal
+    setFunctionModalVisible(true);
+    
+    // Reset the active function ID
+    setActiveFunctionId(null);
+  };
+  
+  /**
+   * Opens the modal for editing an existing function
+   * This sets the form values to the function's values and shows the modal
+   */
+  const editFunction = (id: string) => {
+    const func = functions[id];
+    
+    // Set the current function
+    setCurrentFunction(func);
+    
+    // Set the form values
+    functionForm.setFieldsValue({
+      title: func.title,
+      code: func.code
+    });
+    
+    // Show the modal
+    setFunctionModalVisible(true);
+    
+    // Set this as the active function for editing
+    setActiveFunctionId(id);
+    
+    console.log('Editing function:', id, func);
+  };
+  
+  /**
+   * Deletes a function
+   * This removes the function from storage and updates the state
+   */
+  const deleteFunction = async (id: string) => {
+    if (window.confirm(`Are you sure you want to delete "${functions[id]?.title}"?`)) {
+      try {
+        const success = await removeFunctionFromLocalStorage(id);
+        
+        if (success) {
+          // Update the local state
+          const updatedFunctions = { ...functions };
+          delete updatedFunctions[id];
+          setFunctions(updatedFunctions);
+          message.success('Function deleted successfully');
+        } else {
+          message.error('Failed to delete function');
+        }
+      } catch (error) {
+        console.error('Error deleting function:', error);
+        message.error('Failed to delete function');
+      }
+    }
+  };
+  
+  /**
+   * Saves the function using ExtensionStorageManager and updates the UI
+   * This function validates the form, creates a function object,
+   * saves it using ExtensionStorageManager, and updates the component state
+   * If activeFunctionId is set, it updates the existing function; otherwise, it creates a new one
+   */
+  const saveFunction = () => {
+    // Validate the form fields
+    functionForm.validateFields().then(async values => {
+      try {
+        // Create the function object
+        const functionToSave: CustomFunction = {
+          title: values.title,
+          code: values.code
+        };
+        
+        let success = false;
+        let functionId = '';
+        
+        // Check if we're updating an existing function or creating a new one
+        if (activeFunctionId) {
+          // Update existing function
+          success = await saveFunctionToLocalStorage(activeFunctionId, functionToSave);
+          functionId = activeFunctionId;
+        } else {
+          // Generate a unique ID for the new function
+          const id = await generateUniqueId();
+          success = await saveFunctionToLocalStorage(id, functionToSave);
+          functionId = `fu_${id}`;
+        }
+        
+        if (success) {
+          // Update the local state
+          setFunctions(prev => ({
+            ...prev,
+            [functionId]: functionToSave
+          }));
+          
+          // Close the modal and reset the form
+          setFunctionModalVisible(false);
+          functionForm.resetFields();
+          setCurrentFunction(null);
+          setActiveFunctionId(null);
+          
+          // Show a success message
+          const action = activeFunctionId ? 'updated' : 'saved';
+          message.success(`Function "${functionToSave.title}" has been ${action}.`);
+        } else {
+          // Show an error message if the save failed
+          message.error('Failed to save function. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error saving function:', error);
+        message.error('Failed to save function. Please try again.');
+      }
+    }).catch(error => {
+      // Log validation errors
+      console.error('Validation failed:', error);
+      message.error('Please fill in all required fields.');
+    });
+  };
+  
+  /**
+   * Handles canceling the function modal
+   * This closes the modal and resets the form
+   */
+  const handleFunctionCancel = () => {
+    setFunctionModalVisible(false);
+    functionForm.resetFields();
+    setCurrentFunction(null);
   };
   
   if (!isActive) {
@@ -464,7 +729,7 @@ const AutomationScenarios: React.FC = () => {
   
   return (
     <div>
-      <Title>Automation Scenarios</Title>
+      <Title>Automation</Title>
       
       {recording && (
         <RecordingNotification
@@ -474,34 +739,101 @@ const AutomationScenarios: React.FC = () => {
           onAddNewScenario={addNewScenarioWhileRecording}
         />
       )}
-
-      { !!recordedSteps?.length && <AddScenarioModal
-          visible={modalVisible}
-          isFromRecording={isFromRecording}
-          form={form}
-          currentSteps={recordedSteps}
-          onCancel={handleCancel}
-          onSave={saveScenario}
-          onAddStep={addStep}
-          onRemoveStep={removeStep}
-          onUpdateStep={updateStep}
-      /> }
-      <ScenarioList
-        scenarios={scenarios}
-        activeScenarioId={activeScenarioId}
-        recording={recording}
-        onPlay={playScenario}
-        onEdit={editScenario}
-        onDelete={deleteScenario}
-      />
       
-      <ActionButtons
-        recording={recording}
-        onAddScenario={addScenario}
-        onToggleRecording={startRecording}
-      />
-      
+      {executing && (
+        <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f0f8ff', borderRadius: '4px' }}>
+          <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 'bold' }}>
+              Executing: {activeScenarioId && scenarios[activeScenarioId]?.title}
+            </span>
+            <span>
+              {currentStepIndex >= 0 && activeScenarioId && 
+                `Step ${currentStepIndex + 1} of ${scenarios[activeScenarioId]?.data.length}`}
+            </span>
+          </div>
+          <Progress percent={executionProgress} status={executionError ? 'exception' : 'active'} />
+          {executionError && (
+            <div style={{ marginTop: '8px', color: '#ff4d4f' }}>
+              Error: {executionError}
+            </div>
+          )}
+        </div>
+      )}
 
+      <Tabs 
+        activeKey={activeTab} 
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'scenarios',
+            label: 'Scenarios',
+            children: (
+              <>
+                <AddScenarioForm
+                  isFromRecording={isFromRecording}
+                  form={form}
+                  currentSteps={isFromRecording ? recordedSteps : currentSteps}
+                  functions={functions}
+                  onCancel={handleCancel}
+                  onSave={saveScenario}
+                  onAddStep={addStep}
+                  onRemoveStep={removeStep}
+                  onUpdateStep={updateStep}
+                />
+                <ScenarioList
+                  scenarios={scenarios}
+                  activeScenarioId={activeScenarioId}
+                  recording={recording}
+                  executing={executing}
+                  executingScenarioId={executing ? activeScenarioId : null}
+                  onPlay={playScenario}
+                  onEdit={editScenario}
+                  onDelete={deleteScenario}
+                />
+                
+                <ActionButtons
+                  recording={recording}
+                  onAddScenario={addScenario}
+                  onToggleRecording={startRecording}
+                />
+              </>
+            ),
+          },
+          {
+            key: 'functions',
+            label: 'Functions',
+            children: (
+              <>
+                {functionModalVisible && (
+                  <AddFunctionForm
+                    form={functionForm}
+                    currentFunction={currentFunction}
+                    onSave={saveFunction}
+                    onCancel={handleFunctionCancel}
+                  />
+                )}
+                <FunctionList
+                  functions={functions}
+                  activeFunctionId={activeFunctionId}
+                  onEdit={editFunction}
+                  onDelete={deleteFunction}
+                />
+                
+                <div style={{ marginTop: '16px' }}>
+                  <Button 
+                    type="primary" 
+                    onClick={addFunction}
+                    icon={<IconPlus size={18} />}
+                    style={{ width: '100%' }}
+                  >
+                    Add Function
+                  </Button>
+                </div>
+              </>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 };

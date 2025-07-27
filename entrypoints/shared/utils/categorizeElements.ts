@@ -1,6 +1,29 @@
 import { isButtonElement } from './isButtonElement';
 
 /**
+ * Helper function to safely get className as a string, handling both string and SVGAnimatedString
+ * @param element The element to get className from
+ * @returns The className as a lowercase string or empty string if not available
+ */
+const getClassNameAsString = (element: Element | null): string => {
+  if (!element) return '';
+  
+  const className = element.className;
+  
+  // Handle SVGAnimatedString for SVG elements
+  if (className && typeof className === 'object' && 'baseVal' in className) {
+    return className.baseVal.toLowerCase();
+  }
+  
+  // Handle regular string className
+  if (className && typeof className === 'string') {
+    return className.toLowerCase();
+  }
+  
+  return '';
+};
+
+/**
  * Element category types
  */
 export type ElementCategory = 
@@ -277,7 +300,7 @@ const isPrimaryButton = (element: Element, style: CSSStyleDeclaration): boolean 
                       parseInt(style.fontWeight) >= 600;
   
   // Check for common primary button classes
-  const className = element.className.toLowerCase();
+  const className = getClassNameAsString(element);
   const hasPrimaryClass = className.includes('primary') || 
                           className.includes('main') || 
                           className.includes('cta');
@@ -307,7 +330,7 @@ const isSecondaryButton = (element: Element, style: CSSStyleDeclaration): boolea
                              style.backgroundColor.includes('hsla(');
   
   // Check for common secondary button classes
-  const className = element.className.toLowerCase();
+  const className = getClassNameAsString(element);
   const hasSecondaryClass = className.includes('secondary') || 
                             className.includes('outline') || 
                             className.includes('bordered');
@@ -366,7 +389,8 @@ const categorizeFormInput = (element: Element): ElementCategory | null => {
   }
   
   // Check for custom form elements with classes that suggest their type
-  const className = element.className.toLowerCase();
+  
+  const className = getClassNameAsString(element);
   if (className) {
     if (className.includes('checkbox')) {
       return 'input-checkbox';
@@ -404,7 +428,7 @@ const isNavigationElement = (element: Element): boolean => {
   }
   
   // Check for common navigation classes
-  const className = element.className.toLowerCase();
+  const className = getClassNameAsString(element);
   if (className.includes('nav') || className.includes('menu') || className.includes('tabs')) {
     return true;
   }
@@ -428,7 +452,7 @@ const isContainerElement = (element: Element): boolean => {
     }
     
     // Check for common container classes
-    const className = element.className.toLowerCase();
+    const className = getClassNameAsString(element);
     if (className.includes('container') || 
         className.includes('card') || 
         className.includes('panel') || 
@@ -456,7 +480,7 @@ const isContainerElement = (element: Element): boolean => {
  */
 const isModalElement = (element: Element): boolean => {
   // Check for common modal classes
-  const className = element.className.toLowerCase();
+  const className = getClassNameAsString(element);
   if (className.includes('modal') || 
       className.includes('dialog') || 
       className.includes('popup')) {
@@ -484,7 +508,7 @@ const isModalElement = (element: Element): boolean => {
  */
 const isTooltipElement = (element: Element): boolean => {
   // Check for common tooltip classes
-  const className = element.className.toLowerCase();
+  const className = getClassNameAsString(element);
   if (className.includes('tooltip') || 
       className.includes('popover') || 
       className.includes('hint')) {

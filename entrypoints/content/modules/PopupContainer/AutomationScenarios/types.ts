@@ -26,6 +26,21 @@ export interface ScenarioMap {
 }
 
 /**
+ * Represents a custom JavaScript function
+ */
+export interface CustomFunction {
+  title: string;
+  code: string;
+}
+
+/**
+ * Map of function IDs to function objects
+ */
+export interface FunctionMap {
+  [key: string]: CustomFunction;
+}
+
+/**
  * Options for step types in the form
  */
 export const stepTypeOptions = [

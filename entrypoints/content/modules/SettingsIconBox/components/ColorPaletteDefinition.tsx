@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { 
-  IconPalette, 
-  IconPlus, 
-  IconTrash, 
-  IconEdit, 
-  IconChevronDown, 
+import {
+  IconPalette,
+  IconChevronDown,
   IconChevronRight,
-  IconCheck,
-  IconX,
-  IconRefresh,
+  IconColorSwatch,
+  IconEye,
   IconColorPicker
 } from "@tabler/icons-react";
 import { 
@@ -85,6 +81,9 @@ const ColorPaletteDefinition: React.FC = () => {
   // Color system state
   const [selectedColorSystem, setSelectedColorSystem] = useState<ColorSystem>('hex');
   const [colorSystemMenuOpen, setColorSystemMenuOpen] = useState<boolean>(false);
+
+  // State to track which color is selected
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
 
   // Collapsible groups state
   const [collapsedGroups, setCollapsedGroups] = useState<{
@@ -431,67 +430,115 @@ const ColorPaletteDefinition: React.FC = () => {
   };
 
   /**
-   * Renders a color category section
+   * Renders a color category section for neutral colors
    */
-  const renderColorCategory = (
-    category: keyof ColorPalette,
+  const renderNeutralColorCategory = (
     title: string,
     description: string
   ) => {
-    const colors = colorPalette[category];
-    const isCollapsed = collapsedGroups[category];
-    const isPrimary = category === 'primary';
+    const colors = colorPalette.neutral;
+    const isCollapsed = collapsedGroups.neutral;
+
+    // Handle color square click
+    const handleColorClick = (colorId: string) => {
+      setSelectedColorId(selectedColorId === colorId ? null : colorId);
+    };
 
     return (
-      <div className="mb-6">
+      <div className="mb-8">
         <div 
-          className="font-medium mb-1 flex items-center gap-1 cursor-pointer"
-          onClick={() => toggleGroupCollapse(category)}
+          className="font-medium mb-2 flex items-center gap-2 cursor-pointer hover:text-gray-700 transition-colors duration-200"
+          onClick={() => toggleGroupCollapse('neutral')}
         >
           {isCollapsed ? 
-            <IconChevronRight size={16} className="text-gray-500" /> : 
-            <IconChevronDown size={16} className="text-gray-500" />
+            <IconChevronRight size={18} className="text-gray-500" /> : 
+            <IconChevronDown size={18} className="text-gray-500" />
           }
-          <IconPalette size={16} />
-          {title} {isPrimary && `(${colors.length}/3)`}
+          <IconColorSwatch size={20} className="text-gray-700" />
+          <span className="text-lg">{title}</span>
         </div>
         
         {!isCollapsed && (
           <>
-            <p className="text-xs text-gray-600 ml-6 mb-2">{description}</p>
+            <p className="text-sm text-gray-600 ml-8 mb-3 leading-relaxed">{description}</p>
             
-            <div className="ml-6 space-y-2">
+            <div className="ml-8 space-y-6">
               {/* Display colors */}
               {colors.map(color => (
-                <div key={color.id} className="flex items-center gap-2">
-                  <div className="flex-1 flex flex-col bg-white rounded border border-gray-200">
-                    <div className="flex items-center gap-2 p-2">
+                <div key={color.id} className="flex flex-col gap-2">
+                  <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors duration-200">
+                    <div className="flex items-center gap-3 p-3">
+                      {/* Larger, clickable color square */}
                       <div 
-                        className="w-8 h-8 rounded border border-gray-300" 
+                        className={`w-14 h-14 rounded-md border cursor-pointer transition-all duration-200 ${selectedColorId === color.id ? 'border-gray-500 shadow-lg scale-105' : 'border-gray-300 shadow-inner hover:shadow-md hover:scale-105'}`}
                         style={{ backgroundColor: color.color }}
                         title={formatColor(color.color)}
+                        onClick={() => handleColorClick(color.id)}
                       />
-                      <span className="flex-1 text-sm">{color.name}</span>
-                      <span className="text-xs text-gray-500">{formatColor(color.color)}</span>
+                      <span className="flex-1 text-base font-medium">{color.name}</span>
+                      <span className="text-sm font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">{formatColor(color.color)}</span>
                       
                       {/* Show frequency if available */}
                       {color.frequency && (
-                        <span className="text-xs bg-gray-100 px-1 py-0.5 rounded text-gray-600">
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-700 font-medium border border-gray-200">
                           {color.frequency}x
                         </span>
                       )}
                     </div>
                     
+                    {/* Color information section - shown when color is selected */}
+                    {selectedColorId === color.id && (
+                      <div className="border-t border-gray-100 p-4 bg-gray-50">
+                        <h4 className="text-sm font-semibold mb-2 text-gray-800">Color Information</h4>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">HEX</p>
+                            <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.hex || color.color}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">RGB</p>
+                            <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.rgb || ''}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">HSL</p>
+                            <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.hsl || ''}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">HSV</p>
+                            <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.hsv || ''}</p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-600 mb-2">
+                          <p className="mb-1"><strong>Contrast ratio with white:</strong> {getColorInAllFormats(color.color)?.contrastWithWhite?.toFixed(2) || 'N/A'}</p>
+                          <p><strong>Contrast ratio with black:</strong> {getColorInAllFormats(color.color)?.contrastWithBlack?.toFixed(2) || 'N/A'}</p>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Source elements section */}
                     {color.sourceElements && color.sourceElements.length > 0 && (
-                      <div className="border-t border-gray-100 p-2 bg-gray-50">
-                        <div className="text-xs text-gray-500 mb-1">
-                          Found in {color.sourceElements.length} elements:
+                      <div className={`border-t border-gray-100 p-3 ${selectedColorId === color.id ? 'bg-gray-100' : 'bg-gray-50'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <IconEye size={16} className="text-gray-700" />
+                          <div className="text-sm text-gray-700 font-medium">
+                            Found in {color.sourceElements.length} elements
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-2">
                           {color.sourceElements.slice(0, 5).map((element, idx) => {
+                            // Helper function to safely get className as a string
+                            const getClassNameAsString = (el: Element): string => {
+                              const className = el.className;
+                              // Handle SVGAnimatedString for SVG elements
+                              if (className && typeof className === 'object' && 'baseVal' in className) {
+                                return className.baseVal;
+                              }
+                              // Handle regular string className
+                              return typeof className === 'string' ? className : '';
+                            };
+                            
                             const tagName = element.tagName?.toLowerCase();
-                            const className = element.className ? `.${element.className.split(' ')[0]}` : '';
+                            const className = getClassNameAsString(element) ? `.${getClassNameAsString(element).split(' ')[0]}` : '';
                             const id = element.id ? `#${element.id}` : '';
                             const displayName = id || className || tagName;
                             
@@ -499,15 +546,16 @@ const ColorPaletteDefinition: React.FC = () => {
                               <button
                                 key={idx}
                                 onClick={() => navigateToElement(element)}
-                                className="text-xs bg-white px-1 py-0.5 rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-200"
+                                className="text-xs bg-white px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-colors duration-200 flex items-center gap-1"
                                 title="Click to navigate to this element"
                               >
+                                <IconEye size={12} className="text-gray-600" />
                                 {displayName}
                               </button>
                             );
                           })}
                           {color.sourceElements.length > 5 && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200">
                               +{color.sourceElements.length - 5} more
                             </span>
                           )}
@@ -520,6 +568,151 @@ const ColorPaletteDefinition: React.FC = () => {
             </div>
           </>
         )}
+      </div>
+    );
+  };
+  
+  /**
+   * Renders all colors with category tags
+   */
+  const renderColorsWithTags = () => {
+    // Combine primary, secondary, and tertiary colors
+    const allColors = [
+      ...colorPalette.primary.map(color => ({ ...color, category: 'primary' })),
+      ...colorPalette.secondary.map(color => ({ ...color, category: 'secondary' })),
+      ...colorPalette.tertiary.map(color => ({ ...color, category: 'tertiary' }))
+    ];
+    
+    // Get category display names
+    const getCategoryName = (category: string): string => {
+      switch(category) {
+        case 'primary': return 'Primary';
+        case 'secondary': return 'Secondary';
+        case 'tertiary': return 'Tertiary';
+        default: return category;
+      }
+    };
+    
+    // Get category tag color
+    const getCategoryTagColor = (category: string): string => {
+      switch(category) {
+        case 'primary': return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'secondary': return 'bg-green-100 text-green-800 border-green-200';
+        case 'tertiary': return 'bg-purple-100 text-purple-800 border-purple-200';
+        default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      }
+    };
+
+    // Handle color square click
+    const handleColorClick = (colorId: string) => {
+      setSelectedColorId(selectedColorId === colorId ? null : colorId);
+    };
+    
+    return (
+      <div className="mb-8">
+        <div className="font-medium mb-3 flex items-center gap-2">
+          <IconColorSwatch size={20} className="text-blue-600" />
+          <span className="text-lg">Color Palette</span>
+        </div>
+        
+        <div className="space-y-6 ml-2">
+          {allColors.map(color => (
+            <div key={color.id} className="flex flex-col gap-2">
+              <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors duration-200">
+                <div className="flex items-center gap-3 p-3">
+                  {/* Larger, clickable color square */}
+                  <div 
+                    className={`w-14 h-14 rounded-md border cursor-pointer transition-all duration-200 ${selectedColorId === color.id ? 'border-blue-500 shadow-lg scale-105' : 'border-gray-300 shadow-inner hover:shadow-md hover:scale-105'}`}
+                    style={{ backgroundColor: color.color }}
+                    title={formatColor(color.color)}
+                    onClick={() => handleColorClick(color.id)}
+                  />
+                  <span className="flex-1 text-base font-medium">{color.name}</span>
+                  
+                  {/* Category tag */}
+                  <span className={`text-xs px-2 py-1 rounded-full border ${getCategoryTagColor(color.category)} font-medium`}>
+                    {getCategoryName(color.category)}
+                  </span>
+                  
+                  <span className="text-sm font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">{formatColor(color.color)}</span>
+                  
+                  {/* Show frequency if available */}
+                  {color.frequency && (
+                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-700 font-medium border border-gray-200">
+                      {color.frequency}x
+                    </span>
+                  )}
+                </div>
+                
+                {/* Color information section - shown when color is selected */}
+                {selectedColorId === color.id && (
+                  <div className="border-t border-gray-100 p-4 bg-gray-50">
+                    <h4 className="text-sm font-semibold mb-2 text-gray-800">Color Information</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">HEX</p>
+                        <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.hex || color.color}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">RGB</p>
+                        <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.rgb || ''}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">HSL</p>
+                        <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.hsl || ''}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">HSV</p>
+                        <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">{getColorInAllFormats(color.color)?.hsv || ''}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-600 mb-2">
+                      <p className="mb-1"><strong>Contrast ratio with white:</strong> {getColorInAllFormats(color.color)?.contrastWithWhite?.toFixed(2) || 'N/A'}</p>
+                      <p><strong>Contrast ratio with black:</strong> {getColorInAllFormats(color.color)?.contrastWithBlack?.toFixed(2) || 'N/A'}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Source elements section */}
+                {color.sourceElements && color.sourceElements.length > 0 && (
+                  <div className={`border-t border-gray-100 p-3 ${selectedColorId === color.id ? 'bg-gray-100' : 'bg-gray-50'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <IconEye size={16} className="text-blue-600" />
+                      <div className="text-sm text-gray-700 font-medium">
+                        Found in {color.sourceElements.length} elements
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {color.sourceElements.slice(0, 5).map((element, idx) => {
+                        const tagName = element.tagName?.toLowerCase();
+                        const className = element.className ? `.${element.className.split(' ')[0]}` : '';
+                        const id = element.id ? `#${element.id}` : '';
+                        const displayName = id || className || tagName;
+                        
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => navigateToElement(element)}
+                            className="text-xs bg-white px-2 py-1 rounded-md border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200 flex items-center gap-1"
+                            title="Click to navigate to this element"
+                          >
+                            <IconEye size={12} className="text-blue-500" />
+                            {displayName}
+                          </button>
+                        );
+                      })}
+                      {color.sourceElements.length > 5 && (
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200">
+                          +{color.sourceElements.length - 5} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -570,60 +763,52 @@ const ColorPaletteDefinition: React.FC = () => {
   // };
 
   return (
-    <div className="bg-gray-100 p-3 rounded-md mb-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          {/* Color System Selector */}
-          <div className="relative">
-            <button
-              className="flex items-center gap-1 text-xs bg-white px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 active:bg-gray-100 active:opacity-90"
-              onClick={toggleColorSystemMenu}
-            >
-              <span>Format: {colorSystems.find(cs => cs.value === selectedColorSystem)?.label}</span>
-              <IconChevronDown size={14} className={`transition-transform ${colorSystemMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
+    <div className="bg-white p-5 rounded-lg mb-6 shadow-sm border border-gray-100">
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          <IconPalette size={24} className="text-purple-600" />
+          <h3 className="text-xl font-semibold text-gray-800">Color Palette Definition</h3>
+        </div>
+        
+        {/* Color System Selector */}
+        <div className="relative">
+          <button
+            className="flex items-center gap-2 text-sm bg-white px-3 py-1.5 rounded-md border border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 transition-colors duration-200 shadow-sm"
+            onClick={toggleColorSystemMenu}
+          >
+            <IconColorPicker size={16} className="text-purple-500" />
+            <span className="font-medium">Format: {colorSystems.find(cs => cs.value === selectedColorSystem)?.label}</span>
+            <IconChevronDown size={16} className={`transition-transform text-gray-500 ${colorSystemMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
 
-            {colorSystemMenuOpen && (
-              <div className="absolute right-0 mt-1 bg-white rounded shadow-md border border-gray-200 z-10">
-                {colorSystems.map((system) => (
-                  <button
-                    key={system.value}
-                    className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 active:bg-gray-100 ${
-                      selectedColorSystem === system.value ? 'bg-gray-100 font-medium' : ''
-                    }`}
-                    onClick={() => selectColorSystem(system.value)}
-                  >
-                    {system.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {colorSystemMenuOpen && (
+            <div className="absolute right-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 z-10 overflow-hidden">
+              {colorSystems.map((system) => (
+                <button
+                  key={system.value}
+                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-purple-50 active:bg-purple-100 transition-colors duration-150 ${
+                    selectedColorSystem === system.value ? 'bg-purple-100 font-medium text-purple-700' : 'text-gray-700'
+                  }`}
+                  onClick={() => selectColorSystem(system.value)}
+                >
+                  {system.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="text-sm">
+      <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+        Define and analyze the color palette used on your page. Colors are categorized into primary, secondary, tertiary, and neutral groups based on their usage.
+      </p>
 
-        {renderColorCategory(
-          'primary', 
-          'Primary Colors', 
-          'These are your main brand colors. Use them for key elements like logos, primary buttons, and important UI elements. Limit to 3 colors maximum.'
-        )}
+      <div className="text-sm">
+        {/* Render primary, secondary, and tertiary colors with category tags */}
+        {renderColorsWithTags()}
         
-        {renderColorCategory(
-          'secondary', 
-          'Secondary Colors', 
-          'These complement your primary colors and can be used for secondary buttons, accents, and supporting elements.'
-        )}
-        
-        {renderColorCategory(
-          'tertiary', 
-          'Tertiary Colors', 
-          'These provide additional options for specific UI needs, illustrations, or to add variety to your design.'
-        )}
-        
-        {renderColorCategory(
-          'neutral', 
+        {/* Render neutral colors separately */}
+        {renderNeutralColorCategory(
           'Neutral Colors', 
           'These are used for text, backgrounds, borders, and other UI elements. They help create hierarchy and improve readability.'
         )}

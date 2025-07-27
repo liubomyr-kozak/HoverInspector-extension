@@ -1,57 +1,27 @@
 import React from 'react';
-import { Modal, Form, Input, InputNumber, Select, Button, Divider } from 'antd';
-import { IconDeviceFloppy, IconPlus, IconTrash } from '@tabler/icons-react';
-import { ScenarioStep, stepTypeOptions } from '../types.ts';
+import { Form, Input, InputNumber, Select, Button, Divider } from 'antd';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { ScenarioStep, stepTypeOptions, FunctionMap } from '../types.ts';
 import { EmptyState, StepContainer, StepHeader, StepTitle } from '../styles.ts';
 
-interface AddScenarioModalProps {
-  visible: boolean;
-  isFromRecording: boolean;
+interface AddScenarioFormProps {
   form: any; // Form instance from antd
   currentSteps: ScenarioStep[];
-  onCancel: () => void;
-  onSave: () => void;
+  functions?: FunctionMap; // Optional map of functions for function steps
   onAddStep: () => void;
   onRemoveStep: (index: number) => void;
   onUpdateStep: (index: number, field: keyof ScenarioStep, value: string) => void;
 }
 
-/**
- * Component for the modal to add or edit scenarios
- */
-const AddScenarioModal: React.FC<AddScenarioModalProps> = ({
-  visible,
-  isFromRecording,
+const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
   form,
   currentSteps,
-  onCancel,
-  onSave,
+  functions = {}, // Default to empty object if not provided
   onAddStep,
   onRemoveStep,
   onUpdateStep
 }) => {
   return (
-    // <Modal
-    //   title={isFromRecording ? "Save Recorded Scenario" : "Add New Scenario"}
-    //   open={visible}
-    //   onCancel={onCancel}
-    //   width={800}
-    //   // @ts-ignore
-    //   getContainer={() => (document.querySelector('hover-inspector')!.shadowRoot as HTMLElement)?.querySelector('html > body')}
-    //   footer={[
-    //     <Button key="cancel" onClick={onCancel}>
-    //       Cancel
-    //     </Button>,
-    //     <Button
-    //       key="save"
-    //       type="primary"
-    //       onClick={onSave}
-    //       icon={<IconDeviceFloppy size={18} />}
-    //     >
-    //       Save Scenario
-    //     </Button>
-    //   ]}
-    // >
       <Form
         form={form}
         layout="vertical"
@@ -114,6 +84,21 @@ const AddScenarioModal: React.FC<AddScenarioModalProps> = ({
                 </Form.Item>
               )}
               
+              {step.type === 'function' && (
+                <Form.Item label="Function" required style={{ marginBottom: '8px' }}>
+                  <Select
+                    value={step.value || ''}
+                    onChange={(value) => onUpdateStep(index, 'value', value)}
+                    style={{ width: '100%' }}
+                    placeholder="Select a function"
+                    options={Object.keys(functions).map(key => ({
+                      value: functions[key].title,
+                      label: functions[key].title
+                    }))}
+                  />
+                </Form.Item>
+              )}
+              
               {(step.type === 'value' || step.type === 'code' || step.type === 'redirect' || step.type === 'wait') && (
                 <Form.Item label="Value" required style={{ marginBottom: '8px' }}>
                   {step.type === 'code' ? (
@@ -150,8 +135,7 @@ const AddScenarioModal: React.FC<AddScenarioModalProps> = ({
           Add Step
         </Button>
       </Form>
-    // </Modal>
   );
 };
 
-export default AddScenarioModal;
+export default AddScenarioForm;
