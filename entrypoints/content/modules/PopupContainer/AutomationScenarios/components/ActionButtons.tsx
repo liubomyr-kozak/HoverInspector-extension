@@ -20,7 +20,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     <ButtonContainer>
       <AddButton onClick={onAddScenario}>
         <IconPlus size={18} />
-        Add Scenario
+        New Scenario
       </AddButton>
       
       <AddButton 

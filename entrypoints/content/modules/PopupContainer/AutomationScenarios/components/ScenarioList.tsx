@@ -12,6 +12,7 @@ interface ScenarioListProps {
   onPlay: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate?: (id: string) => void;
 }
 
 /**
@@ -25,7 +26,8 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
   executingScenarioId,
   onPlay,
   onEdit,
-  onDelete
+  onDelete,
+  onDuplicate
 }) => {
   // Sort scenario keys alphabetically by scenario title
   const scenarioKeys = Object.keys(scenarios).sort((a, b) => 
@@ -60,6 +62,7 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
           onPlay={onPlay}
           onEdit={onEdit}
           onDelete={onDelete}
+          onDuplicate={onDuplicate}
         />
       ))}
     </StyledScenarioList>

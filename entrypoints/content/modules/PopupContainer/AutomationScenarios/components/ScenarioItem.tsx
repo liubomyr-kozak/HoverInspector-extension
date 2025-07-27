@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconPlayerPlay, IconEdit, IconTrash, IconPlayerPause } from '@tabler/icons-react';
+import { IconPlayerPlay, IconEdit, IconTrash, IconPlayerPause, IconCopy } from '@tabler/icons-react';
 import { Scenario } from '../types.ts';
 import { 
   ScenarioItem as StyledScenarioItem, 
@@ -18,6 +18,7 @@ interface ScenarioItemProps {
   onPlay: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate?: (id: string) => void;
 }
 
 /**
@@ -32,7 +33,8 @@ const ScenarioItem: React.FC<ScenarioItemProps> = ({
   isExecuting,
   onPlay,
   onEdit,
-  onDelete
+  onDelete,
+  onDuplicate
 }) => {
   return (
     <StyledScenarioItem isActive={isActive || isExecuting}>
@@ -70,6 +72,16 @@ const ScenarioItem: React.FC<ScenarioItemProps> = ({
         >
           <IconEdit size={18} />
         </ActionButton>
+        {onDuplicate && (
+          <ActionButton 
+            onClick={() => onDuplicate(id)} 
+            title="Duplicate"
+            disabled={anyExecuting}
+            style={{ opacity: anyExecuting ? 0.5 : 1 }}
+          >
+            <IconCopy size={18} />
+          </ActionButton>
+        )}
         <ActionButton 
           onClick={() => onDelete(id)} 
           title="Delete"

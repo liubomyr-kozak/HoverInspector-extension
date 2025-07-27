@@ -6,8 +6,6 @@ import { CustomFunction } from '../types.ts';
 interface AddFunctionFormProps {
   form: any; // Form instance from antd
   currentFunction: CustomFunction | null;
-  onSave: () => void;
-  onCancel: () => void;
 }
 
 /**
@@ -15,9 +13,7 @@ interface AddFunctionFormProps {
  */
 const AddFunctionForm: React.FC<AddFunctionFormProps> = ({
   form,
-  currentFunction,
-  onSave,
-  onCancel
+  currentFunction
 }) => {
   return (
     <Form
@@ -46,18 +42,6 @@ const AddFunctionForm: React.FC<AddFunctionFormProps> = ({
         />
       </Form.Item>
       
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-        <Button onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button
-          type="primary"
-          onClick={onSave}
-          icon={<IconDeviceFloppy size={18} />}
-        >
-          Save Function
-        </Button>
-      </div>
     </Form>
   );
 };

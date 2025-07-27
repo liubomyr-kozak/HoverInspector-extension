@@ -1,5 +1,23 @@
 import ExtensionStorageManager from '@entrypoints/core/services/storage/ExtensionStorageManager.ts';
-import { Scenario, ScenarioMap, ScenarioStep, CustomFunction, FunctionMap } from '../types.ts';
+import { 
+  Scenario, 
+  ScenarioMap, 
+  ScenarioStep, 
+  CustomFunction, 
+  FunctionMap,
+  ScenarioFolder,
+  ScenarioFolderMap,
+  ScheduleConfig,
+  ScheduleMap,
+  TriggerConfig,
+  TriggerMap,
+  ExecutionHistoryEntry,
+  ExecutionHistoryMap,
+  NotificationPreference,
+  NotificationConfig,
+  NotificationMessage,
+  NotificationMessageMap
+} from '../types.ts';
 
 /**
  * Retrieves all automation scenarios from storage
@@ -42,6 +60,31 @@ export const getAllFunctionsFromLocalStorage = async (): Promise<FunctionMap> =>
 };
 
 /**
+ * Retrieves all scenario folders from storage
+ * 
+ * @returns {Promise<ScenarioFolderMap>} Promise that resolves to a map of folder IDs to folder objects
+ */
+export const getAllFoldersFromLocalStorage = async (): Promise<ScenarioFolderMap> => {
+  try {
+    // Use the same storage manager but filter for folder keys (prefix 'fo_')
+    const allItems = await ExtensionStorageManager.getAllAutomationScenarios();
+    const folders: ScenarioFolderMap = {};
+    
+    // Filter for items with 'fo_' prefix
+    Object.keys(allItems).forEach(key => {
+      if (key.startsWith('fo_')) {
+        folders[key] = allItems[key] as unknown as ScenarioFolder;
+      }
+    });
+    
+    return folders;
+  } catch (e) {
+    console.error('Error getting folders from storage:', e);
+    return {};
+  }
+};
+
+/**
  * Removes a scenario from storage
  * 
  * @param {string} key - The key of the scenario to remove
@@ -73,6 +116,24 @@ export const removeFunctionFromLocalStorage = async (key: string): Promise<boole
     return result.success;
   } catch (e) {
     console.error('Error removing function from storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Removes a folder from storage
+ * 
+ * @param {string} key - The key of the folder to remove
+ * @returns {Promise<boolean>} Promise that resolves to true if the removal was successful, false otherwise
+ */
+export const removeFolderFromLocalStorage = async (key: string): Promise<boolean> => {
+  try {
+    // Extract the ID from the key (remove the 'fo_' prefix)
+    const id = key.replace(/^fo_/, '');
+    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    return result.success;
+  } catch (e) {
+    console.error('Error removing folder from storage:', e);
     return false;
   }
 };
@@ -167,6 +228,52 @@ export const saveFunctionToLocalStorage = async (id: string, customFunction: Cus
 };
 
 /**
+ * Creates a new folder using ExtensionStorageManager
+ * 
+ * @param {ScenarioFolder} folder - The folder object to save
+ * @returns {Promise<{success: boolean, id: string}>} Promise that resolves to an object with success status and folder ID
+ */
+export const createFolderInLocalStorage = async (folder: ScenarioFolder): Promise<{success: boolean, id: string}> => {
+  try {
+    // Generate a unique ID for the new folder
+    const id = await generateUniqueId();
+    const prefixedId = `fo_${id}`;
+    
+    // Save the folder using ExtensionStorageManager
+    const result = await ExtensionStorageManager.saveAutomationScenario(id, folder as any);
+    
+    return { success: result.success, id: prefixedId };
+  } catch (e) {
+    console.error('Error creating folder in storage:', e);
+    return { success: false, id: '' };
+  }
+};
+
+/**
+ * Updates an existing folder using ExtensionStorageManager
+ * 
+ * @param {string} id - The unique ID for the folder
+ * @param {ScenarioFolder} folder - The folder object to save
+ * @returns {Promise<boolean>} Promise that resolves to true if the save was successful, false otherwise
+ */
+export const updateFolderInLocalStorage = async (id: string, folder: ScenarioFolder): Promise<boolean> => {
+  try {
+    // Use the same storage manager but with a different prefix for the key
+    // The 'fo_' prefix will help distinguish folders from scenarios
+    const prefixedId = id.startsWith('fo_') ? id : `fo_${id}`;
+    
+    // Extract the ID without the prefix for the storage manager
+    const storageId = prefixedId.replace(/^fo_/, '');
+    
+    const result = await ExtensionStorageManager.saveAutomationScenario(storageId, folder as any);
+    return result.success;
+  } catch (e) {
+    console.error('Error updating folder in storage:', e);
+    return false;
+  }
+};
+
+/**
  * Adds a step to an existing scenario using ExtensionStorageManager
  * 
  * @param {string} scenarioId - The ID of the scenario to update
@@ -184,6 +291,590 @@ export const addStepToScenario = async (scenarioId: string, step: ScenarioStep):
     return result.success;
   } catch (e) {
     console.error('Error adding step to scenario:', e);
+    return false;
+  }
+};
+
+/**
+ * Duplicates an existing scenario
+ * 
+ * @param {string} scenarioId - The ID of the scenario to duplicate
+ * @param {string} newTitle - Optional new title for the duplicated scenario (defaults to "Copy of [original title]")
+ * @returns {Promise<{success: boolean, id: string}>} Promise that resolves to an object with success status and new scenario ID
+ */
+export const duplicateScenarioInLocalStorage = async (
+  scenarioId: string, 
+  newTitle?: string
+): Promise<{success: boolean, id: string}> => {
+  try {
+    // Get the original scenario
+    const id = scenarioId.replace(/^sc_/, '');
+    const originalScenario = await ExtensionStorageManager.getAutomationScenario(id);
+    
+    if (!originalScenario) {
+      console.error(`Scenario with ID ${scenarioId} not found`);
+      return { success: false, id: '' };
+    }
+    
+    // Create a deep copy of the scenario
+    const duplicatedScenario: Scenario = JSON.parse(JSON.stringify(originalScenario));
+    
+    // Update the title
+    duplicatedScenario.title = newTitle || `Copy of ${duplicatedScenario.title}`;
+    
+    // Generate a unique ID for the new scenario
+    const newId = await generateUniqueId();
+    const prefixedId = `sc_${newId}`;
+    
+    // Save the duplicated scenario
+    const result = await ExtensionStorageManager.saveAutomationScenario(newId, duplicatedScenario);
+    
+    return { success: result.success, id: prefixedId };
+  } catch (e) {
+    console.error('Error duplicating scenario:', e);
+    return { success: false, id: '' };
+  }
+};
+
+/**
+ * Filters scenarios by search term (title or description)
+ * 
+ * @param {ScenarioMap} scenarios - The scenarios to filter
+ * @param {string} searchTerm - The search term to filter by
+ * @returns {ScenarioMap} Filtered scenarios
+ */
+export const filterScenariosBySearchTerm = (scenarios: ScenarioMap, searchTerm: string): ScenarioMap => {
+  if (!searchTerm) {
+    return scenarios;
+  }
+  
+  const filteredScenarios: ScenarioMap = {};
+  const lowerSearchTerm = searchTerm.toLowerCase();
+  
+  Object.keys(scenarios).forEach(key => {
+    const scenario = scenarios[key];
+    const title = scenario.title.toLowerCase();
+    const description = scenario.description?.toLowerCase() || '';
+    
+    if (title.includes(lowerSearchTerm) || description.includes(lowerSearchTerm)) {
+      filteredScenarios[key] = scenario;
+    }
+  });
+  
+  return filteredScenarios;
+};
+
+/**
+ * Filters scenarios by tags
+ * 
+ * @param {ScenarioMap} scenarios - The scenarios to filter
+ * @param {string[]} tags - The tags to filter by
+ * @returns {ScenarioMap} Filtered scenarios
+ */
+export const filterScenariosByTags = (scenarios: ScenarioMap, tags: string[]): ScenarioMap => {
+  if (!tags || tags.length === 0) {
+    return scenarios;
+  }
+  
+  const filteredScenarios: ScenarioMap = {};
+  
+  Object.keys(scenarios).forEach(key => {
+    const scenario = scenarios[key];
+    
+    // If the scenario has tags and at least one of them matches the filter tags
+    if (scenario.tags && scenario.tags.some(tag => tags.includes(tag))) {
+      filteredScenarios[key] = scenario;
+    }
+  });
+  
+  return filteredScenarios;
+};
+
+/**
+ * Filters scenarios by category
+ * 
+ * @param {ScenarioMap} scenarios - The scenarios to filter
+ * @param {string} category - The category to filter by
+ * @returns {ScenarioMap} Filtered scenarios
+ */
+export const filterScenariosByCategory = (scenarios: ScenarioMap, category: string): ScenarioMap => {
+  if (!category) {
+    return scenarios;
+  }
+  
+  const filteredScenarios: ScenarioMap = {};
+  
+  Object.keys(scenarios).forEach(key => {
+    const scenario = scenarios[key];
+    
+    if (scenario.category === category) {
+      filteredScenarios[key] = scenario;
+    }
+  });
+  
+  return filteredScenarios;
+};
+
+/**
+ * Filters scenarios by folder
+ * 
+ * @param {ScenarioMap} scenarios - The scenarios to filter
+ * @param {string} folderId - The folder ID to filter by (null for root-level scenarios)
+ * @returns {ScenarioMap} Filtered scenarios
+ */
+export const filterScenariosByFolder = (scenarios: ScenarioMap, folderId: string | null): ScenarioMap => {
+  const filteredScenarios: ScenarioMap = {};
+  
+  Object.keys(scenarios).forEach(key => {
+    const scenario = scenarios[key];
+    
+    // If folderId is null, include scenarios without a folderId or with folderId explicitly set to null
+    if (folderId === null) {
+      if (!scenario.folderId || scenario.folderId === null) {
+        filteredScenarios[key] = scenario;
+      }
+    } else if (scenario.folderId === folderId) {
+      filteredScenarios[key] = scenario;
+    }
+  });
+  
+  return filteredScenarios;
+};
+
+/**
+ * Retrieves all schedules from storage
+ * 
+ * @returns {Promise<ScheduleMap>} Promise that resolves to a map of schedule IDs to schedule objects
+ */
+export const getAllSchedulesFromLocalStorage = async (): Promise<ScheduleMap> => {
+  try {
+    // Use the same storage manager but filter for schedule keys (prefix 'sc_sch_')
+    const allItems = await ExtensionStorageManager.getAllAutomationScenarios();
+    const schedules: ScheduleMap = {};
+    
+    // Filter for items with 'sc_sch_' prefix
+    Object.keys(allItems).forEach(key => {
+      if (key.startsWith('sc_sch_')) {
+        schedules[key] = allItems[key] as unknown as ScheduleConfig;
+      }
+    });
+    
+    return schedules;
+  } catch (e) {
+    console.error('Error getting schedules from storage:', e);
+    return {};
+  }
+};
+
+/**
+ * Saves a schedule using ExtensionStorageManager
+ * 
+ * @param {string} id - The unique ID for the schedule
+ * @param {ScheduleConfig} schedule - The schedule object to save
+ * @returns {Promise<boolean>} Promise that resolves to true if the save was successful, false otherwise
+ */
+export const saveScheduleToLocalStorage = async (id: string, schedule: ScheduleConfig): Promise<boolean> => {
+  try {
+    // Use the same storage manager but with a different prefix for the key
+    // The 'sc_sch_' prefix will help distinguish schedules from scenarios
+    const prefixedId = id.startsWith('sc_sch_') ? id : `sc_sch_${id}`;
+    
+    // Extract the ID without the prefix for the storage manager
+    const storageId = prefixedId.replace(/^sc_sch_/, '');
+    
+    const result = await ExtensionStorageManager.saveAutomationScenario(storageId, schedule as any);
+    return result.success;
+  } catch (e) {
+    console.error('Error saving schedule to storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Removes a schedule from storage
+ * 
+ * @param {string} key - The key of the schedule to remove
+ * @returns {Promise<boolean>} Promise that resolves to true if the removal was successful, false otherwise
+ */
+export const removeScheduleFromLocalStorage = async (key: string): Promise<boolean> => {
+  try {
+    // Extract the ID from the key (remove the 'sc_sch_' prefix)
+    const id = key.replace(/^sc_sch_/, '');
+    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    return result.success;
+  } catch (e) {
+    console.error('Error removing schedule from storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Updates the next execution time for a schedule
+ * 
+ * @param {string} key - The key of the schedule to update
+ * @param {string} nextExecution - The next execution time as an ISO date string
+ * @returns {Promise<boolean>} Promise that resolves to true if the update was successful, false otherwise
+ */
+export const updateScheduleNextExecution = async (key: string, nextExecution: string): Promise<boolean> => {
+  try {
+    // Get the schedule
+    const schedules = await getAllSchedulesFromLocalStorage();
+    const schedule = schedules[key];
+    
+    if (!schedule) {
+      console.error(`Schedule with ID ${key} not found`);
+      return false;
+    }
+    
+    // Update the next execution time
+    schedule.nextExecution = nextExecution;
+    
+    // Save the updated schedule
+    return await saveScheduleToLocalStorage(key, schedule);
+  } catch (e) {
+    console.error('Error updating schedule next execution time:', e);
+    return false;
+  }
+};
+
+/**
+ * Updates the last executed time for a schedule
+ * 
+ * @param {string} key - The key of the schedule to update
+ * @param {string} lastExecuted - The last executed time as an ISO date string
+ * @returns {Promise<boolean>} Promise that resolves to true if the update was successful, false otherwise
+ */
+export const updateScheduleLastExecuted = async (key: string, lastExecuted: string): Promise<boolean> => {
+  try {
+    // Get the schedule
+    const schedules = await getAllSchedulesFromLocalStorage();
+    const schedule = schedules[key];
+    
+    if (!schedule) {
+      console.error(`Schedule with ID ${key} not found`);
+      return false;
+    }
+    
+    // Update the last executed time
+    schedule.lastExecuted = lastExecuted;
+    
+    // Save the updated schedule
+    return await saveScheduleToLocalStorage(key, schedule);
+  } catch (e) {
+    console.error('Error updating schedule last executed time:', e);
+    return false;
+  }
+};
+
+/**
+ * Retrieves all triggers from storage
+ * 
+ * @returns {Promise<TriggerMap>} Promise that resolves to a map of trigger IDs to trigger objects
+ */
+export const getAllTriggersFromLocalStorage = async (): Promise<TriggerMap> => {
+  try {
+    // Use the same storage manager but filter for trigger keys (prefix 'sc_tr_')
+    const allItems = await ExtensionStorageManager.getAllAutomationScenarios();
+    const triggers: TriggerMap = {};
+    
+    // Filter for items with 'sc_tr_' prefix
+    Object.keys(allItems).forEach(key => {
+      if (key.startsWith('sc_tr_')) {
+        triggers[key] = allItems[key] as unknown as TriggerConfig;
+      }
+    });
+    
+    return triggers;
+  } catch (e) {
+    console.error('Error getting triggers from storage:', e);
+    return {};
+  }
+};
+
+/**
+ * Saves a trigger using ExtensionStorageManager
+ * 
+ * @param {string} id - The unique ID for the trigger
+ * @param {TriggerConfig} trigger - The trigger object to save
+ * @returns {Promise<boolean>} Promise that resolves to true if the save was successful, false otherwise
+ */
+export const saveTriggerToLocalStorage = async (id: string, trigger: TriggerConfig): Promise<boolean> => {
+  try {
+    // Use the same storage manager but with a different prefix for the key
+    // The 'sc_tr_' prefix will help distinguish triggers from scenarios
+    const prefixedId = id.startsWith('sc_tr_') ? id : `sc_tr_${id}`;
+    
+    // Extract the ID without the prefix for the storage manager
+    const storageId = prefixedId.replace(/^sc_tr_/, '');
+    
+    const result = await ExtensionStorageManager.saveAutomationScenario(storageId, trigger as any);
+    return result.success;
+  } catch (e) {
+    console.error('Error saving trigger to storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Removes a trigger from storage
+ * 
+ * @param {string} key - The key of the trigger to remove
+ * @returns {Promise<boolean>} Promise that resolves to true if the removal was successful, false otherwise
+ */
+export const removeTriggerFromLocalStorage = async (key: string): Promise<boolean> => {
+  try {
+    // Extract the ID from the key (remove the 'sc_tr_' prefix)
+    const id = key.replace(/^sc_tr_/, '');
+    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    return result.success;
+  } catch (e) {
+    console.error('Error removing trigger from storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Updates the last triggered time for a trigger
+ * 
+ * @param {string} key - The key of the trigger to update
+ * @param {string} lastTriggered - The last triggered time as an ISO date string
+ * @returns {Promise<boolean>} Promise that resolves to true if the update was successful, false otherwise
+ */
+export const updateTriggerLastTriggered = async (key: string, lastTriggered: string): Promise<boolean> => {
+  try {
+    // Get the trigger
+    const triggers = await getAllTriggersFromLocalStorage();
+    const trigger = triggers[key];
+    
+    if (!trigger) {
+      console.error(`Trigger with ID ${key} not found`);
+      return false;
+    }
+    
+    // Update the last triggered time
+    trigger.lastTriggered = lastTriggered;
+    
+    // Save the updated trigger
+    return await saveTriggerToLocalStorage(key, trigger);
+  } catch (e) {
+    console.error('Error updating trigger last triggered time:', e);
+    return false;
+  }
+};
+
+/**
+ * Retrieves all execution history entries from storage
+ * 
+ * @returns {Promise<ExecutionHistoryMap>} Promise that resolves to a map of execution history entry IDs to execution history entries
+ */
+export const getAllExecutionHistoryFromLocalStorage = async (): Promise<ExecutionHistoryMap> => {
+  try {
+    // Use the same storage manager but filter for execution history keys (prefix 'ex_hist_')
+    const allItems = await ExtensionStorageManager.getAllAutomationScenarios();
+    const executionHistory: ExecutionHistoryMap = {};
+    
+    // Filter for items with 'ex_hist_' prefix
+    Object.keys(allItems).forEach(key => {
+      if (key.startsWith('ex_hist_')) {
+        executionHistory[key] = allItems[key] as unknown as ExecutionHistoryEntry;
+      }
+    });
+    
+    return executionHistory;
+  } catch (e) {
+    console.error('Error getting execution history from storage:', e);
+    return {};
+  }
+};
+
+/**
+ * Saves an execution history entry using ExtensionStorageManager
+ * 
+ * @param {string} id - The unique ID for the execution history entry
+ * @param {ExecutionHistoryEntry} executionHistoryEntry - The execution history entry to save
+ * @returns {Promise<boolean>} Promise that resolves to true if the save was successful, false otherwise
+ */
+export const saveExecutionHistoryToLocalStorage = async (id: string, executionHistoryEntry: ExecutionHistoryEntry): Promise<boolean> => {
+  try {
+    // Use the same storage manager but with a different prefix for the key
+    // The 'ex_hist_' prefix will help distinguish execution history entries from scenarios
+    const prefixedId = id.startsWith('ex_hist_') ? id : `ex_hist_${id}`;
+    
+    // Extract the ID without the prefix for the storage manager
+    const storageId = prefixedId.replace(/^ex_hist_/, '');
+    
+    const result = await ExtensionStorageManager.saveAutomationScenario(storageId, executionHistoryEntry as any);
+    return result.success;
+  } catch (e) {
+    console.error('Error saving execution history entry to storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Removes an execution history entry from storage
+ * 
+ * @param {string} key - The key of the execution history entry to remove
+ * @returns {Promise<boolean>} Promise that resolves to true if the removal was successful, false otherwise
+ */
+export const removeExecutionHistoryFromLocalStorage = async (key: string): Promise<boolean> => {
+  try {
+    // Extract the ID from the key (remove the 'ex_hist_' prefix)
+    const id = key.replace(/^ex_hist_/, '');
+    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    return result.success;
+  } catch (e) {
+    console.error('Error removing execution history entry from storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Retrieves notification preferences from storage
+ * 
+ * @returns {Promise<NotificationPreference>} Promise that resolves to notification preferences
+ */
+export const getNotificationPreferencesFromLocalStorage = async (): Promise<NotificationPreference> => {
+  try {
+    // Use the same storage manager but with a specific key for notification preferences
+    const result = await ExtensionStorageManager.getAutomationScenario('notification_preferences');
+    
+    if (result) {
+      return result as unknown as NotificationPreference;
+    }
+    
+    // Return default preferences if none are found
+    return {
+      enabled: true,
+      showSuccess: true,
+      showError: true,
+      showWarning: true,
+      showInfo: true,
+      desktop: true,
+      sound: true,
+      soundVolume: 50
+    };
+  } catch (e) {
+    console.error('Error getting notification preferences from storage:', e);
+    
+    // Return default preferences on error
+    return {
+      enabled: true,
+      showSuccess: true,
+      showError: true,
+      showWarning: true,
+      showInfo: true,
+      desktop: true,
+      sound: true,
+      soundVolume: 50
+    };
+  }
+};
+
+/**
+ * Saves notification preferences to storage
+ * 
+ * @param {NotificationPreference} preferences - The notification preferences to save
+ * @returns {Promise<boolean>} Promise that resolves to true if the save was successful, false otherwise
+ */
+export const saveNotificationPreferencesToLocalStorage = async (preferences: NotificationPreference): Promise<boolean> => {
+  try {
+    const result = await ExtensionStorageManager.saveAutomationScenario('notification_preferences', preferences as any);
+    return result.success;
+  } catch (e) {
+    console.error('Error saving notification preferences to storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Retrieves all notification messages from storage
+ * 
+ * @returns {Promise<NotificationMessageMap>} Promise that resolves to a map of notification message IDs to notification messages
+ */
+export const getAllNotificationMessagesFromLocalStorage = async (): Promise<NotificationMessageMap> => {
+  try {
+    // Use the same storage manager but filter for notification message keys (prefix 'notification_')
+    const allItems = await ExtensionStorageManager.getAllAutomationScenarios();
+    const notificationMessages: NotificationMessageMap = {};
+    
+    // Filter for items with 'notification_' prefix
+    Object.keys(allItems).forEach(key => {
+      if (key.startsWith('notification_') && key !== 'notification_preferences') {
+        notificationMessages[key] = allItems[key] as unknown as NotificationMessage;
+      }
+    });
+    
+    return notificationMessages;
+  } catch (e) {
+    console.error('Error getting notification messages from storage:', e);
+    return {};
+  }
+};
+
+/**
+ * Saves a notification message to storage
+ * 
+ * @param {string} id - The unique ID for the notification message
+ * @param {NotificationMessage} message - The notification message to save
+ * @returns {Promise<boolean>} Promise that resolves to true if the save was successful, false otherwise
+ */
+export const saveNotificationMessageToLocalStorage = async (id: string, message: NotificationMessage): Promise<boolean> => {
+  try {
+    // Use the same storage manager but with a different prefix for the key
+    // The 'notification_' prefix will help distinguish notification messages from scenarios
+    const prefixedId = id.startsWith('notification_') ? id : `notification_${id}`;
+    
+    // Extract the ID without the prefix for the storage manager
+    const storageId = prefixedId.replace(/^notification_/, '');
+    
+    const result = await ExtensionStorageManager.saveAutomationScenario(storageId, message as any);
+    return result.success;
+  } catch (e) {
+    console.error('Error saving notification message to storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Removes a notification message from storage
+ * 
+ * @param {string} key - The key of the notification message to remove
+ * @returns {Promise<boolean>} Promise that resolves to true if the removal was successful, false otherwise
+ */
+export const removeNotificationMessageFromLocalStorage = async (key: string): Promise<boolean> => {
+  try {
+    // Extract the ID from the key (remove the 'notification_' prefix)
+    const id = key.replace(/^notification_/, '');
+    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    return result.success;
+  } catch (e) {
+    console.error('Error removing notification message from storage:', e);
+    return false;
+  }
+};
+
+/**
+ * Clears all notification messages from storage
+ * 
+ * @returns {Promise<boolean>} Promise that resolves to true if the clear was successful, false otherwise
+ */
+export const clearAllNotificationMessagesFromLocalStorage = async (): Promise<boolean> => {
+  try {
+    const notificationMessages = await getAllNotificationMessagesFromLocalStorage();
+    
+    // Remove each notification message
+    const promises = Object.keys(notificationMessages).map(key => 
+      removeNotificationMessageFromLocalStorage(key)
+    );
+    
+    // Wait for all removals to complete
+    const results = await Promise.all(promises);
+    
+    // Return true if all removals were successful
+    return results.every(result => result);
+  } catch (e) {
+    console.error('Error clearing notification messages from storage:', e);
     return false;
   }
 };

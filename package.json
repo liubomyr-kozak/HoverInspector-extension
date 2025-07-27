@@ -37,6 +37,7 @@
     "@webext-core/messaging": "^2.2.0",
     "add": "^2.0.6",
     "antd": "^5.25.1",
+    "date-fns": "^4.1.0",
     "dnd-kit": "^0.0.2",
     "hotkeys-js": "^3.13.10",
     "lodash-es": "^4.17.21",
