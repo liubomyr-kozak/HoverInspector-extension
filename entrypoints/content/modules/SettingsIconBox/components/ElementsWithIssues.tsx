@@ -8,9 +8,8 @@
  * The component uses a MutationObserver to detect DOM changes and update the list of elements with issues.
  */
 import React, { useEffect, useState } from "react";
-import { getElementsWithIssues, CategorizedElement } from "@entrypoints/shared/utils/categorizeElements";
-import { IconAlertTriangle, IconAccessible, IconLayoutGrid } from "@tabler/icons-react";
-import DomNodeManagerInstance from "@entrypoints/core/services/dom/DomNodeManager";
+import { CategorizedElement, getElementsWithIssues } from "@entrypoints/shared/utils/categorizeElements";
+import { IconAccessible, IconAlertTriangle, IconLayoutGrid } from "@tabler/icons-react";
 
 interface ElementsWithIssuesProps {
   /**

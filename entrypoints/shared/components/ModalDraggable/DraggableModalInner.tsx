@@ -1,172 +1,295 @@
-import * as React from 'react'
-import {useEffect, useMemo, useCallback, memo, useState, useRef} from 'react'
-import {Modal, Dropdown, Menu} from 'antd'
-import {ModalProps} from 'antd/lib/modal'
+import * as React from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Modal } from "antd";
+import { ModalProps } from "antd/lib/modal";
 import styled from "styled-components";
-import {useDispatch} from 'react-redux';
-import throttle from 'lodash-es/throttle';
+import { useDispatch } from "react-redux";
+import debounce from "lodash-es/debounce";
+import { Rnd } from "react-rnd";
+import { createPortal } from "react-dom";
 
-import {ResizeHandle} from './ResizeHandle'
-import {useDrag} from './useDrag'
-import {usePrevious} from './usePrevious'
-import {ModalID, ModalState} from './draggableModalReducer'
-import {useResize} from './useResize'
+import { ModalID, ModalState } from "./draggableModalReducer";
+import "./index.css";
 
-import './index.css'
-
-import {
-    dragModal, focusModal, hide, mount, resizeModal, show, unmount
-} from "./store/draggableModalSlice.ts";
-import {onMinimizedFeaturePopup} from "@entrypoints/content/store/app/saga-action/app.saga.action.ts";
-
+import { dragModal, focusModal, mount, resizeModal, unmount } from "./store/draggableModalSlice";
+import { onMinimizedFeaturePopup } from "@entrypoints/content/store/app/saga-action/app.saga.action.ts";
+import { EDGE_PADDING, MIN_HEIGHT, MIN_WIDTH } from "./constant";
 
 const ModalTitle = styled.div`
-    cursor: move;
-    padding: 16px;
+  padding: 16px;
+  width: 100%;
+  user-select: none;
 `;
 
-const modalStyle: React.CSSProperties = {margin: 0, paddingBottom: 0, pointerEvents: 'auto'}
+const modalStyle: React.CSSProperties = { margin: 0, paddingBottom: 0, pointerEvents: "auto" };
+
+// Modal style constants
+const modalBoxShadow = `
+  0 3px 6px -4px rgba(0, 0, 0, 0.12),
+  0 6px 16px 0 rgba(0, 0, 0, 0.08),
+  0 9px 28px 8px rgba(0, 0, 0, 0.05)
+`;
 
 interface ContextProps {
-    id: ModalID
-    modalState: ModalState
-    initialWidth?: number
-    initialHeight?: number
-    initialX?: number
-    initialY?: number
-    onModalStateChange: (state: {
-        x: number
-        y: number
-        width: number
-        height: number
-    }) => void
+  id: ModalID;
+  modalState: ModalState;
+  initialWidth?: number;
+  initialHeight?: number;
+  initialX?: number;
+  initialY?: number;
+  onModalStateChange: (state: { x: number; y: number; width: number; height: number }) => void;
 }
 
-
-export type DraggableModalInnerProps = ModalProps & { children?: React.ReactNode } & ContextProps
+export type DraggableModalInnerProps = ModalProps & { children?: React.ReactNode } & ContextProps;
 
 function DraggableModalInnerNonMemo({
-                                        id,
-                                        modalState,
-                                        open,
-                                        children,
-                                        title,
-                                        initialWidth,
-                                        initialHeight,
-                                        initialX,
-                                        initialY,
-                                        footer,
-                                        onModalStateChange,
-                                        ...otherProps
-                                    }: DraggableModalInnerProps) {
+  id,
+  modalState,
+  open,
+  children,
+  title,
+  initialWidth,
+  initialHeight,
+  initialX,
+  initialY,
+  footer,
+  onModalStateChange,
+  ...otherProps
+}: DraggableModalInnerProps) {
+  const dispatch = useDispatch();
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
 
-    const dispatch = useDispatch()
+  // Call on mount and unmount.
+  useEffect(() => {
+    console.log("😜😜😜 DraggableModalInnerNonMemo:: -> Call on mount and unmount.");
 
+    // Calculate default position to center the modal if not provided
+    const defaultWidth = initialWidth || 800;
+    const defaultHeight = initialHeight || 600;
+    const defaultX = initialX !== undefined ? initialX : Math.max(0, (window.innerWidth - defaultWidth) / 2);
+    const defaultY = initialY !== undefined ? initialY : Math.max(0, (window.innerHeight - defaultHeight) / 2);
 
-    // Call on mount and unmount.
-    useEffect(() => {
-        dispatch(mount({
-            id, initialState: {
-                width: initialWidth as number,
-                height: initialHeight as number,
-                x: initialX as number,
-                y: initialY as number,
-            }
-        }))
+    dispatch(
+      mount({
+        id,
+        initialState: {
+          width: defaultWidth,
+          height: defaultHeight,
+          x: defaultX,
+          y: defaultY,
+        },
+      }),
+    );
 
-        return () => {
-            dispatch(unmount(id))
+    return () => {
+      dispatch(unmount(id));
+    };
+  }, [dispatch, id, initialWidth, initialHeight, initialX, initialY]);
+
+  // Create portal container in shadow DOM
+  useEffect(() => {
+    // Find the shadow root
+    const shadowRoot = document.querySelector("hover-inspector")?.shadowRoot as ShadowRoot | null;
+
+    if (shadowRoot) {
+      // Find or create a container for modals
+      let container = shadowRoot.querySelector("#modal-container") as HTMLElement | null;
+
+      if (!container) {
+        // Create the container if it doesn't exist
+        container = document.createElement("div");
+        container.id = "modal-container";
+        container.style.position = "fixed";
+        container.style.top = "0";
+        container.style.left = "0";
+        container.style.width = "100%";
+        container.style.height = "100%";
+        container.style.pointerEvents = "none";
+        container.style.zIndex = "1000";
+
+        // Append to the body in shadow DOM
+        const body = shadowRoot.querySelector("html > body");
+        if (body) {
+          body.appendChild(container);
         }
-    }, [dispatch, id, initialWidth, initialHeight])
+      }
 
-    const throttledDispatch = useMemo(() => throttle(dispatch, 10), [dispatch]);
+      // Create or find a specific container for this modal
+      const modalId = `modal-${id}`;
+      let modalContainer = container.querySelector(`#${modalId}`) as HTMLElement | null;
 
-    const onMouseMove = (data) => {
-        throttledDispatch(dragModal(data));
-    };
-    const onResizeModal = (data) => {
-        throttledDispatch(resizeModal(data));
-    };
+      if (!modalContainer) {
+        modalContainer = document.createElement("div");
+        modalContainer.id = modalId;
+        modalContainer.style.position = "absolute";
+        modalContainer.style.pointerEvents = "auto";
+        container.appendChild(modalContainer);
+      }
 
-    const {zIndex, x, y, width, height} = modalState
+      setPortalContainer(modalContainer);
 
-    const style: React.CSSProperties = useMemo(() => ({
-        ...modalStyle,
-        top: y,
-        left: x,
-        height,
-        width
-    }), [y, x, height, width, modalStyle])
-
-    const onFocus = useCallback(() => dispatch(focusModal(id)), [id, dispatch])
-
-    const onDragWithID = useCallback(args => onMouseMove({id, ...args}), [id,])
-
-    const onResizeWithID = useCallback(args => onResizeModal({id, ...args}), [id,])
-
-    const onMouseDrag = useDrag(x, y, onDragWithID)
-    const onMouseResizeBottomRight = useResize(x, y, width, height, 'bottom-right', onResizeWithID)
-    const onMouseResizeBottomLeft = useResize(x, y, width, height, 'bottom-left', onResizeWithID)
-    const onMouseResizeTopLeft = useResize(x, y, width, height, 'top-left', onResizeWithID)
-    const onMouseResizeTopRight = useResize(x, y, width, height, 'top-right', onResizeWithID)
-
-    const titleElement = useMemo(() => (<ModalTitle
-        onMouseDown={onMouseDrag}
-        onClick={onFocus}
-    >
-        {title}
-    </ModalTitle>), [onMouseDrag, onFocus, title],)
-
-
-    useEffect(() => {
-        const debounce = setTimeout(() => {
-            onModalStateChange({
-                x: style.left as number,
-                y: style.top as number,
-                width: style.width as number,
-                height: style.height as number,
-            })
-        }, 300);
-
-        return () => clearTimeout(debounce)
-    }, [style]);
-
-
-    const onCancel = () => {
-        dispatch(onMinimizedFeaturePopup.getPayload(true))
+      return () => {
+        if (container && modalContainer && container.contains(modalContainer)) {
+          container.removeChild(modalContainer);
+        }
+      };
     }
 
-    return (
-        <Modal
-            wrapClassName="draggable-modal"
-            keyboard={false}
-            open={open}
-            style={style}
-            width={width}
-            destroyOnHidden={true}
-            mask={false}
-            maskClosable={false}
-            onCancel={onCancel}
-            zIndex={zIndex}
-            title={titleElement}
-            {...otherProps}
-            footer={footer || null}
-            // @ts-ignore
-            getContainer={() => (document.querySelector('hover-inspector')!.shadowRoot as HTMLElement)?.querySelector('html > body')}
-        >
-            <div>
-                {children}
-            </div>
-            <ResizeHandle direction="bottom-right" onMouseDown={onMouseResizeBottomRight}/>
-            <ResizeHandle direction="bottom-left" onMouseDown={onMouseResizeBottomLeft}/>
-            <ResizeHandle direction="top-left" onMouseDown={onMouseResizeTopLeft}/>
-            <ResizeHandle direction="top-right" onMouseDown={onMouseResizeTopRight}/>
-        </Modal>
-    )
+    return () => {};
+  }, [id]);
+
+  const throttledDispatch = useMemo(() => debounce(dispatch, 10000), [dispatch]);
+
+  // Cache modalState properties in a ref
+  const modalStateRef = useRef({
+    zIndex: modalState.zIndex,
+    x: modalState.x,
+    y: modalState.y,
+    width: modalState.width,
+    height: modalState.height,
+  });
+
+  // Update ref when modalState changes
+  useEffect(() => {
+    // Check if any values have changed before updating ref
+    if (
+      modalStateRef.current.zIndex !== modalState.zIndex ||
+      modalStateRef.current.x !== modalState.x ||
+      modalStateRef.current.y !== modalState.y ||
+      modalStateRef.current.width !== modalState.width ||
+      modalStateRef.current.height !== modalState.height
+    ) {
+      // Update ref if values have changed
+      modalStateRef.current = {
+        zIndex: modalState.zIndex,
+        x: modalState.x,
+        y: modalState.y,
+        width: modalState.width,
+        height: modalState.height,
+      };
+    }
+  }, [modalState]);
+
+  const onFocus = useCallback(() => dispatch(focusModal(id)), [id, dispatch]);
+
+  // Handle focus when clicking on the modal
+  const handleModalClick = useCallback(() => {
+    dispatch(focusModal(id));
+  }, [dispatch, id]);
+
+  const handleResizeStop = useCallback(
+    (e, direction, ref, delta, position) => {
+      const newSize = {
+        id,
+        x: modalStateRef.current.x,
+        y: modalStateRef.current.y,
+        width: parseInt(ref.style.width, 10),
+        height: parseInt(ref.style.height, 10),
+      };
+      throttledDispatch(resizeModal(newSize));
+    },
+    [id, throttledDispatch],
+  );
+
+  useEffect(() => {
+    // update localstorage modal state every 5 seconds
+    const debounce = setTimeout(() => {
+      onModalStateChange({
+        x: modalStateRef.current.x,
+        y: modalStateRef.current.y,
+        width: modalStateRef.current.width,
+        height: modalStateRef.current.height,
+      });
+    }, 5000);
+
+    return () => clearTimeout(debounce);
+  }, [modalState, onModalStateChange]);
+
+  const titleElement = useMemo(() => <ModalTitle>{title}</ModalTitle>, [title]);
+
+  // If portal container is not ready, don't render anything
+  if (!portalContainer) return null;
+
+  // Create a single component with Rnd wrapping the Modal
+  const modalComponent = (
+    <Rnd
+      style={{
+        display: open ? "block" : "none",
+        position: "fixed",
+        boxShadow: modalBoxShadow,
+        borderRadius: "2px",
+        backgroundColor: "#fff",
+        overflow: "hidden",
+        zIndex: modalStateRef.current.zIndex,
+      }}
+      size={{
+        width: modalStateRef.current.width,
+        height: modalStateRef.current.height,
+      }}
+      position={{
+        x: modalStateRef.current.x,
+        y: modalStateRef.current.y,
+      }}
+      onResizeStop={handleResizeStop}
+      dragHandleClassName="modal-drag-handle"
+      enableResizing={{
+        top: true,
+        right: true,
+        bottom: true,
+        left: true,
+        topRight: true,
+        bottomRight: true,
+        bottomLeft: true,
+        topLeft: true,
+      }}
+      minWidth={MIN_WIDTH}
+      minHeight={MIN_HEIGHT}
+      className="draggable-modal-container"
+      onClick={onFocus}
+      onDragStop={(e, d) => {
+        throttledDispatch(dragModal({ id, x: d.x, y: d.y }));
+      }}
+      bounds={{
+        left: EDGE_PADDING,
+        top: EDGE_PADDING,
+        right: window.innerWidth - EDGE_PADDING,
+        bottom: window.innerHeight - EDGE_PADDING,
+      }}
+    >
+      {/* Ant Design Modal */}
+      <Modal
+        wrapClassName="draggable-modal"
+        keyboard={false}
+        open={true}
+        style={{
+          ...modalStyle,
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          margin: 0,
+        }}
+        width="100%"
+        destroyOnHidden={true}
+        mask={false}
+        maskClosable={false}
+        title={<div className="modal-drag-handle">{titleElement}</div>}
+        {...otherProps}
+        footer={footer || null}
+        getContainer={() => portalContainer}
+      >
+        <div>{children}</div>
+      </Modal>
+    </Rnd>
+  );
+
+  // Render the component into the portal container
+  return createPortal(modalComponent, portalContainer);
 }
 
-export const DraggableModalInner = memo(DraggableModalInnerNonMemo)
+export const DraggableModalInner = memo(DraggableModalInnerNonMemo);
 
-if (process.env.NODE_ENV !== 'production') {
-    DraggableModalInner.displayName = 'DraggableModalInner'
+if (process.env.NODE_ENV !== "production") {
+  DraggableModalInner.displayName = "DraggableModalInner";
 }

@@ -1,44 +1,40 @@
-import React , {useMemo} from "react";
+import React, { useMemo } from "react";
 
 import AppController from "./modules/AppController/AppController.tsx";
 import Launcher from "./modules/Launcher/Launcher.tsx";
-import {PopupContainer} from "./modules/PopupContainer/PopupContainer.tsx";
+import { PopupContainer } from "./modules/PopupContainer/PopupContainer.tsx";
 
-import {DraggableModalProvider} from "@entrypoints/shared/components/ModalDraggable";
+import { NewModalProvider } from "@entrypoints/shared/components/NewModal/NewModalProvider";
 
-import './app.css';
-import {useSelector} from "react-redux";
-import {ElementInspector} from "@entrypoints/content/modules/ElementInspector";
-import {
-    AUTOMATION,
-    INSPECTOR,
-    POPUP_SUPPORT_TOOLS,
-    RULER
-} from "@entrypoints/content/modules/Launcher/LauncherIcons";
-import {ViewportRuler} from "@entrypoints/content/modules/PopupContainer/ViewportRuler";
-import FeatureHandler from "@entrypoints/content/modules/FeatureHandler/FeatureHandler";
-import AutomationScenarios from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationScenarios";
-
+import "./app.css";
+import { useSelector } from "react-redux";
+import { ElementInspector } from "@entrypoints/content/modules/ElementInspector";
+import { INSPECTOR, POPUP_SUPPORT_TOOLS, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons";
+import { ViewportRuler } from "@entrypoints/content/modules/PopupContainer/ViewportRuler";
+import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationUserActionsHandler.tsx";
+import NotificationManager from "@entrypoints/content/modules/NotificationManager/NotificationManager.tsx";
+import { TriggerScenarioEvaluator } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/TriggerForm/TriggerScenarioEvaluator.tsx";
 
 export const App = () => {
-    const {activeIcons = []} = useSelector((state: any) => state?.app.launcher);
+  const { activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
 
+  const isPopupActive = useMemo(() => {
+    return POPUP_SUPPORT_TOOLS.some((id) => activeIcons.includes(id));
+  }, [activeIcons]);
 
-    const isPopupActive = useMemo(() => {
-        return POPUP_SUPPORT_TOOLS.some(id => activeIcons.includes(id))
-    }, [activeIcons])
+  return (
+    <AppController>
+      <NewModalProvider>
+        <NotificationManager />
+        <TriggerScenarioEvaluator />
+        {/*<FeatureHandler>*/}
+        {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
+        {activeIcons.includes(RULER.id) && <ViewportRuler />}
 
-    return (
-        <AppController>
-            <DraggableModalProvider>
-                {/*<FeatureHandler>*/}
-                {activeIcons.includes(INSPECTOR.id) && <ElementInspector/>}
-                {activeIcons.includes(RULER.id) && <ViewportRuler/>}
-
-                <Launcher/>
-                {isPopupActive && <PopupContainer/>}
-                {/*</FeatureHandler>*/}
-            </DraggableModalProvider>
-        </AppController>
-    );
+        <Launcher />
+        {isPopupActive && <PopupContainer />}
+        {/*</FeatureHandler>*/}
+      </NewModalProvider>
+    </AppController>
+  );
 };

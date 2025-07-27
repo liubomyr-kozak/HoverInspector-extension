@@ -1,14 +1,14 @@
 // Створюємо глобальний Set для зберігання унікальних ідентифікаторів
-const uniqueKeys = new Set();
+const uniqueKeys = new Set<string>();
 
-type SagaFunction<P = any> = (action: { type: string; payload: P }) => void; // Тип для саґи
+type SagaFunction<P = unknown> = (action: { type: string; payload: P }) => void; // Тип для саґи
 
-interface EnhancedSaga<P = any> extends SagaFunction<P> {
+interface EnhancedSaga<P = unknown> extends SagaFunction<P> {
   actionType: string;
   getPayload: (payload?: P) => { type: string; payload?: P };
 }
 
-export const sagaEnhancer = <P = any>(sagaFn: SagaFunction<P>): EnhancedSaga<P> => {
+export const sagaEnhancer = <P = unknown>(sagaFn: SagaFunction<P>): EnhancedSaga<P> => {
   let sagaName = sagaFn.name;
 
   // Якщо у sagaFn немає імені, генеруємо унікальний ключ

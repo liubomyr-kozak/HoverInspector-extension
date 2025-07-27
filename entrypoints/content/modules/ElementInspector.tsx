@@ -8,16 +8,16 @@ import React from "react";
 import AnyHoveredElementBox from "@entrypoints/content/modules/AnyHoveredElementBox.tsx";
 
 export const ElementInspector = () => {
-    return (
-        <>
-            <EventListenerProvider/>
-            <SelectedBox/>
-            {/*<SettingsIconBox/>*/}
-            <HoveredLinesArea/>
-            <DistanceAndLabel/>
-            <HoveredBox/>
-            <AnyHoveredElementBox/>
-            <Popup/>
-        </>
-    );
-}
+  return (
+    <>
+      <EventListenerProvider />
+      <SelectedBox />
+      {/*<SettingsIconBox/>*/}
+      <HoveredLinesArea />
+      <DistanceAndLabel />
+      <HoveredBox />
+      <AnyHoveredElementBox />
+      <Popup />
+    </>
+  );
+};

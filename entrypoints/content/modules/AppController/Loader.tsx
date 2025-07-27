@@ -1,6 +1,6 @@
 // Loader.tsx
-import React from 'react';
-import styled, {keyframes} from 'styled-components';
+import React from "react";
+import styled, { keyframes } from "styled-components";
 
 // Анімація для стрибка стовпчика
 const bounce = keyframes`

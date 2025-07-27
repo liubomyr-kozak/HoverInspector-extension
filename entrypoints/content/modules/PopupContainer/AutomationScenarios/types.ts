@@ -6,6 +6,7 @@
 export interface ScenarioStep {
   type: string;
   xpath?: string;
+  alternativeXpaths?: string[]; // Array of alternative XPaths that can be used
   value?: string;
 }
 
@@ -20,6 +21,7 @@ export interface Scenario {
   tags?: string[];
   category?: string;
   folderId?: string | null;
+  executionSpeed?: number;
 }
 
 /**
@@ -64,11 +66,11 @@ export interface FunctionMap {
  * Frequency options for scheduled execution
  */
 export enum ScheduleFrequency {
-  ONCE = 'once',
-  DAILY = 'daily',
-  WEEKLY = 'weekly',
-  MONTHLY = 'monthly',
-  CUSTOM = 'custom'
+  ONCE = "once",
+  DAILY = "daily",
+  WEEKLY = "weekly",
+  MONTHLY = "monthly",
+  CUSTOM = "custom",
 }
 
 /**
@@ -81,7 +83,7 @@ export enum DayOfWeek {
   WEDNESDAY = 3,
   THURSDAY = 4,
   FRIDAY = 5,
-  SATURDAY = 6
+  SATURDAY = 6,
 }
 
 /**
@@ -114,10 +116,10 @@ export interface ScheduleMap {
  * Types of triggers for automated execution
  */
 export enum TriggerType {
-  DOMAIN = 'domain',
-  PAGE_LOAD = 'pageLoad',
-  ELEMENT_PRESENT = 'elementPresent',
-  CUSTOM_EVENT = 'customEvent'
+  DOMAIN = "domain",
+  PAGE_LOAD = "pageLoad",
+  ELEMENT_PRESENT = "elementPresent",
+  CUSTOM_EVENT = "customEvent",
 }
 
 /**
@@ -133,13 +135,13 @@ export interface TriggerConfig {
     // For domain triggers
     domainPattern?: string;
     exactMatch?: boolean;
-    
+
     // For element triggers
     elementXPath?: string;
-    
+
     // For custom event triggers
     eventName?: string;
-    
+
     // Additional conditions
     customCondition?: string; // JavaScript code for custom condition
   };
@@ -157,26 +159,32 @@ export interface TriggerMap {
  * Options for step types in the form
  */
 export const stepTypeOptions = [
-  { value: '', label: '(not set)' },
-  { value: 'value', label: 'Change' },
-  { value: 'click', label: 'Click' },
-  { value: 'code', label: 'Code' },
-  { value: 'function', label: 'Function' },
-  { value: 'redirect', label: 'Redirect' },
-  { value: 'update', label: 'New page' },
-  { value: 'wait', label: 'Timer' }
+  { value: "", label: "(not set)" },
+  { value: "value", label: "Change" },
+  { value: "click", label: "Click" },
+  { value: "hover", label: "Hover" },
+  { value: "input", label: "Input" },
+  { value: "select", label: "Select" },
+  { value: "code", label: "Code" },
+  { value: "function", label: "Function" },
+  { value: "redirect", label: "Redirect" },
+  { value: "update", label: "New page" },
+  { value: "wait", label: "Timer" },
+  { value: "confirmation", label: "Confirmation" },
+  { value: "getText", label: "Get Text" },
 ];
 
 /**
  * Status of an execution
  */
 export enum ExecutionStatus {
-  SUCCESS = 'success',
-  ERROR = 'error',
-  WARNING = 'warning',
-  RUNNING = 'running',
-  PAUSED = 'paused',
-  CANCELLED = 'cancelled'
+  SUCCESS = "success",
+  ERROR = "error",
+  WARNING = "warning",
+  RUNNING = "running",
+  PENDING = "pending",
+  PAUSED = "paused",
+  CANCELLED = "cancelled",
 }
 
 /**
@@ -234,10 +242,10 @@ export interface ExecutionHistoryMap {
  * Types of notifications
  */
 export enum NotificationType {
-  SUCCESS = 'success',
-  ERROR = 'error',
-  WARNING = 'warning',
-  INFO = 'info'
+  SUCCESS = "success",
+  ERROR = "error",
+  WARNING = "warning",
+  INFO = "info",
 }
 
 /**

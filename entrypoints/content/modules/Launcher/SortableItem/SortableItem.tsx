@@ -1,58 +1,55 @@
-import {useSortable} from "@dnd-kit/sortable";
-import {CSS} from "@dnd-kit/utilities";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import React from "react";
-import {IconGripVertical, IconEye, IconEyeOff} from "@tabler/icons-react";
+import { IconEye, IconEyeOff, IconGripVertical } from "@tabler/icons-react";
 
 import {
-    DragFeatureIcon, 
-    DragFeatureTitle, 
-    DraggableItem, 
-    DragHandle, 
-    DragHandleIcon,
-    EyeIconContainer
+  DragFeatureIcon,
+  DragFeatureTitle,
+  DraggableItem,
+  DragHandle,
+  DragHandleIcon,
+  EyeIconContainer,
 } from "./SortableItem.styled.ts";
 
 interface SortableItemProps {
-    id: string;
-    title: string;
-    icon: any;
-    isVisible?: boolean;
-    onToggleVisibility?: (id: string) => void;
+  id: string;
+  title: string;
+  icon: any;
+  isVisible?: boolean;
+  onToggleVisibility?: (id: string) => void;
 }
 
-const SortableItem = ({id, title, icon, isVisible = true, onToggleVisibility}: SortableItemProps) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-    } = useSortable({id});
+const SortableItem = ({ id, title, icon, isVisible = true, onToggleVisibility }: SortableItemProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
-    const Icon = icon;
-    const EyeIcon = isVisible ? IconEye : IconEyeOff;
+  const Icon = icon;
+  const EyeIcon = isVisible ? IconEye : IconEyeOff;
 
-    const handleEyeClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (onToggleVisibility) {
-            onToggleVisibility(id);
-        }
-    };
+  const handleEyeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleVisibility) {
+      onToggleVisibility(id);
+    }
+  };
 
-    return (
-        <DraggableItem ref={setNodeRef} style={{transform: CSS.Transform.toString(transform), transition}}>
-            <DragHandle  {...attributes} {...listeners}>
-                <DragFeatureIcon> <Icon/></DragFeatureIcon>
-                <DragFeatureTitle>{title}</DragFeatureTitle>
-                <EyeIconContainer onClick={handleEyeClick}>
-                    <EyeIcon />
-                </EyeIconContainer>
-                <DragHandleIcon>
-                    <IconGripVertical/>
-                </DragHandleIcon>
-            </DragHandle>
-        </DraggableItem>
-    );
+  return (
+    <DraggableItem ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
+      <DragHandle {...attributes} {...listeners}>
+        <DragFeatureIcon>
+          {" "}
+          <Icon />
+        </DragFeatureIcon>
+        <DragFeatureTitle>{title}</DragFeatureTitle>
+        <EyeIconContainer onClick={handleEyeClick}>
+          <EyeIcon />
+        </EyeIconContainer>
+        <DragHandleIcon>
+          <IconGripVertical />
+        </DragHandleIcon>
+      </DragHandle>
+    </DraggableItem>
+  );
 };
 
 export default SortableItem;

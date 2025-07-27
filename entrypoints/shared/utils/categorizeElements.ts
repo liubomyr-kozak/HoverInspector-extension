@@ -1,4 +1,4 @@
-import { isButtonElement } from './isButtonElement';
+import { isButtonElement } from "./isButtonElement";
 
 /**
  * Helper function to safely get className as a string, handling both string and SVGAnimatedString

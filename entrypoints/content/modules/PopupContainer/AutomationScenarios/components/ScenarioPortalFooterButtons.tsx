@@ -1,0 +1,62 @@
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+
+// Enum for portal IDs
+export enum PortalId {
+  FUNCTIONS_TAB = "functions-tab",
+  SCENARIOS_TAB = "scenarios-tab",
+  RECORDING = "recording",
+  STEP_EDIT = "step-edit",
+}
+
+export const ScenarioPortalFooterButtons: React.FC<{
+  children?: React.ReactNode;
+  portalId: string;
+}> = ({ children, portalId }) => {
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    // Знаходимо shadowRoot
+    const shadowRoot = document.querySelector("hover-inspector")?.shadowRoot as ShadowRoot | null;
+
+    if (shadowRoot) {
+      const container = shadowRoot.querySelector("#popup-buttons-container") as HTMLElement | null;
+
+      if (container) {
+        // Check if a portal with this ID already exists
+        const existingPortal = container.querySelector(`[data-portal-id="${portalId}"]`) as HTMLElement | null;
+        
+        if (existingPortal) {
+          // If it exists, use it instead of creating a new one
+          setPortalContainer(existingPortal);
+          return () => {
+            // Don't remove the element in cleanup, just set state to null
+          };
+        }
+        
+        // Create a new portal element if it doesn't exist
+        const portalElement = document.createElement("div");
+        portalElement.dataset.portalId = portalId; // Для ідентифікації
+        portalElement.className = "w-full";
+        container.appendChild(portalElement);
+        setPortalContainer(portalElement);
+
+        return () => {
+          // Only remove the element if it's still a child of the container
+          if (container.contains(portalElement)) {
+            container.removeChild(portalElement);
+          }
+        };
+      }
+    }
+
+    // If no container is found, just return an empty cleanup function
+    return () => {};
+  }, [portalId]);
+
+  // Поки контейнер не готовий — нічого не рендеримо
+  if (!portalContainer) return null;
+
+  // Рендеримо дітей у портал
+  return createPortal(children, portalContainer);
+};

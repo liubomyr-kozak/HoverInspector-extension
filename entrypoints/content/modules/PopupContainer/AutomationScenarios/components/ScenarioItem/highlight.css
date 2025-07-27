@@ -1,0 +1,29 @@
+/* CSS for highlighting DOM elements found by XPath */
+
+.xpath-highlight {
+  outline: 3px solid #faad14 !important;
+  outline-offset: 2px !important;
+  background-color: rgba(250, 173, 20, 0.2) !important;
+  box-shadow: 0 0 10px rgba(250, 173, 20, 0.5) !important;
+  position: relative !important;
+  z-index: 9999 !important;
+}
+
+.xpath-highlight-flash {
+  animation: xpath-flash 1.5s ease-out;
+}
+
+@keyframes xpath-flash {
+  0% {
+    outline-color: rgba(250, 173, 20, 0.8);
+    box-shadow: 0 0 20px rgba(250, 173, 20, 0.8);
+  }
+  50% {
+    outline-color: rgba(250, 173, 20, 0.4);
+    box-shadow: 0 0 10px rgba(250, 173, 20, 0.4);
+  }
+  100% {
+    outline-color: rgba(250, 173, 20, 0.8);
+    box-shadow: 0 0 20px rgba(250, 173, 20, 0.8);
+  }
+}

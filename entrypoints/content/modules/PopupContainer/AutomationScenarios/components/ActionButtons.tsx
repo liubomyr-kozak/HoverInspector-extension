@@ -1,6 +1,6 @@
-import React from 'react';
-import { IconPlus, IconRecordMail, IconPlayerStop } from '@tabler/icons-react';
-import { AddButton, ButtonContainer } from '../styles.ts';
+import React from "react";
+import { IconPlayerStop, IconPlus, IconRecordMail } from "@tabler/icons-react";
+import { AddButton, ButtonContainer } from "../styles.ts";
 
 interface ActionButtonsProps {
   recording: boolean;
@@ -11,23 +11,19 @@ interface ActionButtonsProps {
 /**
  * Component for rendering the action buttons (Add Scenario and Record)
  */
-const ActionButtons: React.FC<ActionButtonsProps> = ({
-  recording,
-  onAddScenario,
-  onToggleRecording
-}) => {
+const ActionButtons: React.FC<ActionButtonsProps> = ({ recording, onAddScenario, onToggleRecording }) => {
   return (
     <ButtonContainer>
       <AddButton onClick={onAddScenario}>
         <IconPlus size={18} />
         New Scenario
       </AddButton>
-      
-      <AddButton 
+
+      <AddButton
         onClick={onToggleRecording}
-        style={{ 
-          backgroundColor: recording ? '#ff4d4f' : '#f0f0f0',
-          color: recording ? 'white' : '#333'
+        style={{
+          backgroundColor: recording ? "#ff4d4f" : "#f0f0f0",
+          color: recording ? "white" : "#333",
         }}
       >
         {recording ? (

@@ -12,27 +12,21 @@
  */
 import React, { useEffect, useState } from "react";
 import {
-  IconTypography,
-  IconLetterCase,
-  IconLetterSpacing,
-  IconAlertTriangle,
   IconChevronDown,
   IconChevronRight,
+  IconEye,
+  IconLetterCase,
+  IconLetterSpacing,
   IconRuler,
-  IconUserCircle,
-  IconTestPipe,
-  IconBrush,
-  IconCheck,
-  IconX, IconEye
+  IconTypography,
 } from "@tabler/icons-react";
 
-import { 
-  getAllTypographyElements, 
-  getElementsWithTypographyIssues, 
+import {
+  AggregatedTypographyProperties,
   aggregateTypographyProperties,
+  getAllTypographyElements,
   getTypographyRules,
   TypographyElement,
-  AggregatedTypographyProperties
 } from "@entrypoints/shared/utils/typographyAnalysis";
 
 // Define the audience types

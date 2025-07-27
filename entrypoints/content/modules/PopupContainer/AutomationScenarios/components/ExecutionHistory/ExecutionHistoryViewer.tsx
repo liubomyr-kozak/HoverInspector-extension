@@ -1,35 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Table, 
-  Card, 
-  Tag, 
-  Space, 
-  Button, 
-  Input, 
-  DatePicker, 
-  Select, 
-  Drawer, 
-  Tooltip, 
-  Typography,
+import React, { useEffect, useState } from "react";
+import {
+  Button,
+  Card,
+  DatePicker,
+  Drawer,
+  Input,
+  message,
   Popconfirm,
-  message
-} from 'antd';
-import { 
-  SearchOutlined, 
-  FilterOutlined, 
-  ExportOutlined, 
-  EyeOutlined, 
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
+import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
+import {
   DeleteOutlined,
+  DownloadOutlined,
+  ExportOutlined,
+  EyeOutlined,
+  FilterOutlined,
   ReloadOutlined,
-  DownloadOutlined
-} from '@ant-design/icons';
-import { 
-  ExecutionHistoryMap, 
-  ExecutionHistoryEntry, 
-  ExecutionStatus 
-} from '../types';
-import ExecutionLogViewer from './ExecutionLogViewer';
-import dayjs from 'dayjs';
+  SearchOutlined,
+} from "@ant-design/icons";
+import { ExecutionHistoryEntry, ExecutionHistoryMap, ExecutionStatus } from "../../types.ts";
+import ExecutionLogViewer from "./ExecutionLogViewer.tsx";
+import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -53,35 +49,35 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
   onDelete,
   onExport,
   onExportAll,
-  scenarios
+  scenarios,
 }) => {
   // State for filters
-  const [searchText, setSearchText] = useState<string>('');
+  const [searchText, setSearchText] = useState<string>("");
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ExecutionStatus | ''>('');
-  const [scenarioFilter, setScenarioFilter] = useState<string>('');
-  
+  const [statusFilter, setStatusFilter] = useState<ExecutionStatus | "">("");
+  const [scenarioFilter, setScenarioFilter] = useState<string>("");
+
   // State for drawer
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [selectedEntry, setSelectedEntry] = useState<ExecutionHistoryEntry | null>(null);
-  
+
   // State for table
   const [filteredEntries, setFilteredEntries] = useState<ExecutionHistoryEntry[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  
+
   // Apply filters when executionHistory or filter values change
   useEffect(() => {
     applyFilters();
   }, [executionHistory, searchText, dateRange, statusFilter, scenarioFilter]);
-  
+
   // Apply filters to execution history
   const applyFilters = () => {
     let filtered = Object.values(executionHistory);
-    
+
     // Apply search filter
     if (searchText) {
       const lowerSearchText = searchText.toLowerCase();
-      filtered = filtered.filter(entry => {
+      filtered = filtered.filter((entry) => {
         const scenarioTitle = scenarios[entry.scenarioId]?.title || entry.scenarioTitle;
         return (
           scenarioTitle.toLowerCase().includes(lowerSearchText) ||
@@ -90,81 +86,79 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
         );
       });
     }
-    
+
     // Apply date range filter
     if (dateRange && dateRange[0] && dateRange[1]) {
-      const startDate = dateRange[0].startOf('day');
-      const endDate = dateRange[1].endOf('day');
-      
-      filtered = filtered.filter(entry => {
+      const startDate = dateRange[0].startOf("day");
+      const endDate = dateRange[1].endOf("day");
+
+      filtered = filtered.filter((entry) => {
         const executionDate = dayjs(entry.executionTime);
         return executionDate.isAfter(startDate) && executionDate.isBefore(endDate);
       });
     }
-    
+
     // Apply status filter
     if (statusFilter) {
-      filtered = filtered.filter(entry => entry.status === statusFilter);
+      filtered = filtered.filter((entry) => entry.status === statusFilter);
     }
-    
+
     // Apply scenario filter
     if (scenarioFilter) {
-      filtered = filtered.filter(entry => entry.scenarioId === scenarioFilter);
+      filtered = filtered.filter((entry) => entry.scenarioId === scenarioFilter);
     }
-    
+
     // Sort by execution time (newest first)
     filtered.sort((a, b) => new Date(b.executionTime).getTime() - new Date(a.executionTime).getTime());
-    
+
     setFilteredEntries(filtered);
   };
-  
+
   // Reset all filters
   const resetFilters = () => {
-    setSearchText('');
+    setSearchText("");
     setDateRange(null);
-    setStatusFilter('');
-    setScenarioFilter('');
+    setStatusFilter("");
+    setScenarioFilter("");
   };
-  
+
   // View execution details
   const viewExecutionDetails = (entry: ExecutionHistoryEntry) => {
     setSelectedEntry(entry);
     setDrawerVisible(true);
   };
-  
+
   // Delete execution history entry
   const deleteExecutionHistoryEntry = (id: string) => {
     onDelete(id);
-    message.success('Execution history entry deleted');
+    message.success("Execution history entry deleted");
   };
-  
+
   // Export execution history entry
   const exportExecutionHistoryEntry = (entry: ExecutionHistoryEntry) => {
     onExport(entry);
-    message.success('Execution history entry exported');
+    message.success("Execution history entry exported");
   };
-  
+
   // Export selected execution history entries
   const exportSelectedEntries = () => {
-    const selectedEntries = filteredEntries.filter(entry => 
-      selectedRowKeys.includes(entry.id)
-    );
-    
+    const selectedEntries = filteredEntries.filter((entry) => selectedRowKeys.includes(entry.id));
+
     if (selectedEntries.length === 0) {
-      message.warning('No entries selected');
+      message.warning("No entries selected");
       return;
     }
-    
+
     onExportAll(selectedEntries);
     message.success(`${selectedEntries.length} execution history entries exported`);
   };
-  
+
   // Format timestamp to a readable format
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
   };
-  
+
   // Format duration to a readable format
   const formatDuration = (duration: number) => {
     if (duration < 1000) {
@@ -177,7 +171,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
       return `${minutes}m ${seconds}s`;
     }
   };
-  
+
   // Get status tag based on status
   const getStatusTag = (status: ExecutionStatus) => {
     switch (status) {
@@ -197,61 +191,55 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
         return <Tag color="default">Unknown</Tag>;
     }
   };
-  
+
   // Table columns
   const columns = [
     {
-      title: 'Scenario',
-      dataIndex: 'scenarioId',
-      key: 'scenario',
+      title: "Scenario",
+      dataIndex: "scenarioId",
+      key: "scenario",
       render: (scenarioId: string, record: ExecutionHistoryEntry) => {
         const scenarioTitle = scenarios[scenarioId]?.title || record.scenarioTitle;
         return <Text ellipsis={{ tooltip: scenarioTitle }}>{scenarioTitle}</Text>;
-      }
+      },
     },
     {
-      title: 'Execution Time',
-      dataIndex: 'executionTime',
-      key: 'executionTime',
-      render: (text: string) => formatTimestamp(text)
+      title: "Execution Time",
+      dataIndex: "executionTime",
+      key: "executionTime",
+      render: (text: string) => formatTimestamp(text),
     },
     {
-      title: 'Duration',
-      dataIndex: 'duration',
-      key: 'duration',
-      render: (text: number) => formatDuration(text)
+      title: "Duration",
+      dataIndex: "duration",
+      key: "duration",
+      render: (text: number) => formatDuration(text),
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: ExecutionStatus) => getStatusTag(status)
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: ExecutionStatus) => getStatusTag(status),
     },
     {
-      title: 'Steps',
-      key: 'steps',
+      title: "Steps",
+      key: "steps",
       render: (text: string, record: ExecutionHistoryEntry) => (
-        <span>{record.stepsCompleted} / {record.totalSteps}</span>
-      )
+        <span>
+          {record.stepsCompleted} / {record.totalSteps}
+        </span>
+      ),
     },
     {
-      title: 'Actions',
-      key: 'actions',
+      title: "Actions",
+      key: "actions",
       render: (text: string, record: ExecutionHistoryEntry) => (
         <Space size="small">
           <Tooltip title="View Details">
-            <Button 
-              type="text" 
-              icon={<EyeOutlined />} 
-              onClick={() => viewExecutionDetails(record)} 
-            />
+            <Button type="text" icon={<EyeOutlined />} onClick={() => viewExecutionDetails(record)} />
           </Tooltip>
           <Tooltip title="Export">
-            <Button 
-              type="text" 
-              icon={<DownloadOutlined />} 
-              onClick={() => exportExecutionHistoryEntry(record)} 
-            />
+            <Button type="text" icon={<DownloadOutlined />} onClick={() => exportExecutionHistoryEntry(record)} />
           </Tooltip>
           <Tooltip title="Delete">
             <Popconfirm
@@ -260,51 +248,47 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
               okText="Yes"
               cancelText="No"
             >
-              <Button 
-                type="text" 
-                danger 
-                icon={<DeleteOutlined />} 
-              />
+              <Button type="text" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           </Tooltip>
         </Space>
-      )
-    }
+      ),
+    },
   ];
-  
+
   // Row selection configuration
   const rowSelection = {
     selectedRowKeys,
     onChange: (selectedKeys: React.Key[]) => {
       setSelectedRowKeys(selectedKeys);
-    }
+    },
   };
-  
+
   return (
     <Card>
-      <div style={{ marginBottom: '16px' }}>
+      <div style={{ marginBottom: "16px" }}>
         <Space wrap>
           <Input
             placeholder="Search scenarios"
             value={searchText}
-            onChange={e => setSearchText(e.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
             prefix={<SearchOutlined />}
             style={{ width: 200 }}
             allowClear
           />
-          
-          <RangePicker
-            value={dateRange}
-            onChange={dates => setDateRange(dates)}
-            style={{ width: 250 }}
-          />
-          
+
+          <RangePicker value={dateRange} onChange={(dates) => setDateRange(dates)} style={{ width: 250 }} />
+
           <Select
             placeholder="Filter by status"
             value={statusFilter}
-            onChange={value => setStatusFilter(value)}
+            onChange={(value) => setStatusFilter(value)}
             style={{ width: 150 }}
             allowClear
+            getPopupContainer={() =>
+              // @ts-ignore
+              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+            }
           >
             <Option value={ExecutionStatus.SUCCESS}>Success</Option>
             <Option value={ExecutionStatus.ERROR}>Error</Option>
@@ -313,54 +297,54 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
             <Option value={ExecutionStatus.PAUSED}>Paused</Option>
             <Option value={ExecutionStatus.CANCELLED}>Cancelled</Option>
           </Select>
-          
+
           <Select
             placeholder="Filter by scenario"
             value={scenarioFilter}
-            onChange={value => setScenarioFilter(value)}
+            onChange={(value) => setScenarioFilter(value)}
             style={{ width: 200 }}
             allowClear
             showSearch
             optionFilterProp="children"
+            getPopupContainer={() =>
+              // @ts-ignore
+              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+            }
           >
             {Object.entries(scenarios).map(([id, scenario]) => (
-              <Option key={id} value={id}>{scenario.title}</Option>
+              <Option key={id} value={id}>
+                {scenario.title}
+              </Option>
             ))}
           </Select>
-          
-          <Button 
-            icon={<FilterOutlined />} 
-            onClick={resetFilters}
-          >
+
+          <Button icon={<FilterOutlined />} onClick={resetFilters}>
             Reset Filters
           </Button>
-          
-          <Button 
-            icon={<ReloadOutlined />} 
-            onClick={onRefresh}
-          >
+
+          <Button icon={<ReloadOutlined />} onClick={onRefresh}>
             Refresh
           </Button>
         </Space>
       </div>
-      
-      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
+
+      <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
         <Text>
-          {selectedRowKeys.length > 0 
-            ? `Selected ${selectedRowKeys.length} of ${filteredEntries.length} entries` 
+          {selectedRowKeys.length > 0
+            ? `Selected ${selectedRowKeys.length} of ${filteredEntries.length} entries`
             : `${filteredEntries.length} entries`}
         </Text>
-        
-        <Button 
-          type="primary" 
-          icon={<ExportOutlined />} 
+
+        <Button
+          type="primary"
+          icon={<ExportOutlined />}
           onClick={exportSelectedEntries}
           disabled={selectedRowKeys.length === 0}
         >
           Export Selected
         </Button>
       </div>
-      
+
       <Table
         rowSelection={rowSelection}
         columns={columns}
@@ -368,7 +352,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
         rowKey="id"
         pagination={{ pageSize: 10 }}
       />
-      
+
       <Drawer
         title="Execution Details"
         placement="right"
@@ -378,10 +362,10 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
       >
         {selectedEntry && (
           <>
-            <div style={{ marginBottom: '16px' }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
+            <div style={{ marginBottom: "16px" }}>
+              <Space direction="vertical" style={{ width: "100%" }}>
                 <Card size="small">
-                  <Space direction="vertical" style={{ width: '100%' }}>
+                  <Space direction="vertical" style={{ width: "100%" }}>
                     <div>
                       <Text strong>Scenario: </Text>
                       <Text>{scenarios[selectedEntry.scenarioId]?.title || selectedEntry.scenarioTitle}</Text>
@@ -400,7 +384,9 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
                     </div>
                     <div>
                       <Text strong>Steps Completed: </Text>
-                      <Text>{selectedEntry.stepsCompleted} / {selectedEntry.totalSteps}</Text>
+                      <Text>
+                        {selectedEntry.stepsCompleted} / {selectedEntry.totalSteps}
+                      </Text>
                     </div>
                     {selectedEntry.triggerType && (
                       <div>
@@ -418,7 +404,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
                 </Card>
               </Space>
             </div>
-            
+
             <ExecutionLogViewer log={selectedEntry.log} title="Execution Log" />
           </>
         )}

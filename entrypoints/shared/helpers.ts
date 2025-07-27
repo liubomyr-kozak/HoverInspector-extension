@@ -1,5 +1,5 @@
 //@ts-nocheck
-import {toLower} from "ramda";
+import { toLower } from "ramda";
 
 export const filterNull = <T>(x: T | null | undefined): x is T => !!x;
 

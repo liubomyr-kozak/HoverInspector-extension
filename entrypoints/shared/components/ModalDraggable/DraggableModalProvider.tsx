@@ -1,34 +1,29 @@
-import * as React from 'react'
-import {useEffect, useReducer} from 'react'
-import {getWindowSize} from './store/getWindowSize.ts'
-import {useDispatch} from "react-redux";
-import {windowResizeForModal} from './store/draggableModalSlice.ts'
+import * as React from "react";
+import { useEffect } from "react";
+import { getWindowSize } from "./store/getWindowSize.ts";
+import { useDispatch } from "react-redux";
+import { windowResizeForModal } from "./store/draggableModalSlice.ts";
 
-export const DraggableModalProvider = ({
-                                           children,
-                                       }: {
-    children: React.ReactNode
-}): React.ReactElement => {
-    // const [state, dispatch] = useReducer(draggableModalReducer, initialModalsState)
+export const DraggableModalProvider = ({ children }: { children: React.ReactNode }): React.ReactElement => {
+  // const [state, dispatch] = useReducer(draggableModalReducer, initialModalsState)
 
-    const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
-    useEffect(() => {
-        if (typeof window !== 'object') {
-            return
-        }
+  useEffect(() => {
+    if (typeof window !== "object") {
+      return;
+    }
 
-        const onResize = () => {
-            dispatch(windowResizeForModal(getWindowSize()))
-        }
+    const onResize = () => {
+      dispatch(windowResizeForModal(getWindowSize()));
+    };
 
-        window.addEventListener('resize', onResize)
+    window.addEventListener("resize", onResize);
 
-        onResize()
+    onResize();
 
-        return () => window.removeEventListener('resize', onResize)
-    }, [dispatch])
+    return () => window.removeEventListener("resize", onResize);
+  }, [dispatch]);
 
-
-    return <>{children}</>
-}
+  return <>{children}</>;
+};

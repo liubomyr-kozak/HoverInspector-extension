@@ -1,4 +1,4 @@
-import { CategorizedElement } from './categorizeElements';
+import { CategorizedElement } from "./categorizeElements";
 
 /**
  * Typography category types
