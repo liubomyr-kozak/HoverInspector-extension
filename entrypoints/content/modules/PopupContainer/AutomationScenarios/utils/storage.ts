@@ -54,8 +54,6 @@ export const getAllFunctionsFromLocalStorage = async (): Promise<FunctionMap> =>
   try {
     const settings = await ExtensionStorageManager.getAutomationScenario("automation_server_settings");
 
-    debugger;
-    // /generate-code
     const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncFunctions;
 
     // Get all local functions

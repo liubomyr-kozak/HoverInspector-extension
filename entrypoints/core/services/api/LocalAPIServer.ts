@@ -24,7 +24,7 @@ class LocalAPIServer {
     if (!settings || !settings.saveToBackend) return;
 
     try {
-      const response = await fetch(`${settings.serverUrl}/api/generate-code`, {
+      const response = await fetch(`${settings.serverUrl}/generate-code`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -79,6 +79,8 @@ class LocalAPIServer {
     const settings = await this.getServerSettings();
     if (!settings || !settings.syncFunctions) return;
 
+    debugger;
+
     try {
       const response = await fetch(`${settings.serverUrl}/api/functions`, {
         method: "POST",
@@ -86,8 +88,8 @@ class LocalAPIServer {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id,
-          function: func,
+          key: id,
+          value: func,
         }),
       });
 

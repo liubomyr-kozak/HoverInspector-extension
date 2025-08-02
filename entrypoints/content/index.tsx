@@ -5,6 +5,9 @@ import {
   HOVER_INSPECTOR_ACTIVATE,
   HOVER_INSPECTOR_CHECK_SCRIPT,
   HOVER_INSPECTOR_DEACTIVATE,
+  DEV_SCRIPT_INJECTED,
+  PROD_SCRIPT_INJECTED,
+  SCRIPT_INJECTION_ERROR,
 } from "@entrypoints/shared/globalEvents";
 import { isProduction } from "@entrypoints/shared/helpers";
 import browserApi from "@entrypoints/core/services/api/BrowserApi.ts";
@@ -59,6 +62,37 @@ export default defineContentScript({
 
     onMessage(HOVER_INSPECTOR_ACTIVATE, (data) => {
       store.dispatch(setActiveApp());
+    });
+
+    // Script injection message handlers
+    onMessage(DEV_SCRIPT_INJECTED, (message) => {
+      console.log("Content: Received DEV script injection:", message);
+
+      // In development mode, inject script via DOM
+      if (message.data?.scriptUrl) {
+        const script = document.createElement("script");
+        script.src = message.data.scriptUrl;
+        script.setAttribute("data-hover-inspector", message.data.filename);
+        script.onload = () => {
+          console.log(`Content: Successfully loaded DEV script: ${message.data?.filename}`);
+        };
+        script.onerror = (error) => {
+          console.error(`Content: Failed to load DEV script: ${message.data?.filename}`, error);
+        };
+        (document.head || document.documentElement).appendChild(script);
+      }
+
+      return { success: true, mode: "development" };
+    });
+
+    onMessage(PROD_SCRIPT_INJECTED, (message) => {
+      console.log("Content: Received PROD script injection notification:", message);
+      return { success: true, mode: "production" };
+    });
+
+    onMessage(SCRIPT_INJECTION_ERROR, (message) => {
+      console.error("Content: Script injection error:", message);
+      return { received: true };
     });
 
     const ui = await createShadowRootUi(ctx, {
