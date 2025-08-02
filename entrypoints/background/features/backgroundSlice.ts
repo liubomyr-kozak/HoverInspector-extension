@@ -97,8 +97,8 @@ export const actionsContextSlice = chromeActionsSlice({
     return await AppStorageService.getAllAutomationScenarios();
   },
 
-  getAutomationScenario: async ({ data: id }) => {
-    return await AppStorageService.getAutomationScenario(id);
+  getAutomationScenario: async (data) => {
+    return await AppStorageService.getAutomationScenario(data);
   },
 
   // test working

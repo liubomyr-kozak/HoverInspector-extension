@@ -101,7 +101,7 @@ class ExtensionStorageManager {
    * @returns {Promise<Object|null>} The scenario object or null if not found
    */
   async getAutomationScenario(id) {
-    return await getAutomationScenario({ data: id });
+    return await getAutomationScenario(id);
   }
 
   /**

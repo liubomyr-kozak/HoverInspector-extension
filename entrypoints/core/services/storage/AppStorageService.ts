@@ -73,8 +73,9 @@ class AppStorageService {
    * @param {string} id - The ID of the scenario to get
    * @returns {Promise<Object|null>} The scenario object or null if not found
    */
-  getAutomationScenario = async (id) => {
+  getAutomationScenario = async ({ data: id }) => {
     const key = AUTOMATION_SCENARIO_KEY(id);
+
     return await LocalStorage.get(key);
   };
 

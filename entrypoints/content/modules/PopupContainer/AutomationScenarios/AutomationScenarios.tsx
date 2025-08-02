@@ -1,13 +1,15 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Tabs } from "antd";
-import { IconBolt, IconCalendar, IconHistory } from "@tabler/icons-react";
+import { IconBolt, IconCalendar, IconHistory, IconServer } from "@tabler/icons-react";
 
 import ScenariosTab from "./tabs/ScenariosTab";
 import FunctionsTab from "./tabs/FunctionsTab";
 import SchedulesTab from "./tabs/SchedulesTab";
 import TriggersTab from "./tabs/TriggersTab";
 import ExecutionHistoryTab from "./tabs/ExecutionHistoryTab";
+import ServerTab from "./tabs/ServerTab";
+import { useServerTabVisibility } from "./hooks/useServerTabVisibility";
 
 import {
   automationActions,
@@ -35,6 +37,7 @@ export const AutomationScenarios: React.FC = () => {
 
   const activeScenarioId = useSelector(selectActiveScenarioId);
   const executing = useSelector(selectExecuting);
+  const { isServerTabVisible } = useServerTabVisibility();
 
   const { activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
   const isActive = React.useMemo(() => activeIcons.includes("automation"), [activeIcons]);
@@ -146,6 +149,20 @@ export const AutomationScenarios: React.FC = () => {
               </div>
             ),
           },
+          ...(isServerTabVisible ? [{
+            key: "server",
+            label: (
+              <span className="flex items-center">
+                <IconServer size={16} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                Server
+              </span>
+            ),
+            children: (
+              <div className="w-full">
+                <ServerTab />
+              </div>
+            ),
+          }] : []),
         ]}
       />
     </div>
