@@ -26,6 +26,7 @@ import {
   PlayCircleOutlined,
   SearchOutlined,
   PlusOutlined,
+  MinusCircleOutlined,
 } from "@ant-design/icons";
 
 import { Scenario, ScenarioStep, ExecutionStatus, ExecutionHistoryEntry } from "../../types.ts";
@@ -284,6 +285,8 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
         return <PauseCircleOutlined style={{ color: "#722ed1" }} />;
       case ExecutionStatus.CANCELLED:
         return <StopOutlined style={{ color: "#fa8c16" }} />;
+      case ExecutionStatus.SKIPPED:
+        return <MinusCircleOutlined style={{ color: "#8c8c8c" }} />;
       default:
         return <EmptyStatusIcon />;
     }

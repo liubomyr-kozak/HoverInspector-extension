@@ -175,6 +175,18 @@ export const stepTypeOptions = [
 ];
 
 /**
+ * Gets filtered step type options based on sync settings
+ * @param syncFunctions Whether functions sync is enabled
+ * @returns Filtered step type options
+ */
+export const getFilteredStepTypeOptions = (syncFunctions: boolean = true) => {
+  if (syncFunctions) {
+    return stepTypeOptions;
+  }
+  return stepTypeOptions.filter(option => option.value !== "function");
+};
+
+/**
  * Status of an execution
  */
 export enum ExecutionStatus {
@@ -185,6 +197,7 @@ export enum ExecutionStatus {
   PENDING = "pending",
   PAUSED = "paused",
   CANCELLED = "cancelled",
+  SKIPPED = "skipped",
 }
 
 /**

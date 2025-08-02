@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Button, Divider, Form, Input, InputNumber, Select, Space } from "antd";
+import { useSelector } from "react-redux";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 import { IconGripVertical, IconPlus, IconTrash, IconRefresh } from "@tabler/icons-react";
-import { FunctionMap, ScenarioStep, stepTypeOptions } from "../types.ts";
+import { FunctionMap, ScenarioStep, getFilteredStepTypeOptions } from "../types.ts";
+import { useServerSettings } from "../hooks/useServerSettings.ts";
 import { EmptyState, StepContainer, StepHeader, StepTitle } from "../styles.ts";
 
 // Predefined categories for scenarios
@@ -36,6 +38,8 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
 }) => {
   // State for tracking drag operation
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const { syncFunctions } = useServerSettings();
+  const stepTypeOptions = getFilteredStepTypeOptions(syncFunctions);
 
   // Function to scroll to the bottom of the steps container
   const scrollToBottom = () => {
@@ -228,7 +232,7 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
                 )}
               </Form.Item>
               {/*)}*/}
-              {step.type === "function" && (
+              {syncFunctions && step.type === "function" && (
                 <Form.Item label="Function" required style={{ marginBottom: "8px" }}>
                   <Select
                     value={step.value || ""}

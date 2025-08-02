@@ -18,6 +18,7 @@
 import { call, put, select, delay, cancelled, race, take } from "redux-saga/effects";
 import { ExecutionLog, ExecutionLogEntry, ExecutionStatus, FunctionMap, ScenarioStep } from "../types";
 import { automationActions } from "../../../../store/automation/automation.slice";
+import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 
 /**
  * Default delay between steps in milliseconds
@@ -252,7 +253,7 @@ export function* executeClickStep(step: ScenarioStep) {
   }
 
   // Trigger a click event on the element
-  element?.click?.();
+  (element as HTMLElement)?.click?.();
 }
 
 /**
@@ -482,6 +483,30 @@ export function* executeSelectStep(step: ScenarioStep) {
  */
 export function* executeStep(step: ScenarioStep, stepIndex: number) {
   try {
+    // Check if this is a function step and syncFunctions is disabled
+    if (step.type === "function") {
+      // Get server settings to check if functions sync is enabled
+      const serverSettings = yield call(ExtensionStorageManager.getAutomationScenario, "automation_server_settings");
+      const syncFunctions = serverSettings?.syncFunctions ?? true;
+      
+      if (!syncFunctions) {
+        // Skip function step execution when syncFunctions is false
+        const logEntry: ExecutionLogEntry = {
+          stepIndex,
+          stepType: step.type,
+          stepDescription: `Skipped function step: ${step.value || "Unknown function"} (Functions sync disabled)`,
+          timestamp: new Date().toISOString(),
+          duration: 0,
+          status: ExecutionStatus.SKIPPED,
+          details: "Step skipped because function synchronization is disabled",
+        };
+
+        // Add the log entry to the execution log
+        yield call(addLogEntry, logEntry);
+        return logEntry;
+      }
+    }
+
     // Create a log entry for this step
     const startTime = Date.now();
     const description = getStepDescription(step);
@@ -529,10 +554,10 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
     // Create a log entry
     const logEntry: ExecutionLogEntry = {
       stepIndex,
-      description,
-      startTime: new Date(startTime).toISOString(),
-      endTime: new Date(endTime).toISOString(),
-      executionTime,
+      stepType: step.type,
+      stepDescription: description,
+      timestamp: new Date(endTime).toISOString(),
+      duration: executionTime,
       status: ExecutionStatus.SUCCESS,
     };
 
@@ -547,12 +572,12 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
     const endTime = Date.now();
     const logEntry: ExecutionLogEntry = {
       stepIndex,
-      description: getStepDescription(step),
-      startTime: new Date().toISOString(),
-      endTime: new Date(endTime).toISOString(),
-      executionTime: 0,
+      stepType: step.type,
+      stepDescription: getStepDescription(step),
+      timestamp: new Date(endTime).toISOString(),
+      duration: 0,
       status: ExecutionStatus.ERROR,
-      error: error.message || "An error occurred during execution",
+      error: (error as Error)?.message || "An error occurred during execution",
     };
 
     // Add the error log entry to the execution log
@@ -595,7 +620,7 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
  */
 export function* executeSteps(
   steps: ScenarioStep[],
-  onStepComplete?: (index: number) => Generator,
+  onStepComplete?: (index: number, logEntry?: ExecutionLogEntry) => Generator,
   functions?: FunctionMap,
   speed: number = 1,
 ) {
@@ -640,12 +665,12 @@ export function* executeSteps(
         }
 
         // Execute the step and record the log entry
-        yield call(executeStep, steps[i], i);
+        const logEntry = yield call(executeStep, steps[i], i);
 
         // Call the callback if provided
         if (onStepComplete) {
           try {
-            yield call(onStepComplete, i);
+            yield call(onStepComplete, i, logEntry);
           } catch (callbackError) {
             console.error(`Error in onStepComplete callback for step ${i}:`, callbackError);
             // Continue execution despite callback error

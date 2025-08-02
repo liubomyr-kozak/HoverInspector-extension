@@ -187,6 +187,8 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
         return <Tag color="purple">Paused</Tag>;
       case ExecutionStatus.CANCELLED:
         return <Tag color="orange">Cancelled</Tag>;
+      case ExecutionStatus.SKIPPED:
+        return <Tag color="default">Skipped</Tag>;
       default:
         return <Tag color="default">Unknown</Tag>;
     }
@@ -296,6 +298,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
             <Option value={ExecutionStatus.RUNNING}>Running</Option>
             <Option value={ExecutionStatus.PAUSED}>Paused</Option>
             <Option value={ExecutionStatus.CANCELLED}>Cancelled</Option>
+            <Option value={ExecutionStatus.SKIPPED}>Skipped</Option>
           </Select>
 
           <Select

@@ -544,7 +544,7 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
       const executionLog = yield call(
         executeSteps,
         pendingSteps,
-        function* (index) {
+        function* (index, logEntry) {
           // Update the UI after each step is completed
           const stepsCompleted = index + 1;
           const totalSteps = pendingSteps.length;
@@ -558,8 +558,9 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
           // Calculate the actual step index considering the starting point
           const actualStepIndex = startFromStep + index;
 
-          // Update step status to SUCCESS for the completed step
-          yield put(automationActions.setStepStatus({ index: actualStepIndex, status: ExecutionStatus.SUCCESS }));
+          // Use the actual status from the log entry instead of hardcoding SUCCESS
+          const stepStatus = logEntry?.status || ExecutionStatus.SUCCESS;
+          yield put(automationActions.setStepStatus({ index: actualStepIndex, status: stepStatus }));
 
           // Set the next step to RUNNING if there is one
           if (actualStepIndex + 1 < totalSteps) {

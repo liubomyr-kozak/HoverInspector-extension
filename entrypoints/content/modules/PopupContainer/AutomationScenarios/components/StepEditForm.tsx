@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Form, Input, Select, Button, Space, Divider, Tooltip, Dropdown, Menu } from "antd";
 import { useSelector } from "react-redux";
-import { ScenarioStep, stepTypeOptions } from "../types";
+import { ScenarioStep, getFilteredStepTypeOptions } from "../types";
+import { useServerSettings } from "../hooks/useServerSettings";
 import { selectFunctions, selectStoredValues } from "@entrypoints/content/store/automation/automation.slice.ts";
 
 interface StepEditFormProps {
@@ -14,9 +15,12 @@ interface StepEditFormProps {
 /**
  * Form a component for editing a step in a scenario
  */
-const StepEditForm: React.FC<StepEditFormProps> = ({ step, onClose, onSave }) => {
+// step = {} додав, виникає коли новий ценарій був доданий, і він перемальовується.. тимчасово постійне рішення
+const StepEditForm: React.FC<StepEditFormProps> = ({ step = {} as ScenarioStep, onClose, onSave }) => {
   const functions = useSelector(selectFunctions);
   const storedValues = useSelector(selectStoredValues);
+  const { syncFunctions } = useServerSettings();
+  const stepTypeOptions = getFilteredStepTypeOptions(syncFunctions);
 
   // Local state for the form
   const [formValues, setFormValues] = useState<ScenarioStep>({
@@ -181,7 +185,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({ step, onClose, onSave }) =>
         );
 
       case "function":
-        return (
+        return syncFunctions ? (
           <Form.Item label="Function" required>
             <Select
               value={formValues.value}
@@ -194,7 +198,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({ step, onClose, onSave }) =>
               }
             />
           </Form.Item>
-        );
+        ) : null;
 
       case "redirect":
         return (

@@ -6,7 +6,8 @@ import {
   LoadingOutlined,
   PauseCircleOutlined,
   StopOutlined,
-  HistoryOutlined
+  HistoryOutlined,
+  MinusCircleOutlined
 } from "@ant-design/icons";
 import { ExecutionHistoryEntry, ExecutionStatus, ScenarioMap } from "../types";
 
@@ -43,6 +44,8 @@ const ScenarioExecutionHistory: React.FC<ScenarioExecutionHistoryProps> = ({
         return <PauseCircleOutlined style={{ color: "#722ed1" }} />;
       case ExecutionStatus.CANCELLED:
         return <StopOutlined style={{ color: "#fa8c16" }} />;
+      case ExecutionStatus.SKIPPED:
+        return <MinusCircleOutlined style={{ color: "#8c8c8c" }} />;
       default:
         return <CloseCircleOutlined style={{ color: "#f5222d" }} />;
     }
@@ -61,6 +64,8 @@ const ScenarioExecutionHistory: React.FC<ScenarioExecutionHistoryProps> = ({
         return <Tag color="purple">Paused</Tag>;
       case ExecutionStatus.CANCELLED:
         return <Tag color="orange">Cancelled</Tag>;
+      case ExecutionStatus.SKIPPED:
+        return <Tag color="default">Skipped</Tag>;
       default:
         return <Tag color="default">Unknown</Tag>;
     }

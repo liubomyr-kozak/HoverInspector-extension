@@ -10,6 +10,7 @@ import TriggersTab from "./tabs/TriggersTab";
 import ExecutionHistoryTab from "./tabs/ExecutionHistoryTab";
 import ServerTab from "./tabs/ServerTab";
 import { useServerTabVisibility } from "./hooks/useServerTabVisibility";
+import { useServerSettings } from "./hooks/useServerSettings";
 
 import {
   automationActions,
@@ -38,6 +39,7 @@ export const AutomationScenarios: React.FC = () => {
   const activeScenarioId = useSelector(selectActiveScenarioId);
   const executing = useSelector(selectExecuting);
   const { isServerTabVisible } = useServerTabVisibility();
+  const { syncFunctions } = useServerSettings();
 
   const { activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
   const isActive = React.useMemo(() => activeIcons.includes("automation"), [activeIcons]);
@@ -55,6 +57,13 @@ export const AutomationScenarios: React.FC = () => {
       dispatch(loadExecutionHistoryWatcher.getPayload());
     }
   }, [isActive, dispatch]);
+
+  // Switch away from functions tab if syncFunctions becomes false
+  useEffect(() => {
+    if (!syncFunctions && activeTab === "functions") {
+      setActiveTab("scenarios");
+    }
+  }, [syncFunctions, activeTab, setActiveTab]);
 
   useEffect(() => {
     if (executing && activeScenarioId) {
@@ -98,7 +107,7 @@ export const AutomationScenarios: React.FC = () => {
               </div>
             ),
           },
-          {
+          ...(syncFunctions ? [{
             key: "functions",
             label: "Functions",
             children: (
@@ -106,7 +115,7 @@ export const AutomationScenarios: React.FC = () => {
                 <FunctionsTab />
               </div>
             ),
-          },
+          }] : []),
           {
             key: "schedules",
             label: (
