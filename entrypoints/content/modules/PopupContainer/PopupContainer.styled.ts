@@ -146,7 +146,6 @@ export const FeatureTitle = styled.div`
   font-size: 15px;
   font-weight: bold;
   color: #888;
-  margin: 0 0 15px;
   text-transform: uppercase;
   display: flex;
   align-items: center;

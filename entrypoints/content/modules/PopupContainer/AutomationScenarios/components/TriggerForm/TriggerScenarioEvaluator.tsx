@@ -61,6 +61,7 @@ export const TriggerScenarioEvaluator = () => {
   const evaluateCustomCondition = (condition: TriggerConfig["condition"]) => {
     if (!condition.customCondition) return true; // If no custom condition, consider it met
 
+    debugger;
     try {
       // Use Function constructor to create a function from the custom condition string
       const evalFunction = new Function("return " + condition.customCondition);

@@ -12,6 +12,7 @@ import {
   selectPaused,
   selectSearchedStepIndex,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
+import { AnimatedStepIcon, getStepColor } from "../../utils/stepIcons";
 import { getStepDescription } from "../../utils/stepExecutor.saga";
 import { Progress, Button } from "antd";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
@@ -399,39 +400,12 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
               // Get step description
               const stepDescription = getStepDescription(step);
 
-              // Determine icon and color based on step type
-              let stepIcon = "⚙️";
-              let stepColor = "#1890ff";
-              switch (step.type) {
-                case "click":
-                  stepIcon = "👆";
-                  stepColor = "#52c41a";
-                  break;
-                case "value":
-                  stepIcon = "✏️";
-                  stepColor = "#722ed1";
-                  break;
-                case "code":
-                  stepIcon = "💻";
-                  stepColor = "#fa8c16";
-                  break;
-                case "function":
-                  stepIcon = "🔧";
-                  stepColor = "#eb2f96";
-                  break;
-                case "redirect":
-                  stepIcon = "🔄";
-                  stepColor = "#1890ff";
-                  break;
-                case "update":
-                  stepIcon = "🔃";
-                  stepColor = "#13c2c2";
-                  break;
-                case "wait":
-                  stepIcon = "⏱️";
-                  stepColor = "#faad14";
-                  break;
-              }
+              // Get step color from the new utility
+              const stepColor = getStepColor(step.type);
+
+              // Check if this is the current executing step
+              const isCurrentStep = displayIndex === currentStepIndex;
+              const isRunningStep = status === ExecutionStatus.RUNNING;
 
               // Determine text status
               let textStatus = "";
@@ -443,6 +417,8 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                 textStatus = "виконується";
               } else if (status === ExecutionStatus.PAUSED) {
                 textStatus = "пауза";
+              } else if (status === ExecutionStatus.SKIPPED) {
+                textStatus = "пропущено";
               }
 
               // Check if this step is being edited
@@ -488,7 +464,14 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                       <StepHeader>
                         <StepInfo>
                           <StepNumber>{displayIndex + 1}</StepNumber>
-                          <StepIconWrapper>{stepIcon}</StepIconWrapper>
+                          <StepIconWrapper>
+                            <AnimatedStepIcon 
+                              step={step} 
+                              size={16}
+                              isActive={isCurrentStep}
+                              isPulsing={isRunningStep}
+                            />
+                          </StepIconWrapper>
                           <StepDescription color={stepColor}>{stepDescription}</StepDescription>
 
                           <span>{statusIcon}</span>
@@ -497,6 +480,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                           {status === ExecutionStatus.SUCCESS && <StatusTag color="success">Completed</StatusTag>}
                           {status === ExecutionStatus.ERROR && <StatusTag color="error">Failed</StatusTag>}
                           {status === ExecutionStatus.WARNING && <StatusTag color="warning">Warning</StatusTag>}
+                          {status === ExecutionStatus.SKIPPED && <StatusTag color="default">Skipped</StatusTag>}
                         </StepInfo>
 
                         {/* Step action buttons */}

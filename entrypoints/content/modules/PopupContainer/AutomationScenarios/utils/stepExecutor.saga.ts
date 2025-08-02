@@ -346,6 +346,8 @@ export function* executeCodeStep(step: ScenarioStep) {
     throw new Error("Code is required for code steps");
   }
 
+  debugger;
+
   try {
     // Execute the code
     // eslint-disable-next-line no-new-func
@@ -378,6 +380,8 @@ export function* executeFunctionStep(step: ScenarioStep) {
   if (!func) {
     throw new Error(`Function "${step.value}" not found`);
   }
+
+  debugger;
 
   try {
     // Execute the function
@@ -488,7 +492,7 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
       // Get server settings to check if functions sync is enabled
       const serverSettings = yield call(ExtensionStorageManager.getAutomationScenario, "automation_server_settings");
       const syncFunctions = serverSettings?.syncFunctions ?? true;
-      
+
       if (!syncFunctions) {
         // Skip function step execution when syncFunctions is false
         const logEntry: ExecutionLogEntry = {
@@ -658,14 +662,22 @@ export function* executeSteps(
       }
 
       try {
+        // Set current step index to show which step is executing
+        yield put(automationActions.setCurrentStepIndex(i));
+        yield put(automationActions.setStepStatus({ index: i, status: ExecutionStatus.RUNNING }));
+
         // Validate the current step
         if (!steps[i]) {
           console.warn(`Step ${i} is undefined or null, skipping`);
+          yield put(automationActions.setStepStatus({ index: i, status: ExecutionStatus.ERROR }));
           continue;
         }
 
         // Execute the step and record the log entry
         const logEntry = yield call(executeStep, steps[i], i);
+
+        // Mark step as completed
+        yield put(automationActions.setStepStatus({ index: i, status: ExecutionStatus.SUCCESS }));
 
         // Call the callback if provided
         if (onStepComplete) {
@@ -700,10 +712,16 @@ export function* executeSteps(
       } catch (error) {
         console.error(`Error executing step ${i}:`, error);
 
+        // Mark the failed step
+        yield put(automationActions.setStepStatus({ index: i, status: ExecutionStatus.ERROR }));
+
         // Finalize the execution log with error status
         return yield call(finalizeExecutionLog, ExecutionStatus.ERROR);
       }
     }
+
+    // Clear current step index when all steps are completed
+    yield put(automationActions.setCurrentStepIndex(-1));
 
     // All steps executed successfully
     return yield call(finalizeExecutionLog, ExecutionStatus.SUCCESS);

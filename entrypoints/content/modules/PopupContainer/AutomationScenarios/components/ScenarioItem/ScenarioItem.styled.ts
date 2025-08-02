@@ -57,9 +57,13 @@ export const StepsList = styled.ul`
   margin: 0;
 `;
 
-export const StepItem = styled.li<{ isActive?: boolean; borderColor?: string }>`
+export const StepItem = styled.li<{ isActive?: boolean; isSearched?: boolean; borderColor?: string }>`
   padding: 8px 12px;
-  background-color: ${(props) => (props.isActive ? "#e6f7ff" : "white")};
+  background-color: ${(props) => 
+    props.isActive ? "#e6f7ff" : 
+    props.isSearched ? "#fff7e6" : 
+    "white"
+  };
   border: 1px solid #f0f0f0;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);

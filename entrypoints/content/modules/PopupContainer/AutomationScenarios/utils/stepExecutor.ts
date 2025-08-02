@@ -167,35 +167,35 @@ export class StepExecutor {
 
   /**
    * Processes a step value to replace variable references with their stored values
-   * 
+   *
    * @param value The value to process
    * @returns The processed value with variables replaced
    */
   private static processStepValue(value: string): string {
     if (!value) return value;
-    
+
     // Look for patterns like ${variableName}
     return value.replace(/\${([^}]+)}/g, (match, variableName) => {
       // Dispatch a custom event to get the stored value
-      const getValueEvent = new CustomEvent('automation:getValue', {
+      const getValueEvent = new CustomEvent("automation:getValue", {
         detail: {
           key: variableName,
           callback: (storedValue: string | undefined) => {
             // This will be handled asynchronously by the saga
             console.log(`Retrieved stored value for ${variableName}: ${storedValue}`);
-          }
-        }
+          },
+        },
       });
       document.dispatchEvent(getValueEvent);
-      
+
       // For now, we'll use a synchronous approach with localStorage
       // In a real implementation, this would be handled by the saga
       try {
-        const storedValues = JSON.parse(localStorage.getItem('automation_stored_values') || '{}');
+        const storedValues = JSON.parse(localStorage.getItem("automation_stored_values") || "{}");
         const storedValue = storedValues[variableName];
         return storedValue !== undefined ? storedValue : match;
       } catch (error) {
-        console.error('Error retrieving stored value:', error);
+        console.error("Error retrieving stored value:", error);
         return match;
       }
     });
@@ -218,7 +218,7 @@ export class StepExecutor {
     if (functions) {
       this.setFunctions(functions);
     }
-    
+
     // Process step values to replace variables
     const processedStep = { ...step };
     if (processedStep.value) {
@@ -422,21 +422,26 @@ export class StepExecutor {
             debugger;
             try {
               const result = onStepComplete(i);
-              
+
               // Check if the result is a generator
-              if (result && typeof result === 'object' && Symbol.iterator in result && typeof result.next === 'function') {
+              if (
+                result &&
+                typeof result === "object" &&
+                Symbol.iterator in result &&
+                typeof result.next === "function"
+              ) {
                 // Handle generator function
                 let isDone = false;
                 while (!isDone) {
                   const { done, value } = result.next();
                   isDone = !!done;
-                  
+
                   // If the generator yields a promise, await it
-                  if (value && typeof value.then === 'function') {
+                  if (value && typeof value.then === "function") {
                     await value;
                   }
                 }
-              } else if (result && typeof result.then === 'function') {
+              } else if (result && typeof result.then === "function") {
                 // Handle Promise
                 await result;
               }
@@ -639,6 +644,8 @@ export class StepExecutor {
       throw new Error("Code is required for code steps");
     }
 
+    debugger;
+
     // Execute the code
     try {
       // eslint-disable-next-line no-new-func
@@ -669,6 +676,7 @@ export class StepExecutor {
 
     const customFunction = this.functions[functionId];
 
+    debugger;
     // Execute the function code
     try {
       // eslint-disable-next-line no-new-func
@@ -787,28 +795,28 @@ export class StepExecutor {
     }
 
     // Get the text content of the element
-    let textContent = '';
-    
+    let textContent = "";
+
     // Handle different element types
     if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
       textContent = (element as HTMLInputElement).value;
     } else if (element.tagName === "SELECT") {
       const selectElement = element as HTMLSelectElement;
       const selectedOption = selectElement.options[selectElement.selectedIndex];
-      textContent = selectedOption ? selectedOption.text : '';
+      textContent = selectedOption ? selectedOption.text : "";
     } else {
       // For other elements, get the text content
-      textContent = element.textContent || '';
+      textContent = element.textContent || "";
     }
 
     // Store the text content in the automation state
     // We need to dispatch an action to the store
     // This will be handled by the saga
-    const event = new CustomEvent('automation:storeValue', {
+    const event = new CustomEvent("automation:storeValue", {
       detail: {
         key: step.value,
-        value: textContent.trim()
-      }
+        value: textContent.trim(),
+      },
     });
     document.dispatchEvent(event);
   }
