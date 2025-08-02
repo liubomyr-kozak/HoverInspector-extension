@@ -382,7 +382,8 @@ export function* executeFunctionStep(step: ScenarioStep) {
     throw new Error(`Function "${step.value}" not found`);
   }
 
-  const functionName = AUTOMATION_SCENARIO_KEY(func);
+  const functionName = func;
+  // const functionName = AUTOMATION_SCENARIO_KEY(func);
 
   try {
     // Execute the function
@@ -392,8 +393,8 @@ export function* executeFunctionStep(step: ScenarioStep) {
     const executeFn = window[functionName];
 
     if (!executeFn) {
-      console.error(`Error executing function "${step.value}":`, "NO FOUND FUNCTION", functionName);
-      throw Error(`Error executing function "${step.value}":`, "NO FOUND FUNCTION", functionName);
+      console.error(`Error executing function "${step.value}":`, "NO FOUND FUNCTION", executeFn);
+      throw Error(`Error executing function "${step.value}" ` + "NO FOUND FUNCTION" + executeFn);
     }
 
     console.log("😀😀😀 executeFunctionStep::executeFunctionStep -> executeFn", executeFn);

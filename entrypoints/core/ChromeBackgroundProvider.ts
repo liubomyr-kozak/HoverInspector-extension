@@ -1,4 +1,4 @@
-import { isProduction } from "@entrypoints/shared/helpers";
+import { isPostProd, isProduction } from "@entrypoints/shared/helpers";
 
 class Provider {
   provider;
@@ -48,7 +48,7 @@ class ChromeBackgroundProvider {
   extension;
 
   constructor() {
-    if (isProduction()) {
+    if (isProduction() || isPostProd()) {
       // if (!browserApi?.runtime?.id) return;
 
       //@ts-ignore

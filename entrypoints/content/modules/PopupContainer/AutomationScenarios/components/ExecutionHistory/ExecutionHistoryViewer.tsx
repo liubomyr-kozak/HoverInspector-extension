@@ -362,6 +362,10 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
         width={600}
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
+        getContainer={() =>
+          // @ts-ignore
+          (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+        }
       >
         {selectedEntry && (
           <>

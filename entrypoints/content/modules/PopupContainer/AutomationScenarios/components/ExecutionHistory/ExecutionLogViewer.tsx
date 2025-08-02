@@ -167,54 +167,70 @@ const ExecutionLogViewer: React.FC<ExecutionLogViewerProps> = ({
     >
       <div style={{ maxHeight: maxHeight, overflowY: "auto" }}>
         <Timeline>
-          {log.entries.map((entry, index) => (
-            <Timeline.Item key={index} dot={getStatusIcon(entry.status)}>
-              <Card
-                size="small"
-                title={
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>
-                      Step {entry.stepIndex + 1}: {entry.stepDescription}
-                    </span>
-                    <Space>
-                      <Tooltip title={`Duration: ${formatDuration(entry.duration)}`}>
-                        <Tag icon={<ClockCircleOutlined />}>{formatDuration(entry.duration)}</Tag>
-                      </Tooltip>
-                      {getStatusTag(entry.status)}
-                    </Space>
-                  </div>
-                }
-                style={{
-                  marginBottom: "8px",
-                  borderLeft:
-                    entry.status === ExecutionStatus.ERROR
-                      ? "3px solid #f5222d"
-                      : entry.status === ExecutionStatus.WARNING
-                        ? "3px solid #faad14"
-                        : undefined,
-                }}
-                onClick={() => handleEntryExpand(`entry-${index}`)}
-              >
-                <Paragraph>{entry.details}</Paragraph>
+          {log.entries.map((entry, index) => {
+            const entryId = `entry-${index}`;
+            const isExpanded = expandedEntries.includes(entryId);
+            const hasExpandableContent = entry.error || entry.warning;
+            
+            return (
+              <Timeline.Item key={index} dot={getStatusIcon(entry.status)}>
+                <Card
+                  size="small"
+                  title={
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>
+                        Step {entry.stepIndex + 1}: {entry.stepDescription}
+                      </span>
+                      <Space>
+                        <Tooltip title={`Duration: ${formatDuration(entry.duration)}`}>
+                          <Tag icon={<ClockCircleOutlined />}>{formatDuration(entry.duration)}</Tag>
+                        </Tooltip>
+                        {getStatusTag(entry.status)}
+                        {hasExpandableContent && (
+                          <Button 
+                            type="text" 
+                            size="small"
+                            icon={isExpanded ? <CloseCircleOutlined /> : <InfoCircleOutlined />}
+                          >
+                            {isExpanded ? "Hide" : "View"} Details
+                          </Button>
+                        )}
+                      </Space>
+                    </div>
+                  }
+                  style={{
+                    marginBottom: "8px",
+                    borderLeft:
+                      entry.status === ExecutionStatus.ERROR
+                        ? "3px solid #f5222d"
+                        : entry.status === ExecutionStatus.WARNING
+                          ? "3px solid #faad14"
+                          : undefined,
+                    cursor: hasExpandableContent ? "pointer" : "default",
+                  }}
+                  onClick={() => hasExpandableContent && handleEntryExpand(entryId)}
+                >
+                  <Paragraph>{entry.details}</Paragraph>
 
-                {(entry.error || entry.warning) && (
-                  <Collapse activeKey={expandedEntries.includes(`entry-${index}`) ? [`panel-${index}`] : []} ghost>
-                    <Panel
-                      header={<Text type="secondary">{entry.error ? "Error details" : "Warning details"}</Text>}
-                      key={`panel-${index}`}
-                    >
-                      {entry.error && <Paragraph type="danger">{entry.error}</Paragraph>}
-                      {entry.warning && <Paragraph type="warning">{entry.warning}</Paragraph>}
-                    </Panel>
-                  </Collapse>
-                )}
+                  {(entry.error || entry.warning) && (
+                    <Collapse activeKey={expandedEntries.includes(`entry-${index}`) ? [`entry-${index}`] : []} ghost>
+                      <Panel
+                        header={<Text type="secondary">{entry.error ? "Error details" : "Warning details"}</Text>}
+                        key={`entry-${index}`}
+                      >
+                        {entry.error && <Paragraph type="danger">{entry.error}</Paragraph>}
+                        {entry.warning && <Paragraph type="warning">{entry.warning}</Paragraph>}
+                      </Panel>
+                    </Collapse>
+                  )}
 
-                <Text type="secondary" style={{ fontSize: "12px" }}>
-                  {formatTimestamp(entry.timestamp)}
-                </Text>
-              </Card>
-            </Timeline.Item>
-          ))}
+                  <Text type="secondary" style={{ fontSize: "12px" }}>
+                    {formatTimestamp(entry.timestamp)}
+                  </Text>
+                </Card>
+              </Timeline.Item>
+            );
+          })}
         </Timeline>
 
         <Card size="small" style={{ marginTop: "16px" }}>

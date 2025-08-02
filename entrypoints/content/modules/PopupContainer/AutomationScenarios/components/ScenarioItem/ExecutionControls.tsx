@@ -68,6 +68,8 @@ const ExecutionControls: React.FC<ExecutionControlsProps> = ({ paused, currentSt
           onClick={() => {
             // Signal to stop execution
             dispatch(automationActions.setShouldStop(true));
+            // Make sure pause state is reset (so pause button shows as play)
+            dispatch(automationActions.setPaused(false));
             // Then reset the execution state in Redux
             dispatch(automationActions.resetExecutionState());
           }}

@@ -6,6 +6,7 @@ import { IoCloseSharp } from "react-icons/io5";
 import * as React from "react";
 import { onMinimizedFeaturePopup } from "@entrypoints/content/store/app/saga-action/app.saga.action.ts";
 import { useDispatch } from "react-redux";
+import { ZINDEX_MODAL } from "@entrypoints/shared/constant/zIndex.ts";
 
 interface ResizableModalProps {
   isOpen: boolean;
@@ -40,7 +41,12 @@ export function ResizableModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <div
+      className={`fixed inset-0 pointer-events-none`}
+      style={{
+        zIndex: ZINDEX_MODAL,
+      }}
+    >
       <style>
         {`
         /* Base styles for all resize handles */

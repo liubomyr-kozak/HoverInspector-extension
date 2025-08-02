@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { isDevelopment } from "@entrypoints/shared/helpers.ts";
+
 const localStorageChrome = {
   getAllItems: async () => await browser.storage.local.get(),
   getItem: async (key) => (await browser.storage.local.get(key))[key],
@@ -15,7 +17,7 @@ const syncStorageChrome = {
 
 let localStorageModule;
 
-if (self?.window?.localStorage) {
+if (self?.window?.localStorage && isDevelopment()) {
   localStorageModule = self.window.localStorage;
 } else {
   localStorageModule = localStorageChrome;
@@ -26,10 +28,28 @@ if (self) {
     self.app = {};
   }
 
-  self.app.localStorageModule = localStorageModule;
+  if (process.env.NODE_ENV !== "production") {
+    self.app.localStorageModule = localStorageModule;
+  }
 }
 
 class LocalStorage {
+  getAllItems = async function () {
+    if (isDevelopment()) {
+      const items = {};
+      for (let i = 0; i < localStorageModule.length; i++) {
+        const key = localStorageModule.key(i);
+        if (key) {
+          items[key] = localStorageModule.getItem(key);
+        }
+      }
+
+      return items;
+    }
+
+    return await localStorageModule.getAllItems();
+  };
+
   get = async function (key) {
     if ((await localStorageModule.getItem(key)) != null) {
       const value = await localStorageModule.getItem(key);

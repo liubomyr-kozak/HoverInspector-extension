@@ -6,7 +6,6 @@ import { actionsContextSlice } from "./features/backgroundSlice.ts";
 
 let lastBrowserAction;
 
-debugger;
 export default defineBackground({
   /**
    * This is the main entry point for the background script.

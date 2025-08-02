@@ -1,4 +1,4 @@
-import { call, put, select, takeLatest, takeEvery } from "redux-saga/effects";
+import { call, put, select, takeLatest, takeEvery, take } from "redux-saga/effects";
 import { automationActions } from "./automation.slice.ts";
 import { sagaEnhancer } from "@entrypoints/core/libs/sagaEnhancer.ts";
 import { eventChannel, END } from "redux-saga";
@@ -25,6 +25,9 @@ import {
   executeSteps,
   stopExecution,
 } from "../../modules/PopupContainer/AutomationScenarios/utils/stepExecutor.saga.ts";
+import ScriptInjectionService from "@entrypoints/core/services/ScriptInjectionService.ts";
+import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
+import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
 // Load Scenarios
 export const loadScenariosWatcher = sagaEnhancer(function* loadScenariosWatcherEnhancer() {
@@ -46,6 +49,31 @@ export const loadFunctionsWatcher = sagaEnhancer(function* loadFunctionsWatcherE
     yield put(automationActions.setFunctionLoading(true));
     const functions = yield call(getAllFunctionsFromLocalStorage);
     yield put(automationActions.setFunctions(functions));
+
+    const settings = yield ExtensionStorageManager.getAutomationScenario("automation_server_settings");
+
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncFunctions;
+
+    if (serverSyncEnabled) {
+      const response: any = yield fetch(`${settings.serverUrl}/generate-code`, {
+        method: "GET",
+        headers: { accept: "application/json", "Content-Type": "application/json" },
+      });
+
+      const data = yield response.json();
+
+      console.log("😜😜😜 ::loadFunctionsWatcherEnhancer -> data", data);
+
+      injectScript({
+        downloadUrl: data.downloadUrl,
+        filename: data.filename,
+        groupPrefix: "functions_",
+      });
+      // yield ExtensionStorageManager.injectGeneratedScript(settings.serverUrl);
+      // yield ScriptInjectionService.generateAndInjectCode({
+      //   serverUrl: settings.serverUrl,
+      // });
+    }
   } catch (error) {
     console.error("Error loading functions:", error);
     // Handle error
@@ -299,7 +327,7 @@ export const deleteFunctionWatcher = sagaEnhancer(function* deleteFunctionWatche
 });
 
 // Delete Schedule
-export const deleteScheduleWatcher = sagaEnhancer(function* deleteScheduleWatcher(action: { payload: string }) {
+export const deleteScheduleWatcher = sagaEnhancer(function* deleteScheduleWatcherFn(action: { payload: string }) {
   try {
     const id = action.payload;
 
@@ -320,7 +348,7 @@ export const deleteScheduleWatcher = sagaEnhancer(function* deleteScheduleWatche
 });
 
 // Delete Trigger
-export const deleteTriggerWatcher = sagaEnhancer(function* deleteTriggerWatcher(action: { payload: string }) {
+export const deleteTriggerWatcher = sagaEnhancer(function* deleteTriggerWatcherFn(action: { payload: string }) {
   try {
     const id = action.payload;
 
@@ -341,7 +369,7 @@ export const deleteTriggerWatcher = sagaEnhancer(function* deleteTriggerWatcher(
 });
 
 // Delete Execution History
-export const deleteExecutionHistoryWatcher = sagaEnhancer(function* deleteExecutionHistoryWatcher(action: {
+export const deleteExecutionHistoryWatcher = sagaEnhancer(function* deleteExecutionHistoryWatcherFn(action: {
   payload: string;
 }) {
   try {
@@ -364,7 +392,7 @@ export const deleteExecutionHistoryWatcher = sagaEnhancer(function* deleteExecut
 });
 
 // Create New Recording
-export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecording() {
+export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecordingFn() {
   try {
     // Generate a unique ID for the new recording
     const newId = yield call(generateUniqueId);
@@ -411,7 +439,7 @@ export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecording
 });
 
 // Stop Recording
-export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcher() {
+export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcherFn() {
   try {
     // Set recording state to false
     yield put(automationActions.setRecording(false));
@@ -431,7 +459,7 @@ export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcher(
 });
 
 // Play Scenario
-export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(action: {
+export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(action: {
   payload: { id: string; startFromStep?: number; singleStep?: boolean };
 }) {
   try {
@@ -489,10 +517,10 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
     }
 
     // Set the steps to execute, starting from the specified step
-    const stepsToExecute = singleStep 
+    const stepsToExecute = singleStep
       ? scenario.data.slice(startFromStep, startFromStep + 1) // Only one step for single step mode
-      : startFromStep > 0 
-        ? scenario.data.slice(startFromStep) 
+      : startFromStep > 0
+        ? scenario.data.slice(startFromStep)
         : scenario.data;
     yield put(automationActions.setPendingSteps(stepsToExecute));
 
@@ -503,10 +531,10 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
 
     console.log(
       `Playing scenario: ${scenario.title}${
-        singleStep 
-          ? ` (running only step ${startFromStep + 1})` 
-          : startFromStep > 0 
-            ? ` (starting from step ${startFromStep + 1})` 
+        singleStep
+          ? ` (running only step ${startFromStep + 1})`
+          : startFromStep > 0
+            ? ` (starting from step ${startFromStep + 1})`
             : ""
       }`,
     );
@@ -661,17 +689,20 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
       // Save the execution history entry
       yield put(saveExecutionHistoryWatcher.getPayload({ id: executionHistoryId, entry: historyEntry }));
 
-      // Reset execution state when complete
-      yield put(automationActions.setExecuting(false));
-      yield put(automationActions.setCurrentStepIndex(-1));
-      yield put(automationActions.setPendingSteps([]));
+      // Only reset execution state when complete if the execution was not successful
+      // This prevents automatically closing successfully completed scripts
+      if (executionLog.status !== ExecutionStatus.SUCCESS) {
+        yield put(automationActions.setExecuting(false));
+        yield put(automationActions.setCurrentStepIndex(-1));
+        yield put(automationActions.setPendingSteps([]));
 
-      // Don't collapse the scenario if user wants to keep it expanded
-      if (!keepScenarioExpanded && activeScenarioId) {
-        yield put(automationActions.setScenarioExpanded({ id: activeScenarioId, expanded: false }));
+        // Don't collapse the scenario if user wants to keep it expanded
+        if (!keepScenarioExpanded && activeScenarioId) {
+          yield put(automationActions.setScenarioExpanded({ id: activeScenarioId, expanded: false }));
+        }
+        // Reset the keepScenarioExpanded flag for next execution
+        yield put(automationActions.setKeepScenarioExpanded(false));
       }
-      // Reset the keepScenarioExpanded flag for next execution
-      yield put(automationActions.setKeepScenarioExpanded(false));
     }
   } catch (error) {
     console.error("Error playing scenario:", error);
@@ -684,116 +715,4 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
     // Reset execution state
     yield put(automationActions.resetExecutionState());
   }
-});
-
-/**
- * Creates an event channel for the automation:getValue event
- */
-function createGetValueChannel() {
-  return eventChannel((emit) => {
-    const getValueHandler = (event: CustomEvent) => {
-      emit(event.detail);
-    };
-
-    // Add event listener
-    document.addEventListener("automation:getValue", getValueHandler as EventListener);
-
-    // Return unsubscribe function
-    return () => {
-      document.removeEventListener("automation:getValue", getValueHandler as EventListener);
-    };
-  });
-}
-
-/**
- * Saga to watch for get value events
- */
-export const getValueWatcher = sagaEnhancer({
-  actionType: "GET_VALUE_WATCHER",
-  *saga() {
-    // Create a channel to listen for the custom event
-    const channel = yield call(createGetValueChannel);
-
-    try {
-      while (true) {
-        // Wait for the next event
-        const payload = yield take(channel);
-        const { key, callback } = payload;
-
-        // Get the value from the state
-        const storedValues = yield select((state) => state.automation.storedValues);
-        const value = storedValues[key];
-
-        // Call the callback with the value
-        if (typeof callback === "function") {
-          callback(value);
-        }
-
-        console.log(`Retrieved value for key "${key}": ${value}`);
-      }
-    } finally {
-      // Close the channel when the saga is cancelled
-      channel.close();
-    }
-  },
-});
-
-/**
- * Creates an event channel for the automation:storeValue event
- */
-function createStoreValueChannel() {
-  return eventChannel((emit) => {
-    const storeValueHandler = (event: CustomEvent) => {
-      emit(event.detail);
-    };
-
-    // Add event listener
-    document.addEventListener("automation:storeValue", storeValueHandler as EventListener);
-
-    // Return unsubscribe function
-    return () => {
-      document.removeEventListener("automation:storeValue", storeValueHandler as EventListener);
-    };
-  });
-}
-
-/**
- * Saga to watch for store value events
- */
-export const storeValueWatcher = sagaEnhancer({
-  actionType: "STORE_VALUE_WATCHER",
-  *saga() {
-    // Create a channel to listen for the custom event
-    const channel = yield call(createStoreValueChannel);
-
-    try {
-      while (true) {
-        // Wait for the next event
-        const payload = yield take(channel);
-
-        // Generate a random key if none is provided
-        let { key, value } = payload;
-        if (!key || key.trim() === "") {
-          key = `stored_value_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        }
-
-        // Store the value in the state
-        yield put(automationActions.setStoredValue({ key, value }));
-
-        // Also store in localStorage for persistence and synchronous access
-        try {
-          const storedValues = JSON.parse(localStorage.getItem("automation_stored_values") || "{}");
-          storedValues[key] = value;
-          localStorage.setItem("automation_stored_values", JSON.stringify(storedValues));
-        } catch (error) {
-          console.error("Error storing value in localStorage:", error);
-        }
-
-        console.log(`Stored value "${value}" with key "${key}"`);
-      }
-    } finally {
-      // Close the channel when the saga is cancelled
-      channel.close();
-    }
-  },
 });

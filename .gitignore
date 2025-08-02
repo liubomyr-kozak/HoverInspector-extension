@@ -29,3 +29,11 @@ dist
 dist-standalone
 ingnore
 playground
+
+# Documentation files
+**/docs/
+**/*implementation*.md
+**/*summary*.md
+**/*implementation*.js
+**/*summary*.js
+**/test-*.js

@@ -258,7 +258,6 @@ export class StepExecutor {
           logEntry.details = `Set value "${processedStep.value}" for element at XPath: ${processedStep.xpath}`;
           break;
         case "code":
-          debugger;
           await this.executeCodeStep(processedStep);
           logEntry.details = `Executed custom code`;
           break;
@@ -512,7 +511,7 @@ export class StepExecutor {
       throw new Error("XPath is required for click steps");
     }
 
-    const element = this.getElementByXPath(step.xpath);
+    const element = this.getElementByXPath(step.xpath, step.alternativeXpaths);
     if (!element) {
       throw new Error(`Element not found with XPath: ${step.xpath}`);
     }
@@ -531,7 +530,7 @@ export class StepExecutor {
       throw new Error("XPath is required for hover steps");
     }
 
-    const element = this.getElementByXPath(step.xpath);
+    const element = this.getElementByXPath(step.xpath, step.alternativeXpaths);
     if (!element) {
       throw new Error(`Element not found with XPath: ${step.xpath}`);
     }
@@ -555,7 +554,7 @@ export class StepExecutor {
       throw new Error("Value is required for input steps");
     }
 
-    const element = this.getElementByXPath(step.xpath) as HTMLInputElement;
+    const element = this.getElementByXPath(step.xpath, step.alternativeXpaths) as HTMLInputElement;
     if (!element) {
       throw new Error(`Element not found with XPath: ${step.xpath}`);
     }
@@ -602,7 +601,7 @@ export class StepExecutor {
       throw new Error("Value is required for value steps");
     }
 
-    const element = this.getElementByXPath(step.xpath) as HTMLInputElement;
+    const element = this.getElementByXPath(step.xpath, step.alternativeXpaths) as HTMLInputElement;
     if (!element) {
       throw new Error(`Element not found with XPath: ${step.xpath}`);
     }
@@ -759,7 +758,7 @@ export class StepExecutor {
       throw new Error("Value is required for select steps");
     }
 
-    const element = this.getElementByXPath(step.xpath);
+    const element = this.getElementByXPath(step.xpath, step.alternativeXpaths);
     if (!element) {
       throw new Error(`Element not found with XPath: ${step.xpath}`);
     }
@@ -790,7 +789,7 @@ export class StepExecutor {
       throw new Error("Storage key is required for getText steps");
     }
 
-    const element = this.getElementByXPath(step.xpath);
+    const element = this.getElementByXPath(step.xpath, step.alternativeXpaths);
     if (!element) {
       throw new Error(`Element not found with XPath: ${step.xpath}`);
     }
@@ -824,18 +823,59 @@ export class StepExecutor {
 
   /**
    * Gets an element by XPath
+   * If the element has alternative XPaths stored, it will try those if the primary XPath fails
    *
-   * @param xpath The XPath to the element
+   * @param xpath The primary XPath to the element
+   * @param alternativeXpaths Optional array of alternative XPaths to try if the primary one fails
    * @returns The element, or null if not found
    */
-  private static getElementByXPath(xpath: string): HTMLElement | null {
+  private static getElementByXPath(xpath: string, alternativeXpaths?: string[]): HTMLElement | null {
+    // First try the primary XPath
     try {
-      const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-
-      return result.singleNodeValue as HTMLElement;
+      const result = document.evaluate(
+        xpath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null
+      );
+      
+      const element = result.singleNodeValue as HTMLElement;
+      if (element) {
+        return element;
+      }
     } catch (error) {
-      console.error("Error evaluating XPath:", error);
-      return null;
+      console.error('Error evaluating primary XPath:', error);
     }
+    
+    // If primary XPath failed and we have alternatives, try them
+    if (alternativeXpaths && alternativeXpaths.length > 0) {
+      console.log(`Primary XPath failed, trying ${alternativeXpaths.length} alternative XPaths`);
+      
+      for (const altXPath of alternativeXpaths) {
+        try {
+          const result = document.evaluate(
+            altXPath,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null
+          );
+          
+          const element = result.singleNodeValue as HTMLElement;
+          if (element) {
+            console.log(`Found element using alternative XPath: ${altXPath}`);
+            return element;
+          }
+        } catch (error) {
+          console.error(`Error evaluating alternative XPath: ${altXPath}`, error);
+          // Continue to the next alternative
+        }
+      }
+    }
+    
+    // If we get here, all XPaths failed
+    console.warn(`Element not found with XPath: ${xpath}`);
+    return null;
   }
 }

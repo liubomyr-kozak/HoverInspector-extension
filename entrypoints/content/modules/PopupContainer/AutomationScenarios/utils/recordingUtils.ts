@@ -2,20 +2,27 @@
  * Utility functions for recording automation scenarios
  */
 import { ScenarioStep } from "../types";
-import { generateXPath } from "./xpathUtils";
+import { generateXPath, generateXPaths } from "./xpathUtils";
 
 /**
  * Creates a step object for a user action
  * 
  * @param type The type of action (click, input, select, hover)
- * @param xpath The XPath of the element
+ * @param xpath The primary XPath of the element
+ * @param alternativeXpaths Array of alternative XPaths for the element
  * @param value Optional value for input and select actions
  * @returns A ScenarioStep object
  */
-function createStepObject(type: string, xpath: string, value?: string): ScenarioStep {
+function createStepObject(
+  type: string, 
+  xpath: string, 
+  alternativeXpaths: string[] = [],
+  value?: string
+): ScenarioStep {
   const step: ScenarioStep = {
     type,
     xpath,
+    alternativeXpaths,
   };
   
   if (value !== undefined) {
@@ -34,8 +41,8 @@ function createStepObject(type: string, xpath: string, value?: string): Scenario
 export function recordClick(element: Element): ScenarioStep | null {
   if (!element) return null;
 
-  const xpath = generateXPath(element);
-  return createStepObject("click", xpath);
+  const { primaryXPath, alternativeXpaths } = generateXPaths(element);
+  return createStepObject("click", primaryXPath, alternativeXpaths);
 }
 
 /**
@@ -48,8 +55,8 @@ export function recordClick(element: Element): ScenarioStep | null {
 export function recordInput(element: Element, value: string): ScenarioStep | null {
   if (!element) return null;
 
-  const xpath = generateXPath(element);
-  return createStepObject("input", xpath, value);
+  const { primaryXPath, alternativeXpaths } = generateXPaths(element);
+  return createStepObject("input", primaryXPath, alternativeXpaths, value);
 }
 
 /**
@@ -62,8 +69,8 @@ export function recordInput(element: Element, value: string): ScenarioStep | nul
 export function recordSelect(element: Element, value: string): ScenarioStep | null {
   if (!element) return null;
 
-  const xpath = generateXPath(element);
-  return createStepObject("select", xpath, value);
+  const { primaryXPath, alternativeXpaths } = generateXPaths(element);
+  return createStepObject("select", primaryXPath, alternativeXpaths, value);
 }
 
 /**
@@ -125,6 +132,6 @@ export function recordHover(element: Element): ScenarioStep | null {
     return null;
   }
 
-  const xpath = generateXPath(element);
-  return createStepObject("hover", xpath);
+  const { primaryXPath, alternativeXpaths } = generateXPaths(element);
+  return createStepObject("hover", primaryXPath, alternativeXpaths);
 }

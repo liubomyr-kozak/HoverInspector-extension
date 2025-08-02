@@ -21,6 +21,12 @@ import {
   saveTrigger,
   saveExecutionHistory,
   setupInitialState,
+  injectGeneratedScript,
+  // CSS Snapshot Actions
+  getAllCSSSnapshots,
+  getCSSSnapshot,
+  saveCSSSnapshot,
+  removeCSSSnapshot,
 } from "@entrypoints/background/features/backgroundSlice.ts";
 import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
 
@@ -194,6 +200,46 @@ class ExtensionStorageManager {
    */
   async saveExecutionHistory(data) {
     return await saveExecutionHistory(data);
+  }
+
+  async injectGeneratedScript(data) {
+    return await injectGeneratedScript(data);
+  }
+
+  /**
+   * Get all CSS snapshots
+   * @returns {Promise<Array>} Array of snapshot IDs
+   */
+  async getAllCSSSnapshots() {
+    return await getAllCSSSnapshots();
+  }
+
+  /**
+   * Get a specific CSS snapshot by ID
+   * @param {string} id - The ID of the snapshot to get
+   * @returns {Promise<Object|null>} The snapshot object or null if not found
+   */
+  async getCSSSnapshot(id) {
+    return await getCSSSnapshot(id);
+  }
+
+  /**
+   * Save a CSS snapshot
+   * @param {string} id - The ID of the snapshot to save
+   * @param {Object} snapshot - The snapshot object to save
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  async saveCSSSnapshot(id, snapshot) {
+    return await saveCSSSnapshot({ id, snapshot });
+  }
+
+  /**
+   * Remove a CSS snapshot
+   * @param {string} id - The ID of the snapshot to remove
+   * @returns {Promise<Object>} Object with success status
+   */
+  async removeCSSSnapshot(id) {
+    return await removeCSSSnapshot(id);
   }
 }
 

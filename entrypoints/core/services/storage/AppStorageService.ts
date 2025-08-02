@@ -10,6 +10,11 @@ import {
   AUTOMATION_TRIGGER_KEY,
   AUTOMATION_EXECUTION_HISTORY_KEY,
 } from "@entrypoints/core/constants/automation.ts";
+import {
+  CSS_SNAPSHOT_KEY,
+  CSS_SNAPSHOT_PREFIX,
+  CSS_SNAPSHOTS_LIST_KEY,
+} from "@entrypoints/core/constants/cssSnapshot.ts";
 
 class AppStorageService {
   // незалежно від того чи юзер залогінений чи ні,
@@ -40,24 +45,25 @@ class AppStorageService {
    * @returns {Promise<Object>} Object with scenario keys as keys and scenario objects as values
    */
   getAllAutomationScenarios = async () => {
+    const allItems = await LocalStorage.getAllItems();
     const allKeys = [];
-    // Get all keys from localStorage
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(AUTOMATION_SCENARIO_PREFIX)) {
+
+    for (const key of Object.keys(allItems)) {
+      if (key.startsWith(AUTOMATION_SCENARIO_PREFIX)) {
         allKeys.push(key);
       }
     }
 
     // Get all scenarios
     const scenarios = {};
+
     for (const key of allKeys) {
       try {
         const data = await LocalStorage.get(key);
         if (data) {
           // Strip the prefix from the key to match the format expected by the UI
           // If the key starts with AUTOMATION_SCENARIO_sc_, we want to keep just sc_
-          const strippedKey = key?.replace(AUTOMATION_SCENARIO_PREFIX, "");
+          const strippedKey = (key as any)?.replace(AUTOMATION_SCENARIO_PREFIX, "");
           scenarios[strippedKey] = data;
         }
       } catch (e) {
@@ -75,6 +81,8 @@ class AppStorageService {
    */
   getAutomationScenario = async ({ data: id }) => {
     const key = AUTOMATION_SCENARIO_KEY(id);
+
+    console.log("🌟🌟🌟 AppStorageService::getAutomationScenario ->±±±±±±±±± key", key);
 
     return await LocalStorage.get(key);
   };
@@ -201,6 +209,69 @@ class AppStorageService {
     const key = AUTOMATION_EXECUTION_HISTORY_KEY(id);
     await LocalStorage.set(key, executionHistory);
     return { success: true, key };
+  };
+
+  /**
+   * Get all CSS snapshots
+   * @returns {Promise<Array>} Array of snapshot IDs
+   */
+  getAllCSSSnapshots = async () => {
+    // Get the list of snapshot IDs
+    const snapshotsList = await LocalStorage.get(CSS_SNAPSHOTS_LIST_KEY);
+    // Ensure we always return an array
+    return Array.isArray(snapshotsList) ? snapshotsList : [];
+  };
+
+  /**
+   * Get a specific CSS snapshot by ID
+   * @param {string} id - The ID of the snapshot to get
+   * @returns {Promise<Object|null>} The snapshot object or null if not found
+   */
+  getCSSSnapshot = async (id) => {
+    const key = CSS_SNAPSHOT_KEY(id);
+    return await LocalStorage.get(key);
+  };
+
+  /**
+   * Save a CSS snapshot
+   * @param {string} id - The ID of the snapshot to save
+   * @param {Object} snapshot - The snapshot object to save
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  saveCSSSnapshot = async ({ id, snapshot }) => {
+    const key = CSS_SNAPSHOT_KEY(id);
+
+    // Save the snapshot
+    await LocalStorage.set(key, snapshot);
+
+    // Update the list of snapshots
+    const snapshotsList = await this.getAllCSSSnapshots();
+    if (!snapshotsList.includes(id)) {
+      snapshotsList.push(id);
+
+      await LocalStorage.set(CSS_SNAPSHOTS_LIST_KEY, snapshotsList);
+    }
+
+    return { success: true, key };
+  };
+
+  /**
+   * Remove a CSS snapshot
+   * @param {string} id - The ID of the snapshot to remove
+   * @returns {Promise<Object>} Object with success status
+   */
+  removeCSSSnapshot = async (id) => {
+    const key = CSS_SNAPSHOT_KEY(id);
+
+    // Remove the snapshot
+    await LocalStorage.fullDestroy(key);
+
+    // Update the list of snapshots
+    const snapshotsList = await this.getAllCSSSnapshots();
+    const updatedList = snapshotsList.filter((snapshotId) => snapshotId !== id);
+    await LocalStorage.set(CSS_SNAPSHOTS_LIST_KEY, updatedList);
+
+    return { success: true };
   };
 }
 

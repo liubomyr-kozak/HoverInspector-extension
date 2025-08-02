@@ -1,0 +1,341 @@
+/**
+ * Оптимізована утиліта для побудови знімків CSS
+ * 
+ * OPTIMIZATION (August 2025):
+ * This module now implements an advanced optimization approach that significantly 
+ * reduces snapshot size by only storing styles that have changed from a baseline state.
+ * 
+ * The optimization works in multiple layers:
+ * 1. Property-based filtering: Skip certain CSS properties entirely
+ * 2. Value-based filtering: Skip common default values
+ * 3. Tag-specific default filtering: Skip default styles for specific HTML tags
+ * 4. Baseline comparison: Compare each element against a baseline node
+ * 
+ * Elements with no style changes and no children with changes are excluded from the snapshot.
+ * This results in much smaller snapshots that focus only on meaningful differences.
+ * 
+ * See README.md for more details on the optimization approach.
+ */
+import { 
+  SnapshotNode, 
+  CSSSnapshot, 
+  SnapshotBuildResult, 
+  SnapshotOptions,
+  shouldSkipProperty,
+  isDefaultValue,
+  createElementId
+} from '../types';
+import { PERFORMANCE_LIMITS } from '../constants';
+import { isDefaultStyleForTag, getDefaultStylesForTag } from './defaultStyles';
+
+/**
+ * Перевіряє, чи слід пропускати елемент
+ */
+const shouldSkipElement = (element: Element): boolean => {
+  const tag = element.tagName.toLowerCase();
+  
+  // Пропускаємо meta елементи
+  if (['meta', 'link', 'style', 'script', 'title'].includes(tag)) {
+    return true;
+  }
+  
+  // Пропускаємо невидимі елементи з нульовими розмірами
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    return true;
+  }
+  
+  // Пропускаємо елементи з display: none
+  const computedStyle = window.getComputedStyle(element);
+  if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+    return true;
+  }
+  
+  return false;
+};
+
+/**
+ * Отримує індекс елемента серед сібінгів з тим же тегом
+ */
+const getElementIndex = (element: Element): number => {
+  let index = 0;
+  let sibling = element.previousElementSibling;
+  
+  while (sibling) {
+    if (sibling.tagName === element.tagName) {
+      index++;
+    }
+    sibling = sibling.previousElementSibling;
+  }
+  
+  return index;
+};
+
+/**
+ * Створює базовий вузол для елемента з мінімальною інформацією
+ * Цей вузол містить лише базові стилі, які є типовими для даного типу елемента
+ */
+const createBaselineNode = (element: Element): { tag: string, styles: Record<string, string> } => {
+  const tag = element.tagName.toLowerCase();
+  const computedStyle = window.getComputedStyle(element);
+  const baselineStyles: Record<string, string> = {};
+  
+  // Отримуємо стандартні стилі для даного тегу
+  const defaultStyles = getDefaultStylesForTag(tag);
+  
+  // Додаємо базові стилі для позиціонування та відображення
+  const essentialProperties = [
+    'display', 'position', 'box-sizing', 'visibility',
+    'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+    'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+    'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+    'top', 'right', 'bottom', 'left', 'z-index',
+    'float', 'clear', 'overflow', 'overflow-x', 'overflow-y',
+    'opacity', 'background-color', 'color', 'border', 'border-radius'
+  ];
+  
+  // Додаємо лише ті базові стилі, які відрізняються від стандартних
+  for (const prop of essentialProperties) {
+    const value = computedStyle.getPropertyValue(prop);
+    
+    // Пропускаємо порожні значення
+    if (!value) continue;
+    
+    // Пропускаємо значення за замовчуванням
+    if (isDefaultValue(value)) continue;
+    
+    // Пропускаємо стандартні значення для тегу
+    if (defaultStyles[prop] === value) continue;
+    
+    baselineStyles[prop] = value;
+  }
+  
+  return {
+    tag,
+    styles: baselineStyles
+  };
+};
+
+/**
+ * Витягує релевантні стилі з computed style, порівнюючи з базовим станом
+ */
+const extractStyles = (
+  element: Element, 
+  computedStyle: CSSStyleDeclaration,
+  filter?: (property: string, value: string) => boolean
+): Record<string, string> => {
+  const styles: Record<string, string> = {};
+  const tagName = element.tagName;
+  
+  // Створюємо базовий вузол для порівняння
+  const baselineNode = createBaselineNode(element);
+  
+  for (let i = 0; i < computedStyle.length; i++) {
+    const property = computedStyle[i];
+    
+    // Пропускаємо непотрібні властивості
+    if (shouldSkipProperty(property)) {
+      continue;
+    }
+    
+    const value = computedStyle.getPropertyValue(property);
+    
+    // Пропускаємо значення за замовчуванням
+    if (isDefaultValue(value)) {
+      continue;
+    }
+    
+    // Пропускаємо значення, які є стандартними для даного тегу
+    if (isDefaultStyleForTag(tagName, property, value)) {
+      continue;
+    }
+    
+    // Пропускаємо значення, які співпадають з базовим станом
+    if (baselineNode.styles[property] === value) {
+      continue;
+    }
+    
+    // Застосовуємо кастомний фільтр
+    if (filter && !filter(property, value)) {
+      continue;
+    }
+    
+    styles[property] = value;
+  }
+  
+  return styles;
+};
+
+/**
+ * Будує вузол знімка для елемента, зберігаючи лише зміни відносно базового стану
+ */
+const buildSnapshotNode = (
+  element: Element,
+  path: string[],
+  options: SnapshotOptions,
+  stats: { processed: number; skipped: number }
+): SnapshotNode | null => {
+  // Перевіряємо ліміти
+  if (stats.processed >= (options.maxElements || PERFORMANCE_LIMITS.MAX_ELEMENTS)) {
+    stats.skipped++;
+    return null;
+  }
+  
+  if (shouldSkipElement(element)) {
+    stats.skipped++;
+    return null;
+  }
+  
+  stats.processed++;
+  
+  const tag = element.tagName.toLowerCase();
+  const index = getElementIndex(element);
+  const elementPath = [...path, `${tag}[${index}]`];
+  const id = createElementId(element, index);
+  
+  // Отримуємо основні властивості
+  const elementId = element.id || undefined;
+  const classes = Array.from(element.classList);
+  const attributes: Record<string, string> = {};
+  
+  // Збираємо атрибути (окрім id та class)
+  for (const attr of element.attributes) {
+    if (attr.name !== 'id' && attr.name !== 'class') {
+      attributes[attr.name] = attr.value;
+    }
+  }
+  
+  // Отримуємо розміри
+  const rect = element.getBoundingClientRect();
+  const bounds = {
+    top: Math.round(rect.top),
+    left: Math.round(rect.left),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
+  
+  // Отримуємо стилі, порівнюючи з базовим станом
+  const computedStyle = window.getComputedStyle(element);
+  const styles = extractStyles(element, computedStyle, options.styleFilter);
+  
+  // Отримуємо текстовий контент для листових вузлів
+  const text = options.includeText && element.children.length === 0 
+    ? element.textContent?.trim() || undefined
+    : undefined;
+  
+  // Рекурсивно обробляємо дочірні елементи
+  const children: SnapshotNode[] = [];
+  for (const child of Array.from(element.children)) {
+    const childNode = buildSnapshotNode(child as Element, elementPath, options, stats);
+    if (childNode) {
+      // Додаємо дочірній вузол лише якщо він має стилі або дочірні елементи
+      if (Object.keys(childNode.styles).length > 0 || childNode.children.length > 0) {
+        children.push(childNode);
+      } else {
+        // Якщо вузол не має змін, пропускаємо його, але враховуємо в статистиці
+        stats.skipped++;
+      }
+    }
+  }
+  
+  // Перевіряємо, чи є зміни в стилях або дочірніх елементах
+  const hasStyleChanges = Object.keys(styles).length > 0;
+  const hasChildren = children.length > 0;
+  
+  // Якщо немає змін і немає дочірніх елементів, повертаємо null
+  if (!hasStyleChanges && !hasChildren && !options.includeUnchanged) {
+    return null;
+  }
+  
+  return {
+    id,
+    path: elementPath,
+    tag,
+    elementId,
+    classes,
+    attributes,
+    bounds,
+    styles,
+    text,
+    children,
+  };
+};
+
+/**
+ * Будує дерево знімка з кореневого елемента
+ */
+export const buildSnapshotTree = (
+  root: Element = document.body,
+  options: SnapshotOptions = {}
+): SnapshotBuildResult => {
+  const startTime = performance.now();
+  const stats = { processed: 0, skipped: 0 };
+  
+  const tree = buildSnapshotNode(root, [], options, stats);
+  
+  if (!tree) {
+    throw new Error('Failed to build snapshot tree: root element was skipped');
+  }
+  
+  const endTime = performance.now();
+  
+  return {
+    tree,
+    stats: {
+      totalNodes: stats.processed,
+      skippedNodes: stats.skipped,
+      processTime: Math.round(endTime - startTime),
+    },
+  };
+};
+
+/**
+ * Створює оптимізований знімок CSS, зберігаючи лише зміни
+ */
+export const createCSSSnapshot = async (
+  title?: string,
+  options: SnapshotOptions = {}
+): Promise<CSSSnapshot> => {
+  console.log('Creating optimized CSS snapshot with baseline comparison...');
+  
+  // Встановлюємо опції за замовчуванням
+  const snapshotOptions: SnapshotOptions = {
+    maxElements: PERFORMANCE_LIMITS.MAX_ELEMENTS,
+    skipInvisible: true,
+    includeText: true,
+    includeUnchanged: false, // За замовчуванням не включаємо елементи без змін
+    ...options,
+  };
+  
+  // Будуємо дерево знімка, зберігаючи лише зміни
+  const { tree, stats } = buildSnapshotTree(document.body, snapshotOptions);
+  
+  console.log(`Snapshot created: ${stats.totalNodes} nodes processed, ${stats.skippedNodes} nodes skipped`);
+  
+  const snapshot: CSSSnapshot = {
+    id: `snapshot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    timestamp: Date.now(),
+    url: window.location.href,
+    title: title || document.title || window.location.hostname,
+    elementCount: stats.totalNodes,
+    root: tree,
+    metadata: {
+      userAgent: navigator.userAgent,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      colorScheme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      optimized: true, // Позначаємо, що знімок створено з оптимізацією
+    },
+  };
+  
+  return snapshot;
+};
+
+/**
+ * CLEANUP: August 2025
+ * Removed unused compareSnapshots function and its helper hasNodeChanged function.
+ * The comparison functionality is now implemented directly in the SnapshotCompare component
+ * and these functions were not being used anywhere in the codebase.
+ */

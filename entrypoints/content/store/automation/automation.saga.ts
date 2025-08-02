@@ -18,8 +18,6 @@ import {
   saveScheduleWatcher,
   saveTriggerWatcher,
   stopRecordingWatcher,
-  storeValueWatcher,
-  getValueWatcher,
 } from "./automation.saga.action";
 
 /**
@@ -52,7 +50,4 @@ export function* automationInit() {
   yield takeLatest(startNewRecordingWatcher.actionType, startNewRecordingWatcher);
   yield takeLatest(stopRecordingWatcher.actionType, stopRecordingWatcher);
   yield takeLatest(playScenarioWatcher.actionType, playScenarioWatcher);
-  
-  // Store value watcher
-  yield takeEvery(storeValueWatcher.actionType, storeValueWatcher);
 }

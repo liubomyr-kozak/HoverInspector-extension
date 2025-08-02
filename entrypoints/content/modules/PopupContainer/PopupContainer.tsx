@@ -15,6 +15,7 @@ import {
   ANALYZE_PAGE,
   AUTOMATION,
   CONVERT_TOOLS,
+  CSS_SNAPSHOT,
   INSPECTOR,
   PICKER,
   POPUP_SUPPORT_TOOLS,
@@ -24,6 +25,7 @@ import { UnitConverter } from "@entrypoints/content/modules/PopupContainer/UnitC
 import ColorPicker from "@entrypoints/content/modules/PopupContainer/ColorPicker.tsx";
 import AnalyzePageUI from "@entrypoints/content/modules/PopupContainer/AnalyzePageUI.tsx";
 import { AutomationScenarios } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationScenarios.tsx";
+import { CSSSnapshotInspector } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/CSSSnapshotInspector.tsx";
 import {
   BecomeASponsor,
   BecomeASponsorText,
@@ -64,6 +66,7 @@ const COMPONENT_MAP: Record<string, JSX.Element> = {
   [RULER.id]: <ViewportInfo />,
   [ANALYZE_PAGE.id]: <AnalyzePageUI />,
   [AUTOMATION.id]: <AutomationScenarios />,
+  [CSS_SNAPSHOT.id]: <CSSSnapshotInspector />,
 };
 
 export function PopupContainer() {

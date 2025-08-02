@@ -7,7 +7,7 @@ import {
   recordSelect,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/recordingUtils.ts";
 import { automationActions, selectRecording, selectRecordingPaused } from "@entrypoints/content/store/automation/automation.slice.ts";
-import { generateXPath } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils.ts";
+import { generateXPath, generateXPaths } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils.ts";
 
 // Helper function to check if an element is part of the extension UI
 function hasAppClass(node: any) {
@@ -18,6 +18,7 @@ function hasAppClass(node: any) {
 
 const HOVER_DEBOUNCE_DELAY = 300;
 const INPUT_DEBOUNCE_DELAY = 500;
+const HOVER_CLICK_TIMEOUT = 2000; // Time window to wait for a click after hover
 
 /**
  * AutomationUserActionsHandler Component
@@ -34,7 +35,10 @@ const AutomationUserActionsHandler: React.FC = () => {
   const lastHoveredXpathRef = useRef<string | null>(null);
   // Ref to track the debounce timer for hover events
   const hoverDebounceTimerRef = useRef<number | null>(null);
-  // Debounce delay in milliseconds for hover events
+  // Ref to track pending hover steps (waiting for click confirmation)
+  const pendingHoverStepRef = useRef<{ step: any, timer: number } | null>(null);
+  // Ref to track if a hover step was explicitly selected
+  const isHoverStepSelectedRef = useRef<boolean>(false);
 
   // Ref to track the last input element's xpath and value
   const lastInputXpathRef = useRef<string | null>(null);
@@ -49,6 +53,41 @@ const AutomationUserActionsHandler: React.FC = () => {
   // Ref to store feedback element and timeout ID
   const feedbackElementRef = useRef<{ element: HTMLElement, timeoutId: number } | null>(null);
 
+  // Function to explicitly select a hover step
+  const selectHoverStep = useCallback(() => {
+    isHoverStepSelectedRef.current = true;
+    
+    // Show feedback to the user
+    const feedbackElement = document.createElement('div');
+    feedbackElement.textContent = 'Next hover will be recorded';
+    feedbackElement.style.position = 'fixed';
+    feedbackElement.style.top = '20px';
+    feedbackElement.style.left = '50%';
+    feedbackElement.style.transform = 'translateX(-50%)';
+    feedbackElement.style.backgroundColor = '#1890ff';
+    feedbackElement.style.color = 'white';
+    feedbackElement.style.padding = '8px 16px';
+    feedbackElement.style.borderRadius = '4px';
+    feedbackElement.style.zIndex = '9999';
+    document.body.appendChild(feedbackElement);
+    
+    // Remove the feedback element after 2 seconds
+    const timeoutId = setTimeout(() => {
+      if (document.body.contains(feedbackElement)) {
+        document.body.removeChild(feedbackElement);
+      }
+    }, 2000);
+    
+    // Store the feedback element and timeout ID
+    if (feedbackElementRef.current) {
+      clearTimeout(feedbackElementRef.current.timeoutId);
+      if (document.body.contains(feedbackElementRef.current.element)) {
+        document.body.removeChild(feedbackElementRef.current.element);
+      }
+    }
+    feedbackElementRef.current = { element: feedbackElement, timeoutId };
+  }, []);
+
   // Skip if recording is not active or is paused
   if (!recording || recordingPaused) {
     // Clear the timers if recording is stopped or paused
@@ -60,6 +99,12 @@ const AutomationUserActionsHandler: React.FC = () => {
     if (inputDebounceTimerRef.current) {
       window.clearTimeout(inputDebounceTimerRef.current);
       inputDebounceTimerRef.current = null;
+    }
+    
+    // Clear any pending hover step
+    if (pendingHoverStepRef.current) {
+      window.clearTimeout(pendingHoverStepRef.current.timer);
+      pendingHoverStepRef.current = null;
     }
     
     // If recording is active but paused, still render the component but don't record actions
@@ -87,24 +132,43 @@ const AutomationUserActionsHandler: React.FC = () => {
         // Only proceed if the xpath is different from the last one
         // This prevents recording duplicate hover steps for the same element
         if (step.xpath !== lastHoveredXpathRef.current) {
-          // Clear any existing timer
+          // Clear any existing hover debounce timer
           if (hoverDebounceTimerRef.current) {
             window.clearTimeout(hoverDebounceTimerRef.current);
           }
 
-          // Set a new timer to record the hover after a delay
+          // Clear any existing pending hover step timer
+          if (pendingHoverStepRef.current) {
+            window.clearTimeout(pendingHoverStepRef.current.timer);
+            pendingHoverStepRef.current = null;
+          }
+
+          // Set a new timer to process the hover after a delay
           hoverDebounceTimerRef.current = window.setTimeout(() => {
             // Update the last hovered xpath
             lastHoveredXpathRef.current = step.xpath!;
-            // Dispatch the step to the store
-            dispatch(automationActions.addRecordedStep(step));
-            // Clear the timer reference
+            
+            // If hover step is explicitly selected, record it immediately
+            if (isHoverStepSelectedRef.current) {
+              dispatch(automationActions.addRecordedStep(step));
+              isHoverStepSelectedRef.current = false; // Reset the flag
+            } else {
+              // Otherwise, store it as pending and wait for a click
+              const timer = window.setTimeout(() => {
+                // If no click happens within the timeout, discard the hover step
+                pendingHoverStepRef.current = null;
+              }, HOVER_CLICK_TIMEOUT);
+              
+              pendingHoverStepRef.current = { step, timer };
+            }
+            
+            // Clear the debounce timer reference
             hoverDebounceTimerRef.current = null;
           }, HOVER_DEBOUNCE_DELAY);
         }
       }
     },
-    [dispatch, HOVER_DEBOUNCE_DELAY],
+    [dispatch, HOVER_DEBOUNCE_DELAY, HOVER_CLICK_TIMEOUT],
   );
 
   // Handler for mousedown events (clicking on elements)
@@ -119,12 +183,15 @@ const AutomationUserActionsHandler: React.FC = () => {
 
       // If in alternative XPath selection mode, add the alternative XPath to the step
       if (alternativeXPathMode && alternativeXPathStepIndex !== null) {
-        const xpath = generateXPath(clickedElement);
-        if (xpath) {
-          dispatch(automationActions.addAlternativeXPathToRecordedStep({ 
-            index: alternativeXPathStepIndex, 
-            xpath 
-          }));
+        const { primaryXPath, alternativeXpaths } = generateXPaths(clickedElement);
+        if (primaryXPath) {
+          // Add all generated XPaths as alternatives
+          alternativeXpaths.forEach(xpath => {
+            dispatch(automationActions.addAlternativeXPathToRecordedStep({ 
+              index: alternativeXPathStepIndex, 
+              xpath 
+            }));
+          });
           
           // Exit alternative XPath selection mode
           setAlternativeXPathMode(false);
@@ -165,6 +232,16 @@ const AutomationUserActionsHandler: React.FC = () => {
           
           return;
         }
+      }
+
+      // Check if there's a pending hover step
+      if (pendingHoverStepRef.current) {
+        // Record the pending hover step before the click
+        dispatch(automationActions.addRecordedStep(pendingHoverStepRef.current.step));
+        
+        // Clear the pending hover timer
+        window.clearTimeout(pendingHoverStepRef.current.timer);
+        pendingHoverStepRef.current = null;
       }
 
       // Normal click recording
@@ -227,10 +304,10 @@ const AutomationUserActionsHandler: React.FC = () => {
     [dispatch],
   );
 
-  // Handler for message events (for alternative XPath selection)
+  // Handler for message events (for alternative XPath selection and hover step selection)
   const onHandlerMessage = useCallback(
     (e: MessageEvent) => {
-      // Check if the message is from our extension
+      // Check if the message is for alternative XPath selection
       if (e.data && e.data.type === 'SET_ALTERNATIVE_XPATH') {
         console.log('Received SET_ALTERNATIVE_XPATH message:', e.data);
         
@@ -265,8 +342,15 @@ const AutomationUserActionsHandler: React.FC = () => {
         // Update the ref to the feedback info
         feedbackElementRef.current = feedbackInfo;
       }
+      // Check if the message is for explicit hover step selection
+      else if (e.data && e.data.type === 'SELECT_HOVER_STEP') {
+        console.log('Received SELECT_HOVER_STEP message');
+        
+        // Use the selectHoverStep function to handle hover step selection
+        selectHoverStep();
+      }
     },
-    [feedbackElementRef]
+    [feedbackElementRef, selectHoverStep]
   );
 
   // Attach event listeners when the component mounts

@@ -17,23 +17,17 @@ interface ProtocolMap {
 
   [HOVER_INSPECTOR_CHECK_SCRIPT](s: any): any;
 
-  [DEV_SCRIPT_INJECTED](data: {
-    scriptUrl: string;
-    filename: string;
-    publicUrl: string;
-    timestamp: number;
-  }): { success: boolean; mode: string };
+  [DEV_SCRIPT_INJECTED](data: { downloadUrl: string; filename: string; publicUrl: string; timestamp: number }): {
+    success: boolean;
+    mode: string;
+  };
 
-  [PROD_SCRIPT_INJECTED](data: {
-    filename: string;
-    publicUrl: string;
-    timestamp: number;
-  }): { success: boolean; mode: string };
+  [PROD_SCRIPT_INJECTED](data: { filename: string; publicUrl: string; timestamp: number }): {
+    success: boolean;
+    mode: string;
+  };
 
-  [SCRIPT_INJECTION_ERROR](data: {
-    error: string;
-    timestamp: number;
-  }): { received: boolean };
+  [SCRIPT_INJECTION_ERROR](data: { error: string; timestamp: number }): { received: boolean };
 }
 
 export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>();

@@ -29,6 +29,7 @@ import {
   SearchOutlined,
   PlusOutlined,
   MinusCircleOutlined,
+  AimOutlined,
 } from "@ant-design/icons";
 
 import { Scenario, ScenarioStep, ExecutionStatus, ExecutionHistoryEntry } from "../../types.ts";
@@ -521,23 +522,15 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                               disabled={executing}
                             />
                           </Tooltip>
-                          <Tooltip title="Search for this step">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<SearchOutlined />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Expand the scenario if it's not already expanded
-                                if (!isExpanded) {
-                                  dispatch(automationActions.toggleScenarioExpanded(id));
-                                }
-
-                                // Set the searched step index for UI highlighting
-                                dispatch(automationActions.setSearchedStepIndex(displayIndex));
-
-                                // Find and highlight the DOM element if XPath is available
-                                if (step.xpath) {
+                          {step.xpath && (
+                            <Tooltip title="Find element in page">
+                              <Button
+                                type="text"
+                                size="small"
+                                style={{ color: '#1890ff' }}
+                                icon={<AimOutlined />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   try {
                                     // Remove any existing highlights
                                     const existingHighlights = document.querySelectorAll(".xpath-highlight");
@@ -571,18 +564,10 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                                   } catch (error) {
                                     console.error("Error finding element by XPath:", error);
                                   }
-                                }
-
-                                // Scroll to the step element in the UI
-                                setTimeout(() => {
-                                  const stepElement = document.getElementById(`step-${id}-${displayIndex}`);
-                                  if (stepElement) {
-                                    stepElement.scrollIntoView({ behavior: "smooth", block: "center" });
-                                  }
-                                }, 100);
-                              }}
-                            />
-                          </Tooltip>
+                                }}
+                              />
+                            </Tooltip>
+                          )}
                         </StepActions>
                       </StepHeader>
 

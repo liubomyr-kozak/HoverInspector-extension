@@ -4,6 +4,7 @@ import { IconPlus, IconRecordMail } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { Scenario, ScenarioStep } from "../types";
+import { useScenarioEditingState } from "../hooks/useScenarioEditingState";
 
 import {
   automationActions,
@@ -57,6 +58,9 @@ const ScenariosTab: React.FC = () => {
 
   const functions = useSelector(selectFunctions);
   const recordingPaused = useSelector(selectRecordingPaused);
+  
+  // Use the scenario editing state hook to persist and restore editing state
+  const { persistEditingState, restoreEditingState, clearEditingState } = useScenarioEditingState();
 
   const [form] = Form.useForm();
 
@@ -91,6 +95,9 @@ const ScenariosTab: React.FC = () => {
           : { scenario: scenarioToSave };
 
         dispatch(saveScenarioWatcher.getPayload(payload));
+        
+        // Clear the editing state after successfully saving the scenario
+        clearEditingState();
       })
       .catch((error) => {
         console.error("Validation failed:", error);
@@ -100,6 +107,8 @@ const ScenariosTab: React.FC = () => {
 
   const handleCancel = () => {
     dispatch(automationActions.resetScenarioForm());
+    // Clear the editing state from storage when canceling
+    clearEditingState();
   };
 
   const startRecording = () => {
@@ -138,7 +147,8 @@ const ScenariosTab: React.FC = () => {
     dispatch(automationActions.setIsEditingScenario(true));
     dispatch(automationActions.setActiveTab("scenarios")); // Switch to scenarios tab
 
-    debugger;
+    // Explicitly persist the editing state to ensure it's available after page navigation
+    persistEditingState();
 
     saveScenario(recordedSteps);
   };

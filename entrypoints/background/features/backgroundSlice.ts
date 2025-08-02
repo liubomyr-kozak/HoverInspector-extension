@@ -4,6 +4,7 @@ import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
 import ExtensionLoader from "@entrypoints/core/services/ExtensionLoader.ts";
 import LocalAPIServer from "@entrypoints/core/services/api/LocalAPIServer.ts";
 import ScriptInjectionService from "@entrypoints/core/services/ScriptInjectionService.ts";
+import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
 export const actionsContextSlice = chromeActionsSlice({
   getState: async () => {
@@ -134,17 +135,24 @@ export const actionsContextSlice = chromeActionsSlice({
     // After successful save to local storage, sync with backend
 
     if (serverSyncEnabled && result.success && data.id && data.func) {
-      debugger;
-
       await LocalAPIServer.syncFunction(data.id, data.func);
-      await LocalAPIServer.generateCode();
-
-      debugger;
       // Auto-inject generated script after successful function save and code generation
       try {
-        await ScriptInjectionService.generateAndInjectCode({
-          serverUrl: settings.serverUrl,
+        const response: any = await fetch(`${settings.serverUrl}/generate-code`, {
+          method: "GET",
+          headers: { accept: "application/json", "Content-Type": "application/json" },
         });
+
+        debugger;
+
+        injectScript({
+          downloadUrl: response.downloadUrl,
+          filename: response.filename,
+          groupPrefix: "functions_",
+        });
+        // await ScriptInjectionService.generateAndInjectCode({
+        //   serverUrl: settings.serverUrl,
+        // });
         console.log("Background: Auto-injected script after function save");
       } catch (error) {
         console.error("Background: Failed to auto-inject script after function save:", error);
@@ -153,34 +161,6 @@ export const actionsContextSlice = chromeActionsSlice({
     }
 
     return result;
-  },
-
-  // Script injection functionality for generated functions
-  injectGeneratedScript: async ({ data }) => {
-    const { tabId, serverUrl } = data || {};
-
-    debugger;
-    try {
-      await ScriptInjectionService.generateAndInjectCode({
-        tabId,
-        serverUrl,
-      });
-
-      return {
-        success: true,
-        message: "Script injection initiated successfully",
-        timestamp: Date.now(),
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Background: Script injection failed:", errorMessage);
-
-      return {
-        success: false,
-        error: errorMessage,
-        timestamp: Date.now(),
-      };
-    }
   },
 
   saveNotification: async ({ data }) => {
@@ -233,15 +213,12 @@ export const actionsContextSlice = chromeActionsSlice({
       data: "automation_server_settings",
     });
 
-    debugger;
-
     const result = await AppStorageService.removeAutomationScenario(id);
 
     const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend;
 
     // After successful removal from local storage, remove from backend
 
-    debugger;
     if (serverSyncEnabled && result.success) {
       if (id.startsWith("fu_")) {
         await LocalAPIServer.deleteFunction(id);
@@ -264,6 +241,29 @@ export const actionsContextSlice = chromeActionsSlice({
     }
     setting.sponsorMessage.hiddenUntil = hiddenUntil;
     await AppStorageService.setAppState(setting);
+  },
+
+  injectGeneratedScript: async (data) => {
+    // ExtensionLoader.loadStrategy.injectScript()
+    debugger;
+    await ScriptInjectionService.generateAndInjectCode(data);
+  },
+
+  // CSS Snapshot Actions
+  getAllCSSSnapshots: async () => {
+    return await AppStorageService.getAllCSSSnapshots();
+  },
+
+  getCSSSnapshot: async ({ data: id }) => {
+    return await AppStorageService.getCSSSnapshot(id);
+  },
+
+  saveCSSSnapshot: async ({ data }) => {
+    return await AppStorageService.saveCSSSnapshot(data);
+  },
+
+  removeCSSSnapshot: async ({ data: id }) => {
+    return await AppStorageService.removeCSSSnapshot(id);
   },
 });
 
@@ -292,4 +292,10 @@ export const {
   removeAutomationScenario,
   addStepToAutomationScenario,
   hideSponsorMessage,
+  generateAndInjectCode,
+  // CSS Snapshot Actions
+  getAllCSSSnapshots,
+  getCSSSnapshot,
+  saveCSSSnapshot,
+  removeCSSSnapshot,
 } = actionsContextSlice;

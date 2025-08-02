@@ -20,8 +20,7 @@ import { store } from "@entrypoints/content/store/createStore.ts";
 import { setActiveApp, setDisableApp } from "@entrypoints/content/store/app/app.slice.ts";
 import hotkeys from "hotkeys-js";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
-
-debugger;
+import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
 declare global {
   interface Window {
@@ -69,17 +68,13 @@ export default defineContentScript({
       console.log("Content: Received DEV script injection:", message);
 
       // In development mode, inject script via DOM
-      if (message.data?.scriptUrl) {
-        const script = document.createElement("script");
-        script.src = message.data.scriptUrl;
-        script.setAttribute("data-hover-inspector", message.data.filename);
-        script.onload = () => {
-          console.log(`Content: Successfully loaded DEV script: ${message.data?.filename}`);
-        };
-        script.onerror = (error) => {
-          console.error(`Content: Failed to load DEV script: ${message.data?.filename}`, error);
-        };
-        (document.head || document.documentElement).appendChild(script);
+      if (message.data?.downloadUrl) {
+        // Use the utility function to inject the script
+        injectScript({
+          downloadUrl: message.data.downloadUrl,
+          filename: message.data.filename,
+          groupPrefix: "functions_"
+        });
       }
 
       return { success: true, mode: "development" };

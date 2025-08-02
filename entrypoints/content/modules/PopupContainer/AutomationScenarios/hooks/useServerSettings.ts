@@ -57,9 +57,12 @@ export const useServerSettings = () => {
     loadSettings();
   }, []);
 
+  // Only consider syncFunctions as true if both saveToBackend and syncFunctions are true
+  const isSyncFunctionsEnabled = settings?.saveToBackend === true && settings?.syncFunctions === true;
+
   return {
     settings,
     loading,
-    syncFunctions: settings?.syncFunctions ?? true,
+    syncFunctions: isSyncFunctionsEnabled,
   };
 };

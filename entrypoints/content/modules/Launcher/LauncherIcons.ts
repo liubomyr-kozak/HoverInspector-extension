@@ -5,6 +5,7 @@ import {
   IconRobot,
   IconRuler,
   IconTransformFilled,
+  IconCode,
 } from "@tabler/icons-react";
 
 export const INSPECTOR = {
@@ -55,7 +56,15 @@ export const AUTOMATION = {
   multipleView: false,
 };
 
-const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION];
+export const CSS_SNAPSHOT = {
+  id: "cssSnapshot",
+  title: "CSS Snapshot Inspector",
+  icon: IconCode,
+  activatable: true,
+  multipleView: false,
+};
+
+const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION, CSS_SNAPSHOT];
 
 export const POPUP_SUPPORT_TOOLS = [
   INSPECTOR.id,
@@ -64,6 +73,7 @@ export const POPUP_SUPPORT_TOOLS = [
   CONVERT_TOOLS.id,
   ANALYZE_PAGE.id,
   AUTOMATION.id,
+  CSS_SNAPSHOT.id,
 ];
 
 export const ICON_ITEMS = ICON_ITEMS_INITIAL.filter((item) => item.activatable);

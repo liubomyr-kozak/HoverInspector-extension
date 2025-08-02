@@ -1,6 +1,11 @@
-import { isProduction } from "@entrypoints/shared/helpers";
+import { isDevelopment, isProduction } from "@entrypoints/shared/helpers";
 import { sendMessage } from "@entrypoints/features/extension/messaging";
-import { DEV_SCRIPT_INJECTED, PROD_SCRIPT_INJECTED, SCRIPT_INJECTION_ERROR } from "@entrypoints/shared/globalEvents";
+import {
+  DEV_SCRIPT_INJECTED,
+  HOVER_INSPECTOR_ACTIVATE,
+  PROD_SCRIPT_INJECTED,
+  SCRIPT_INJECTION_ERROR,
+} from "@entrypoints/shared/globalEvents";
 
 export interface GenerateCodeResponse {
   success: boolean;
@@ -13,6 +18,36 @@ export interface GenerateCodeResponse {
 export interface ScriptInjectionOptions {
   tabId?: number;
   serverUrl?: string;
+}
+
+function createInlineScript(content: string, filename: string, downloadUrl: string): void {
+  // const existing = document.querySelector(`script[data-hover-inspector="${filename}"]`);
+  // existing?.remove();
+  //
+  // const script = document.createElement("script");
+  // script.setAttribute("data-hover-inspector", filename);
+  // script.textContent = content;
+  // document.head.appendChild(script);
+  //
+
+  // const script = document.createElement("script");
+  // script.setAttribute("data-hover-inspector", filename);
+  // script.src = chrome.runtime.getURL(downloadUrl); // або будь-який локальний шлях
+  // document.documentElement.appendChild(script);
+
+  debugger;
+
+  const script = document.createElement("script");
+  script.src = downloadUrl;
+  script.setAttribute("data-hover-inspector", filename);
+  script.type = "text/javascript";
+  script.async = true;
+
+  script.onload = () => {
+    console.log("[Extension] External script loaded successfully.");
+  };
+
+  (document.head || document.documentElement).appendChild(script);
 }
 
 /**
@@ -30,11 +65,13 @@ class ScriptInjectionService {
     const { tabId, serverUrl = this.DEFAULT_SERVER_URL } = options;
 
     try {
+      debugger;
+
       const codeResponse = await this.generateCode(serverUrl);
       const targetTabId = await this.getTargetTab(tabId);
-      
-      await this.injectScript(codeResponse, targetTabId);
-      await this.notifySuccess(codeResponse, targetTabId);
+
+      await this.injectScript(codeResponse, targetTabId!);
+      await this.notifySuccess(codeResponse, targetTabId!);
     } catch (error) {
       await this.handleError(error, tabId);
       throw error;
@@ -46,7 +83,7 @@ class ScriptInjectionService {
    */
   public async removeScript(filename: string, tabId?: number): Promise<void> {
     const targetTabId = await this.getTargetTab(tabId);
-    
+
     if (browser?.scripting && targetTabId) {
       await browser.scripting.executeScript({
         target: { tabId: targetTabId },
@@ -78,36 +115,44 @@ class ScriptInjectionService {
     return data;
   }
 
-  private async getTargetTab(tabId?: number): Promise<number> {
+  private async getTargetTab(tabId?: number): Promise<number | null> {
+    if (isDevelopment()) return null;
+
     if (tabId) return tabId;
-    
+
+    const tabsAll = await browser.tabs?.query({});
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+
+    console.log("🚀🚀🚀 ScriptInjectionService::getTargetTab -> tabsAll", tabsAll);
+    console.log("😀😀😀 ScriptInjectionService::getTargetTab -> tabs", tabs);
     if (tabs.length === 0) throw new Error("No active tab found");
-    
+
     return tabs[0].id!;
   }
 
   private async injectScript(codeResponse: GenerateCodeResponse, tabId: number): Promise<void> {
+    if (isDevelopment()) {
+      this.createExternalScript(codeResponse.downloadUrl, codeResponse.filename);
+      return;
+    }
+
     if (!browser?.scripting) {
       throw new Error("Chrome scripting API not available");
     }
 
-    if (isProduction()) {
-      // Production: fetch content and inject inline
-      const scriptContent = await this.fetchScriptContent(codeResponse.downloadUrl);
-      await browser.scripting.executeScript({
-        target: { tabId },
-        func: this.createInlineScript,
-        args: [scriptContent, codeResponse.filename],
-      });
-    } else {
-      // Development: inject with src attribute
-      await browser.scripting.executeScript({
-        target: { tabId },
-        func: this.createExternalScript,
-        args: [codeResponse.downloadUrl, codeResponse.filename],
-      });
-    }
+    // Production: fetch content and inject inline
+    const scriptContent = await this.fetchScriptContent(codeResponse.downloadUrl);
+
+    // browser.tabs.executeScript({
+    //   code: `!!!!!! console.log('location:', window.location.href);`,
+    // });
+
+    await sendMessage(DEV_SCRIPT_INJECTED, codeResponse as any, tabId);
+    // await browser.scripting.executeScript({
+    //   target: { tabId },
+    //   func: createInlineScript,
+    //   args: [scriptContent, codeResponse.filename, codeResponse.downloadUrl],
+    // });
   }
 
   private async fetchScriptContent(url: string): Promise<string> {
@@ -117,7 +162,10 @@ class ScriptInjectionService {
   }
 
   private createInlineScript(content: string, filename: string): void {
-    this.removeExistingScript(filename);
+    // this.removeExistingScript(filename);
+    const existing = document.querySelector(`script[data-hover-inspector="${filename}"]`);
+    existing?.remove();
+
     const script = document.createElement("script");
     script.setAttribute("data-hover-inspector", filename);
     script.textContent = content;
@@ -138,13 +186,19 @@ class ScriptInjectionService {
   }
 
   private async notifySuccess(codeResponse: GenerateCodeResponse, tabId: number): Promise<void> {
-    const event = isProduction() ? PROD_SCRIPT_INJECTED : DEV_SCRIPT_INJECTED;
-    await sendMessage(event, {
-      filename: codeResponse.filename,
-      publicUrl: codeResponse.publicUrl,
-      scriptUrl: codeResponse.downloadUrl,
-      timestamp: Date.now(),
-    }, tabId);
+    if (isDevelopment()) return;
+
+    await sendMessage(
+      PROD_SCRIPT_INJECTED,
+      {
+        filename: codeResponse.filename,
+        publicUrl: codeResponse.publicUrl,
+        // @ts-ignore
+        scriptUrl: codeResponse.downloadUrl,
+        timestamp: Date.now(),
+      },
+      tabId,
+    );
   }
 
   private async handleError(error: unknown, tabId?: number): Promise<void> {
@@ -153,10 +207,14 @@ class ScriptInjectionService {
 
     if (tabId) {
       try {
-        await sendMessage(SCRIPT_INJECTION_ERROR, {
-          error: errorMessage,
-          timestamp: Date.now(),
-        }, tabId);
+        await sendMessage(
+          SCRIPT_INJECTION_ERROR,
+          {
+            error: errorMessage,
+            timestamp: Date.now(),
+          },
+          tabId,
+        );
       } catch (messageError) {
         console.error("Failed to send error message:", messageError);
       }
