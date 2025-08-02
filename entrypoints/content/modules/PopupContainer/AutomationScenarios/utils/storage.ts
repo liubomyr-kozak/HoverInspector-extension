@@ -17,6 +17,8 @@ import {
   TriggerConfig,
   TriggerMap,
 } from "../types.ts";
+import { select } from "redux-saga/effects";
+import LocalAPIServer from "@/entrypoints/core/services/api/LocalAPIServer.ts";
 
 /**
  * Retrieves all automation scenarios from storage
@@ -50,7 +52,13 @@ export const getAllScenariosFromLocalStorage = async (): Promise<ScenarioMap> =>
  */
 export const getAllFunctionsFromLocalStorage = async (): Promise<FunctionMap> => {
   try {
-    // Use the same storage manager but filter for function keys (prefix 'fu_')
+    const settings = await ExtensionStorageManager.getAutomationScenario("automation_server_settings");
+
+    debugger;
+    // /generate-code
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncFunctions;
+
+    // Get all local functions
     const allItems = await ExtensionStorageManager.getAllAutomationScenarios();
     const functions: FunctionMap = {};
 
@@ -60,6 +68,22 @@ export const getAllFunctionsFromLocalStorage = async (): Promise<FunctionMap> =>
         functions[key] = allItems[key] as unknown as CustomFunction;
       }
     });
+
+    // If server sync is enabled, try to get functions from server as well
+    if (serverSyncEnabled) {
+      try {
+        const serverFunctions = await LocalAPIServer.getAllFunctionsFromServer();
+
+        // Merge server functions with local functions
+        // Server functions will override local functions if they have the same ID
+        Object.keys(serverFunctions).forEach((key) => {
+          functions[key] = serverFunctions[key];
+        });
+      } catch (serverError) {
+        console.error("Error getting functions from server:", serverError);
+        // Continue with local functions only
+      }
+    }
 
     return functions;
   } catch (e) {

@@ -2,6 +2,8 @@ import { chromeActionsSlice } from "@entrypoints/core/libs/chromeActionsSlice.ts
 import AppStorageService from "@entrypoints/core/services/storage/AppStorageService.ts";
 import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
 import ExtensionLoader from "@entrypoints/core/services/ExtensionLoader.ts";
+import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
+import LocalAPIServer from "@entrypoints/core/services/api/LocalAPIServer.ts";
 
 export const actionsContextSlice = chromeActionsSlice({
   getState: async () => {
@@ -13,11 +15,7 @@ export const actionsContextSlice = chromeActionsSlice({
   },
 
   setupInitialState: async () => {
-    debugger;
-
     await AppStorageService.setAppState(appSettingsInitial);
-
-    debugger;
 
     return await AppStorageService.getAppState();
   },
@@ -98,16 +96,49 @@ export const actionsContextSlice = chromeActionsSlice({
   },
 
   getAutomationScenario: async (data) => {
+    // const settings = await AppStorageService.getAutomationScenario({
+    //   data: "automation_server_settings",
+    // });
+    // const serverScenariosSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncScenarios;
+    // const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncFunctions;
+    //
+    //
+
     return await AppStorageService.getAutomationScenario(data);
   },
 
   // test working
   saveAutomationScenario: async ({ data }) => {
-    return await AppStorageService.saveAutomationScenario(data);
+    const settings = await AppStorageService.getAutomationScenario({
+      data: "automation_server_settings",
+    });
+
+    const result = await AppStorageService.saveAutomationScenario(data);
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncScenarios;
+
+    // After successful save to local storage, sync with backend
+    if (serverSyncEnabled && result.success && data.id && data.scenario) {
+      await LocalAPIServer.syncScenario(data.id, data.scenario);
+    }
+
+    return result;
   },
 
   saveFunction: async ({ data }) => {
-    return await AppStorageService.saveFunction(data);
+    const settings = await AppStorageService.getAutomationScenario({
+      data: "automation_server_settings",
+    });
+
+    const result = await AppStorageService.saveFunction(data);
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncFunctions;
+    // After successful save to local storage, sync with backend
+
+    if (serverSyncEnabled && result.success && data.id && data.func) {
+      await LocalAPIServer.syncFunction(data.id, data.func);
+      await LocalAPIServer.generateCode();
+    }
+
+    return result;
   },
 
   saveNotification: async ({ data }) => {
@@ -119,11 +150,36 @@ export const actionsContextSlice = chromeActionsSlice({
   },
 
   saveSchedule: async ({ data }) => {
-    return await AppStorageService.saveSchedule(data);
+    const settings = await AppStorageService.getAutomationScenario({
+      data: "automation_server_settings",
+    });
+
+    const result = await AppStorageService.saveSchedule(data);
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncSchedules;
+
+    // After successful save to local storage, sync with backend
+    if (serverSyncEnabled && result.success && data.id && data.schedule) {
+      await LocalAPIServer.syncSchedule(data.id, data.schedule);
+    }
+
+    return result;
   },
 
   saveTrigger: async ({ data }) => {
-    return await AppStorageService.saveTrigger(data);
+    const settings = await AppStorageService.getAutomationScenario({
+      data: "automation_server_settings",
+    });
+
+    const result = await AppStorageService.saveTrigger(data);
+
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncTriggers;
+
+    // After successful save to local storage, sync with backend
+    if (serverSyncEnabled && result.success && data.id && data.trigger) {
+      await LocalAPIServer.syncTrigger(data.id, data.trigger);
+    }
+
+    return result;
   },
 
   saveExecutionHistory: async ({ data }) => {
@@ -131,7 +187,20 @@ export const actionsContextSlice = chromeActionsSlice({
   },
 
   removeAutomationScenario: async ({ data: { id } }) => {
-    return await AppStorageService.removeAutomationScenario(id);
+    const settings = await AppStorageService.getAutomationScenario({
+      data: "automation_server_settings",
+    });
+
+    const result = await AppStorageService.removeAutomationScenario(id);
+
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncTriggers;
+
+    // After successful removal from local storage, remove from backend
+    if (serverSyncEnabled && result.success) {
+      await LocalAPIServer.deleteScenario(id);
+    }
+
+    return result;
   },
 
   addStepToAutomationScenario: async ({ data: { id, step } }) => {

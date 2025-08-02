@@ -52,7 +52,7 @@ const ServerTab: React.FC = () => {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const settings = await ExtensionStorageManager.getAutomationScenario<ServerSettings>(SERVER_SETTINGS_KEY);
+        const settings = await ExtensionStorageManager.getAutomationScenario(SERVER_SETTINGS_KEY);
         //localhost:5555
         http: if (settings) {
           setServerUrl(settings.serverUrl || "");
