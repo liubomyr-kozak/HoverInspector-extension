@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { Form } from "antd";
+import { FormInstance } from "antd";
 import { Scenario } from "../types";
 import { automationActions, selectScenarios } from "@entrypoints/content/store/automation/automation.slice.ts";
 import {
@@ -26,11 +26,20 @@ export const useScenarioActions = () => {
   };
 
   /**
+   * Run only a single step from a scenario
+   * @param id The ID of the scenario 
+   * @param stepIndex The index of the specific step to run
+   */
+  const runSingleStep = (id: string, stepIndex: number) => {
+    dispatch(playScenarioWatcher.getPayload({ id, startFromStep: stepIndex, singleStep: true }));
+  };
+
+  /**
    * Edit a scenario
    * @param id The ID of the scenario to edit
    * @param form The form instance to set values on
    */
-  const editScenario = (id: string, form?: Form<any>) => {
+  const editScenario = (id: string, form?: FormInstance<any>) => {
     const scenario = scenarios[id];
 
     if (!scenario) {
@@ -103,6 +112,7 @@ export const useScenarioActions = () => {
 
   return {
     playScenario,
+    runSingleStep,
     editScenario,
     deleteScenario,
     duplicateScenario,

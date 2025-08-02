@@ -181,6 +181,27 @@ class LocalAPIServer {
   }
 
   /**
+   * Deletes a function from the remote server
+   * @param id The scenario ID to delete
+   */
+  public async deleteFunction(id: string): Promise<void> {
+    const settings = await this.getServerSettings();
+    if (!settings || !settings.syncScenarios) return;
+
+    try {
+      const response = await fetch(`${settings.serverUrl}/api/functions/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        console.error(`Failed to delete Function ${id} from server: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error deleting Function ${id} from server:`, error);
+    }
+  }
+
+  /**
    * Fetches all functions from the remote server
    * @returns Promise resolving to the functions fetched from the server
    */

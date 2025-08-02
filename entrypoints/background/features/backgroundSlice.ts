@@ -233,13 +233,21 @@ export const actionsContextSlice = chromeActionsSlice({
       data: "automation_server_settings",
     });
 
+    debugger;
+
     const result = await AppStorageService.removeAutomationScenario(id);
 
-    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncTriggers;
+    const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend;
 
     // After successful removal from local storage, remove from backend
+
+    debugger;
     if (serverSyncEnabled && result.success) {
-      await LocalAPIServer.deleteScenario(id);
+      if (id.startsWith("fu_")) {
+        await LocalAPIServer.deleteFunction(id);
+      } else {
+        // await LocalAPIServer.deleteScenario(id);
+      }
     }
 
     return result;

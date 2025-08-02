@@ -25,6 +25,7 @@ import {
   StopOutlined,
   EditOutlined,
   PlayCircleOutlined,
+  StepForwardOutlined,
   SearchOutlined,
   PlusOutlined,
   MinusCircleOutlined,
@@ -93,7 +94,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
   scenarios = {},
   executionHistory = {},
 }) => {
-  const { playScenario } = useScenarioActions();
+  const { playScenario, runSingleStep } = useScenarioActions();
   const dispatch = useDispatch();
   const isExpanded = useSelector(selectIsScenarioExpanded(id));
   const currentSteps = useSelector(selectCurrentSteps);
@@ -504,6 +505,18 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 playScenario(id, originalIndex);
+                              }}
+                              disabled={executing}
+                            />
+                          </Tooltip>
+                          <Tooltip title="Run only this step">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<StepForwardOutlined />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                runSingleStep(id, originalIndex);
                               }}
                               disabled={executing}
                             />

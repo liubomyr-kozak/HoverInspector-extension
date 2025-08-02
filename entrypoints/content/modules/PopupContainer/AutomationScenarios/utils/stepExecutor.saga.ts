@@ -19,6 +19,7 @@ import { call, put, select, delay, cancelled, race, take } from "redux-saga/effe
 import { ExecutionLog, ExecutionLogEntry, ExecutionStatus, FunctionMap, ScenarioStep } from "../types";
 import { automationActions } from "../../../../store/automation/automation.slice";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
+import { AUTOMATION_SCENARIO_KEY } from "@entrypoints/core/constants/automation.ts";
 
 /**
  * Default delay between steps in milliseconds
@@ -381,12 +382,23 @@ export function* executeFunctionStep(step: ScenarioStep) {
     throw new Error(`Function "${step.value}" not found`);
   }
 
-  debugger;
+  const functionName = AUTOMATION_SCENARIO_KEY(func);
 
   try {
     // Execute the function
     // eslint-disable-next-line no-new-func
-    const result = new Function(functions[func]?.code)();
+    // const result = new Function(functions[func]?.code)();
+
+    const executeFn = window[functionName];
+
+    if (!executeFn) {
+      console.error(`Error executing function "${step.value}":`, "NO FOUND FUNCTION", functionName);
+      throw Error(`Error executing function "${step.value}":`, "NO FOUND FUNCTION", functionName);
+    }
+
+    console.log("😀😀😀 executeFunctionStep::executeFunctionStep -> executeFn", executeFn);
+
+    const result = executeFn?.();
     return result;
   } catch (error) {
     console.error(`Error executing function "${step.value}":`, error);

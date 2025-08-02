@@ -432,10 +432,10 @@ export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcher(
 
 // Play Scenario
 export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(action: {
-  payload: { id: string; startFromStep?: number };
+  payload: { id: string; startFromStep?: number; singleStep?: boolean };
 }) {
   try {
-    const { id, startFromStep = 0 } = action.payload;
+    const { id, startFromStep = 0, singleStep = false } = action.payload;
 
     // Get the scenario from state
     const scenarios = yield select((state) => state.automation.scenarios);
@@ -489,7 +489,11 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
     }
 
     // Set the steps to execute, starting from the specified step
-    const stepsToExecute = startFromStep > 0 ? scenario.data.slice(startFromStep) : scenario.data;
+    const stepsToExecute = singleStep 
+      ? scenario.data.slice(startFromStep, startFromStep + 1) // Only one step for single step mode
+      : startFromStep > 0 
+        ? scenario.data.slice(startFromStep) 
+        : scenario.data;
     yield put(automationActions.setPendingSteps(stepsToExecute));
 
     // Set the current step index to reflect the starting point
@@ -498,7 +502,13 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
     }
 
     console.log(
-      `Playing scenario: ${scenario.title}${startFromStep > 0 ? ` (starting from step ${startFromStep + 1})` : ""}`,
+      `Playing scenario: ${scenario.title}${
+        singleStep 
+          ? ` (running only step ${startFromStep + 1})` 
+          : startFromStep > 0 
+            ? ` (starting from step ${startFromStep + 1})` 
+            : ""
+      }`,
     );
 
     // Execute steps directly within the playScenarioWatcher
@@ -593,8 +603,6 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcher(ac
         functions,
         executionSpeed,
       );
-
-      debugger;
 
       // Update the execution status based on the execution log
       yield put(automationActions.setExecutionStatus(executionLog.status));

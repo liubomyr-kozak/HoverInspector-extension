@@ -17,7 +17,6 @@ import {
   TriggerConfig,
   TriggerMap,
 } from "../types.ts";
-import { select } from "redux-saga/effects";
 import LocalAPIServer from "@/entrypoints/core/services/api/LocalAPIServer.ts";
 
 /**
@@ -124,7 +123,7 @@ export const getAllFoldersFromLocalStorage = async (): Promise<ScenarioFolderMap
 export const removeScenarioFromLocalStorage = async (key: string): Promise<boolean> => {
   try {
     // Extract the ID from the key (remove the 'sc_' prefix)
-    // const id = key.replace(/^sc_/, "");
+    // const id = key.replace(/^sc_/, ""); //not used
     const result = await ExtensionStorageManager.removeAutomationScenario({ id: key });
     return result.success;
   } catch (e) {
@@ -142,8 +141,8 @@ export const removeScenarioFromLocalStorage = async (key: string): Promise<boole
 export const removeFunctionFromLocalStorage = async (key: string): Promise<boolean> => {
   try {
     // Extract the ID from the key (remove the 'fu_' prefix)
-    const id = key.replace(/^fu_/, "");
-    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    // const id = key.replace(/^fu_/, ""); //not used
+    const result = await ExtensionStorageManager.removeAutomationScenario({ id: key });
     return result.success;
   } catch (e) {
     console.error("Error removing function from storage:", e);
@@ -160,8 +159,8 @@ export const removeFunctionFromLocalStorage = async (key: string): Promise<boole
 export const removeFolderFromLocalStorage = async (key: string): Promise<boolean> => {
   try {
     // Extract the ID from the key (remove the 'fo_' prefix)
-    const id = key.replace(/^fo_/, "");
-    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    // const id = key.replace(/^fo_/, ""); //not used
+    const result = await ExtensionStorageManager.removeAutomationScenario({ id: key });
     return result.success;
   } catch (e) {
     console.error("Error removing folder from storage:", e);

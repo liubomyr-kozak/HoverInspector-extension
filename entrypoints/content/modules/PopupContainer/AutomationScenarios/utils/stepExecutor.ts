@@ -258,6 +258,7 @@ export class StepExecutor {
           logEntry.details = `Set value "${processedStep.value}" for element at XPath: ${processedStep.xpath}`;
           break;
         case "code":
+          debugger;
           await this.executeCodeStep(processedStep);
           logEntry.details = `Executed custom code`;
           break;

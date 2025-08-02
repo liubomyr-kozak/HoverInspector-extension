@@ -58,6 +58,9 @@ export interface AutomationState {
   shouldStop: boolean;
   pendingSteps: ScenarioStep[];
   stepStatuses: { [index: number]: ExecutionStatus };
+  
+  // Execution modes
+  singleStepMode: boolean; // true = execute one step and pause, false = continue execution
   searchedStepIndex: number | null;
 
   // Step editing state is now handled locally in components
@@ -124,6 +127,7 @@ const initialState: AutomationState = {
   pendingSteps: [],
   stepStatuses: {},
   searchedStepIndex: null,
+  singleStepMode: false,
 
   // Step editing state is now handled locally in components
 
@@ -304,6 +308,9 @@ const automationSlice = createSlice({
     },
     setShouldStop(state, action: PayloadAction<boolean>) {
       state.shouldStop = action.payload;
+    },
+    setSingleStepMode(state, action: PayloadAction<boolean>) {
+      state.singleStepMode = action.payload;
     },
     setPendingSteps(state, action: PayloadAction<ScenarioStep[]>) {
       state.pendingSteps = action.payload;
@@ -512,6 +519,7 @@ export const selectExecutionSpeed = (state: { automation: AutomationState }) => 
 export const selectDebugMode = (state: { automation: AutomationState }) => state.automation.debugMode;
 export const selectPaused = (state: { automation: AutomationState }) => state.automation.paused;
 export const selectShouldStop = (state: { automation: AutomationState }) => state.automation.shouldStop;
+export const selectSingleStepMode = (state: { automation: AutomationState }) => state.automation.singleStepMode;
 export const selectPendingSteps = (state: { automation: AutomationState }) => state.automation.pendingSteps;
 export const selectStepStatuses = (state: { automation: AutomationState }) => state.automation.stepStatuses;
 export const selectSearchedStepIndex = (state: { automation: AutomationState }) => state.automation.searchedStepIndex;
