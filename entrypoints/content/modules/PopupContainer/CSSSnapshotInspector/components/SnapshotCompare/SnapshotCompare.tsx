@@ -249,7 +249,7 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({ snapshotA, sna
             </SecondaryButton>
           </Tooltip>
 
-          <Tooltip content={diffMode ? "Standard View" : "Side-by-Side Git Diff View"}>
+          <Tooltip content={diffMode ? "Standard View" : "Side-by-Side Git Diff View with Unchanged Nodes"}>
             <SecondaryButton
               onClick={() => setDiffMode(!diffMode)}
               style={{

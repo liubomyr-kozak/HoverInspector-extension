@@ -392,9 +392,23 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
       
       parentNode.children.push(nodeCopy);
     });
+    
+    // Add unchanged nodes to provide context
+    comparison.unchanged.forEach((unchangedNode) => {
+      const parentPath = getParentPath(unchangedNode.path);
+      const parentNode = ensureParentExists(parentPath);
+      
+      // Create a copy of the unchanged node
+      const nodeCopy: DOMTreeNode = {
+        ...JSON.parse(JSON.stringify(unchangedNode)),
+        children: [] // Start with empty children, we'll add them if needed
+      };
+      
+      parentNode.children.push(nodeCopy);
+    });
 
     return removedRoot;
-  }, [diffMode, treeA, comparison.removed, comparison.modified]);
+  }, [diffMode, treeA, comparison.removed, comparison.modified, comparison.unchanged]);
 
   // Create a tree with only added elements
   const addedTree = useMemo(() => {
@@ -522,12 +536,40 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
       
       parentNode.children.push(nodeCopy);
     });
+    
+    // Add unchanged nodes to provide context
+    comparison.unchanged.forEach((unchangedNode) => {
+      const parentPath = getParentPath(unchangedNode.path);
+      const parentNode = ensureParentExists(parentPath);
+      
+      // Create a copy of the unchanged node
+      const nodeCopy: DOMTreeNode = {
+        ...JSON.parse(JSON.stringify(unchangedNode)),
+        children: [] // Start with empty children, we'll add them if needed
+      };
+      
+      parentNode.children.push(nodeCopy);
+    });
 
     return addedRoot;
-  }, [diffMode, treeB, comparison.added, comparison.modified]);
+  }, [diffMode, treeB, comparison.added, comparison.modified, comparison.unchanged]);
 
   // Custom rendering for removed elements (left side)
   const renderRemovedChangeIndicator = (element: any) => {
+    // Check if this is an unchanged node
+    const unchangedNode = comparison.unchanged.find((e) => e.path === element.path);
+    
+    if (unchangedNode) {
+      return (
+        <div>
+          <span style={{ color: "#6e7781", marginLeft: "8px" }}>[=]</span>
+          <div style={{ fontSize: "10px", color: "#666", marginLeft: "8px", marginTop: "2px" }}>
+            Unchanged
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div>
         <span style={{ color: "#d73a49", marginLeft: "8px" }}>[-]</span>
@@ -540,6 +582,20 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
 
   // Custom rendering for added elements (right side)
   const renderAddedChangeIndicator = (element: any) => {
+    // Check if this is an unchanged node
+    const unchangedNode = comparison.unchanged.find((e) => e.path === element.path);
+    
+    if (unchangedNode) {
+      return (
+        <div>
+          <span style={{ color: "#6e7781", marginLeft: "8px" }}>[=]</span>
+          <div style={{ fontSize: "10px", color: "#666", marginLeft: "8px", marginTop: "2px" }}>
+            Unchanged
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div>
         <span style={{ color: "#22863a", marginLeft: "8px" }}>[+]</span>
@@ -552,6 +608,17 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
 
   // Custom styling for removed elements
   const getRemovedElementStyle = (element: any) => {
+    // Check if this is an unchanged node
+    const unchangedNode = comparison.unchanged.find((e) => e.path === element.path);
+    
+    if (unchangedNode) {
+      return {
+        backgroundColor: "#f6f8fa",
+        borderLeft: "3px solid #6e7781",
+        opacity: 0.8,
+      };
+    }
+    
     return {
       backgroundColor: "#ffebe9",
       borderLeft: "3px solid #d73a49",
@@ -560,6 +627,17 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
 
   // Custom styling for added elements
   const getAddedElementStyle = (element: any) => {
+    // Check if this is an unchanged node
+    const unchangedNode = comparison.unchanged.find((e) => e.path === element.path);
+    
+    if (unchangedNode) {
+      return {
+        backgroundColor: "#f6f8fa",
+        borderLeft: "3px solid #6e7781",
+        opacity: 0.8,
+      };
+    }
+    
     return {
       backgroundColor: "#e6ffec",
       borderLeft: "3px solid #22863a",
@@ -573,7 +651,7 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
         <SideBySideContainer>
           <LeftDiffPanel>
             <DiffPanelHeader>
-              Snapshot A (Deleted/Changed)
+              Snapshot A (Deleted/Changed/Unchanged)
             </DiffPanelHeader>
             <DOMTreeRenderer
               tree={removedTree!}
@@ -586,7 +664,7 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
           </LeftDiffPanel>
           <RightDiffPanel>
             <DiffPanelHeader>
-              Snapshot B (Added/Changed)
+              Snapshot B (Added/Changed/Unchanged)
             </DiffPanelHeader>
             <DOMTreeRenderer
               tree={addedTree!}

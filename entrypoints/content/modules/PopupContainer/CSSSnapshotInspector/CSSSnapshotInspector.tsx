@@ -1,7 +1,7 @@
 /**
  * Оптимізований головний компонент CSS Snapshot Inspector
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { IconCode } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
 import { Container, Content, EmptyState } from "./CSSSnapshotInspector.styled";
@@ -15,6 +15,7 @@ import { Header } from "./components/Header";
 import { TabNavigation } from "./components/TabNavigation";
 import { FilterBar } from "./components/FilterBar";
 import { ViewMode } from "./constants";
+import { CSSSnapshot } from "./types";
 
 /**
  * Головний компонент CSS Snapshot Inspector з оптимізацією продуктивності
@@ -31,6 +32,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     importSnapshot,
     selectSnapshot,
     toggleCompare,
+    clearCompare,
     error,
   } = useSnapshots();
 
@@ -114,6 +116,33 @@ export const CSSSnapshotInspector: React.FC = () => {
       startComparison();
     }
   };
+  
+  // Event listener for COMPARE_SNAPSHOTS message from SnapshotViewer
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === "COMPARE_SNAPSHOTS") {
+        const snapshots = event.data.snapshots as CSSSnapshot[];
+        if (snapshots && snapshots.length === 2) {
+          // Clear existing comparison snapshots first
+          clearCompare();
+          
+          // Set the snapshots for comparison
+          snapshots.forEach(snapshot => {
+            toggleCompare(snapshot);
+          });
+          
+          // Start comparison view
+          startComparison();
+        }
+      }
+    };
+    
+    window.addEventListener("message", handleMessage);
+    
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [toggleCompare, startComparison, clearCompare]);
 
   return (
     <Container>

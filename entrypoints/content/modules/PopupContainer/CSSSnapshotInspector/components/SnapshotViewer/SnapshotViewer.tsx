@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { IconHistory, IconSearch, IconEdit, IconCheck } from "@tabler/icons-react";
+import { IconHistory, IconSearch, IconEdit, IconCheck, IconGitCompare } from "@tabler/icons-react";
 import {
   ComparisonContainer,
   ComparisonHeader,
@@ -19,6 +19,8 @@ import { DOMTreeRenderer } from "../../components/DOMTreeRenderer";
 import { useDOMTree } from "../../hooks/useDOMTree";
 import { ElementStyleData } from "../../utils/domTreeBuilder";
 import { DetailsOverlay } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotCompare/components/TreeDiffView/TreeDiffView.styled.ts";
+import { createCSSSnapshot } from "../../utils/snapshotBuilder";
+import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 
 /**
  * Main component for viewing snapshot details
@@ -26,10 +28,34 @@ import { DetailsOverlay } from "@entrypoints/content/modules/PopupContainer/CSSS
 export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack }) => {
   const [selectedElement, setSelectedElement] = useState<number | null>(null);
   const [selectedElementData, setSelectedElementData] = useState<any>(null);
+  const [isCreatingCurrentSnapshot, setIsCreatingCurrentSnapshot] = useState<boolean>(false);
   
   // State for editable title
   const [title, setTitle] = useState<string>(snapshot.title);
   const [editingTitle, setEditingTitle] = useState<boolean>(false);
+  
+  // Function to create a snapshot of the current page and compare with the displayed snapshot
+  const handleCompareWithCurrentPage = async () => {
+    try {
+      setIsCreatingCurrentSnapshot(true);
+      
+      // Create a snapshot of the current page
+      const currentPageSnapshot = await createCSSSnapshot("Current Page");
+      
+      // Open the comparison view with the current snapshot and the displayed snapshot
+      // We need to use window.postMessage to communicate with the parent component
+      window.postMessage({
+        type: "COMPARE_SNAPSHOTS",
+        snapshots: [snapshot, currentPageSnapshot]
+      }, "*");
+      
+      setIsCreatingCurrentSnapshot(false);
+    } catch (error) {
+      console.error("Failed to create current page snapshot:", error);
+      setIsCreatingCurrentSnapshot(false);
+      alert("Failed to create current page snapshot. Please try again.");
+    }
+  };
   
   // Function to save updated snapshot title
   const saveSnapshotTitle = async (newTitle: string) => {
@@ -185,6 +211,23 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
           Snapshot Details
         </ComparisonTitle>
         <div style={{ display: "flex", gap: "8px" }}>
+          <Tooltip content="Compare with current page">
+            <SecondaryButton 
+              onClick={handleCompareWithCurrentPage} 
+              disabled={isCreatingCurrentSnapshot}
+              style={{
+                backgroundColor: "#f0f4ff",
+                color: "#1a73e8",
+                border: "1px solid #dadce0",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+            >
+              <IconGitCompare size={16} />
+              {isCreatingCurrentSnapshot ? "Creating Snapshot..." : "Check Diff with Current Page"}
+            </SecondaryButton>
+          </Tooltip>
           <SecondaryButton onClick={onBack} aria-label="Go back to snapshots list">
             Back to List
           </SecondaryButton>
