@@ -151,7 +151,10 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
       />
 
       {nodeDetailsPath && nodeDetailsData && (
-        <DetailsOverlay onClick={(e) => e.stopPropagation()}>
+        <DetailsOverlay
+          className="sticky top-0 self-start max-h-screen overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           <DetailsHeader>
             <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>Element Details</h3>
             <CloseButton onClick={closeNodeDetails}>

@@ -81,6 +81,128 @@
             filter: brightness(0.9);
             background-color: inherit !important;
         }
+
+        /* Todo App Specific Styles */
+        .todo-toggle-button:hover {
+            background: #218838 !important;
+            transform: translateY(-1px) !important;
+        }
+
+        .todo-toggle-button.active {
+            background: #dc3545 !important;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .todo-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .todo-item.completed {
+            opacity: 0.7;
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+
+        .todo-checkbox {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .todo-text {
+            flex: 1;
+            font-size: 16px;
+            color: #343a40;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .edit-btn, .delete-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .edit-btn {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .edit-btn:hover {
+            background: #e0a800;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
+        /* Test Theme Variations for Todo App */
+        .todo-dark-theme {
+            background-color: #343a40 !important;
+            color: white !important;
+        }
+
+        .todo-dark-theme .todo-item {
+            background: #495057 !important;
+            color: white !important;
+        }
+
+        .todo-high-contrast {
+            filter: contrast(150%) brightness(110%) !important;
+        }
+
+        .todo-large-text {
+            font-size: 1.2em !important;
+        }
+
+        .todo-compact-mode .todo-item {
+            padding: 10px 15px !important;
+            margin-bottom: 6px !important;
+        }
+
+        .todo-compact-mode .input-section {
+            margin-bottom: 20px !important;
+        }
     </style>
 </head>
 <body>
@@ -347,6 +469,61 @@
     </script>
 </div>
 
+<!-- Interactive To-Do App Section for Save Recorded Scenario Testing -->
+<div style="margin: 30px 0; padding: 20px; border: 1px solid #667eea; border-radius: 12px; background-color: white; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; margin: -20px -20px 20px -20px; text-align: center; border-radius: 12px 12px 0 0;">
+        <h1 id="todoAppTitle" style="font-size: 2.5rem; margin-bottom: 10px; font-weight: 700;">📝 Interactive To-Do App</h1>
+        <p id="todoHeaderSubtitle" style="opacity: 0.9; font-size: 1.1rem;">Perfect for testing Save Recorded Scenario functionality</p>
+    </div>
+
+    <!-- Test Controls Section -->
+    <div id="todoTestControls" style="background: #f8f9fa; padding: 20px; margin: -20px -20px 20px -20px; border-bottom: 1px solid #e9ecef;">
+        <h2 style="color: #495057; margin-bottom: 15px; font-size: 1.3rem;">🧪 Test Style Controls (for HoverInspector Testing)</h2>
+        <button class="todo-toggle-button" onclick="toggleTodoDarkTheme()" style="background: #28a745; color: white; border: none; padding: 8px 16px; margin: 5px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">🌙 Toggle Dark Theme</button>
+        <button class="todo-toggle-button" onclick="toggleTodoHighContrast()" style="background: #28a745; color: white; border: none; padding: 8px 16px; margin: 5px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">🔆 Toggle High Contrast</button>
+        <button class="todo-toggle-button" onclick="toggleTodoLargeText()" style="background: #28a745; color: white; border: none; padding: 8px 16px; margin: 5px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">🔍 Toggle Large Text</button>
+        <button class="todo-toggle-button" onclick="toggleTodoCompactMode()" style="background: #28a745; color: white; border: none; padding: 8px 16px; margin: 5px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">📱 Toggle Compact Mode</button>
+        <button class="todo-toggle-button" onclick="randomizeTodoColors()" style="background: #28a745; color: white; border: none; padding: 8px 16px; margin: 5px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">🎨 Randomize Colors</button>
+        <button class="todo-toggle-button" onclick="resetTodoStyles()" style="background: #28a745; color: white; border: none; padding: 8px 16px; margin: 5px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">🔄 Reset All Styles</button>
+    </div>
+
+    <div id="todoAppContainer" style="padding: 0;">
+        <div style="display: flex; gap: 12px; margin-bottom: 30px; align-items: center;">
+            <input 
+                type="text" 
+                id="todoInput" 
+                placeholder="Enter a new task... (e.g., 'Test scenario recording')"
+                maxlength="100"
+                style="flex: 1; padding: 15px 20px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; transition: border-color 0.2s ease; outline: none;"
+                onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
+                onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'"
+            >
+            <button id="addTodoBtn" onclick="addTodo()" style="background: #667eea; color: white; border: none; padding: 15px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.2s ease;">
+                ➕ Add Task
+            </button>
+        </div>
+
+        <ul id="todoList" style="list-style: none; margin: 0; padding: 0;">
+            <!-- Dynamic todo items will be inserted here -->
+        </ul>
+
+        <div id="todoStats" style="display: flex; justify-content: space-around; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <div style="text-align: center;">
+                <span id="totalTasks" style="font-size: 2rem; font-weight: bold; color: #667eea; display: block;">0</span>
+                <span style="color: #6c757d; font-size: 14px;">Total Tasks</span>
+            </div>
+            <div style="text-align: center;">
+                <span id="completedTasks" style="font-size: 2rem; font-weight: bold; color: #667eea; display: block;">0</span>
+                <span style="color: #6c757d; font-size: 14px;">Completed</span>
+            </div>
+            <div style="text-align: center;">
+                <span id="pendingTasks" style="font-size: 2rem; font-weight: bold; color: #667eea; display: block;">0</span>
+                <span style="color: #6c757d; font-size: 14px;">Pending</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="test" style="top: 10px; left: 30px" class="hover qwe  qwe qwe   qwe"></div>
 <div style="top: 20px; left: 40px" class="selected"></div>
 
@@ -375,6 +552,346 @@
 <div style="bottom: 0; left: 740px;" class="selected"></div>
 
 <hover-inspector></hover-inspector>
+
+<!-- Todo App JavaScript -->
+<script>
+    // To-Do App State
+    let todos = [
+        { id: 1, text: "Test the HoverInspector extension", completed: false },
+        { id: 2, text: "Record a scenario with style changes", completed: true },
+    ];
+
+    let nextId = 5;
+    let isEditingId = null;
+
+    // Initialize todo app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeTodoApp();
+    });
+
+    function initializeTodoApp() {
+        renderTodos();
+        updateTodoStats();
+        
+        // Add enter key support for input
+        const todoInput = document.getElementById('todoInput');
+        if (todoInput) {
+            todoInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addTodo();
+                }
+            });
+        }
+
+        // Add sample tasks after a short delay
+        setTimeout(() => {
+            if (todos.length <= 4) {
+                addSampleTestTasks();
+            }
+        }, 1000);
+    }
+
+    // Core To-Do Functions
+    function addTodo() {
+        const input = document.getElementById('todoInput');
+        if (!input) return;
+        
+        const text = input.value.trim();
+        
+        if (text === '') {
+            alert('Please enter a task!');
+            return;
+        }
+
+        if (isEditingId !== null) {
+            // Update existing todo
+            todos = todos.map(todo => 
+                todo.id === isEditingId ? { ...todo, text } : todo
+            );
+            isEditingId = null;
+            const addBtn = document.getElementById('addTodoBtn');
+            if (addBtn) {
+                addBtn.textContent = '➕ Add Task';
+                addBtn.style.background = '#667eea';
+            }
+        } else {
+            // Add new todo
+            todos.push({
+                id: nextId++,
+                text: text,
+                completed: false
+            });
+        }
+
+        input.value = '';
+        renderTodos();
+        updateTodoStats();
+    }
+
+    function toggleTodo(id) {
+        todos = todos.map(todo =>
+            todo.id === id ? { ...todo, completed: !todo.completed } : todo
+        );
+        renderTodos();
+        updateTodoStats();
+    }
+
+    function editTodo(id) {
+        const todo = todos.find(t => t.id === id);
+        const input = document.getElementById('todoInput');
+        const addBtn = document.getElementById('addTodoBtn');
+        
+        if (todo && input && addBtn) {
+            input.value = todo.text;
+            input.focus();
+            isEditingId = id;
+            addBtn.textContent = '✏️ Update Task';
+            addBtn.style.background = '#ffc107';
+        }
+    }
+
+    function deleteTodo(id) {
+        todos = todos.filter(todo => todo.id !== id);
+        renderTodos();
+        updateTodoStats();
+    }
+
+    function renderTodos() {
+        const todoList = document.getElementById('todoList');
+        if (!todoList) return;
+        
+        if (todos.length === 0) {
+            todoList.innerHTML = `
+                <div class="empty-state">
+                    <h3>📭 No tasks yet!</h3>
+                    <p>Add your first task above to get started.</p>
+                </div>
+            `;
+            return;
+        }
+
+        todoList.innerHTML = todos.map(todo => `
+            <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}">
+                <input 
+                    type="checkbox" 
+                    class="todo-checkbox" 
+                    ${todo.completed ? 'checked' : ''} 
+                    onchange="toggleTodo(${todo.id})"
+                >
+                <span class="todo-text">${escapeHtml(todo.text)}</span>
+                <div class="todo-actions">
+                    <button class="edit-btn" onclick="editTodo(${todo.id})">✏️ Edit</button>
+                    <button class="delete-btn" onclick="deleteTodo(${todo.id})">🗑️ Delete</button>
+                </div>
+            </li>
+        `).join('');
+    }
+
+    function updateTodoStats() {
+        const total = todos.length;
+        const completed = todos.filter(todo => todo.completed).length;
+        const pending = total - completed;
+
+        const totalEl = document.getElementById('totalTasks');
+        const completedEl = document.getElementById('completedTasks');
+        const pendingEl = document.getElementById('pendingTasks');
+
+        if (totalEl) totalEl.textContent = total;
+        if (completedEl) completedEl.textContent = completed;
+        if (pendingEl) pendingEl.textContent = pending;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Test Style Toggle Functions (for HoverInspector testing)
+    let todoStyleFlags = {
+        darkTheme: false,
+        highContrast: false,
+        largeText: false,
+        compactMode: false
+    };
+
+    function toggleTodoDarkTheme() {
+        todoStyleFlags.darkTheme = !todoStyleFlags.darkTheme;
+        const container = document.getElementById('todoAppContainer');
+        const controls = document.getElementById('todoTestControls');
+        
+        if (container && controls) {
+            if (todoStyleFlags.darkTheme) {
+                container.classList.add('todo-dark-theme');
+                controls.classList.add('todo-dark-theme');
+            } else {
+                container.classList.remove('todo-dark-theme');
+                controls.classList.remove('todo-dark-theme');
+            }
+        }
+        
+        updateTodoButtonStates();
+    }
+
+    function toggleTodoHighContrast() {
+        todoStyleFlags.highContrast = !todoStyleFlags.highContrast;
+        const container = document.getElementById('todoAppContainer');
+        
+        if (container) {
+            if (todoStyleFlags.highContrast) {
+                container.classList.add('todo-high-contrast');
+            } else {
+                container.classList.remove('todo-high-contrast');
+            }
+        }
+        
+        updateTodoButtonStates();
+    }
+
+    function toggleTodoLargeText() {
+        todoStyleFlags.largeText = !todoStyleFlags.largeText;
+        const container = document.getElementById('todoAppContainer');
+        
+        if (container) {
+            if (todoStyleFlags.largeText) {
+                container.classList.add('todo-large-text');
+            } else {
+                container.classList.remove('todo-large-text');
+            }
+        }
+        
+        updateTodoButtonStates();
+    }
+
+    function toggleTodoCompactMode() {
+        todoStyleFlags.compactMode = !todoStyleFlags.compactMode;
+        const container = document.getElementById('todoAppContainer');
+        
+        if (container) {
+            if (todoStyleFlags.compactMode) {
+                container.classList.add('todo-compact-mode');
+            } else {
+                container.classList.remove('todo-compact-mode');
+            }
+        }
+        
+        updateTodoButtonStates();
+    }
+
+    function randomizeTodoColors() {
+        const colors = ['#667eea', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#fa709a', '#ffecd2', '#a8edea'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        const header = document.getElementById('todoAppTitle');
+        const addBtn = document.getElementById('addTodoBtn');
+        
+        if (header && header.parentElement) {
+            header.parentElement.style.background = `linear-gradient(135deg, ${randomColor} 0%, ${adjustColorBrightness(randomColor, -20)} 100%)`;
+        }
+        
+        if (addBtn) {
+            addBtn.style.background = randomColor;
+        }
+
+        // Update todo item border colors
+        const todoItems = document.querySelectorAll('.todo-item');
+        todoItems.forEach(item => {
+            if (!item.classList.contains('completed')) {
+                item.style.borderLeftColor = randomColor;
+            }
+        });
+    }
+
+    function resetTodoStyles() {
+        // Reset all style flags
+        Object.keys(todoStyleFlags).forEach(key => {
+            todoStyleFlags[key] = false;
+        });
+        
+        // Remove all classes
+        const container = document.getElementById('todoAppContainer');
+        const controls = document.getElementById('todoTestControls');
+        
+        if (container) {
+            container.classList.remove('todo-dark-theme', 'todo-compact-mode', 'todo-large-text', 'todo-high-contrast');
+        }
+        
+        if (controls) {
+            controls.classList.remove('todo-dark-theme');
+        }
+        
+        // Reset header background
+        const header = document.getElementById('todoAppTitle');
+        if (header && header.parentElement) {
+            header.parentElement.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        }
+        
+        // Reset add button
+        const addBtn = document.getElementById('addTodoBtn');
+        if (addBtn) {
+            addBtn.style.background = '#667eea';
+        }
+
+        // Reset todo item styles
+        const todoItems = document.querySelectorAll('.todo-item');
+        todoItems.forEach(item => {
+            item.style.borderLeftColor = '';
+        });
+        
+        updateTodoButtonStates();
+    }
+
+    function updateTodoButtonStates() {
+        const buttons = document.querySelectorAll('.todo-toggle-button');
+        const flags = Object.values(todoStyleFlags);
+        
+        buttons.forEach((btn, index) => {
+            if (index < flags.length && flags[index]) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function adjustColorBrightness(color, percent) {
+        const num = parseInt(color.replace("#", ""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+    }
+
+    // Add some sample scenarios for testing
+    function addSampleTestTasks() {
+        const sampleTasks = [
+            "Open HoverInspector extension",
+            "Click on 'Record Scenario' button",
+
+        ];
+        
+        sampleTasks.forEach(task => {
+            if (!todos.find(t => t.text === task)) {
+                todos.push({
+                    id: nextId++,
+                    text: task,
+                    completed: false
+                });
+            }
+        });
+        
+        renderTodos();
+        updateTodoStats();
+    }
+
+    console.log('🧪 Interactive To-Do App integrated successfully!');
+    console.log('💡 Use the style toggle buttons to test HoverInspector scenario recording');
+    console.log('📊 This todo app is perfect for testing Save Recorded Scenario functionality');
+</script>
+
 <!-- Script tag to load the main entry point -->
 <script type="module" src="/src/main.tsx"></script>
 </body>

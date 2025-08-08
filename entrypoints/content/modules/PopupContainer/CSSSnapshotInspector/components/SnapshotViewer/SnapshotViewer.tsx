@@ -17,6 +17,7 @@ import { ElementHighlight } from "./components/ElementHighlight";
 import { DOMTreeRenderer } from "../../components/DOMTreeRenderer";
 import { useDOMTree } from "../../hooks/useDOMTree";
 import { ElementStyleData } from "../../utils/domTreeBuilder";
+import { DetailsOverlay } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotCompare/components/TreeDiffView/TreeDiffView.styled.ts";
 
 /**
  * Main component for viewing snapshot details
@@ -58,11 +59,11 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
 
     return result;
   }, [snapshot.root]);
-  
+
   // Convert elements to format expected by DOMTreeRenderer
   const stylesData = useMemo(() => {
     const data: Record<string, ElementStyleData> = {};
-    
+
     elements.forEach(({ path, element }) => {
       data[path] = {
         tagName: element.tagName,
@@ -70,13 +71,13 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
         classes: element.classes,
         styles: element.styles,
         attributes: element.attributes,
-        bounds: element.bounds
+        bounds: element.bounds,
       };
     });
-    
+
     return data;
   }, [elements]);
-  
+
   // Use the DOM tree hook to build the tree
   const { tree } = useDOMTree({ stylesData });
 
@@ -137,7 +138,6 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
     },
     [elements],
   );
-
 
   return (
     <ComparisonContainer>
@@ -200,43 +200,30 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
           <p>No elements found matching "{filter}"</p>
         </EmptyState>
       ) : (
-        <div style={{ display: "flex", height: "calc(100vh - 300px)" }}>
-          <div
-            style={{
-              width: "40%",
-              overflowY: "auto",
-              borderRight: "1px solid #e0e0e0",
-              padding: "8px",
-            }}
-          >
-            {filter && filteredElements.length !== elements.length ? (
-              <div style={{ padding: "16px", color: "#666" }}>
-                <p>Tree view is not available when filtering is active.</p>
-                <p>Please clear the filter or switch to list view to see filtered results.</p>
-              </div>
-            ) : (
-              <DOMTreeRenderer
-                tree={tree}
-                selectedElement={selectedElement?.toString()}
-                onElementSelect={handleElementSelect}
-                showStatistics={true}
-              />
-            )}
-          </div>
-
-          <div
-            style={{
-              width: "60%",
-              padding: "16px",
-              overflowY: "auto",
-            }}
+        <div className="relative">
+          {filter && filteredElements.length !== elements.length ? (
+            <div style={{ padding: "16px", color: "#666" }}>
+              <p>Tree view is not available when filtering is active.</p>
+              <p>Please clear the filter or switch to list view to see filtered results.</p>
+            </div>
+          ) : (
+            <DOMTreeRenderer
+              tree={tree}
+              selectedElement={selectedElement?.toString()}
+              onElementSelect={handleElementSelect}
+              showStatistics={true}
+            />
+          )}
+          <DetailsOverlay
+            className="sticky top-0 self-start max-h-screen overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
           >
             <ElementDetails
               selectedElement={selectedElement}
               selectedElementData={selectedElementData}
               selectedElementStyles={selectedElementStyles}
             />
-          </div>
+          </DetailsOverlay>
         </div>
       )}
     </ComparisonContainer>
