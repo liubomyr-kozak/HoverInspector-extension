@@ -142,4 +142,5 @@ export interface ElementListProps {
   stylesA: Record<string, ElementStyle>;
   stylesB: Record<string, ElementStyle>;
   elementRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  diffMode?: boolean; // Flag to toggle between standard view and side-by-side Git diff view
 }

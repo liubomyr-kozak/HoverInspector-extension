@@ -2,7 +2,15 @@ import React, { useMemo } from "react";
 import { IconX } from "@tabler/icons-react";
 import { ElementListProps } from "../../types";
 import { ElementDetails } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails";
-import { DetailsOverlay, DetailsHeader, CloseButton } from "./TreeDiffView.styled";
+import { 
+  DetailsOverlay, 
+  DetailsHeader, 
+  CloseButton,
+  SideBySideContainer,
+  LeftDiffPanel,
+  RightDiffPanel,
+  DiffPanelHeader
+} from "./TreeDiffView.styled";
 import { useNodeDetails } from "./hooks/useNodeDetails";
 import { DOMTreeRenderer } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/DOMTreeRenderer";
 import { useTreeComparison } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/hooks/useTreeComparison";
@@ -14,6 +22,7 @@ import {
 /**
  * Component for displaying a hierarchical tree view of elements with GitHub-style diff indicators
  * Shows component changes with [+] and [-] indicators and allows expanding style diffs
+ * Supports side-by-side Git diff view when diffMode is true
  */
 export const TreeDiffView: React.FC<ElementListProps> = ({
   filteredElements,
@@ -23,6 +32,7 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
   stylesA,
   stylesB,
   elementRefs,
+  diffMode = false, // Default to standard view if not provided
 }) => {
   const { nodeDetailsPath, nodeDetailsData, showNodeDetails, closeNodeDetails } = useNodeDetails(stylesA, stylesB);
 
@@ -256,16 +266,349 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
     scrollToAndHighlightElement?.(path);
   };
 
+  // Create trees for removed and added elements for side-by-side view
+  const removedTree = useMemo(() => {
+    if (!diffMode) return null;
+    
+    // Create a tree with only removed elements
+    const removedRoot: DOMTreeNode = {
+      tagName: treeA.tagName,
+      path: treeA.path,
+      id: treeA.id,
+      classes: [...treeA.classes],
+      styles: { ...treeA.styles },
+      attributes: { ...(treeA.attributes || {}) },
+      bounds: treeA.bounds ? { ...treeA.bounds } : undefined,
+      children: []
+    };
+
+    // Function to find the parent path for a given path
+    const getParentPath = (path: string): string => {
+      const segments = path.split(">");
+      segments.pop(); // Remove the last segment
+      return segments.join(">");
+    };
+
+    // Function to ensure parent nodes exist in the tree
+    const ensureParentExists = (path: string): DOMTreeNode => {
+      if (path === "" || path === removedRoot.path) return removedRoot;
+
+      const segments = path.split(">");
+      let currentPath = "";
+      let currentNode = removedRoot;
+
+      // Skip the first segment if it's empty (for paths starting with >)
+      const startIndex = segments[0] === "" ? 1 : 0;
+
+      // Build the path segment by segment, creating nodes as needed
+      for (let i = startIndex; i < segments.length; i++) {
+        currentPath = currentPath ? `${currentPath}>${segments[i]}` : segments[i];
+        
+        // Check if this node already exists in our tree
+        let found = false;
+        for (const child of currentNode.children) {
+          if (child.path === currentPath) {
+            currentNode = child;
+            found = true;
+            break;
+          }
+        }
+
+        // If not found, create it by finding the original node in treeA
+        if (!found) {
+          // Find the original node in treeA to copy its properties
+          const originalNode = findNodeInTree(treeA, currentPath);
+          
+          if (originalNode) {
+            const newNode: DOMTreeNode = {
+              tagName: originalNode.tagName,
+              path: originalNode.path,
+              id: originalNode.id,
+              classes: [...originalNode.classes],
+              styles: { ...originalNode.styles },
+              attributes: { ...(originalNode.attributes || {}) },
+              bounds: originalNode.bounds ? { ...originalNode.bounds } : undefined,
+              children: []
+            };
+            
+            currentNode.children.push(newNode);
+            currentNode = newNode;
+          } else {
+            // If we can't find the original, create a minimal node
+            const newNode: DOMTreeNode = {
+              tagName: segments[i],
+              path: currentPath,
+              id: "",
+              classes: [],
+              styles: {},
+              children: []
+            };
+            
+            currentNode.children.push(newNode);
+            currentNode = newNode;
+          }
+        }
+      }
+
+      return currentNode;
+    };
+
+    // Function to find a node in the tree by path
+    const findNodeInTree = (tree: DOMTreeNode, path: string): DOMTreeNode | null => {
+      if (tree.path === path) return tree;
+
+      for (const child of tree.children) {
+        const found = findNodeInTree(child, path);
+        if (found) return found;
+      }
+
+      return null;
+    };
+
+    // Add all removed nodes
+    comparison.removed.forEach((removedNode) => {
+      const parentPath = getParentPath(removedNode.path);
+      const parentNode = ensureParentExists(parentPath);
+      
+      // Create a copy of the removed node
+      const nodeCopy: DOMTreeNode = {
+        ...JSON.parse(JSON.stringify(removedNode)),
+        children: [] // Start with empty children, we'll add them if needed
+      };
+      
+      parentNode.children.push(nodeCopy);
+    });
+
+    // Add modified nodes (to show what was changed)
+    comparison.modified.forEach((modifiedNode) => {
+      const parentPath = getParentPath(modifiedNode.path);
+      const parentNode = ensureParentExists(parentPath);
+      
+      // Create a copy of the modified node from elementA (older version)
+      const nodeCopy: DOMTreeNode = {
+        ...JSON.parse(JSON.stringify(modifiedNode.elementA)),
+        children: [] // Start with empty children, we'll add them if needed
+      };
+      
+      parentNode.children.push(nodeCopy);
+    });
+
+    return removedRoot;
+  }, [diffMode, treeA, comparison.removed, comparison.modified]);
+
+  // Create a tree with only added elements
+  const addedTree = useMemo(() => {
+    if (!diffMode) return null;
+    
+    // Create an empty root node with the same structure as treeB
+    const addedRoot: DOMTreeNode = {
+      tagName: treeB.tagName,
+      path: treeB.path,
+      id: treeB.id,
+      classes: [...treeB.classes],
+      styles: { ...treeB.styles },
+      attributes: { ...(treeB.attributes || {}) },
+      bounds: treeB.bounds ? { ...treeB.bounds } : undefined,
+      children: []
+    };
+
+    // Function to find the parent path for a given path
+    const getParentPath = (path: string): string => {
+      const segments = path.split(">");
+      segments.pop(); // Remove the last segment
+      return segments.join(">");
+    };
+
+    // Function to ensure parent nodes exist in the tree
+    const ensureParentExists = (path: string): DOMTreeNode => {
+      if (path === "" || path === addedRoot.path) return addedRoot;
+
+      const segments = path.split(">");
+      let currentPath = "";
+      let currentNode = addedRoot;
+
+      // Skip the first segment if it's empty (for paths starting with >)
+      const startIndex = segments[0] === "" ? 1 : 0;
+
+      // Build the path segment by segment, creating nodes as needed
+      for (let i = startIndex; i < segments.length; i++) {
+        currentPath = currentPath ? `${currentPath}>${segments[i]}` : segments[i];
+        
+        // Check if this node already exists in our tree
+        let found = false;
+        for (const child of currentNode.children) {
+          if (child.path === currentPath) {
+            currentNode = child;
+            found = true;
+            break;
+          }
+        }
+
+        // If not found, create it by finding the original node in treeB
+        if (!found) {
+          // Find the original node in treeB to copy its properties
+          const originalNode = findNodeInTree(treeB, currentPath);
+          
+          if (originalNode) {
+            const newNode: DOMTreeNode = {
+              tagName: originalNode.tagName,
+              path: originalNode.path,
+              id: originalNode.id,
+              classes: [...originalNode.classes],
+              styles: { ...originalNode.styles },
+              attributes: { ...(originalNode.attributes || {}) },
+              bounds: originalNode.bounds ? { ...originalNode.bounds } : undefined,
+              children: []
+            };
+            
+            currentNode.children.push(newNode);
+            currentNode = newNode;
+          } else {
+            // If we can't find the original, create a minimal node
+            const newNode: DOMTreeNode = {
+              tagName: segments[i],
+              path: currentPath,
+              id: "",
+              classes: [],
+              styles: {},
+              children: []
+            };
+            
+            currentNode.children.push(newNode);
+            currentNode = newNode;
+          }
+        }
+      }
+
+      return currentNode;
+    };
+
+    // Function to find a node in the tree by path
+    const findNodeInTree = (tree: DOMTreeNode, path: string): DOMTreeNode | null => {
+      if (tree.path === path) return tree;
+
+      for (const child of tree.children) {
+        const found = findNodeInTree(child, path);
+        if (found) return found;
+      }
+
+      return null;
+    };
+
+    // Add all added nodes
+    comparison.added.forEach((addedNode) => {
+      const parentPath = getParentPath(addedNode.path);
+      const parentNode = ensureParentExists(parentPath);
+      
+      // Create a copy of the added node
+      const nodeCopy: DOMTreeNode = {
+        ...JSON.parse(JSON.stringify(addedNode)),
+        children: [] // Start with empty children, we'll add them if needed
+      };
+      
+      parentNode.children.push(nodeCopy);
+    });
+
+    // Add modified nodes (to show what was changed to)
+    comparison.modified.forEach((modifiedNode) => {
+      const parentPath = getParentPath(modifiedNode.path);
+      const parentNode = ensureParentExists(parentPath);
+      
+      // Create a copy of the modified node from elementB (newer version)
+      const nodeCopy: DOMTreeNode = {
+        ...JSON.parse(JSON.stringify(modifiedNode.elementB)),
+        children: [] // Start with empty children, we'll add them if needed
+      };
+      
+      parentNode.children.push(nodeCopy);
+    });
+
+    return addedRoot;
+  }, [diffMode, treeB, comparison.added, comparison.modified]);
+
+  // Custom rendering for removed elements (left side)
+  const renderRemovedChangeIndicator = (element: any) => {
+    return (
+      <div>
+        <span style={{ color: "#d73a49", marginLeft: "8px" }}>[-]</span>
+        <div style={{ fontSize: "10px", color: "#666", marginLeft: "8px", marginTop: "2px" }}>
+          Removed in snapshot B
+        </div>
+      </div>
+    );
+  };
+
+  // Custom rendering for added elements (right side)
+  const renderAddedChangeIndicator = (element: any) => {
+    return (
+      <div>
+        <span style={{ color: "#22863a", marginLeft: "8px" }}>[+]</span>
+        <div style={{ fontSize: "10px", color: "#666", marginLeft: "8px", marginTop: "2px" }}>
+          Added in snapshot B
+        </div>
+      </div>
+    );
+  };
+
+  // Custom styling for removed elements
+  const getRemovedElementStyle = (element: any) => {
+    return {
+      backgroundColor: "#ffebe9",
+      borderLeft: "3px solid #d73a49",
+    };
+  };
+
+  // Custom styling for added elements
+  const getAddedElementStyle = (element: any) => {
+    return {
+      backgroundColor: "#e6ffec",
+      borderLeft: "3px solid #22863a",
+    };
+  };
+
   return (
     <div className="relative">
-      <DOMTreeRenderer
-        tree={mergedTree}
-        selectedElement={selectedElement}
-        onElementSelect={handleElementSelect}
-        onShowDetails={(path, element) => showNodeDetails(path, element)}
-        renderChangeIndicator={renderChangeIndicator}
-        getElementStyle={getElementStyle}
-      />
+      {diffMode ? (
+        // Side-by-side Git diff view
+        <SideBySideContainer>
+          <LeftDiffPanel>
+            <DiffPanelHeader>
+              Snapshot A (Deleted/Changed)
+            </DiffPanelHeader>
+            <DOMTreeRenderer
+              tree={removedTree!}
+              selectedElement={selectedElement}
+              onElementSelect={handleElementSelect}
+              onShowDetails={(path, element) => showNodeDetails(path, element)}
+              renderChangeIndicator={renderRemovedChangeIndicator}
+              getElementStyle={getRemovedElementStyle}
+            />
+          </LeftDiffPanel>
+          <RightDiffPanel>
+            <DiffPanelHeader>
+              Snapshot B (Added/Changed)
+            </DiffPanelHeader>
+            <DOMTreeRenderer
+              tree={addedTree!}
+              selectedElement={selectedElement}
+              onElementSelect={handleElementSelect}
+              onShowDetails={(path, element) => showNodeDetails(path, element)}
+              renderChangeIndicator={renderAddedChangeIndicator}
+              getElementStyle={getAddedElementStyle}
+            />
+          </RightDiffPanel>
+        </SideBySideContainer>
+      ) : (
+        // Standard GitHub-style diff view
+        <DOMTreeRenderer
+          tree={mergedTree}
+          selectedElement={selectedElement}
+          onElementSelect={handleElementSelect}
+          onShowDetails={(path, element) => showNodeDetails(path, element)}
+          renderChangeIndicator={renderChangeIndicator}
+          getElementStyle={getElementStyle}
+        />
+      )}
 
       {nodeDetailsPath && nodeDetailsData && (
         <DetailsOverlay

@@ -43,3 +43,41 @@ export const CloseButton = styled.div`
     background-color: #e0e0e0;
   }
 `;
+
+// Side by side diff view container
+export const SideBySideContainer = styled.div`
+  display: flex;
+  width: 100%;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  overflow: hidden;
+`;
+
+// Left side of the diff view (deleted items)
+export const LeftDiffPanel = styled.div`
+  flex: 1;
+  border-right: 1px solid #e1e4e8;
+  background-color: #fff8f8;
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+`;
+
+// Right side of the diff view (added items)
+export const RightDiffPanel = styled.div`
+  flex: 1;
+  background-color: #f8fff8;
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+`;
+
+// Panel header for side-by-side view
+export const DiffPanelHeader = styled.div`
+  padding: 8px 16px;
+  background-color: #f6f8fa;
+  border-bottom: 1px solid #e1e4e8;
+  font-weight: 500;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;

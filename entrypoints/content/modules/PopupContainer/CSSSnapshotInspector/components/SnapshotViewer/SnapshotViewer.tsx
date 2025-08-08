@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { IconHistory, IconSearch } from "@tabler/icons-react";
+import { IconHistory, IconSearch, IconEdit, IconCheck } from "@tabler/icons-react";
 import {
   ComparisonContainer,
   ComparisonHeader,
@@ -11,7 +11,8 @@ import {
 } from "../../CSSSnapshotInspector.styled";
 import { SnapshotViewerProps } from "./types";
 import { useSnapshotFilter } from "../../hooks/useSnapshots";
-import { shouldSkipProperty, isDefaultValue } from "../../types";
+import { shouldSkipProperty, isDefaultValue, CSSSnapshot } from "../../types";
+import { saveSnapshots, loadSnapshots } from "../../utils/snapshotStorage";
 import { ElementDetails } from "./components/ElementDetails";
 import { ElementHighlight } from "./components/ElementHighlight";
 import { DOMTreeRenderer } from "../../components/DOMTreeRenderer";
@@ -25,6 +26,38 @@ import { DetailsOverlay } from "@entrypoints/content/modules/PopupContainer/CSSS
 export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack }) => {
   const [selectedElement, setSelectedElement] = useState<number | null>(null);
   const [selectedElementData, setSelectedElementData] = useState<any>(null);
+  
+  // State for editable title
+  const [title, setTitle] = useState<string>(snapshot.title);
+  const [editingTitle, setEditingTitle] = useState<boolean>(false);
+  
+  // Function to save updated snapshot title
+  const saveSnapshotTitle = async (newTitle: string) => {
+    try {
+      // Create updated snapshot with new title
+      const updatedSnapshot = {
+        ...snapshot,
+        title: newTitle
+      };
+      
+      // Get all snapshots and update the specific one
+      const allSnapshots = await loadSnapshots();
+      const updatedSnapshots = allSnapshots.map(s => 
+        s.id === snapshot.id ? updatedSnapshot : s
+      );
+      
+      // Save updated snapshots
+      await saveSnapshots(updatedSnapshots);
+      
+      // Exit editing mode
+      setEditingTitle(false);
+    } catch (error) {
+      console.error('Failed to update snapshot title:', error);
+      // Revert to original title on error
+      setTitle(snapshot.title);
+      setEditingTitle(false);
+    }
+  };
 
   // Generate list of elements from snapshot tree and convert to format for DOMTreeRenderer
   const elements = useMemo(() => {
@@ -165,9 +198,56 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
           fontSize: "14px",
           color: "#666",
           borderBottom: "1px solid #e0e0e0",
+          display: "flex",
+          alignItems: "center",
         }}
       >
-        <strong>{snapshot.title}</strong> • {new Date(snapshot.timestamp).toLocaleString()} •{snapshot.elementCount}{" "}
+        {editingTitle ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginRight: "8px" }}>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{
+                padding: "4px 8px",
+                borderRadius: "4px",
+                border: "1px solid #dadce0",
+                fontSize: "14px",
+                width: "250px",
+                fontWeight: "bold",
+              }}
+              autoFocus
+            />
+            <SecondaryButton
+              onClick={() => saveSnapshotTitle(title)}
+              style={{
+                padding: "4px",
+                borderRadius: "4px",
+                border: "1px solid #dadce0",
+                backgroundColor: "#e6f4ea",
+                color: "#137333",
+              }}
+            >
+              <IconCheck size={16} />
+            </SecondaryButton>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginRight: "8px" }}>
+            <strong>{title}</strong>
+            <SecondaryButton
+              onClick={() => setEditingTitle(true)}
+              style={{
+                padding: "4px",
+                borderRadius: "4px",
+                border: "1px solid #dadce0",
+                backgroundColor: "white",
+              }}
+            >
+              <IconEdit size={16} />
+            </SecondaryButton>
+          </div>
+        )}
+        • {new Date(snapshot.timestamp).toLocaleString()} • {snapshot.elementCount}{" "}
         elements • {new URL(snapshot.url).hostname}
       </div>
 
