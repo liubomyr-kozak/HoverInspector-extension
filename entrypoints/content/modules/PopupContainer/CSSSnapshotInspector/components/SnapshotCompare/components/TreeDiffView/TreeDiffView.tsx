@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from "react";
-import { IconInfoCircle, IconX, IconEye, IconEyeOff } from "@tabler/icons-react";
-import { Tooltip } from "@entrypoints/shared/components/Tooltip";
+import React, { useMemo } from "react";
+import { IconX } from "@tabler/icons-react";
 import { ElementListProps } from "../../types";
 import { ElementDetails } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails";
 import { DetailsOverlay, DetailsHeader, CloseButton } from "./TreeDiffView.styled";
 import { useNodeDetails } from "./hooks/useNodeDetails";
 import { DOMTreeRenderer } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/DOMTreeRenderer";
 import { useTreeComparison } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/hooks/useTreeComparison";
-import { buildDOMTree } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
+import {
+  buildDOMTree,
+  DOMTreeNode,
+} from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
 
 /**
  * Component for displaying a hierarchical tree view of elements with GitHub-style diff indicators
@@ -24,8 +26,8 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
 }) => {
   const { nodeDetailsPath, nodeDetailsData, showNodeDetails, closeNodeDetails } = useNodeDetails(stylesA, stylesB);
 
-  // Use the new comparison hook
-  const { comparison, summary, treeB } = useTreeComparison({
+  // Use the comparison hook to get tree data and comparison results
+  const { comparison, summary, treeA, treeB } = useTreeComparison({
     stylesA,
     stylesB,
     options: {
@@ -33,6 +35,51 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
       compareAttributes: true,
     },
   });
+
+  // Create a merged tree that includes both treeB and removed elements from treeA
+  const mergedTree = useMemo(() => {
+    // Start with a deep copy of treeB
+    const mergedRoot: DOMTreeNode = JSON.parse(JSON.stringify(treeB));
+
+    // Function to find the parent path for a given path
+    const getParentPath = (path: string): string => {
+      const segments = path.split(">");
+      segments.pop(); // Remove the last segment
+      return segments.join(">");
+    };
+
+    // Function to find a node in the tree by path
+    const findNodeByPath = (tree: DOMTreeNode, path: string): DOMTreeNode | null => {
+      if (tree.path === path) return tree;
+
+      for (const child of tree.children) {
+        const found = findNodeByPath(child, path);
+        if (found) return found;
+      }
+
+      return null;
+    };
+
+    // Add removed elements to the merged tree
+    comparison.removed.forEach((removedNode) => {
+      const parentPath = getParentPath(removedNode.path);
+
+      // Find the parent node in the merged tree
+      const parentNode = parentPath ? findNodeByPath(mergedRoot, parentPath) : mergedRoot;
+
+      if (parentNode) {
+        // Check if the node already exists in the parent's children
+        const existingNode = parentNode.children.find((child) => child.path === removedNode.path);
+
+        if (!existingNode) {
+          // Add the removed node to the parent's children
+          parentNode.children.push(JSON.parse(JSON.stringify(removedNode)));
+        }
+      }
+    });
+
+    return mergedRoot;
+  }, [treeB, comparison.removed]);
 
   // Custom change indicator for diff display
   const renderChangeIndicator = (element: any) => {
@@ -95,7 +142,7 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
   return (
     <div className="relative">
       <DOMTreeRenderer
-        tree={treeB}
+        tree={mergedTree}
         selectedElement={selectedElement}
         onElementSelect={handleElementSelect}
         onShowDetails={(path, element) => showNodeDetails(path, element)}
