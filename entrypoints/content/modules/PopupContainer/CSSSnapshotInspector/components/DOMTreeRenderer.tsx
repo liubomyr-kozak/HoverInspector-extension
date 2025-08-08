@@ -188,6 +188,9 @@ const TreeNodeRenderer: React.FC<TreeNodeRendererProps> = ({
               {Object.keys(node.styles).length} styles
             </span>
           )}
+
+          {/* Change indicator */}
+          {renderChangeIndicator && renderChangeIndicator(node)}
         </div>
       </div>
 

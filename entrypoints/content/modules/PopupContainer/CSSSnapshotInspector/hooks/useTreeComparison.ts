@@ -25,6 +25,8 @@ interface UseTreeComparisonProps {
   positionB?: Record<string, any>;
   /** Comparison options */
   options?: ComparisonOptions;
+  /** Return only diff nodes (added, removed, modified) */
+  diffOnly?: boolean;
 }
 
 export interface TreeComparisonResult {
@@ -48,7 +50,8 @@ export function useTreeComparison({
   stylesB, 
   positionA, 
   positionB, 
-  options = {} 
+  options = {},
+  diffOnly = false
 }: UseTreeComparisonProps): TreeComparisonResult {
   
   // Build both trees
@@ -60,8 +63,20 @@ export function useTreeComparison({
 
   // Perform comparison
   const comparison = useMemo(() => {
-    return compareDOMTrees(treeA, treeB, options);
-  }, [treeA, treeB, options]);
+    const fullComparison = compareDOMTrees(treeA, treeB, options);
+    
+    // If diffOnly is true, filter out unchanged nodes
+    if (diffOnly) {
+      return filterComparison(fullComparison, {
+        showAdded: true,
+        showRemoved: true,
+        showModified: true,
+        showUnchanged: false
+      });
+    }
+    
+    return fullComparison;
+  }, [treeA, treeB, options, diffOnly]);
 
   // Calculate summary
   const summary = useMemo(() => {
@@ -93,14 +108,16 @@ export function useComparisonElements({
   stylesB, 
   positionA, 
   positionB, 
-  options = {} 
+  options = {},
+  diffOnly = false
 }: UseTreeComparisonProps) {
   const { comparison } = useTreeComparison({ 
     stylesA, 
     stylesB, 
     positionA, 
     positionB, 
-    options 
+    options,
+    diffOnly
   });
 
   const elements = useMemo(() => {
