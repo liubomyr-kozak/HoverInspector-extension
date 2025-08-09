@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { default as ReactDiffViewersContinued } from "react-diff-viewer-continued";
+import React, { useMemo, useState, useEffect } from "react";
 import { DOMTreeNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
-import { DiffMethod } from "react-diff-viewer-continued/lib/src/compute-lines";
-
 import { CacheProvider } from "@emotion/react";
-import createCache from "@emotion/cache";
+import { getEmotionCache } from "./emotionCache";
+import { useEmotionShadowDOMSync } from "./useEmotionShadowDOMSync";
+import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
+import DiffViewer from "@entrypoints/shared/components/react-diff-viewer-continued";
 
 interface ReactDiffViewerProps {
   treeA: DOMTreeNode;
@@ -41,14 +41,6 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
     });
   }
 
-  // If there are styles, add them
-  // if (node.styles && Object.keys(node.styles).length > 0) {
-  //   const styleStr = Object.entries(node.styles)
-  //     .map(([key, value]) => `${key}: ${value}`)
-  //     .join("; ");
-  //   result += ` style="${styleStr}"`;
-  // }
-
   // If there are no children, close the tag
   if (!node.children || node.children.length === 0) {
     result += " />\n";
@@ -79,51 +71,45 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
   const oldValue = useMemo(() => convertTreeToString(treeA), [treeA]);
   const newValue = useMemo(() => convertTreeToString(treeB), [treeB]);
 
-  const shadowRoot = useMemo(() => {
-    // @ts-ignore
-    return (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > head")!;
+  // Get shadow DOM container
+  const shadowContainer = useMemo(() => {
+    const shadowRoot = document.querySelector("hover-inspector")?.shadowRoot as ShadowRoot;
+    return shadowRoot?.querySelector("html > head") as HTMLElement;
   }, []);
 
-  const cache = createCache({
-    key: "shadow",
-
-    container: shadowRoot,
-  });
-
-  console.log("😎😎😎 ::ReactDiffViewer -> oldValue", oldValue);
-  console.log("👍👍👍 ::ReactDiffViewer -> newValue", newValue);
-
-  const [DiffViewer, setDiffViewer] = useState<any>(null);
-
-  console.log("👍👍👍 ::ReactDiffViewer -> DiffViewer", DiffViewer);
-
-  useEffect(() => {
-    import("react-diff-viewer-continued").then((mod) => {
-      setDiffViewer(() => mod.default);
-    });
+  // Get emotion cache for shadow DOM
+  const cache = useMemo(() => {
+    try {
+      return getEmotionCache();
+    } catch (error) {
+      console.error("Failed to create emotion cache:", error);
+      return null;
+    }
   }, []);
 
-  useEffect(() => {
-    // Знаходимо всі стилі Emotion для react-diff
-    const styleTags = document.querySelectorAll<HTMLStyleElement>('style[data-emotion^="react-diff"]');
+  // Sync emotion styles to shadow DOM
+  useEmotionShadowDOMSync();
 
-    debugger;
+  // Dynamic import for the local modified diff viewer
+  // useEffect(() => {
+  //   // Import the local modified version that supports container prop
+  //   const importPath = "../../../../../../../react-diff-viewer-continued/lib/index.js";
+  //   import(importPath).then((mod) => {
+  //     setDiffViewer(() => mod.default);
+  //   }).catch((error) => {
+  //     console.error("Failed to import local diff viewer:", error);
+  //     // Fallback: Try to import from built version
+  //     import("../../../../../../../react-diff-viewer-continued/src/index").then((mod) => {
+  //       setDiffViewer(() => mod.default);
+  //     }).catch((fallbackError) => {
+  //       console.error("Failed to import fallback diff viewer:", fallbackError);
+  //     });
+  //   });
+  // }, []);
 
-    styleTags.forEach((style) => {
-      // Копія тегу <style>
-      const clone = style.cloneNode(true) as HTMLStyleElement;
-      // Додаємо атрибут для ідентифікації, щоб не дублювати при повторних рендерах
-      clone.setAttribute("data-shadow-copy", "true");
-
-      // Якщо в shadowRoot ще немає цього конкретного стилю — додаємо
-      // const exists = shadowRoot.querySelector(`style[data-emotion="${style.getAttribute("data-emotion")}"]`);
-      // if (!exists) {
-      shadowRoot.appendChild(clone);
-      // }
-    });
-  }, [shadowRoot]);
-
-  if (!DiffViewer) return null;
+  if (!cache || !shadowContainer) {
+    return <div>Loading diff viewer...</div>;
+  }
 
   return (
     <CacheProvider value={cache}>
@@ -135,6 +121,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
         compareMethod={DiffMethod.WORDS}
         leftTitle="Snapshot A"
         rightTitle="Snapshot B"
+        container={shadowContainer}
         styles={{
           contentText: {
             fontFamily: "monospace",

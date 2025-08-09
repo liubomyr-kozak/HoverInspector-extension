@@ -1158,11 +1158,6 @@
   dependencies:
     tslib "^2.0.0"
 
-"@donedeal0/superdiff@^3.1.2":
-  version "3.1.2"
-  resolved "https://registry.yarnpkg.com/@donedeal0/superdiff/-/superdiff-3.1.2.tgz#31b3bdf69861173d4bb3e9507f505f96625cbb22"
-  integrity sha512-Ke8SvKkHuV1I9DZtbiIFE1KEqGgEMdHfGgEp3b4+q9OfjAOfVmU20UBnTUU8XUpBXLga6ii+7bQbOYSC49Q9Kw==
-
 "@emnapi/core@^1.4.3":
   version "1.4.5"
   resolved "https://registry.yarnpkg.com/@emnapi/core/-/core-1.4.5.tgz#bfbb0cbbbb9f96ec4e2c4fd917b7bbe5495ceccb"
@@ -1202,7 +1197,7 @@
     source-map "^0.5.7"
     stylis "4.2.0"
 
-"@emotion/cache@^11.13.5", "@emotion/cache@^11.14.0":
+"@emotion/cache@^11.14.0":
   version "11.14.0"
   resolved "https://registry.yarnpkg.com/@emotion/cache/-/cache-11.14.0.tgz#ee44b26986eeb93c8be82bb92f1f7a9b21b2ed76"
   integrity sha512-L/B1lc/TViYk4DcpGxtAVbx0ZyiKM5ktoIyafGkH6zg/tj+mA+NE//aPYKG0k8kCHSHVJrpLpcAlOBEXQ3SavA==
@@ -1212,17 +1207,6 @@
     "@emotion/utils" "^1.4.2"
     "@emotion/weak-memoize" "^0.4.0"
     stylis "4.2.0"
-
-"@emotion/css@^11.11.2":
-  version "11.13.5"
-  resolved "https://registry.yarnpkg.com/@emotion/css/-/css-11.13.5.tgz#db2d3be6780293640c082848e728a50544b9dfa4"
-  integrity sha512-wQdD0Xhkn3Qy2VNcIzbLP9MR8TafI0MJb7BEAXKp+w4+XqErksWR4OXomuDzPsN4InLdGhVe6EYcn2ZIUCpB8w==
-  dependencies:
-    "@emotion/babel-plugin" "^11.13.5"
-    "@emotion/cache" "^11.13.5"
-    "@emotion/serialize" "^1.3.3"
-    "@emotion/sheet" "^1.4.0"
-    "@emotion/utils" "^1.4.2"
 
 "@emotion/hash@^0.8.0":
   version "0.8.0"
@@ -4673,11 +4657,6 @@ diff@^4.0.1:
   resolved "https://registry.npmjs.org/diff/-/diff-4.0.2.tgz"
   integrity sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==
 
-diff@^5.1.0:
-  version "5.2.0"
-  resolved "https://registry.yarnpkg.com/diff/-/diff-5.2.0.tgz#26ded047cd1179b78b9537d5ef725503ce1ae531"
-  integrity sha512-uIFDxqpRZGZ6ThOk84hEfqWoHx2devRFvpTZcTHur85vImfaxUbTW9Ryh4CpCuDnToOP1CEtXKIgytHBPVff5A==
-
 dir-glob@^3.0.1:
   version "3.0.1"
   resolved "https://registry.npmjs.org/dir-glob/-/dir-glob-3.0.1.tgz"
@@ -7368,11 +7347,6 @@ memfs@^4.6.0:
     tree-dump "^1.0.1"
     tslib "^2.0.0"
 
-memoize-one@^6.0.0:
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/memoize-one/-/memoize-one-6.0.0.tgz#b2591b871ed82948aee4727dc6abceeeac8c1045"
-  integrity sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==
-
 merge-descriptors@1.0.3:
   version "1.0.3"
   resolved "https://registry.npmjs.org/merge-descriptors/-/merge-descriptors-1.0.3.tgz"
@@ -8941,17 +8915,6 @@ react-best-gradient-color-picker@^3.0.14:
     html2canvas "^1.4.1"
     lodash.throttle "^4.1.1"
     tinycolor2 "1.4.2"
-
-react-diff-viewer-continued@^3.4.0:
-  version "3.4.0"
-  resolved "https://registry.yarnpkg.com/react-diff-viewer-continued/-/react-diff-viewer-continued-3.4.0.tgz#0501ffb2b5ab740f88b9ae5f18771aa90d3803c2"
-  integrity sha512-kMZmUyb3Pv5L9vUtCfIGYsdOHs8mUojblGy1U1Sm0D7FhAOEsH9QhnngEIRo5hXWIPNGupNRJls1TJ6Eqx84eg==
-  dependencies:
-    "@emotion/css" "^11.11.2"
-    classnames "^2.3.2"
-    diff "^5.1.0"
-    memoize-one "^6.0.0"
-    prop-types "^15.8.1"
 
 react-dom@^19.1.0:
   version "19.1.0"
