@@ -110,7 +110,6 @@ export const SnapshotActions = styled.div`
 export const ComparisonContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
 `;
 
 export const ComparisonHeader = styled.div`
@@ -123,30 +122,6 @@ export const ComparisonTitle = styled.h3`
   font-size: 16px;
   font-weight: 500;
   margin: 0;
-`;
-
-export const ComparisonTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-`;
-
-export const TableHeader = styled.th`
-  text-align: left;
-  padding: 4px 6px;
-  background-color: #f1f3f4;
-  border: 1px solid #dadce0;
-  font-size: 13px;
-`;
-
-export const TableCell = styled.td`
-  padding: 4px 6px;
-  border: 1px solid #dadce0;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 0;
 `;
 
 export const Added = styled.span`
