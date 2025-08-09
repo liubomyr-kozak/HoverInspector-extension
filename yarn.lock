@@ -1202,7 +1202,7 @@
     source-map "^0.5.7"
     stylis "4.2.0"
 
-"@emotion/cache@^11.13.5":
+"@emotion/cache@^11.13.5", "@emotion/cache@^11.14.0":
   version "11.14.0"
   resolved "https://registry.yarnpkg.com/@emotion/cache/-/cache-11.14.0.tgz#ee44b26986eeb93c8be82bb92f1f7a9b21b2ed76"
   integrity sha512-L/B1lc/TViYk4DcpGxtAVbx0ZyiKM5ktoIyafGkH6zg/tj+mA+NE//aPYKG0k8kCHSHVJrpLpcAlOBEXQ3SavA==
@@ -1251,6 +1251,20 @@
   resolved "https://registry.yarnpkg.com/@emotion/memoize/-/memoize-0.9.0.tgz#745969d649977776b43fc7648c556aaa462b4102"
   integrity sha512-30FAj7/EoJ5mwVPOWhAyCX+FPfMDrVecJAM+Iw9NRoSl4BBAQeqj4cApHHUXOVvIPgLVDsCFoz/hGD+5QQD1GQ==
 
+"@emotion/react@^11.14.0":
+  version "11.14.0"
+  resolved "https://registry.yarnpkg.com/@emotion/react/-/react-11.14.0.tgz#cfaae35ebc67dd9ef4ea2e9acc6cd29e157dd05d"
+  integrity sha512-O000MLDBDdk/EohJPFUqvnp4qnHeYkVP5B0xEG0D/L7cOKP9kefu2DXn8dj74cQfsEzUqh+sr1RzFqiL1o+PpA==
+  dependencies:
+    "@babel/runtime" "^7.18.3"
+    "@emotion/babel-plugin" "^11.13.5"
+    "@emotion/cache" "^11.14.0"
+    "@emotion/serialize" "^1.3.3"
+    "@emotion/use-insertion-effect-with-fallbacks" "^1.2.0"
+    "@emotion/utils" "^1.4.2"
+    "@emotion/weak-memoize" "^0.4.0"
+    hoist-non-react-statics "^3.3.1"
+
 "@emotion/serialize@^1.3.3":
   version "1.3.3"
   resolved "https://registry.yarnpkg.com/@emotion/serialize/-/serialize-1.3.3.tgz#d291531005f17d704d0463a032fe679f376509e8"
@@ -1281,6 +1295,11 @@
   version "0.7.5"
   resolved "https://registry.npmjs.org/@emotion/unitless/-/unitless-0.7.5.tgz"
   integrity sha512-OWORNpfjMsSSUBVrRBVGECkhWcULOAJz9ZW8uK9qgxD+87M7jHRcvh/A96XXNhXTLmKcoYSQtBEX7lHMO7YRwg==
+
+"@emotion/use-insertion-effect-with-fallbacks@^1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@emotion/use-insertion-effect-with-fallbacks/-/use-insertion-effect-with-fallbacks-1.2.0.tgz#8a8cb77b590e09affb960f4ff1e9a89e532738bf"
+  integrity sha512-yJMtVdH59sxi/aVJBpk9FQq+OR8ll5GT8oWd57UpeaKEVGab41JWaCFA7FRLoMLloOZF/c/wsPoe+bfGmRKgDg==
 
 "@emotion/utils@^1.4.2":
   version "1.4.2"
@@ -6026,6 +6045,13 @@ highlight.js@^10.7.1:
   resolved "https://registry.npmjs.org/highlight.js/-/highlight.js-10.7.3.tgz"
   integrity sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==
 
+hoist-non-react-statics@^3.3.1:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/hoist-non-react-statics/-/hoist-non-react-statics-3.3.2.tgz#ece0acaf71d62c2969c2ec59feff42a4b1a85b45"
+  integrity sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==
+  dependencies:
+    react-is "^16.7.0"
+
 hookable@^5.5.3:
   version "5.5.3"
   resolved "https://registry.npmjs.org/hookable/-/hookable-5.5.3.tgz"
@@ -8947,7 +8973,7 @@ react-icons@^5.5.0:
   resolved "https://registry.npmjs.org/react-icons/-/react-icons-5.5.0.tgz"
   integrity sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==
 
-react-is@^16.13.1:
+react-is@^16.13.1, react-is@^16.7.0:
   version "16.13.1"
   resolved "https://registry.npmjs.org/react-is/-/react-is-16.13.1.tgz"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==

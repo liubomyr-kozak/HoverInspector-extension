@@ -1,4 +1,7 @@
 import React, { useMemo } from "react";
+import { EmotionShadowRoot } from "./components/EmotionShadowRoot";
+import { StyleSheetManager } from "styled-components";
+import { StyleProvider } from "@ant-design/cssinjs";
 
 import AppController from "./modules/AppController/AppController.tsx";
 import Launcher from "./modules/Launcher/Launcher.tsx";
@@ -15,7 +18,7 @@ import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupCont
 import NotificationManager from "@entrypoints/content/modules/NotificationManager/NotificationManager.tsx";
 import { TriggerScenarioEvaluator } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/TriggerForm/TriggerScenarioEvaluator.tsx";
 
-export const App = () => {
+export const App = ({ shadowRoot }) => {
   const { activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
 
   const isPopupActive = useMemo(() => {
@@ -23,18 +26,24 @@ export const App = () => {
   }, [activeIcons]);
 
   return (
-    <AppController>
-      <NewModalProvider>
-        <NotificationManager />
-        <TriggerScenarioEvaluator />
-        {/*<FeatureHandler>*/}
-        {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
-        {activeIcons.includes(RULER.id) && <ViewportRuler />}
+    <StyleSheetManager target={shadowRoot}>
+      <StyleProvider container={shadowRoot}>
+        <EmotionShadowRoot shadowRoot={shadowRoot}>
+          <AppController>
+            <NewModalProvider>
+              <NotificationManager />
+              <TriggerScenarioEvaluator />
+              {/*<FeatureHandler>*/}
+              {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
+              {activeIcons.includes(RULER.id) && <ViewportRuler />}
 
-        <Launcher />
-        {isPopupActive && <PopupContainer />}
-        {/*</FeatureHandler>*/}
-      </NewModalProvider>
-    </AppController>
+              <Launcher />
+              {isPopupActive && <PopupContainer />}
+              {/*</FeatureHandler>*/}
+            </NewModalProvider>
+          </AppController>
+        </EmotionShadowRoot>
+      </StyleProvider>
+    </StyleSheetManager>
   );
 };
