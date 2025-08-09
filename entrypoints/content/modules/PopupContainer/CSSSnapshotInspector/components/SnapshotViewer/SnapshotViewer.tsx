@@ -48,22 +48,56 @@ const HeaderLeft = styled.div`
 const BackButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
+  gap: 6px;
+  padding: 8px 14px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   color: #374151;
   cursor: pointer;
   transition: all 200ms ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
   &:hover {
     background: #f9fafb;
     border-color: #d1d5db;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const PrimaryButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 200ms ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+
+  &:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    transform: scale(1.02);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
 `;
 
@@ -121,32 +155,21 @@ const ActionButtons = styled.div`
   gap: 12px;
 `;
 
-const PrimaryButton = styled.button`
+const EditButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 24px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 200ms ease;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 
   &:hover {
-    background: linear-gradient(135deg, #5b5feb, #7c3aed);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-    transform: scale(1.05);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+    background: #f3f4f6;
+    border-color: #d1d5db;
   }
 `;
 
@@ -169,24 +192,6 @@ const SecondaryButton = styled.button`
     background: #f9fafb;
     border-color: #d1d5db;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-`;
-
-const EditButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 200ms ease;
-
-  &:hover {
-    background: #f3f4f6;
-    border-color: #d1d5db;
   }
 `;
 

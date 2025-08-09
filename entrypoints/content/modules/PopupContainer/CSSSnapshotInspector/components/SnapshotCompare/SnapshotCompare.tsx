@@ -24,11 +24,11 @@ import { buildDOMTree } from "../../utils/domTreeBuilder";
 // Styled Components
 const CompareContainer = styled.div`
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  padding: 32px;
-  margin: 24px;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px;
   backdrop-filter: blur(20px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(229, 231, 235, 0.6);
 `;
 
@@ -36,9 +36,9 @@ const CompareHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 2px solid rgba(229, 231, 235, 0.4);
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.4);
 `;
 
 const HeaderLeft = styled.div`
@@ -50,22 +50,22 @@ const HeaderLeft = styled.div`
 const BackButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
+  gap: 6px;
+  padding: 8px 14px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   color: #374151;
   cursor: pointer;
   transition: all 200ms ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
   &:hover {
     background: #f9fafb;
     border-color: #d1d5db;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   }
 `;
 
@@ -110,10 +110,10 @@ const ViewControls = styled.div`
 const ControlButton = styled.button<{ active?: boolean }>`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   border: none;
   cursor: pointer;
@@ -122,7 +122,7 @@ const ControlButton = styled.button<{ active?: boolean }>`
   ${props => props.active ? `
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
   ` : `
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid #e5e7eb;
@@ -138,14 +138,14 @@ const ControlButton = styled.button<{ active?: boolean }>`
 const StatsBar = styled.div<{ expanded: boolean }>`
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
   border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 32px;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
   backdrop-filter: blur(8px);
   transition: all 300ms ease;
   
   ${props => !props.expanded && `
-    padding: 16px 24px;
+    padding: 12px 16px;
   `}
 `;
 

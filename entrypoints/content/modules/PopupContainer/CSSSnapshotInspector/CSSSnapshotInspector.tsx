@@ -23,10 +23,12 @@ const MainContainer = styled.div`
   flex-direction: column;
   height: 100%;
   min-height: 100vh;
-  background: linear-gradient(135deg, 
-    rgba(248, 250, 252, 0.8) 0%, 
-    rgba(249, 250, 251, 0.6) 50%, 
-    rgba(238, 242, 255, 0.4) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(248, 250, 252, 0.8) 0%,
+    rgba(249, 250, 251, 0.6) 50%,
+    rgba(238, 242, 255, 0.4) 100%
+  );
 `;
 
 const StickyHeader = styled.div`
@@ -53,18 +55,18 @@ const TabList = styled.div`
 const TabButton = styled.button<{ active?: boolean }>`
   padding: 16px 24px;
   font-size: 14px;
-  font-weight: ${props => props.active ? '600' : '500'};
-  color: ${props => props.active ? '#4f46e5' : '#6b7280'};
-  background: ${props => props.active ? 'rgba(79, 70, 229, 0.1)' : 'transparent'};
+  font-weight: ${(props) => (props.active ? "600" : "500")};
+  color: ${(props) => (props.active ? "#4f46e5" : "#6b7280")};
+  background: ${(props) => (props.active ? "rgba(79, 70, 229, 0.1)" : "transparent")};
   border: none;
-  border-bottom: 2px solid ${props => props.active ? '#4f46e5' : 'transparent'};
+  border-bottom: 2px solid ${(props) => (props.active ? "#4f46e5" : "transparent")};
   border-radius: 8px 8px 0 0;
   cursor: pointer;
   transition: all 200ms ease;
 
   &:hover {
-    color: ${props => props.active ? '#4f46e5' : '#374151'};
-    background: ${props => props.active ? 'rgba(79, 70, 229, 0.1)' : 'rgba(249, 250, 251, 0.5)'};
+    color: ${(props) => (props.active ? "#4f46e5" : "#374151")};
+    background: ${(props) => (props.active ? "rgba(79, 70, 229, 0.1)" : "rgba(249, 250, 251, 0.5)")};
   }
 `;
 
@@ -140,9 +142,7 @@ const FilterStats = styled.div`
 const ContentArea = styled.div`
   flex: 1;
   min-height: 0;
-  background: linear-gradient(135deg, 
-    rgba(249, 250, 251, 0.3) 0%, 
-    rgba(238, 242, 255, 0.2) 100%);
+  background: linear-gradient(135deg, rgba(249, 250, 251, 0.3) 0%, rgba(238, 242, 255, 0.2) 100%);
 `;
 
 const ContentWrapper = styled.div`
@@ -156,9 +156,7 @@ const EmptyStateContainer = styled.div`
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  background: linear-gradient(135deg, 
-    rgba(248, 250, 252, 1) 0%, 
-    rgba(243, 244, 246, 1) 100%);
+  background: linear-gradient(135deg, rgba(248, 250, 252, 1) 0%, rgba(243, 244, 246, 1) 100%);
   border-radius: 16px;
   padding: 32px;
   margin: 32px;
@@ -218,6 +216,9 @@ export const CSSSnapshotInspector: React.FC = () => {
   // Хук для фільтрації з дебаунсом
   const { filter, setFilter, filteredSnapshots } = useSnapshotFilter(snapshots);
 
+  // State for search visibility
+  const [isSearchVisible, setIsSearchVisible] = React.useState(false);
+
   // Хук для управління режимами перегляду
   const { viewMode, setViewMode, canCompare, canViewDetails, viewSnapshot, startComparison, backToList } = useViewMode(
     selectedSnapshot,
@@ -262,9 +263,7 @@ export const CSSSnapshotInspector: React.FC = () => {
             <EmptyStateDescription>
               Select exactly two snapshots from the list to perform a detailed comparison analysis.
             </EmptyStateDescription>
-            <EmptyStateTip>
-              💡 Tip: Use checkboxes next to snapshots to select them for comparison
-            </EmptyStateTip>
+            <EmptyStateTip>💡 Tip: Use checkboxes next to snapshots to select them for comparison</EmptyStateTip>
           </EmptyStateContainer>
         );
 
@@ -309,7 +308,16 @@ export const CSSSnapshotInspector: React.FC = () => {
       startComparison();
     }
   };
-  
+
+  // Handler for toggling search visibility
+  const handleToggleSearch = () => {
+    setIsSearchVisible(!isSearchVisible);
+    // Clear filter when hiding search
+    if (isSearchVisible) {
+      setFilter("");
+    }
+  };
+
   // Event listener for COMPARE_SNAPSHOTS message from SnapshotViewer
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -318,20 +326,20 @@ export const CSSSnapshotInspector: React.FC = () => {
         if (snapshots && snapshots.length === 2) {
           // Clear existing comparison snapshots first
           clearCompare();
-          
+
           // Set the snapshots for comparison
-          snapshots.forEach(snapshot => {
+          snapshots.forEach((snapshot) => {
             toggleCompare(snapshot);
           });
-          
+
           // Start comparison view
           startComparison();
         }
       }
     };
-    
+
     window.addEventListener("message", handleMessage);
-    
+
     return () => {
       window.removeEventListener("message", handleMessage);
     };
@@ -349,29 +357,14 @@ export const CSSSnapshotInspector: React.FC = () => {
           onImport={importSnapshot}
           onCompare={handleStartComparison}
           onBackToList={backToList}
+          onToggleSearch={handleToggleSearch}
+          isSearchVisible={isSearchVisible}
           error={error}
         />
       </StickyHeader>
 
-      {/* Enhanced Tab Navigation - only show for LIST view */}
-      {viewMode === ViewMode.LIST && (
-        <TabNavigationContainer>
-          <TabList>
-            <TabButton active>
-              All Snapshots
-            </TabButton>
-            <TabButton>
-              Recent
-            </TabButton>
-            <TabButton>
-              Favorites
-            </TabButton>
-          </TabList>
-        </TabNavigationContainer>
-      )}
-
-      {/* Enhanced Filter Bar - only for LIST view */}
-      {viewMode === ViewMode.LIST && (
+      {/* Enhanced Filter Bar - only for LIST view and when search is visible */}
+      {viewMode === ViewMode.LIST && isSearchVisible && (
         <FilterContainer>
           <FilterInputWrapper>
             <FilterInput
@@ -379,12 +372,9 @@ export const CSSSnapshotInspector: React.FC = () => {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="🔍 Search snapshots by title, URL, or date..."
+              autoFocus
             />
-            {filter && (
-              <ClearButton onClick={() => setFilter('')}>
-                ×
-              </ClearButton>
-            )}
+            {filter && <ClearButton onClick={() => setFilter("")}>×</ClearButton>}
           </FilterInputWrapper>
           {filteredSnapshots.length !== snapshots.length && (
             <FilterStats>
@@ -396,9 +386,7 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       {/* Main Content Area with improved background and padding */}
       <ContentArea>
-        <ContentWrapper>
-          {renderContent}
-        </ContentWrapper>
+        <ContentWrapper>{renderContent}</ContentWrapper>
       </ContentArea>
     </MainContainer>
   );

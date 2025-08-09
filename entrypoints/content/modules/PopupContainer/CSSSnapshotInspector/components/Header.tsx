@@ -10,7 +10,9 @@ import {
   IconExclamationCircle,
   IconSparkles,
   IconAnalyze,
-  IconEye
+  IconEye,
+  IconArrowLeft,
+  IconSearch
 } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
 import { ViewMode } from "../constants";
@@ -20,7 +22,7 @@ const HeaderContainer = styled.div`
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(229, 231, 235, 0.6);
-  padding: 24px;
+  padding: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
@@ -100,15 +102,15 @@ const ActionsSection = styled.div`
 const PrimaryButton = styled.button<{ disabled?: boolean }>`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 28px;
-  border-radius: 12px;
-  font-size: 16px;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   transition: all 300ms ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   
   ${props => props.disabled ? `
     background: #f3f4f6;
@@ -120,12 +122,12 @@ const PrimaryButton = styled.button<{ disabled?: boolean }>`
     
     &:hover {
       background: linear-gradient(135deg, #5b5feb, #7c3aed);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      transform: scale(1.02);
     }
     
     &:active {
-      transform: scale(0.95);
+      transform: scale(0.98);
     }
   `}
 `;
@@ -133,12 +135,12 @@ const PrimaryButton = styled.button<{ disabled?: boolean }>`
 const SecondaryButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: 6px;
+  padding: 8px 14px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   color: #374151;
   cursor: pointer;
@@ -148,33 +150,33 @@ const SecondaryButton = styled.button`
   &:hover {
     background: #f9fafb;
     border-color: #d1d5db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   }
 `;
 
 const CompareButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: 6px;
+  padding: 8px 14px;
   background: linear-gradient(135deg, #10b981, #059669);
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   color: white;
   cursor: pointer;
   transition: all 200ms ease;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 
   &:hover {
     background: linear-gradient(135deg, #059669, #047857);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    transform: scale(1.02);
   }
 
   &:active {
-    transform: scale(0.95);
+    transform: scale(0.98);
   }
 `;
 
@@ -258,6 +260,8 @@ interface HeaderProps {
   readonly onImport: () => void;
   readonly onCompare: () => void;
   readonly onBackToList: () => void;
+  readonly onToggleSearch?: () => void;
+  readonly isSearchVisible?: boolean;
   readonly error?: string | null;
 }
 
@@ -265,7 +269,7 @@ interface HeaderProps {
  * Modern Header component with styled-components
  */
 export const Header = memo<HeaderProps>(
-  ({ viewMode, isCapturing, compareSnapshotsCount, onCapture, onImport, onCompare, onBackToList, error }) => {
+  ({ viewMode, isCapturing, compareSnapshotsCount, onCapture, onImport, onCompare, onBackToList, onToggleSearch, isSearchVisible = false, error }) => {
     const handleCapture = async () => {
       try {
         await onCapture();
@@ -290,11 +294,21 @@ export const Header = memo<HeaderProps>(
         <HeaderContent>
           <LeftSection>
             <LogoSection>
+              {(viewMode === ViewMode.DETAIL || viewMode === ViewMode.COMPARE) && (
+                <SecondaryButton
+                  onClick={onBackToList}
+                  style={{ fontSize: '12px', padding: '4px 6px', minWidth: 'auto' }}
+                >
+                  <IconArrowLeft size={16} />
+                </SecondaryButton>
+              )}
               <LogoIcon>
                 <IconAnalyze size={28} color="white" />
               </LogoIcon>
               <TitleSection>
-                <h1>CSS Snapshot Inspector</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <h1>CSS Snapshot Inspector</h1>
+                </div>
                 <p>{getSubtitle()}</p>
               </TitleSection>
             </LogoSection>
@@ -313,6 +327,19 @@ export const Header = memo<HeaderProps>(
           <ActionsSection>
             {viewMode === ViewMode.LIST && (
               <>
+                <SecondaryButton
+                  onClick={onToggleSearch}
+                  aria-label={isSearchVisible ? "Hide search" : "Show search"}
+                  style={{ 
+                    background: isSearchVisible ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255, 255, 255, 0.9)',
+                    color: isSearchVisible ? 'white' : '#374151',
+                    borderColor: isSearchVisible ? 'transparent' : '#e5e7eb'
+                  }}
+                >
+                  <IconSearch size={16} />
+                  <span>Search</span>
+                </SecondaryButton>
+
                 <PrimaryButton
                   onClick={handleCapture}
                   disabled={isCapturing}
