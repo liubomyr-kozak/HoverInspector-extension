@@ -91,10 +91,10 @@ const FeatureCard = styled.div`
 `;
 
 const SnapshotGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  display: flex;
   gap: 16px;
   margin-top: 16px;
+  flex-direction: column;
 `;
 
 const SnapshotCard = styled.div<{ isSelected: boolean; isHovered: boolean }>`
@@ -164,6 +164,38 @@ const OptionsButton = styled.button`
     background: #f3f4f6;
     border-color: #d1d5db;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const DropdownMenu = styled.div`
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 10000;
+  padding: 6px;
+  min-width: 160px;
+`;
+
+const MenuItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #374151;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 120ms ease;
+
+  &:hover {
+    background: #f9fafb;
   }
 `;
 
@@ -275,6 +307,7 @@ interface SnapshotManagerProps {
 export const SnapshotManager = memo<SnapshotManagerProps>(
   ({ snapshots, compareSnapshots, onView, onDelete, onExport, onToggleCompare }) => {
     const [hoveredSnapshot, setHoveredSnapshot] = useState<string | null>(null);
+    const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
     if (snapshots.length === 0) {
       return (
@@ -333,7 +366,10 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                 isHovered={hovered}
                 onClick={() => onView(snapshot)}
                 onMouseEnter={() => setHoveredSnapshot(snapshot.id)}
-                onMouseLeave={() => setHoveredSnapshot(null)}
+                onMouseLeave={() => {
+                  setHoveredSnapshot(null);
+                  setMenuOpenId((id) => (id === snapshot.id ? null : id));
+                }}
               >
                 {selected && (
                   <SelectionBadge>
@@ -349,9 +385,45 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                     </div>
                     <div className="text">Snapshot #{snapshot.id.slice(0, 8)}</div>
                   </CardTitle>
-                  <OptionsButton>
+                  <OptionsButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpenId((id) => (id === snapshot.id ? null : snapshot.id));
+                    }}
+                    aria-label="More actions"
+                  >
                     <IconDotsVertical size={18} color="#6b7280" />
                   </OptionsButton>
+                  {menuOpenId === snapshot.id && (
+                    <DropdownMenu onClick={(e) => e.stopPropagation()}>
+                      <MenuItem
+                        onClick={() => {
+                          setMenuOpenId(null);
+                          onView(snapshot);
+                        }}
+                      >
+                        <IconEye size={16} /> View
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          setMenuOpenId(null);
+                          onExport(snapshot);
+                        }}
+                      >
+                        <IconDownload size={16} /> Export
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          setMenuOpenId(null);
+                          if (confirm("Are you sure you want to delete this snapshot?")) {
+                            onDelete(snapshot.id);
+                          }
+                        }}
+                      >
+                        <IconTrash size={16} /> Delete
+                      </MenuItem>
+                    </DropdownMenu>
+                  )}
                 </CardHeader>
 
                 <MetadataGrid>
@@ -365,59 +437,23 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                     <span className="value">{snapshot.elementCount || 0}</span>
                   </MetadataItem>
 
-                  <MetadataItem title={snapshot.url || ''}>
+                  <MetadataItem title={snapshot.url || ""}>
                     <IconGlobe size={14} className="icon" />
-                    <span className="value">
-                      {snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}
-                    </span>
+                    <span className="value">{snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}</span>
                   </MetadataItem>
                 </MetadataGrid>
 
                 <ActionButtons>
-                  <ActionButton
-                    variant="primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onView(snapshot);
-                    }}
-                  >
-                    <IconEye size={12} />
-                    View
-                  </ActionButton>
-
                   <ActionButton
                     variant="secondary"
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleCompare(snapshot);
                     }}
+                    aria-label={selected ? "Deselect from compare" : "Select for compare"}
                   >
                     <IconGitCompare size={12} />
                     {selected ? "Remove" : "Select"}
-                  </ActionButton>
-
-                  <ActionButton
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExport(snapshot);
-                    }}
-                  >
-                    <IconDownload size={12} />
-                    Export
-                  </ActionButton>
-
-                  <ActionButton
-                    variant="danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm("Are you sure you want to delete this snapshot?")) {
-                        onDelete(snapshot.id);
-                      }
-                    }}
-                  >
-                    <IconTrash size={12} />
-                    Delete
                   </ActionButton>
                 </ActionButtons>
               </SnapshotCard>

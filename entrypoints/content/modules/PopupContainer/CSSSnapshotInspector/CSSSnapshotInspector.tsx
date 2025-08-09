@@ -21,8 +21,8 @@ import { CSSSnapshot } from "./types";
 const MainContainer = styled.div`
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
-  min-height: 100vh;
   background: linear-gradient(
     135deg,
     rgba(248, 250, 252, 0.8) 0%,
@@ -36,38 +36,6 @@ const StickyHeader = styled.div`
   top: 0;
   z-index: 20;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-`;
-
-const TabNavigationContainer = styled.div`
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
-  padding: 0 24px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-`;
-
-const TabList = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const TabButton = styled.button<{ active?: boolean }>`
-  padding: 16px 24px;
-  font-size: 14px;
-  font-weight: ${(props) => (props.active ? "600" : "500")};
-  color: ${(props) => (props.active ? "#4f46e5" : "#6b7280")};
-  background: ${(props) => (props.active ? "rgba(79, 70, 229, 0.1)" : "transparent")};
-  border: none;
-  border-bottom: 2px solid ${(props) => (props.active ? "#4f46e5" : "transparent")};
-  border-radius: 8px 8px 0 0;
-  cursor: pointer;
-  transition: all 200ms ease;
-
-  &:hover {
-    color: ${(props) => (props.active ? "#4f46e5" : "#374151")};
-    background: ${(props) => (props.active ? "rgba(79, 70, 229, 0.1)" : "rgba(249, 250, 251, 0.5)")};
-  }
 `;
 
 const FilterContainer = styled.div`
@@ -147,7 +115,6 @@ const ContentArea = styled.div`
 
 const ContentWrapper = styled.div`
   height: 100%;
-  overflow: auto;
 `;
 
 const EmptyStateContainer = styled.div`
