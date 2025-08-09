@@ -178,7 +178,6 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
       <div style={{ flex: 1, overflow: "hidden" }}>
         <SnapshotDetails 
           snapshot={snapshot}
-          splitView={false} // Use unified view for single snapshot
         />
       </div>
     </ComparisonContainer>

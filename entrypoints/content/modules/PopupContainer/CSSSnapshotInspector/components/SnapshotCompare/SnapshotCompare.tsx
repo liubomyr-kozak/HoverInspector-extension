@@ -11,9 +11,7 @@ import {
 import { ReactDiffViewer } from "./components/TreeDiffView/components/ReactDiffViewer";
 import { SnapshotCompareProps } from "./types";
 import { getStylesFromSnapshot } from "./utils";
-import {
-  buildDOMTree,
-} from "../../utils/domTreeBuilder";
+import { buildDOMTree } from "../../utils/domTreeBuilder";
 
 export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({ snapshotA, snapshotB, onBack }) => {
   const stylesA = getStylesFromSnapshot(snapshotA);
@@ -60,27 +58,23 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({ snapshotA, sna
             CSS Snapshot Comparison
           </ComparisonTitle>
         </div>
-        
+
         {/* Snapshot Titles */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "0 20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ fontWeight: 500, color: "#d73a49", minWidth: "100px" }}>Snapshot A:</div>
             <span style={{ fontSize: "14px" }}>{snapshotA.title}</span>
           </div>
-          
+
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ fontWeight: 500, color: "#22863a", minWidth: "100px" }}>Snapshot B:</div>
             <span style={{ fontSize: "14px" }}>{snapshotB.title}</span>
           </div>
         </div>
       </ComparisonHeader>
-      
+
       <div style={{ flex: 1, padding: "16px" }}>
-        <ReactDiffViewer 
-          treeA={treeA} 
-          treeB={treeB} 
-          splitView={true} 
-        />
+        <ReactDiffViewer treeA={treeA} treeB={treeB} splitView={true} />
       </div>
     </ComparisonContainer>
   );

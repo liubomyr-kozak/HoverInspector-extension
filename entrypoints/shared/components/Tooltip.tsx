@@ -54,6 +54,7 @@ export const Tooltip: React.FC<{
       }}
       // @ts-ignore
       getPopupContainer={() =>
+        // @ts-ignore
         (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")
       }
     >

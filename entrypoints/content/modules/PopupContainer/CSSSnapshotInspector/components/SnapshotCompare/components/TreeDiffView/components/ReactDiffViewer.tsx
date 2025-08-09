@@ -10,6 +10,10 @@ interface ReactDiffViewerProps {
   treeA: DOMTreeNode;
   treeB: DOMTreeNode;
   splitView?: boolean;
+  showDiffOnly?: boolean;
+  expandAll?: boolean;
+  hideLineNumbers?: boolean;
+  displaySingleLineNumbers?: boolean;
 }
 
 /**
@@ -34,7 +38,7 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
   // Add attributes if present
   if (node.attributes) {
     Object.entries(node.attributes).forEach(([key, value]) => {
-      if (key !== "id" && key !== "class") {
+      if (key !== "id" && key !== "class" && key !== "style") {
         // Skip id and class as they're already handled
         result += ` ${key}="${value}"`;
       }
@@ -63,10 +67,20 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
   return result;
 };
 
-export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, splitView = true }) => {
+export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
+  treeA,
+  treeB,
+  splitView = true,
+  showDiffOnly = true,
+  expandAll = false,
+  hideLineNumbers = false,
+  displaySingleLineNumbers = false,
+}) => {
   // Convert trees to string representation for diffing
   const oldValue = useMemo(() => convertTreeToString(treeA), [treeA]);
   const newValue = useMemo(() => convertTreeToString(treeB), [treeB]);
+
+  console.log("🌟🌟🌟 ::ReactDiffViewer -> oldValue", oldValue);
 
   // Get shadow DOM container
   const shadowContainer = useMemo(() => {
@@ -104,20 +118,55 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
       <DiffViewer
         oldValue={oldValue}
         newValue={newValue}
-        // splitView={splitView}
-        splitView={true}
+        splitView={splitView}
         useDarkTheme={false}
         compareMethod={DiffMethod.WORDS}
         onLineNumberClick={handleLineClick}
-        leftTitle="Snapshot A"
-        rightTitle="Snapshot B"
+        leftTitle={splitView ? "Snapshot A" : undefined}
+        rightTitle={splitView ? "Snapshot B" : undefined}
         container={shadowContainer}
+        showDiffOnly={showDiffOnly}
+        extraLinesSurroundingDiff={expandAll ? 999999 : 3}
+        hideLineNumbers={hideLineNumbers}
+        displaySingleLineNumbers={displaySingleLineNumbers}
         styles={{
           contentText: {
             fontFamily: "monospace",
             fontSize: "14px",
             lineHeight: "1.5",
           },
+          // Force hide line numbers with CSS when hideLineNumbers is true
+          ...(hideLineNumbers && {
+            lineNumber: {
+              display: "none !important",
+              width: "0 !important",
+              maxWidth: "0 !important",
+            },
+            gutter: {
+              display: "none !important",
+              width: "0 !important",
+              maxWidth: "0 !important",
+            },
+            codeFoldGutter: {
+              display: "none !important",
+              width: "0 !important",
+              maxWidth: "0 !important",
+            },
+            emptyGutter: {
+              display: "none !important",
+              width: "0 !important",
+              maxWidth: "0 !important",
+            },
+            gutterBackground: {
+              display: "none !important",
+            },
+            addedGutterBackground: {
+              display: "none !important",
+            },
+            removedGutterBackground: {
+              display: "none !important",
+            },
+          }),
         }}
       />
     </CacheProvider>
