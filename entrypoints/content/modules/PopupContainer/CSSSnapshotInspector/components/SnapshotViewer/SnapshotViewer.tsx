@@ -18,7 +18,6 @@ import { ElementHighlight } from "./components/ElementHighlight";
 import { DOMTreeRenderer } from "../../components/DOMTreeRenderer";
 import { useDOMTree } from "../../hooks/useDOMTree";
 import { ElementStyleData } from "../../utils/domTreeBuilder";
-import { DetailsOverlay } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotCompare/components/TreeDiffView/TreeDiffView.styled.ts";
 import { createCSSSnapshot } from "../../utils/snapshotBuilder";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 
@@ -29,26 +28,29 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
   const [selectedElement, setSelectedElement] = useState<number | null>(null);
   const [selectedElementData, setSelectedElementData] = useState<any>(null);
   const [isCreatingCurrentSnapshot, setIsCreatingCurrentSnapshot] = useState<boolean>(false);
-  
+
   // State for editable title
   const [title, setTitle] = useState<string>(snapshot.title);
   const [editingTitle, setEditingTitle] = useState<boolean>(false);
-  
+
   // Function to create a snapshot of the current page and compare with the displayed snapshot
   const handleCompareWithCurrentPage = async () => {
     try {
       setIsCreatingCurrentSnapshot(true);
-      
+
       // Create a snapshot of the current page
       const currentPageSnapshot = await createCSSSnapshot("Current Page");
-      
+
       // Open the comparison view with the current snapshot and the displayed snapshot
       // We need to use window.postMessage to communicate with the parent component
-      window.postMessage({
-        type: "COMPARE_SNAPSHOTS",
-        snapshots: [snapshot, currentPageSnapshot]
-      }, "*");
-      
+      window.postMessage(
+        {
+          type: "COMPARE_SNAPSHOTS",
+          snapshots: [snapshot, currentPageSnapshot],
+        },
+        "*",
+      );
+
       setIsCreatingCurrentSnapshot(false);
     } catch (error) {
       console.error("Failed to create current page snapshot:", error);
@@ -56,29 +58,27 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
       alert("Failed to create current page snapshot. Please try again.");
     }
   };
-  
+
   // Function to save updated snapshot title
   const saveSnapshotTitle = async (newTitle: string) => {
     try {
       // Create updated snapshot with new title
       const updatedSnapshot = {
         ...snapshot,
-        title: newTitle
+        title: newTitle,
       };
-      
+
       // Get all snapshots and update the specific one
       const allSnapshots = await loadSnapshots();
-      const updatedSnapshots = allSnapshots.map(s => 
-        s.id === snapshot.id ? updatedSnapshot : s
-      );
-      
+      const updatedSnapshots = allSnapshots.map((s) => (s.id === snapshot.id ? updatedSnapshot : s));
+
       // Save updated snapshots
       await saveSnapshots(updatedSnapshots);
-      
+
       // Exit editing mode
       setEditingTitle(false);
     } catch (error) {
-      console.error('Failed to update snapshot title:', error);
+      console.error("Failed to update snapshot title:", error);
       // Revert to original title on error
       setTitle(snapshot.title);
       setEditingTitle(false);
@@ -212,8 +212,8 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
         </ComparisonTitle>
         <div style={{ display: "flex", gap: "8px" }}>
           <Tooltip content="Compare with current page">
-            <SecondaryButton 
-              onClick={handleCompareWithCurrentPage} 
+            <SecondaryButton
+              onClick={handleCompareWithCurrentPage}
               disabled={isCreatingCurrentSnapshot}
               style={{
                 backgroundColor: "#f0f4ff",
@@ -221,7 +221,7 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
                 border: "1px solid #dadce0",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px"
+                gap: "6px",
               }}
             >
               <IconGitCompare size={16} />
@@ -290,8 +290,8 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
             </SecondaryButton>
           </div>
         )}
-        • {new Date(snapshot.timestamp).toLocaleString()} • {snapshot.elementCount}{" "}
-        elements • {new URL(snapshot.url).hostname}
+        • {new Date(snapshot.timestamp).toLocaleString()} • {snapshot.elementCount} elements •{" "}
+        {new URL(snapshot.url).hostname}
       </div>
 
       {/* Search panel */}
@@ -337,16 +337,12 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
               showStatistics={true}
             />
           )}
-          <DetailsOverlay
-            className="sticky top-0 self-start max-h-screen overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ElementDetails
-              selectedElement={selectedElement}
-              selectedElementData={selectedElementData}
-              selectedElementStyles={selectedElementStyles}
-            />
-          </DetailsOverlay>
+
+          <ElementDetails
+            selectedElement={selectedElement}
+            selectedElementData={selectedElementData}
+            selectedElementStyles={selectedElementStyles}
+          />
         </div>
       )}
     </ComparisonContainer>

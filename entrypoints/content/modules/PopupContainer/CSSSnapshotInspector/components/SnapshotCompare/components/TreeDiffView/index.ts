@@ -1,1 +1,1 @@
-export { TreeDiffView } from './TreeDiffView';
+export { ReactDiffViewer } from './components/ReactDiffViewer';

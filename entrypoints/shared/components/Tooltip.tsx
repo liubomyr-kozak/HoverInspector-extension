@@ -3,8 +3,8 @@ import { Tooltip as ReactTooltip } from "antd";
 import { ZINDEX_INSPECTOR_ELEMENT_TOOLTIP } from "@entrypoints/shared/constant/zIndex.ts";
 
 export const Tooltip: React.FC<{
-  title: string;
-  content: string;
+  title?: string;
+  content?: string;
   clickTile?: string;
   placement?: "top" | "bottom" | "left" | "right";
   children: React.ReactNode;

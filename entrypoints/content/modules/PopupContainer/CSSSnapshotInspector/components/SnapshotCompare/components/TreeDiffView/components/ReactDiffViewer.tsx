@@ -4,7 +4,7 @@ import { CacheProvider } from "@emotion/react";
 import { getEmotionCache } from "./emotionCache";
 import { useEmotionShadowDOMSync } from "./useEmotionShadowDOMSync";
 import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
-import DiffViewer from "@entrypoints/shared/components/react-diff-viewer-continued";
+import DiffViewer from "@entrypoints/shared/components/react-diff-viewer-continued/src";
 
 interface ReactDiffViewerProps {
   treeA: DOMTreeNode;
@@ -87,13 +87,12 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
   // Sync emotion styles to shadow DOM
   useEmotionShadowDOMSync();
 
-  const handleLineClick = (lineId: number, side: "old" | "new", event: React.MouseEvent<HTMLDivElement>) => {
-    // event.target - це саме DOM-елемент, на який клікнули
+  const handleLineClick = (lineId: string, event: React.MouseEvent<HTMLTableCellElement>) => {
+    // event.target is the DOM element that was clicked
     const clickedNode = event.target;
 
-    debugger;
-    console.log("Клік по ноді:", clickedNode);
-    console.log("Лінія:", lineId, "сторона:", side);
+    console.log("Clicked node:", clickedNode);
+    console.log("Line:", lineId);
   };
 
   if (!cache || !shadowContainer) {
@@ -109,7 +108,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
         splitView={true}
         useDarkTheme={false}
         compareMethod={DiffMethod.WORDS}
-        onLineNumberClick={handleLineClick} // якщо є доступ event
+        onLineNumberClick={handleLineClick}
         leftTitle="Snapshot A"
         rightTitle="Snapshot B"
         container={shadowContainer}
