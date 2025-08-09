@@ -3,19 +3,20 @@
  */
 import React, { memo } from "react";
 import styled from "styled-components";
-import { 
-  IconCamera, 
-  IconUpload, 
-  IconHistory, 
+import {
+  IconCamera,
+  IconUpload,
+  IconHistory,
   IconExclamationCircle,
   IconSparkles,
   IconAnalyze,
   IconEye,
   IconArrowLeft,
-  IconSearch
+  IconSearch,
 } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
 import { ViewMode } from "../constants";
+import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 
 // Styled Components
 const HeaderContainer = styled.div`
@@ -49,6 +50,22 @@ const LogoIcon = styled.div`
   padding: 12px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  position: relative;
+`;
+
+const LogoBadge = styled.div`
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+  line-height: 1;
 `;
 
 const TitleSection = styled.div`
@@ -108,15 +125,18 @@ const PrimaryButton = styled.button<{ disabled?: boolean }>`
   font-size: 14px;
   font-weight: 600;
   border: none;
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
   transition: all 300ms ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  
-  ${props => props.disabled ? `
+
+  ${(props) =>
+    props.disabled
+      ? `
     background: #f3f4f6;
     color: #9ca3af;
     box-shadow: none;
-  ` : `
+  `
+      : `
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
     
@@ -180,29 +200,6 @@ const CompareButton = styled.button`
   }
 `;
 
-const SelectionIndicator = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.1));
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 12px;
-  color: #3730a3;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px);
-
-  div:first-child {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  div:last-child {
-    font-size: 12px;
-    color: #4f46e5;
-  }
-`;
-
 const ProgressContainer = styled.div`
   margin-top: 24px;
 `;
@@ -223,8 +220,13 @@ const ProgressBar = styled.div`
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
   }
 `;
 
@@ -247,8 +249,12 @@ const LoadingSpinner = styled.div`
   animation: spin 1s linear infinite;
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 `;
 
@@ -256,6 +262,7 @@ interface HeaderProps {
   readonly viewMode: ViewMode;
   readonly isCapturing: boolean;
   readonly compareSnapshotsCount: number;
+  readonly snapshotsCount: number;
   readonly onCapture: () => Promise<void>;
   readonly onImport: () => void;
   readonly onCompare: () => void;
@@ -269,7 +276,19 @@ interface HeaderProps {
  * Modern Header component with styled-components
  */
 export const Header = memo<HeaderProps>(
-  ({ viewMode, isCapturing, compareSnapshotsCount, onCapture, onImport, onCompare, onBackToList, onToggleSearch, isSearchVisible = false, error }) => {
+  ({
+    viewMode,
+    isCapturing,
+    compareSnapshotsCount,
+    snapshotsCount,
+    onCapture,
+    onImport,
+    onCompare,
+    onBackToList,
+    onToggleSearch,
+    isSearchVisible = false,
+    error,
+  }) => {
     const handleCapture = async () => {
       try {
         await onCapture();
@@ -281,11 +300,11 @@ export const Header = memo<HeaderProps>(
     const getSubtitle = () => {
       switch (viewMode) {
         case ViewMode.LIST:
-          return '✨ Visual regression testing made easy';
+          return "✨ Visual regression testing made easy";
         case ViewMode.DETAIL:
-          return '🔍 Inspect DOM snapshot details';
+          return "🔍 Inspect DOM snapshot details";
         default:
-          return '⚡ Compare snapshots side by side';
+          return "⚡ Compare snapshots side by side";
       }
     };
 
@@ -297,16 +316,21 @@ export const Header = memo<HeaderProps>(
               {(viewMode === ViewMode.DETAIL || viewMode === ViewMode.COMPARE) && (
                 <SecondaryButton
                   onClick={onBackToList}
-                  style={{ fontSize: '12px', padding: '4px 6px', minWidth: 'auto' }}
+                  style={{ fontSize: "12px", padding: "4px 6px", minWidth: "auto" }}
                 >
                   <IconArrowLeft size={16} />
                 </SecondaryButton>
               )}
               <LogoIcon>
                 <IconAnalyze size={28} color="white" />
+                {viewMode === ViewMode.LIST && snapshotsCount > 1 && (
+                  <LogoBadge>
+                    <Tooltip content={"Total snapshots captured"}>{snapshotsCount}</Tooltip>
+                  </LogoBadge>
+                )}
               </LogoIcon>
               <TitleSection>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <h1>CSS Snapshot Inspector</h1>
                 </div>
                 <p>{getSubtitle()}</p>
@@ -330,10 +354,12 @@ export const Header = memo<HeaderProps>(
                 <SecondaryButton
                   onClick={onToggleSearch}
                   aria-label={isSearchVisible ? "Hide search" : "Show search"}
-                  style={{ 
-                    background: isSearchVisible ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255, 255, 255, 0.9)',
-                    color: isSearchVisible ? 'white' : '#374151',
-                    borderColor: isSearchVisible ? 'transparent' : '#e5e7eb'
+                  style={{
+                    background: isSearchVisible
+                      ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+                      : "rgba(255, 255, 255, 0.9)",
+                    color: isSearchVisible ? "white" : "#374151",
+                    borderColor: isSearchVisible ? "transparent" : "#e5e7eb",
                   }}
                 >
                   <IconSearch size={16} />
@@ -359,32 +385,23 @@ export const Header = memo<HeaderProps>(
                   )}
                 </PrimaryButton>
 
-                <SecondaryButton
-                  onClick={onImport}
-                  aria-label="Import snapshot from file"
-                >
+                <SecondaryButton onClick={onImport} aria-label="Import snapshot from file">
                   <IconUpload size={20} />
                   <span>Import</span>
                 </SecondaryButton>
 
-                {compareSnapshotsCount === 2 && (
+                {compareSnapshotsCount >= 1 && (
                   <CompareButton
                     onClick={onCompare}
                     aria-label="Compare selected snapshots"
+                    disabled={compareSnapshotsCount < 2}
                   >
                     <MdOutlineCompare size={20} />
-                    <span>Compare ({compareSnapshotsCount})</span>
+                    <span>
+                      Compare ({compareSnapshotsCount}
+                      {compareSnapshotsCount < 2 ? "/2" : ""})
+                    </span>
                   </CompareButton>
-                )}
-                
-                {compareSnapshotsCount === 1 && (
-                  <SelectionIndicator>
-                    <IconEye size={18} />
-                    <div>
-                      <div>1 selected</div>
-                      <div>Select one more to compare</div>
-                    </div>
-                  </SelectionIndicator>
                 )}
               </>
             )}

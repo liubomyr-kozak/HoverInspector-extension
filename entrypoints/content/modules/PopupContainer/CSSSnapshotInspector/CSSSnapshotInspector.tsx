@@ -320,6 +320,7 @@ export const CSSSnapshotInspector: React.FC = () => {
           viewMode={viewMode}
           isCapturing={isCapturing}
           compareSnapshotsCount={compareSnapshots.length}
+          snapshotsCount={snapshots.length}
           onCapture={handleCaptureSnapshot}
           onImport={importSnapshot}
           onCompare={handleStartComparison}
