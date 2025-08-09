@@ -39,21 +39,6 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({ snapshotA, sna
     <ComparisonContainer>
       <ComparisonHeader style={{ borderBottom: "1px solid #dadce0", padding: "16px", backgroundColor: "#f8f9fa" }}>
         <div style={{ display: "flex", alignItems: "center" }}>
-          <SecondaryButton
-            onClick={onBack}
-            style={{
-              marginRight: "16px",
-              display: "flex",
-              alignItems: "center",
-              padding: "8px 12px",
-              borderRadius: "4px",
-              border: "1px solid #dadce0",
-              backgroundColor: "white",
-            }}
-          >
-            <IconHistory size={16} style={{ marginRight: "6px" }} />
-            Back to Snapshots
-          </SecondaryButton>
           <ComparisonTitle style={{ fontSize: "18px", fontWeight: 500, color: "#202124" }}>
             CSS Snapshot Comparison
           </ComparisonTitle>
