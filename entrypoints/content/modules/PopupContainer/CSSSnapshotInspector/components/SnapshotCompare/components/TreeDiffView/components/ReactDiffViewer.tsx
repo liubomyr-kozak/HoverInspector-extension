@@ -1,7 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { default as ReactDiffViewersContinued } from "react-diff-viewer-continued";
 import { DOMTreeNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
 import { DiffMethod } from "react-diff-viewer-continued/lib/src/compute-lines";
+
+import { CacheProvider } from "@emotion/react";
+import createCache from "@emotion/cache";
 
 interface ReactDiffViewerProps {
   treeA: DOMTreeNode;
@@ -76,25 +79,70 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
   const oldValue = useMemo(() => convertTreeToString(treeA), [treeA]);
   const newValue = useMemo(() => convertTreeToString(treeB), [treeB]);
 
+  const shadowRoot = useMemo(() => {
+    // @ts-ignore
+    return (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > head")!;
+  }, []);
+
+  const cache = createCache({
+    key: "shadow",
+
+    container: shadowRoot,
+  });
+
   console.log("😎😎😎 ::ReactDiffViewer -> oldValue", oldValue);
   console.log("👍👍👍 ::ReactDiffViewer -> newValue", newValue);
 
+  const [DiffViewer, setDiffViewer] = useState<any>(null);
+
+  console.log("👍👍👍 ::ReactDiffViewer -> DiffViewer", DiffViewer);
+
+  useEffect(() => {
+    import("react-diff-viewer-continued").then((mod) => {
+      setDiffViewer(() => mod.default);
+    });
+  }, []);
+
+  useEffect(() => {
+    // Знаходимо всі стилі Emotion для react-diff
+    const styleTags = document.querySelectorAll<HTMLStyleElement>('style[data-emotion^="react-diff"]');
+
+    debugger;
+
+    styleTags.forEach((style) => {
+      // Копія тегу <style>
+      const clone = style.cloneNode(true) as HTMLStyleElement;
+      // Додаємо атрибут для ідентифікації, щоб не дублювати при повторних рендерах
+      clone.setAttribute("data-shadow-copy", "true");
+
+      // Якщо в shadowRoot ще немає цього конкретного стилю — додаємо
+      // const exists = shadowRoot.querySelector(`style[data-emotion="${style.getAttribute("data-emotion")}"]`);
+      // if (!exists) {
+      shadowRoot.appendChild(clone);
+      // }
+    });
+  }, [shadowRoot]);
+
+  if (!DiffViewer) return null;
+
   return (
-    <ReactDiffViewersContinued
-      oldValue={oldValue}
-      newValue={newValue}
-      splitView={splitView}
-      useDarkTheme={false}
-      compareMethod={DiffMethod.WORDS}
-      leftTitle="Snapshot A"
-      rightTitle="Snapshot B"
-      styles={{
-        contentText: {
-          fontFamily: "monospace",
-          fontSize: "14px",
-          lineHeight: "1.5",
-        },
-      }}
-    />
+    <CacheProvider value={cache}>
+      <DiffViewer
+        oldValue={oldValue}
+        newValue={newValue}
+        splitView={splitView}
+        useDarkTheme={false}
+        compareMethod={DiffMethod.WORDS}
+        leftTitle="Snapshot A"
+        rightTitle="Snapshot B"
+        styles={{
+          contentText: {
+            fontFamily: "monospace",
+            fontSize: "14px",
+            lineHeight: "1.5",
+          },
+        }}
+      />
+    </CacheProvider>
   );
 };
