@@ -397,66 +397,7 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
 
   return (
     <ViewerContainer>
-      <ViewerHeader>
-        <HeaderLeft>
-          <BackButton onClick={onBack}>
-            <IconArrowLeft size={18} />
-            <span>Back to Snapshots</span>
-          </BackButton>
-
-          <TitleSection>
-            <TitleIcon>
-              <IconHistory size={32} color="white" />
-            </TitleIcon>
-            <TitleContent>
-              {editingTitle ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <TitleInput type="text" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-                  <EditButton onClick={() => saveSnapshotTitle(title)}>
-                    <IconCheck size={18} color="#10b981" />
-                  </EditButton>
-                  <EditButton
-                    onClick={() => {
-                      setTitle(snapshot.title);
-                      setEditingTitle(false);
-                    }}
-                  >
-                    <IconX size={18} color="#ef4444" />
-                  </EditButton>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <h1>{title}</h1>
-                  <EditButton onClick={() => setEditingTitle(true)}>
-                    <IconEdit size={16} color="#6b7280" />
-                  </EditButton>
-                </div>
-              )}
-              <p>Detailed snapshot analysis</p>
-            </TitleContent>
-          </TitleSection>
-        </HeaderLeft>
-
-        <ActionButtons>
-          <PrimaryButton
-            onClick={handleCompareWithCurrentPage}
-            disabled={isCreatingCurrentSnapshot}
-          >
-            {isCreatingCurrentSnapshot ? (
-              <>
-                <LoadingSpinner />
-                Creating...
-              </>
-            ) : (
-              <>
-                <IconGitCompare size={18} />
-                Compare with Current
-                <IconSparkles size={14} />
-              </>
-            )}
-          </PrimaryButton>
-        </ActionButtons>
-      </ViewerHeader>
+  {/* Header moved to CSSSnapshotInspector. Only render details and metadata here. */}
 
       <MetadataBar>
         <MetadataGrid>

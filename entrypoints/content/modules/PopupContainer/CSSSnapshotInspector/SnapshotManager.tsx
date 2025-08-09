@@ -67,7 +67,6 @@ const FeatureGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  max-width: 600px;
   margin-bottom: 32px;
 `;
 
@@ -232,7 +231,8 @@ const ActionButton = styled.button<{ variant: "primary" | "secondary" | "danger"
   border: none;
   cursor: pointer;
   transition: all 200ms ease;
-  flex: 1;
+  // do not use flex: 1 here, it will break the layout
+  //flex: 1;
 
   ${(props) => {
     switch (props.variant) {
@@ -430,18 +430,33 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                   </MetadataItem>
                 </MetadataGrid>
 
-                <ActionButton
-                  variant="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onView(snapshot);
-                  }}
-                  style={{ marginLeft: "auto", minWidth: 80 }}
-                  aria-label="View details"
-                >
-                  <IconEye size={12} />
-                  View details
-                </ActionButton>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <ActionButton
+                    variant="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onView(snapshot);
+                    }}
+                    style={{ minWidth: 80 }}
+                    aria-label="View details"
+                  >
+                    <IconEye size={12} />
+                    View details
+                  </ActionButton>
+                  <ActionButton
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Compare with current page logic
+                      window.postMessage({ type: "COMPARE_SNAPSHOTS", snapshots: [snapshot, "CURRENT_PAGE"] }, "*");
+                    }}
+                    style={{ minWidth: 120 }}
+                    aria-label="Compare with current page"
+                  >
+                    <IconGitCompare size={14} />
+                    Compare with current page
+                  </ActionButton>
+                </div>
               </SnapshotCard>
             );
           })}

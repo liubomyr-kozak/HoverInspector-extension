@@ -3,7 +3,7 @@
  */
 import React, { useMemo, useEffect } from "react";
 import styled from "styled-components";
-import { IconCode } from "@tabler/icons-react";
+import { IconCode, IconArrowLeft, IconHistory, IconEdit, IconCheck, IconX } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
 import { SnapshotManager } from "./SnapshotManager";
 import { SnapshotCompare } from "./components/SnapshotCompare/SnapshotCompare.tsx";
@@ -47,7 +47,6 @@ const FilterContainer = styled.div`
 
 const FilterInputWrapper = styled.div`
   position: relative;
-  max-width: 600px;
 `;
 
 const FilterInput = styled.input`
@@ -249,6 +248,7 @@ export const CSSSnapshotInspector: React.FC = () => {
   };
 
   // Enhanced content rendering with styled components
+
   const renderContent = useMemo(() => {
     switch (viewMode) {
       case ViewMode.DETAIL:
@@ -369,6 +369,7 @@ export const CSSSnapshotInspector: React.FC = () => {
           isCapturing={isCapturing}
           compareSnapshotsCount={compareSnapshots.length}
           snapshotsCount={snapshots.length}
+          selectedSnapshot={selectedSnapshot}
           onCapture={handleCaptureSnapshot}
           onImport={importSnapshot}
           onCompare={handleStartComparison}
@@ -381,31 +382,31 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       {/* Enhanced Filter Bar - only for LIST view and when search is visible */}
       {viewMode === ViewMode.LIST && isSearchVisible && (
-          <FilterContainer>
-            <FilterInputWrapper style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FilterInput
-                type="text"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="🔍 Search snapshots by title, URL, or date..."
-                autoFocus
-              />
-              {filter && <ClearButton onClick={() => setFilter("")}>×</ClearButton>}
-              <ClearButton
-                aria-label="Hide search"
-                title="Hide search"
-                style={{ fontSize: 18, marginLeft: 2 }}
-                onClick={handleToggleSearch}
-              >
-                ×
-              </ClearButton>
-            </FilterInputWrapper>
-            {filteredSnapshots.length !== snapshots.length && (
-              <FilterStats>
-                Showing {filteredSnapshots.length} of {snapshots.length} snapshots
-              </FilterStats>
-            )}
-          </FilterContainer>
+        <FilterContainer>
+          <FilterInputWrapper style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <FilterInput
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="🔍 Search snapshots by title, URL, or date..."
+              autoFocus
+            />
+            {filter && <ClearButton onClick={() => setFilter("")}>×</ClearButton>}
+            <ClearButton
+              aria-label="Hide search"
+              title="Hide search"
+              style={{ fontSize: 18, marginLeft: 2 }}
+              onClick={handleToggleSearch}
+            >
+              ×
+            </ClearButton>
+          </FilterInputWrapper>
+          {filteredSnapshots.length !== snapshots.length && (
+            <FilterStats>
+              Showing {filteredSnapshots.length} of {snapshots.length} snapshots
+            </FilterStats>
+          )}
+        </FilterContainer>
       )}
 
       {/* Main Content Area with improved background and padding */}

@@ -14,6 +14,9 @@ import {
   IconArrowLeft,
   IconSearch,
   IconDotsVertical,
+  IconCheck,
+  IconX,
+  IconEdit,
 } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
 import { ViewMode } from "../constants";
@@ -46,12 +49,20 @@ const LogoSection = styled.div`
   gap: 16px;
 `;
 
-const LogoIcon = styled.div`
+const LogoIcon = styled.div<{ viewMode?: ViewMode }>`
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
   padding: 12px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
   position: relative;
+  cursor: ${(props) => (props.viewMode !== ViewMode.LIST ? 'pointer' : 'default')};
+  
+  &:hover {
+    ${(props) => props.viewMode !== ViewMode.LIST && `
+      transform: scale(1.05);
+      transition: transform 0.2s ease;
+    `}
+  }
 `;
 
 const LogoBadge = styled.div`
@@ -319,6 +330,7 @@ interface HeaderProps {
   readonly isCapturing: boolean;
   readonly compareSnapshotsCount: number;
   readonly snapshotsCount: number;
+  readonly selectedSnapshot?: any;
   readonly onCapture: () => Promise<void>;
   readonly onImport: () => void;
   readonly onCompare: () => void;
@@ -335,8 +347,8 @@ export const Header = memo<HeaderProps>(
   ({
     viewMode,
     isCapturing,
-    compareSnapshotsCount,
     snapshotsCount,
+    selectedSnapshot,
     onCapture,
     onImport,
     onCompare,
@@ -345,7 +357,7 @@ export const Header = memo<HeaderProps>(
     isSearchVisible = false,
     error,
   }) => {
-  const [menuOpen, setMenuOpen] = React.useState(false);
+    const [menuOpen, setMenuOpen] = React.useState(false);
     const handleCapture = async () => {
       try {
         await onCapture();
@@ -365,21 +377,53 @@ export const Header = memo<HeaderProps>(
       }
     };
 
+    // Title editing state and logic for details view
+    const [title, setTitle] = React.useState<string>("");
+    const [editingTitle, setEditingTitle] = React.useState<boolean>(false);
+
+    React.useEffect(() => {
+      if (viewMode === ViewMode.DETAIL && selectedSnapshot) {
+        setTitle(selectedSnapshot.title);
+        setEditingTitle(false);
+      }
+    }, [viewMode, selectedSnapshot]);
+
+    const saveSnapshotTitle = async (newTitle: string) => {
+      if (!selectedSnapshot) return;
+      try {
+        const updatedSnapshot = {
+          ...selectedSnapshot,
+          title: newTitle,
+        };
+        const allSnapshots = await import("../utils/snapshotStorage").then((m) => m.loadSnapshots());
+        const updatedSnapshots = allSnapshots.map((s: any) => (s.id === selectedSnapshot.id ? updatedSnapshot : s));
+        await import("../utils/snapshotStorage").then((m) => m.saveSnapshots(updatedSnapshots));
+        setEditingTitle(false);
+      } catch (error) {
+        setTitle(selectedSnapshot.title);
+        setEditingTitle(false);
+      }
+    };
+
     return (
       <HeaderContainer>
         <HeaderContent>
           <LeftSection>
             <LogoSection>
-              {(viewMode === ViewMode.DETAIL || viewMode === ViewMode.COMPARE) && (
-                <SecondaryButton
-                  onClick={onBackToList}
-                  style={{ fontSize: "12px", padding: "4px 6px", minWidth: "auto" }}
-                >
-                  <IconArrowLeft size={16} />
-                </SecondaryButton>
-              )}
-              <LogoIcon>
-                <IconAnalyze size={28} color="white" />
+              <LogoIcon
+                viewMode={viewMode}
+                onClick={() => {
+                  if (viewMode !== ViewMode.LIST) {
+                    onBackToList();
+                  }
+                }}
+              >
+                {viewMode === ViewMode.LIST ? (
+                  <IconAnalyze size={28} color="white" />
+                ) : (
+                  <IconArrowLeft color="white" size={28} />
+                )}
+
                 {viewMode === ViewMode.LIST && snapshotsCount > 1 && (
                   <LogoBadge>
                     <Tooltip content={"Total snapshots captured"}>{snapshotsCount}</Tooltip>
@@ -387,10 +431,124 @@ export const Header = memo<HeaderProps>(
                 )}
               </LogoIcon>
               <TitleSection>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <h1>CSS Snapshot Inspector</h1>
-                </div>
-                <p>{getSubtitle()}</p>
+                {viewMode === ViewMode.LIST && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <h1>CSS Snapshot Inspector</h1>
+                    </div>
+                    <p>{getSubtitle()}</p>
+                  </>
+                )}
+                {viewMode === ViewMode.DETAIL && selectedSnapshot && (
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                          <div>
+                            {editingTitle ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <input
+                                  type="text"
+                                  value={title}
+                                  onChange={(e) => setTitle(e.target.value)}
+                                  autoFocus
+                                  style={{
+                                    fontSize: 28,
+                                    fontWeight: 700,
+                                    background: "transparent",
+                                    border: "2px solid #6366f1",
+                                    borderRadius: 8,
+                                    padding: "8px 12px",
+                                    color: "#1f2937",
+                                    outline: "none",
+                                  }}
+                                />
+                                <button
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 32,
+                                    height: 32,
+                                    background: "rgba(255,255,255,0.9)",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 6,
+                                    cursor: "pointer",
+                                    transition: "all 200ms ease",
+                                  }}
+                                  onClick={() => saveSnapshotTitle(title)}
+                                >
+                                  <IconCheck size={18} color="#10b981" />
+                                </button>
+                                <button
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 32,
+                                    height: 32,
+                                    background: "rgba(255,255,255,0.9)",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 6,
+                                    cursor: "pointer",
+                                    transition: "all 200ms ease",
+                                  }}
+                                  onClick={() => {
+                                    setTitle(selectedSnapshot.title);
+                                    setEditingTitle(false);
+                                  }}
+                                >
+                                  <IconX size={18} color="#ef4444" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <h1
+                                  style={{
+                                    fontSize: 28,
+                                    fontWeight: 700,
+                                    background: "linear-gradient(135deg,#1f2937,#374151)",
+                                    WebkitBackgroundClip: "text",
+                                    WebkitTextFillColor: "transparent",
+                                    margin: 0,
+                                  }}
+                                >
+                                  {title}
+                                </h1>
+                                <button
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 32,
+                                    height: 32,
+                                    background: "rgba(255,255,255,0.9)",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 6,
+                                    cursor: "pointer",
+                                    transition: "all 200ms ease",
+                                  }}
+                                  onClick={() => setEditingTitle(true)}
+                                >
+                                  <IconEdit size={16} color="#6b7280" />
+                                </button>
+                              </div>
+                            )}
+                            <p style={{ fontSize: 16, fontWeight: 500, color: "#6b7280", margin: 0 }}>
+                              Detailed snapshot analysis
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </TitleSection>
             </LogoSection>
           </LeftSection>
@@ -429,10 +587,7 @@ export const Header = memo<HeaderProps>(
 
                 {/* Overflow menu: Search + Import */}
                 <MenuContainer>
-                  <MoreButton
-                    onClick={() => setMenuOpen((v) => !v)}
-                    aria-label={menuOpen ? "Close menu" : "Open menu"}
-                  >
+                  <MoreButton onClick={() => setMenuOpen((v) => !v)} aria-label={menuOpen ? "Close menu" : "Open menu"}>
                     <IconDotsVertical size={18} color="#6b7280" />
                   </MoreButton>
                   {menuOpen && (
