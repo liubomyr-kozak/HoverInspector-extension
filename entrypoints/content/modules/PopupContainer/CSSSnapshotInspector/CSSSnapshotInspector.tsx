@@ -117,6 +117,48 @@ const ContentWrapper = styled.div`
   height: 100%;
 `;
 
+const StickyFooter = styled.div`
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(229,231,235,0.6);
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.08);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const FooterInfo = styled.div`
+  font-size: 12px;
+  color: #6b7280;
+`;
+
+const FooterCompareButton = styled.button<{disabled?: boolean}>`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: ${p => p.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 200ms ease;
+  ${p => p.disabled ? `
+    background: #e5e7eb;
+    color: #9ca3af;
+  ` : `
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    &:hover { background: linear-gradient(135deg, #059669, #047857); transform: translateY(-1px); }
+    &:active { transform: translateY(0); }
+  `}
+`;
+
 const EmptyStateContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -354,7 +396,25 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       {/* Main Content Area with improved background and padding */}
       <ContentArea>
-        <ContentWrapper>{renderContent}</ContentWrapper>
+        <ContentWrapper>
+          {renderContent}
+          {viewMode === ViewMode.LIST && compareSnapshots.length > 0 && (
+            <StickyFooter>
+              <FooterInfo>
+                {compareSnapshots.length === 1 ? '1 selected — select one more to compare' : '2 selected — ready to compare'}
+              </FooterInfo>
+              <FooterCompareButton
+                onClick={handleStartComparison}
+                disabled={compareSnapshots.length !== 2}
+                aria-label="Compare selected snapshots"
+                title={compareSnapshots.length !== 2 ? 'Select exactly 2 snapshots to compare' : 'Compare selected snapshots'}
+              >
+                <MdOutlineCompare size={18} />
+                Compare ({compareSnapshots.length}/2)
+              </FooterCompareButton>
+            </StickyFooter>
+          )}
+        </ContentWrapper>
       </ContentArea>
     </MainContainer>
   );

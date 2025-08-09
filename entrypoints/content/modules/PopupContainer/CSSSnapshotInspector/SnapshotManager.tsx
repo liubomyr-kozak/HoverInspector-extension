@@ -280,9 +280,9 @@ const ActionButton = styled.button<{ variant: "primary" | "secondary" | "danger"
 `;
 
 const SelectionBadge = styled.div`
-  position: absolute;
-  top: 12px;
-  right: 12px;
+  //position: absolute;
+  //top: 12px;
+  //right: 12px;
   background: linear-gradient(135deg, #10b981, #059669);
   color: white;
   padding: 3px 6px;
@@ -371,19 +371,19 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                   setMenuOpenId((id) => (id === snapshot.id ? null : id));
                 }}
               >
-                {selected && (
-                  <SelectionBadge>
-                    <IconCheck size={14} />
-                    Selected
-                  </SelectionBadge>
-                )}
-
                 <CardHeader>
                   <CardTitle>
-                    <div className="icon">
-                      <IconGlobe size={20} />
-                    </div>
-                    <div className="text">Snapshot #{snapshot.id.slice(0, 8)}</div>
+                    {!selected ? (
+                      <div className="icon">
+                        <IconGlobe size={20} />
+                      </div>
+                    ) : (
+                      <SelectionBadge>
+                        <IconCheck size={14} />
+                        Selected
+                      </SelectionBadge>
+                    )}
+                    <div className="text">Snapshot #{snapshot.title}</div>
                   </CardTitle>
                   <OptionsButton
                     onClick={(e) => {

@@ -13,6 +13,7 @@ import {
   IconEye,
   IconArrowLeft,
   IconSearch,
+  IconDotsVertical,
 } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
 import { ViewMode } from "../constants";
@@ -200,6 +201,61 @@ const CompareButton = styled.button`
   }
 `;
 
+const MoreButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 200ms ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  &:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+  }
+`;
+
+const MenuContainer = styled.div`
+  position: relative;
+`;
+
+const DropdownMenu = styled.div`
+  position: absolute;
+  top: 42px;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  min-width: 180px;
+  z-index: 30;
+`;
+
+const MenuItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #374151;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease;
+
+  &:hover {
+    background: #f9fafb;
+  }
+`;
+
 const ProgressContainer = styled.div`
   margin-top: 24px;
 `;
@@ -289,6 +345,7 @@ export const Header = memo<HeaderProps>(
     isSearchVisible = false,
     error,
   }) => {
+  const [menuOpen, setMenuOpen] = React.useState(false);
     const handleCapture = async () => {
       try {
         await onCapture();
@@ -351,21 +408,6 @@ export const Header = memo<HeaderProps>(
           <ActionsSection>
             {viewMode === ViewMode.LIST && (
               <>
-                <SecondaryButton
-                  onClick={onToggleSearch}
-                  aria-label={isSearchVisible ? "Hide search" : "Show search"}
-                  style={{
-                    background: isSearchVisible
-                      ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                      : "rgba(255, 255, 255, 0.9)",
-                    color: isSearchVisible ? "white" : "#374151",
-                    borderColor: isSearchVisible ? "transparent" : "#e5e7eb",
-                  }}
-                >
-                  <IconSearch size={16} />
-                  <span>Search</span>
-                </SecondaryButton>
-
                 <PrimaryButton
                   onClick={handleCapture}
                   disabled={isCapturing}
@@ -385,24 +427,39 @@ export const Header = memo<HeaderProps>(
                   )}
                 </PrimaryButton>
 
-                <SecondaryButton onClick={onImport} aria-label="Import snapshot from file">
-                  <IconUpload size={20} />
-                  <span>Import</span>
-                </SecondaryButton>
-
-                {compareSnapshotsCount >= 1 && (
-                  <CompareButton
-                    onClick={onCompare}
-                    aria-label="Compare selected snapshots"
-                    disabled={compareSnapshotsCount < 2}
+                {/* Overflow menu: Search + Import */}
+                <MenuContainer>
+                  <MoreButton
+                    onClick={() => setMenuOpen((v) => !v)}
+                    aria-label={menuOpen ? "Close menu" : "Open menu"}
                   >
-                    <MdOutlineCompare size={20} />
-                    <span>
-                      Compare ({compareSnapshotsCount}
-                      {compareSnapshotsCount < 2 ? "/2" : ""})
-                    </span>
-                  </CompareButton>
-                )}
+                    <IconDotsVertical size={18} color="#6b7280" />
+                  </MoreButton>
+                  {menuOpen && (
+                    <DropdownMenu onClick={(e) => e.stopPropagation()}>
+                      <MenuItem
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onToggleSearch?.();
+                        }}
+                        aria-label={isSearchVisible ? "Hide search" : "Show search"}
+                      >
+                        <IconSearch size={16} />
+                        <span>{isSearchVisible ? "Hide search" : "Show search"}</span>
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onImport();
+                        }}
+                        aria-label="Import snapshot from file"
+                      >
+                        <IconUpload size={16} />
+                        <span>Import snapshot</span>
+                      </MenuItem>
+                    </DropdownMenu>
+                  )}
+                </MenuContainer>
               </>
             )}
           </ActionsSection>
