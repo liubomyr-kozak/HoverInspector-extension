@@ -4,16 +4,17 @@ import { ZINDEX_INSPECTOR_ELEMENT_TOOLTIP } from "@entrypoints/shared/constant/z
 
 export const Tooltip: React.FC<{
   title: string;
+  content: string;
   clickTile?: string;
   placement?: "top" | "bottom" | "left" | "right";
   children: React.ReactNode;
   onOpen?: () => void;
   onClose?: () => void;
-}> = ({ title, clickTile, placement, children, onOpen, onClose }) => {
+}> = ({ title, content, clickTile, placement, children, onOpen, onClose }) => {
   // TROUBLESHOOTING прийщлося додати цю умову, томущо пілся того як додається слово.. відбувається рендер і тултіп завісає,
   // ізза того що він був відкритий іншою іконкою, а вона вже змістилась, або може зникнути
   const [open, setOpen] = useState(false);
-  const [tooltipTitle, setTooltipTitle] = useState(title);
+  const [tooltipTitle, setTooltipTitle] = useState(title || content);
 
   const handleOpenChange = (open: boolean) => {
     setOpen(open);

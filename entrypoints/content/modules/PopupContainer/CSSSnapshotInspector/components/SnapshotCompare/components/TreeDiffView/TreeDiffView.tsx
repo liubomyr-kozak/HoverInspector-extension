@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { IconX } from "@tabler/icons-react";
+import React, { useMemo, useState } from "react";
+import { IconX, IconCode } from "@tabler/icons-react";
 import { ElementListProps } from "../../types";
 import { ElementDetails } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails";
 import { 
@@ -18,6 +18,7 @@ import {
   buildDOMTree,
   DOMTreeNode,
 } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
+import { ReactDiffViewer } from "./components/ReactDiffViewer";
 
 /**
  * Component for displaying a hierarchical tree view of elements with GitHub-style diff indicators
@@ -34,6 +35,7 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
   elementRefs,
   diffMode = false, // Default to standard view if not provided
 }) => {
+  const [showReactDiffViewer, setShowReactDiffViewer] = useState(false);
   const { nodeDetailsPath, nodeDetailsData, showNodeDetails, closeNodeDetails } = useNodeDetails(stylesA, stylesB);
 
   // Use the comparison hook to get tree data and comparison results
@@ -646,7 +648,43 @@ export const TreeDiffView: React.FC<ElementListProps> = ({
 
   return (
     <div className="relative">
-      {diffMode ? (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-end', 
+        padding: '8px', 
+        borderBottom: '1px solid #e1e4e8',
+        backgroundColor: '#f6f8fa'
+      }}>
+        <button 
+          onClick={() => setShowReactDiffViewer(!showReactDiffViewer)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '6px 12px',
+            backgroundColor: showReactDiffViewer ? '#0366d6' : '#f6f8fa',
+            color: showReactDiffViewer ? 'white' : '#24292e',
+            border: '1px solid #e1e4e8',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 500,
+          }}
+        >
+          <IconCode size={16} style={{ marginRight: '6px' }} />
+          {showReactDiffViewer ? 'Tree View' : 'Code Diff View'}
+        </button>
+      </div>
+
+      {showReactDiffViewer ? (
+        // React Diff Viewer mode
+        <div style={{ padding: '16px' }}>
+          <ReactDiffViewer 
+            treeA={treeA} 
+            treeB={treeB} 
+            splitView={diffMode} 
+          />
+        </div>
+      ) : diffMode ? (
         // Side-by-side Git diff view
         <SideBySideContainer>
           <LeftDiffPanel>
