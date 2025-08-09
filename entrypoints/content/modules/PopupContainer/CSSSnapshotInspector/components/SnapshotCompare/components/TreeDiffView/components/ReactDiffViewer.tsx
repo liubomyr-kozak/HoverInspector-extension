@@ -63,9 +63,6 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
   return result;
 };
 
-/**
- * Component that uses react-diff-viewer-continued to display DOM tree diffs
- */
 export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, splitView = true }) => {
   // Convert trees to string representation for diffing
   const oldValue = useMemo(() => convertTreeToString(treeA), [treeA]);
@@ -90,22 +87,14 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
   // Sync emotion styles to shadow DOM
   useEmotionShadowDOMSync();
 
-  // Dynamic import for the local modified diff viewer
-  // useEffect(() => {
-  //   // Import the local modified version that supports container prop
-  //   const importPath = "../../../../../../../react-diff-viewer-continued/lib/index.js";
-  //   import(importPath).then((mod) => {
-  //     setDiffViewer(() => mod.default);
-  //   }).catch((error) => {
-  //     console.error("Failed to import local diff viewer:", error);
-  //     // Fallback: Try to import from built version
-  //     import("../../../../../../../react-diff-viewer-continued/src/index").then((mod) => {
-  //       setDiffViewer(() => mod.default);
-  //     }).catch((fallbackError) => {
-  //       console.error("Failed to import fallback diff viewer:", fallbackError);
-  //     });
-  //   });
-  // }, []);
+  const handleLineClick = (lineId: number, side: "old" | "new", event: React.MouseEvent<HTMLDivElement>) => {
+    // event.target - це саме DOM-елемент, на який клікнули
+    const clickedNode = event.target;
+
+    debugger;
+    console.log("Клік по ноді:", clickedNode);
+    console.log("Лінія:", lineId, "сторона:", side);
+  };
 
   if (!cache || !shadowContainer) {
     return <div>Loading diff viewer...</div>;
@@ -116,9 +105,11 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({ treeA, treeB, 
       <DiffViewer
         oldValue={oldValue}
         newValue={newValue}
-        splitView={splitView}
+        // splitView={splitView}
+        splitView={true}
         useDarkTheme={false}
         compareMethod={DiffMethod.WORDS}
+        onLineNumberClick={handleLineClick} // якщо є доступ event
         leftTitle="Snapshot A"
         rightTitle="Snapshot B"
         container={shadowContainer}
