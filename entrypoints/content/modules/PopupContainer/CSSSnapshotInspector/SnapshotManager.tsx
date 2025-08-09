@@ -99,7 +99,7 @@ const SnapshotGrid = styled.div`
 
 const SnapshotCard = styled.div<{ isSelected: boolean; isHovered: boolean }>`
   background: rgba(255, 255, 255, 0.9);
-  border: 2px solid ${(props) => (props.isSelected ? "#6366f1" : "rgba(229, 231, 235, 0.6)")};
+  border: 2px solid ${(props) => (props.isSelected ? "#10b981" : "rgba(229, 231, 235, 0.6)")};
   border-radius: 8px;
   padding: 12px;
   box-shadow: ${(props) => (props.isHovered ? "0 8px 32px rgba(0, 0, 0, 0.12)" : "0 1px 4px rgba(0, 0, 0, 0.06)")};
@@ -108,17 +108,6 @@ const SnapshotCard = styled.div<{ isSelected: boolean; isHovered: boolean }>`
   position: relative;
   cursor: pointer;
   transform: ${(props) => (props.isHovered ? "scale(1.01)" : "scale(1)")};
-
-  &:before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: ${(props) => (props.isSelected ? "linear-gradient(135deg, #6366f1, #8b5cf6)" : "transparent")};
-    border-radius: 8px 8px 0 0;
-  }
 `;
 
 const CardHeader = styled.div`
@@ -364,12 +353,17 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                 key={snapshot.id}
                 isSelected={selected}
                 isHovered={hovered}
-                onClick={() => onView(snapshot)}
+                onClick={(e) => {
+                  // Toggle select/unselect on card click
+                  e.stopPropagation();
+                  onToggleCompare(snapshot);
+                }}
                 onMouseEnter={() => setHoveredSnapshot(snapshot.id)}
                 onMouseLeave={() => {
                   setHoveredSnapshot(null);
                   setMenuOpenId((id) => (id === snapshot.id ? null : id));
                 }}
+                style={{ display: "flex", flexDirection: "column", position: "relative" }}
               >
                 <CardHeader>
                   <CardTitle>
@@ -399,14 +393,6 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                       <MenuItem
                         onClick={() => {
                           setMenuOpenId(null);
-                          onView(snapshot);
-                        }}
-                      >
-                        <IconEye size={16} /> View
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => {
-                          setMenuOpenId(null);
                           onExport(snapshot);
                         }}
                       >
@@ -424,6 +410,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                       </MenuItem>
                     </DropdownMenu>
                   )}
+                  {/* View details button on right */}
                 </CardHeader>
 
                 <MetadataGrid>
@@ -443,19 +430,18 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                   </MetadataItem>
                 </MetadataGrid>
 
-                <ActionButtons>
-                  <ActionButton
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleCompare(snapshot);
-                    }}
-                    aria-label={selected ? "Deselect from compare" : "Select for compare"}
-                  >
-                    <IconGitCompare size={12} />
-                    {selected ? "Remove" : "Select"}
-                  </ActionButton>
-                </ActionButtons>
+                <ActionButton
+                  variant="primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(snapshot);
+                  }}
+                  style={{ marginLeft: "auto", minWidth: 80 }}
+                  aria-label="View details"
+                >
+                  <IconEye size={12} />
+                  View details
+                </ActionButton>
               </SnapshotCard>
             );
           })}

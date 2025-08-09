@@ -118,17 +118,20 @@ const ContentWrapper = styled.div`
 `;
 
 const StickyFooter = styled.div`
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
-  z-index: 20;
-  background: rgba(255,255,255,0.9);
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(229,231,235,0.6);
-  box-shadow: 0 -1px 3px rgba(0,0,0,0.08);
+  border-top: 1px solid rgba(229, 231, 235, 0.6);
+  box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.1);
   padding: 10px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 `;
 
 const FooterInfo = styled.div`
@@ -136,7 +139,7 @@ const FooterInfo = styled.div`
   color: #6b7280;
 `;
 
-const FooterCompareButton = styled.button<{disabled?: boolean}>`
+const FooterCompareButton = styled.button<{ disabled?: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -145,12 +148,15 @@ const FooterCompareButton = styled.button<{disabled?: boolean}>`
   font-size: 13px;
   font-weight: 600;
   border: none;
-  cursor: ${p => p.disabled ? 'not-allowed' : 'pointer'};
+  cursor: ${(p) => (p.disabled ? "not-allowed" : "pointer")};
   transition: all 200ms ease;
-  ${p => p.disabled ? `
+  ${(p) =>
+    p.disabled
+      ? `
     background: #e5e7eb;
     color: #9ca3af;
-  ` : `
+  `
+      : `
     background: linear-gradient(135deg, #10b981, #059669);
     color: white;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
@@ -375,23 +381,31 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       {/* Enhanced Filter Bar - only for LIST view and when search is visible */}
       {viewMode === ViewMode.LIST && isSearchVisible && (
-        <FilterContainer>
-          <FilterInputWrapper>
-            <FilterInput
-              type="text"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="🔍 Search snapshots by title, URL, or date..."
-              autoFocus
-            />
-            {filter && <ClearButton onClick={() => setFilter("")}>×</ClearButton>}
-          </FilterInputWrapper>
-          {filteredSnapshots.length !== snapshots.length && (
-            <FilterStats>
-              Showing {filteredSnapshots.length} of {snapshots.length} snapshots
-            </FilterStats>
-          )}
-        </FilterContainer>
+          <FilterContainer>
+            <FilterInputWrapper style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FilterInput
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="🔍 Search snapshots by title, URL, or date..."
+                autoFocus
+              />
+              {filter && <ClearButton onClick={() => setFilter("")}>×</ClearButton>}
+              <ClearButton
+                aria-label="Hide search"
+                title="Hide search"
+                style={{ fontSize: 18, marginLeft: 2 }}
+                onClick={handleToggleSearch}
+              >
+                ×
+              </ClearButton>
+            </FilterInputWrapper>
+            {filteredSnapshots.length !== snapshots.length && (
+              <FilterStats>
+                Showing {filteredSnapshots.length} of {snapshots.length} snapshots
+              </FilterStats>
+            )}
+          </FilterContainer>
       )}
 
       {/* Main Content Area with improved background and padding */}
@@ -401,13 +415,17 @@ export const CSSSnapshotInspector: React.FC = () => {
           {viewMode === ViewMode.LIST && compareSnapshots.length > 0 && (
             <StickyFooter>
               <FooterInfo>
-                {compareSnapshots.length === 1 ? '1 selected — select one more to compare' : '2 selected — ready to compare'}
+                {compareSnapshots.length === 1
+                  ? "1 selected — select one more to compare"
+                  : "2 selected — ready to compare"}
               </FooterInfo>
               <FooterCompareButton
                 onClick={handleStartComparison}
                 disabled={compareSnapshots.length !== 2}
                 aria-label="Compare selected snapshots"
-                title={compareSnapshots.length !== 2 ? 'Select exactly 2 snapshots to compare' : 'Compare selected snapshots'}
+                title={
+                  compareSnapshots.length !== 2 ? "Select exactly 2 snapshots to compare" : "Compare selected snapshots"
+                }
               >
                 <MdOutlineCompare size={18} />
                 Compare ({compareSnapshots.length}/2)
