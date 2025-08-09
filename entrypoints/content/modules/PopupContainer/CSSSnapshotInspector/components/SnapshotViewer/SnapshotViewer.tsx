@@ -24,12 +24,12 @@ import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 // Styled Components
 const ViewerContainer = styled.div`
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  padding: 32px;
-  margin: 24px;
+  //border-radius: 16px;
+  //padding: 32px;
+  margin-top: 15px;
   backdrop-filter: blur(20px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(229, 231, 235, 0.6);
+  //box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  //border: 1px solid rgba(229, 231, 235, 0.6);
 `;
 
 const ViewerHeader = styled.div`
@@ -233,7 +233,6 @@ const MetadataItem = styled.div`
 `;
 
 const UrlRow = styled.div`
-  margin-top: 6px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -368,7 +367,12 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
 
   const date = new Date(snapshot.timestamp);
   const domain = new URL(snapshot.url).hostname;
-  const compactDate = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const compactDate = date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const hasUrl = Boolean(snapshot.url);
 
   const handleCopyUrl = async () => {
@@ -379,11 +383,11 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
       setTimeout(() => setCopied(false), 1200);
     } catch (e) {
       // Fallback
-      const textarea = document.createElement('textarea');
+      const textarea = document.createElement("textarea");
       textarea.value = snapshot.url;
       document.body.appendChild(textarea);
       textarea.select();
-      document.execCommand('copy');
+      document.execCommand("copy");
       document.body.removeChild(textarea);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
@@ -392,12 +396,12 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
 
   const handleOpenUrl = () => {
     if (!hasUrl) return;
-    window.open(snapshot.url, '_blank', 'noopener,noreferrer');
+    window.open(snapshot.url, "_blank", "noopener,noreferrer");
   };
 
   return (
     <ViewerContainer>
-  {/* Header moved to CSSSnapshotInspector. Only render details and metadata here. */}
+      {/* Header moved to CSSSnapshotInspector. Only render details and metadata here. */}
 
       <MetadataBar>
         <MetadataGrid>
@@ -414,28 +418,28 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
           <MetadataItem title={domain}>
             <IconGlobe size={14} className="icon" />
             <span className="value">{domain}</span>
+
+            <div className="flex gap-2">
+              <IconButton
+                onClick={handleCopyUrl}
+                disabled={!hasUrl}
+                aria-label={copied ? "Copied" : "Copy URL"}
+                title={copied ? "Copied" : "Copy URL"}
+              >
+                <Tooltip title={`Copy: ${snapshot.url}`}>
+                  {copied ? <IconCheck size={14} color="#10b981" /> : <IconCopy size={14} color="#6b7280" />}
+                </Tooltip>
+              </IconButton>
+
+              <IconButton onClick={handleOpenUrl} disabled={!hasUrl} aria-label="Open URL" title="Open URL">
+                <Tooltip title={`Go to: ${snapshot.url}`}>
+                  <IconExternalLink size={14} color="#6b7280" />
+                </Tooltip>
+              </IconButton>
+            </div>
           </MetadataItem>
         </MetadataGrid>
-        <UrlRow title={snapshot.url || ''}>
-          <IconGlobe size={14} className="icon" />
-          {hasUrl ? (
-            <a href={snapshot.url} target="_blank" rel="noopener noreferrer" className="url-text">
-              {snapshot.url}
-            </a>
-          ) : (
-            <span className="muted">No source URL</span>
-          )}
-          <div className="actions">
-            <IconButton onClick={handleCopyUrl} disabled={!hasUrl} aria-label={copied ? 'Copied' : 'Copy URL'} title={copied ? 'Copied' : 'Copy URL'}>
-              {copied ? <IconCheck size={14} color="#10b981" /> : <IconCopy size={14} color="#6b7280" />}
-            </IconButton>
-            <IconButton onClick={handleOpenUrl} disabled={!hasUrl} aria-label="Open URL" title="Open URL">
-              <IconExternalLink size={14} color="#6b7280" />
-            </IconButton>
-          </div>
-        </UrlRow>
       </MetadataBar>
-
       <SnapshotDetails snapshot={snapshot} />
     </ViewerContainer>
   );

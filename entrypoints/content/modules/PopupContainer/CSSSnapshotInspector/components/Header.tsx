@@ -28,7 +28,6 @@ const HeaderContainer = styled.div`
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(229, 231, 235, 0.6);
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
 const HeaderContent = styled.div`
@@ -55,10 +54,12 @@ const LogoIcon = styled.div<{ viewMode?: ViewMode }>`
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
   position: relative;
-  cursor: ${(props) => (props.viewMode !== ViewMode.LIST ? 'pointer' : 'default')};
-  
+  cursor: ${(props) => (props.viewMode !== ViewMode.LIST ? "pointer" : "default")};
+
   &:hover {
-    ${(props) => props.viewMode !== ViewMode.LIST && `
+    ${(props) =>
+      props.viewMode !== ViewMode.LIST &&
+      `
       transform: scale(1.05);
       transition: transform 0.2s ease;
     `}
@@ -283,7 +284,6 @@ const ProgressBar = styled.div`
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     border-radius: 6px;
     animation: pulse 2s ease-in-out infinite;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
   @keyframes pulse {
@@ -325,6 +325,90 @@ const LoadingSpinner = styled.div`
   }
 `;
 
+// Detail view styled components
+const DetailViewContainer = styled.div`
+  margin-top: 8px;
+`;
+
+const DetailHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const DetailContent = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+`;
+
+const TitleContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const TitleEditContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const TitleInput = styled.input`
+  font-size: 18px;
+  font-weight: 700;
+  background: transparent;
+  border: 2px solid #6366f1;
+  border-radius: 8px;
+  padding: 4.5px 12px;
+  color: #1f2937;
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+`;
+
+const TitleText = styled.h1`
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1f2937, #374151);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+`;
+
+const SubtitleText = styled.p`
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+  margin: 4px 0 0 0;
+`;
+
+const ActionButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 200ms ease;
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 interface HeaderProps {
   readonly viewMode: ViewMode;
   readonly isCapturing: boolean;
@@ -338,6 +422,7 @@ interface HeaderProps {
   readonly onToggleSearch?: () => void;
   readonly isSearchVisible?: boolean;
   readonly error?: string | null;
+  readonly onCompareWithCurrentPage?: () => Promise<void>;
 }
 
 /**
@@ -440,114 +525,51 @@ export const Header = memo<HeaderProps>(
                   </>
                 )}
                 {viewMode === ViewMode.DETAIL && selectedSnapshot && (
-                  <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                          <div>
-                            {editingTitle ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                <input
-                                  type="text"
-                                  value={title}
-                                  onChange={(e) => setTitle(e.target.value)}
-                                  autoFocus
-                                  style={{
-                                    fontSize: 28,
-                                    fontWeight: 700,
-                                    background: "transparent",
-                                    border: "2px solid #6366f1",
-                                    borderRadius: 8,
-                                    padding: "8px 12px",
-                                    color: "#1f2937",
-                                    outline: "none",
-                                  }}
-                                />
-                                <button
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    width: 32,
-                                    height: 32,
-                                    background: "rgba(255,255,255,0.9)",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: 6,
-                                    cursor: "pointer",
-                                    transition: "all 200ms ease",
-                                  }}
-                                  onClick={() => saveSnapshotTitle(title)}
-                                >
-                                  <IconCheck size={18} color="#10b981" />
-                                </button>
-                                <button
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    width: 32,
-                                    height: 32,
-                                    background: "rgba(255,255,255,0.9)",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: 6,
-                                    cursor: "pointer",
-                                    transition: "all 200ms ease",
-                                  }}
-                                  onClick={() => {
+                  <DetailViewContainer>
+                    <DetailHeader>
+                      <DetailContent>
+                        <TitleContainer>
+                          {editingTitle ? (
+                            <TitleEditContainer>
+                              <TitleInput
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    saveSnapshotTitle(title);
+                                  } else if (e.key === "Escape") {
                                     setTitle(selectedSnapshot.title);
                                     setEditingTitle(false);
-                                  }}
-                                >
-                                  <IconX size={18} color="#ef4444" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                <h1
-                                  style={{
-                                    fontSize: 28,
-                                    fontWeight: 700,
-                                    background: "linear-gradient(135deg,#1f2937,#374151)",
-                                    WebkitBackgroundClip: "text",
-                                    WebkitTextFillColor: "transparent",
-                                    margin: 0,
-                                  }}
-                                >
-                                  {title}
-                                </h1>
-                                <button
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    width: 32,
-                                    height: 32,
-                                    background: "rgba(255,255,255,0.9)",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: 6,
-                                    cursor: "pointer",
-                                    transition: "all 200ms ease",
-                                  }}
-                                  onClick={() => setEditingTitle(true)}
-                                >
-                                  <IconEdit size={16} color="#6b7280" />
-                                </button>
-                              </div>
-                            )}
-                            <p style={{ fontSize: 16, fontWeight: 500, color: "#6b7280", margin: 0 }}>
-                              Detailed snapshot analysis
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                                  }
+                                }}
+                              />
+                              <ActionButton onClick={() => saveSnapshotTitle(title)}>
+                                <IconCheck size={18} color="#10b981" />
+                              </ActionButton>
+                              <ActionButton
+                                onClick={() => {
+                                  setTitle(selectedSnapshot.title);
+                                  setEditingTitle(false);
+                                }}
+                              >
+                                <IconX size={18} color="#ef4444" />
+                              </ActionButton>
+                            </TitleEditContainer>
+                          ) : (
+                            <TitleEditContainer>
+                              <TitleText>{title}</TitleText>
+                              <ActionButton onClick={() => setEditingTitle(true)}>
+                                <IconEdit size={16} color="#6b7280" />
+                              </ActionButton>
+                            </TitleEditContainer>
+                          )}
+                          <SubtitleText>Detailed snapshot analysis</SubtitleText>
+                        </TitleContainer>
+                      </DetailContent>
+                    </DetailHeader>
+                  </DetailViewContainer>
                 )}
               </TitleSection>
             </LogoSection>

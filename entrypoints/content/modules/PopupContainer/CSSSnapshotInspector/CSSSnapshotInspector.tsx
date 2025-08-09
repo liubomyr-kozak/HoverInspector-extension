@@ -35,7 +35,6 @@ const StickyHeader = styled.div`
   position: sticky;
   top: 0;
   z-index: 20;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
 const FilterContainer = styled.div`
@@ -109,7 +108,6 @@ const FilterStats = styled.div`
 const ContentArea = styled.div`
   flex: 1;
   min-height: 0;
-  background: linear-gradient(135deg, rgba(249, 250, 251, 0.3) 0%, rgba(238, 242, 255, 0.2) 100%);
 `;
 
 const ContentWrapper = styled.div`
