@@ -1,10 +1,10 @@
 /**
- * Оптимізований головний компонент CSS Snapshot Inspector
+ * Modern CSS Snapshot Inspector with styled-components
  */
 import React, { useMemo, useEffect } from "react";
+import styled from "styled-components";
 import { IconCode } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
-import { Container, Content, EmptyState } from "./CSSSnapshotInspector.styled";
 import { SnapshotManager } from "./SnapshotManager";
 import { SnapshotCompare } from "./components/SnapshotCompare/SnapshotCompare.tsx";
 import { SnapshotViewer } from "./components/SnapshotViewer";
@@ -16,6 +16,185 @@ import { TabNavigation } from "./components/TabNavigation";
 import { FilterBar } from "./components/FilterBar";
 import { ViewMode } from "./constants";
 import { CSSSnapshot } from "./types";
+
+// Styled Components
+const MainContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, 
+    rgba(248, 250, 252, 0.8) 0%, 
+    rgba(249, 250, 251, 0.6) 50%, 
+    rgba(238, 242, 255, 0.4) 100%);
+`;
+
+const StickyHeader = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+`;
+
+const TabNavigationContainer = styled.div`
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  padding: 0 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+`;
+
+const TabList = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const TabButton = styled.button<{ active?: boolean }>`
+  padding: 16px 24px;
+  font-size: 14px;
+  font-weight: ${props => props.active ? '600' : '500'};
+  color: ${props => props.active ? '#4f46e5' : '#6b7280'};
+  background: ${props => props.active ? 'rgba(79, 70, 229, 0.1)' : 'transparent'};
+  border: none;
+  border-bottom: 2px solid ${props => props.active ? '#4f46e5' : 'transparent'};
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: all 200ms ease;
+
+  &:hover {
+    color: ${props => props.active ? '#4f46e5' : '#374151'};
+    background: ${props => props.active ? 'rgba(79, 70, 229, 0.1)' : 'rgba(249, 250, 251, 0.5)'};
+  }
+`;
+
+const FilterContainer = styled.div`
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+`;
+
+const FilterInputWrapper = styled.div`
+  position: relative;
+  max-width: 600px;
+`;
+
+const FilterInput = styled.input`
+  width: 100%;
+  padding: 12px 20px 12px 20px;
+  padding-right: 48px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  color: #1f2937;
+  transition: all 200ms ease;
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+`;
+
+const ClearButton = styled.button`
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  background: none;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+
+  &:hover {
+    color: #6b7280;
+    background: #f3f4f6;
+  }
+`;
+
+const FilterStats = styled.div`
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4338ca;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  display: inline-block;
+`;
+
+const ContentArea = styled.div`
+  flex: 1;
+  min-height: 0;
+  background: linear-gradient(135deg, 
+    rgba(249, 250, 251, 0.3) 0%, 
+    rgba(238, 242, 255, 0.2) 100%);
+`;
+
+const ContentWrapper = styled.div`
+  height: 100%;
+  overflow: auto;
+`;
+
+const EmptyStateContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: linear-gradient(135deg, 
+    rgba(248, 250, 252, 1) 0%, 
+    rgba(243, 244, 246, 1) 100%);
+  border-radius: 16px;
+  padding: 32px;
+  margin: 32px;
+`;
+
+const EmptyStateIcon = styled.div`
+  background: white;
+  border-radius: 50%;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+`;
+
+const EmptyStateTitle = styled.h3`
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+  text-align: center;
+`;
+
+const EmptyStateDescription = styled.p`
+  color: #6b7280;
+  text-align: center;
+  max-width: 400px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+`;
+
+const EmptyStateTip = styled.div`
+  font-size: 14px;
+  color: #9ca3af;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 12px 16px;
+  border-radius: 20px;
+`;
 
 /**
  * Головний компонент CSS Snapshot Inspector з оптимізацією продуктивності
@@ -53,27 +232,40 @@ export const CSSSnapshotInspector: React.FC = () => {
     }
   };
 
-  // Мемоізований рендеринг контенту для оптимізації
+  // Enhanced content rendering with styled components
   const renderContent = useMemo(() => {
     switch (viewMode) {
       case ViewMode.DETAIL:
         return selectedSnapshot ? (
           <SnapshotViewer snapshot={selectedSnapshot} onBack={backToList} />
         ) : (
-          <EmptyState>
-            <IconCode size={48} />
-            <p>No snapshot selected</p>
-          </EmptyState>
+          <EmptyStateContainer>
+            <EmptyStateIcon>
+              <IconCode size={48} color="#9ca3af" />
+            </EmptyStateIcon>
+            <EmptyStateTitle>No Snapshot Selected</EmptyStateTitle>
+            <EmptyStateDescription>
+              Select a snapshot from the list to view its detailed DOM structure and styling information.
+            </EmptyStateDescription>
+          </EmptyStateContainer>
         );
 
       case ViewMode.COMPARE:
         return compareSnapshots.length === 2 ? (
           <SnapshotCompare snapshotA={compareSnapshots[0]} snapshotB={compareSnapshots[1]} onBack={backToList} />
         ) : (
-          <EmptyState>
-            <MdOutlineCompare size={48} />
-            <p>Select two snapshots to compare</p>
-          </EmptyState>
+          <EmptyStateContainer>
+            <EmptyStateIcon>
+              <MdOutlineCompare size={48} color="#9ca3af" />
+            </EmptyStateIcon>
+            <EmptyStateTitle>Ready to Compare</EmptyStateTitle>
+            <EmptyStateDescription>
+              Select exactly two snapshots from the list to perform a detailed comparison analysis.
+            </EmptyStateDescription>
+            <EmptyStateTip>
+              💡 Tip: Use checkboxes next to snapshots to select them for comparison
+            </EmptyStateTip>
+          </EmptyStateContainer>
         );
 
       case ViewMode.LIST:
@@ -97,6 +289,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     backToList,
     handleViewSnapshot,
     deleteSnapshot,
+    exportSnapshot,
     toggleCompare,
   ]);
 
@@ -145,34 +338,68 @@ export const CSSSnapshotInspector: React.FC = () => {
   }, [toggleCompare, startComparison, clearCompare]);
 
   return (
-    <Container>
-      {/* Компонент заголовка */}
-      <Header
-        viewMode={viewMode}
-        isCapturing={isCapturing}
-        compareSnapshotsCount={compareSnapshots.length}
-        onCapture={handleCaptureSnapshot}
-        onImport={importSnapshot}
-        onCompare={handleStartComparison}
-        onBackToList={backToList}
-        error={error}
-      />
+    <MainContainer>
+      {/* Modern Header Component with enhanced background */}
+      <StickyHeader>
+        <Header
+          viewMode={viewMode}
+          isCapturing={isCapturing}
+          compareSnapshotsCount={compareSnapshots.length}
+          onCapture={handleCaptureSnapshot}
+          onImport={importSnapshot}
+          onCompare={handleStartComparison}
+          onBackToList={backToList}
+          error={error}
+        />
+      </StickyHeader>
 
-      {/* Навігація по вкладках */}
-      <TabNavigation
-        viewMode={viewMode}
-        selectedSnapshot={selectedSnapshot}
-        compareSnapshots={compareSnapshots}
-        onTabChange={setViewMode}
-      />
-
-      {/* Панель фільтрів (тільки для списку) */}
+      {/* Enhanced Tab Navigation - only show for LIST view */}
       {viewMode === ViewMode.LIST && (
-        <FilterBar value={filter} onChange={setFilter} placeholder="Filter snapshots by title, URL, or date..." />
+        <TabNavigationContainer>
+          <TabList>
+            <TabButton active>
+              All Snapshots
+            </TabButton>
+            <TabButton>
+              Recent
+            </TabButton>
+            <TabButton>
+              Favorites
+            </TabButton>
+          </TabList>
+        </TabNavigationContainer>
       )}
 
-      {/* Основна область контенту */}
-      <Content>{renderContent}</Content>
-    </Container>
+      {/* Enhanced Filter Bar - only for LIST view */}
+      {viewMode === ViewMode.LIST && (
+        <FilterContainer>
+          <FilterInputWrapper>
+            <FilterInput
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="🔍 Search snapshots by title, URL, or date..."
+            />
+            {filter && (
+              <ClearButton onClick={() => setFilter('')}>
+                ×
+              </ClearButton>
+            )}
+          </FilterInputWrapper>
+          {filteredSnapshots.length !== snapshots.length && (
+            <FilterStats>
+              Showing {filteredSnapshots.length} of {snapshots.length} snapshots
+            </FilterStats>
+          )}
+        </FilterContainer>
+      )}
+
+      {/* Main Content Area with improved background and padding */}
+      <ContentArea>
+        <ContentWrapper>
+          {renderContent}
+        </ContentWrapper>
+      </ContentArea>
+    </MainContainer>
   );
 };
