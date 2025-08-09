@@ -168,36 +168,29 @@ const OptionsButton = styled.button`
 `;
 
 const MetadataGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
 `;
 
 const MetadataItem = styled.div`
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  background: rgba(249, 250, 251, 0.8);
-  border-radius: 6px;
-  border: 1px solid rgba(229, 231, 235, 0.6);
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 4px;
 
   .icon {
     color: #6366f1;
   }
 
-  .content {
-    .label {
-      font-size: 10px;
-      font-weight: 500;
-      color: #6b7280;
-    }
-    .value {
-      font-size: 11px;
-      font-weight: 600;
-      color: #374151;
-    }
+  .value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    line-height: 1;
   }
 `;
 
@@ -362,30 +355,21 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                 </CardHeader>
 
                 <MetadataGrid>
-                  <MetadataItem>
-                    <IconCalendar size={16} className="icon" />
-                    <div className="content">
-                      <div className="label">Captured</div>
-                      <div className="value">{formatDate(snapshot.timestamp)}</div>
-                    </div>
+                  <MetadataItem title={`Captured: ${formatDate(snapshot.timestamp)}`}>
+                    <IconCalendar size={14} className="icon" />
+                    <span className="value">{formatDate(snapshot.timestamp)}</span>
                   </MetadataItem>
 
-                  <MetadataItem>
-                    <IconStack3 size={16} className="icon" />
-                    <div className="content">
-                      <div className="label">Elements</div>
-                      <div className="value">{snapshot.elementCount || 0} items</div>
-                    </div>
+                  <MetadataItem title={`Elements: ${snapshot.elementCount || 0}`}>
+                    <IconStack3 size={14} className="icon" />
+                    <span className="value">{snapshot.elementCount || 0}</span>
                   </MetadataItem>
 
-                  <MetadataItem>
-                    <IconGlobe size={16} className="icon" />
-                    <div className="content">
-                      <div className="label">Page URL</div>
-                      <div className="value" title={snapshot.url}>
-                        {snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}
-                      </div>
-                    </div>
+                  <MetadataItem title={snapshot.url || ''}>
+                    <IconGlobe size={14} className="icon" />
+                    <span className="value">
+                      {snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}
+                    </span>
                   </MetadataItem>
                 </MetadataGrid>
 

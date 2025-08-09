@@ -1,16 +1,18 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { 
-  IconHistory, 
-  IconEdit, 
-  IconCheck, 
-  IconGitCompare, 
+import {
+  IconHistory,
+  IconEdit,
+  IconCheck,
+  IconGitCompare,
   IconArrowLeft,
   IconSparkles,
   IconCalendar,
   IconGlobe,
   IconStack3,
-  IconX
+  IconX,
+  IconCopy,
+  IconExternalLink,
 } from "@tabler/icons-react";
 import { SnapshotViewerProps } from "./types";
 import { CSSSnapshot } from "../../types";
@@ -196,44 +198,92 @@ const SecondaryButton = styled.button`
 `;
 
 const MetadataBar = styled.div`
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 32px;
-  backdrop-filter: blur(8px);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(139, 92, 246, 0.04));
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(6px);
 `;
 
 const MetadataGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 `;
 
 const MetadataItem = styled.div`
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
 
   .icon {
     color: #6366f1;
   }
 
-  .content {
-    .label {
-      font-size: 12px;
-      font-weight: 500;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
-    }
-    
-    .value {
-      font-size: 16px;
-      font-weight: 600;
-      color: #1f2937;
-    }
+  .value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1;
+  }
+`;
+
+const UrlRow = styled.div`
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0; /* enable flex ellipsis */
+  .url-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: #2563eb;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .muted {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+`;
+
+const IconButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms ease;
+
+  &:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 
@@ -246,8 +296,12 @@ const LoadingSpinner = styled.div`
   animation: spin 1s linear infinite;
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 `;
 
@@ -258,6 +312,7 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
   const [isCreatingCurrentSnapshot, setIsCreatingCurrentSnapshot] = useState<boolean>(false);
   const [title, setTitle] = useState<string>(snapshot.title);
   const [editingTitle, setEditingTitle] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   // Function to create a snapshot of the current page and compare with the displayed snapshot
   const handleCompareWithCurrentPage = async () => {
@@ -313,6 +368,32 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
 
   const date = new Date(snapshot.timestamp);
   const domain = new URL(snapshot.url).hostname;
+  const compactDate = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const hasUrl = Boolean(snapshot.url);
+
+  const handleCopyUrl = async () => {
+    if (!hasUrl) return;
+    try {
+      await navigator.clipboard.writeText(snapshot.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch (e) {
+      // Fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = snapshot.url;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    }
+  };
+
+  const handleOpenUrl = () => {
+    if (!hasUrl) return;
+    window.open(snapshot.url, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <ViewerContainer>
@@ -322,20 +403,15 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
             <IconArrowLeft size={18} />
             <span>Back to Snapshots</span>
           </BackButton>
-          
+
           <TitleSection>
             <TitleIcon>
               <IconHistory size={32} color="white" />
             </TitleIcon>
             <TitleContent>
               {editingTitle ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <TitleInput
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    autoFocus
-                  />
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <TitleInput type="text" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
                   <EditButton onClick={() => saveSnapshotTitle(title)}>
                     <IconCheck size={18} color="#10b981" />
                   </EditButton>
@@ -349,7 +425,7 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
                   </EditButton>
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <h1>{title}</h1>
                   <EditButton onClick={() => setEditingTitle(true)}>
                     <IconEdit size={16} color="#6b7280" />
@@ -384,47 +460,39 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
 
       <MetadataBar>
         <MetadataGrid>
-          <MetadataItem>
-            <IconCalendar size={20} className="icon" />
-            <div className="content">
-              <div className="label">Captured</div>
-              <div className="value">
-                {date.toLocaleDateString()} at {date.toLocaleTimeString()}
-              </div>
-            </div>
+          <MetadataItem title={`Captured: ${compactDate}`}>
+            <IconCalendar size={14} className="icon" />
+            <span className="value">{compactDate}</span>
           </MetadataItem>
 
-          <MetadataItem>
-            <IconStack3 size={20} className="icon" />
-            <div className="content">
-              <div className="label">Elements</div>
-              <div className="value">{snapshot.elementCount} items</div>
-            </div>
+          <MetadataItem title={`Elements: ${snapshot.elementCount}`}>
+            <IconStack3 size={14} className="icon" />
+            <span className="value">{snapshot.elementCount}</span>
           </MetadataItem>
 
-          <MetadataItem>
-            <IconGlobe size={20} className="icon" />
-            <div className="content">
-              <div className="label">Domain</div>
-              <div className="value" title={domain}>{domain}</div>
-            </div>
+          <MetadataItem title={domain}>
+            <IconGlobe size={14} className="icon" />
+            <span className="value">{domain}</span>
           </MetadataItem>
         </MetadataGrid>
-        
-        <div style={{ 
-          marginTop: '16px', 
-          padding: '12px 16px', 
-          background: 'rgba(249, 250, 251, 0.6)', 
-          borderRadius: '12px', 
-          border: '1px solid rgba(229, 231, 235, 0.5)' 
-        }}>
-          <div style={{ fontSize: '12px', fontWeight: '500', color: '#6b7280', marginBottom: '4px' }}>
-            Source URL
+        <UrlRow title={snapshot.url || ''}>
+          <IconGlobe size={14} className="icon" />
+          {hasUrl ? (
+            <a href={snapshot.url} target="_blank" rel="noopener noreferrer" className="url-text">
+              {snapshot.url}
+            </a>
+          ) : (
+            <span className="muted">No source URL</span>
+          )}
+          <div className="actions">
+            <IconButton onClick={handleCopyUrl} disabled={!hasUrl} aria-label={copied ? 'Copied' : 'Copy URL'} title={copied ? 'Copied' : 'Copy URL'}>
+              {copied ? <IconCheck size={14} color="#10b981" /> : <IconCopy size={14} color="#6b7280" />}
+            </IconButton>
+            <IconButton onClick={handleOpenUrl} disabled={!hasUrl} aria-label="Open URL" title="Open URL">
+              <IconExternalLink size={14} color="#6b7280" />
+            </IconButton>
           </div>
-          <div style={{ fontSize: '14px', color: '#374151', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-            {snapshot.url}
-          </div>
-        </div>
+        </UrlRow>
       </MetadataBar>
 
       <SnapshotDetails snapshot={snapshot} />
