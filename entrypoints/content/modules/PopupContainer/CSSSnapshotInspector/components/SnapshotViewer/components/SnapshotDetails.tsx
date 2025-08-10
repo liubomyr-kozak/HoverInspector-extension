@@ -86,27 +86,6 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
         </div>
       )}
 
-      {/* Snapshot summary info */}
-      <div
-        style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid #e1e4e8",
-          backgroundColor: "#f6f8fa",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: "12px",
-          color: "#586069",
-        }}
-      >
-        <div>
-          <span style={{ fontWeight: 500 }}>{snapshot.elementCount}</span> elements
-        </div>
-        <div>{new Date(snapshot.timestamp).toLocaleString()}</div>
-        <div>{new URL(snapshot.url).hostname}</div>
-      </div>
-
-      {/* ReactDiffViewer for single snapshot display */}
       <div
         style={{
           flex: 1,

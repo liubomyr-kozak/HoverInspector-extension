@@ -11,6 +11,7 @@ import { SnapshotViewer } from "./components/SnapshotViewer";
 import { useSnapshots, useSnapshotFilter } from "./hooks/useSnapshots";
 import { useViewMode } from "./hooks/useViewMode";
 import { exportSnapshot } from "./utils/snapshotStorage";
+import { createCSSSnapshot } from "./utils/snapshotBuilder";
 import { Header } from "./components/Header";
 import { TabNavigation } from "./components/TabNavigation";
 import { FilterBar } from "./components/FilterBar";
@@ -245,13 +246,40 @@ export const CSSSnapshotInspector: React.FC = () => {
     }
   };
 
+  // Handler for comparing the selected snapshot with the current page
+  const handleCompareWithCurrentPage = async () => {
+    if (!selectedSnapshot) return;
+
+    try {
+      // Create a snapshot of the current page
+      const currentPageSnapshot = await createCSSSnapshot("Current Page");
+
+      // Clear existing comparison snapshots
+      clearCompare();
+
+      // Add both snapshots to comparison
+      toggleCompare(selectedSnapshot);
+      toggleCompare(currentPageSnapshot);
+
+      // Start comparison view
+      startComparison();
+    } catch (error) {
+      console.error("Failed to create current page snapshot:", error);
+      // Handle error state if needed
+    }
+  };
+
   // Enhanced content rendering with styled components
 
   const renderContent = useMemo(() => {
     switch (viewMode) {
       case ViewMode.DETAIL:
         return selectedSnapshot ? (
-          <SnapshotViewer snapshot={selectedSnapshot} onBack={backToList} />
+          <SnapshotViewer
+            snapshot={selectedSnapshot}
+            onBack={backToList}
+            onCompareWithCurrentPage={handleCompareWithCurrentPage}
+          />
         ) : (
           <EmptyStateContainer>
             <EmptyStateIcon>
@@ -375,6 +403,7 @@ export const CSSSnapshotInspector: React.FC = () => {
           onToggleSearch={handleToggleSearch}
           isSearchVisible={isSearchVisible}
           error={error}
+          onCompareWithCurrentPage={handleCompareWithCurrentPage}
         />
       </StickyHeader>
 

@@ -1,16 +1,14 @@
 /**
  * Modern Header component with styled-components
  */
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import styled from "styled-components";
 import {
   IconCamera,
   IconUpload,
-  IconHistory,
   IconExclamationCircle,
   IconSparkles,
   IconAnalyze,
-  IconEye,
   IconArrowLeft,
   IconSearch,
   IconDotsVertical,
@@ -163,28 +161,6 @@ const PrimaryButton = styled.button<{ disabled?: boolean }>`
       transform: scale(0.98);
     }
   `}
-`;
-
-const SecondaryButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: all 200ms ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-  &:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  }
 `;
 
 const CompareButton = styled.button`
@@ -441,8 +417,26 @@ export const Header = memo<HeaderProps>(
     onToggleSearch,
     isSearchVisible = false,
     error,
+    onCompareWithCurrentPage,
   }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
+    const [isCreatingCurrentSnapshot, setIsCreatingCurrentSnapshot] = useState<boolean>(false);
+
+    // // Function to create a snapshot of the current page and compare with the displayed snapshot
+    const handleCompareWithCurrentPage = async () => {
+      if (isCreatingCurrentSnapshot || !onCompareWithCurrentPage) return;
+
+      try {
+        setIsCreatingCurrentSnapshot(true);
+        await onCompareWithCurrentPage();
+      } catch (error) {
+        console.error("Failed to create current page snapshot:", error);
+        alert("Failed to create current page snapshot. Please try again.");
+      } finally {
+        setIsCreatingCurrentSnapshot(false);
+      }
+    };
+
     const handleCapture = async () => {
       try {
         await onCapture();
@@ -638,6 +632,27 @@ export const Header = memo<HeaderProps>(
                   )}
                 </MenuContainer>
               </>
+            )}
+
+            {viewMode === ViewMode.DETAIL && selectedSnapshot && onCompareWithCurrentPage && (
+              <CompareButton
+                onClick={handleCompareWithCurrentPage}
+                disabled={isCreatingCurrentSnapshot}
+                aria-label="Compare with current page"
+                style={{ marginLeft: "auto" }}
+              >
+                {isCreatingCurrentSnapshot ? (
+                  <>
+                    <LoadingSpinner />
+                    <span>Creating snapshot...</span>
+                  </>
+                ) : (
+                  <>
+                    <MdOutlineCompare size={16} />
+                    <span>Compare with Current</span>
+                  </>
+                )}
+              </CompareButton>
             )}
           </ActionsSection>
         </HeaderContent>

@@ -6,6 +6,7 @@ import { CSSSnapshot } from "../../../types";
 export interface SnapshotViewerProps {
   readonly snapshot: CSSSnapshot;
   readonly onBack: () => void;
+  readonly onCompareWithCurrentPage?: () => Promise<void>;
 }
 
 /**

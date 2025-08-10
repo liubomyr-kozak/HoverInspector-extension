@@ -1,24 +1,9 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import {
-  IconHistory,
-  IconEdit,
-  IconCheck,
-  IconGitCompare,
-  IconArrowLeft,
-  IconSparkles,
-  IconCalendar,
-  IconGlobe,
-  IconStack3,
-  IconX,
-  IconCopy,
-  IconExternalLink,
-} from "@tabler/icons-react";
+import { IconCheck, IconCalendar, IconGlobe, IconStack3, IconCopy, IconExternalLink } from "@tabler/icons-react";
 import { SnapshotViewerProps } from "./types";
-import { CSSSnapshot } from "../../types";
 import { saveSnapshots, loadSnapshots } from "../../utils/snapshotStorage";
 import { SnapshotDetails } from "./components/SnapshotDetails";
-import { createCSSSnapshot } from "../../utils/snapshotBuilder";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 
 // Styled Components
@@ -307,63 +292,8 @@ const LoadingSpinner = styled.div`
 /**
  * Modern SnapshotViewer component with enhanced UX
  */
-export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack }) => {
-  const [isCreatingCurrentSnapshot, setIsCreatingCurrentSnapshot] = useState<boolean>(false);
-  const [title, setTitle] = useState<string>(snapshot.title);
-  const [editingTitle, setEditingTitle] = useState<boolean>(false);
+export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack, onCompareWithCurrentPage }) => {
   const [copied, setCopied] = useState<boolean>(false);
-
-  // Function to create a snapshot of the current page and compare with the displayed snapshot
-  const handleCompareWithCurrentPage = async () => {
-    try {
-      setIsCreatingCurrentSnapshot(true);
-
-      // Create a snapshot of the current page
-      const currentPageSnapshot = await createCSSSnapshot("Current Page");
-
-      // Open the comparison view with the current snapshot and the displayed snapshot
-      // We need to use window.postMessage to communicate with the parent component
-      window.postMessage(
-        {
-          type: "COMPARE_SNAPSHOTS",
-          snapshots: [snapshot, currentPageSnapshot],
-        },
-        "*",
-      );
-
-      setIsCreatingCurrentSnapshot(false);
-    } catch (error) {
-      console.error("Failed to create current page snapshot:", error);
-      setIsCreatingCurrentSnapshot(false);
-      alert("Failed to create current page snapshot. Please try again.");
-    }
-  };
-
-  // Function to save updated snapshot title
-  const saveSnapshotTitle = async (newTitle: string) => {
-    try {
-      // Create updated snapshot with new title
-      const updatedSnapshot = {
-        ...snapshot,
-        title: newTitle,
-      };
-
-      // Get all snapshots and update the specific one
-      const allSnapshots = await loadSnapshots();
-      const updatedSnapshots = allSnapshots.map((s) => (s.id === snapshot.id ? updatedSnapshot : s));
-
-      // Save updated snapshots
-      await saveSnapshots(updatedSnapshots);
-
-      // Exit editing mode
-      setEditingTitle(false);
-    } catch (error) {
-      console.error("Failed to update snapshot title:", error);
-      // Revert to original title on error
-      setTitle(snapshot.title);
-      setEditingTitle(false);
-    }
-  };
 
   const date = new Date(snapshot.timestamp);
   const domain = new URL(snapshot.url).hostname;
