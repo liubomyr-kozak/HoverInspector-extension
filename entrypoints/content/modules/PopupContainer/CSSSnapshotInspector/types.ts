@@ -25,7 +25,7 @@ export interface SnapshotNode {
   /** Element path array for hierarchy navigation */
   readonly path: readonly string[];
   /** HTML tag name */
-  readonly tag: string;
+  readonly tagName: string;
   /** HTML id attribute value (if present) */
   readonly id?: string;
   /** XPath variants for element location */

@@ -16,6 +16,8 @@ interface SnapshotDetailsProps {
  * Shows the snapshot tree in unified view with all nodes auto-expanded
  */
 export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, title }) => {
+  console.log("😂😂😂 ::SnapshotDetails -> snapshot", snapshot);
+
   // Build DOM tree from snapshot data
   const tree = useMemo(() => {
     if (!snapshot.root) return null;
@@ -27,15 +29,7 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
       const nodeKey = node.key || `${node.tag}-${path.length}`;
       const currentPath = [...path, nodeKey].join(" > ");
 
-      stylesData[currentPath] = {
-        tagName: node.tag,
-        id: node.id || null,
-        classes: Array.from(node.classes || []),
-        styles: node.styles || {},
-        inlineStyles: node.inlineStyles || {},
-        attributes: node.attributes || {},
-        bounds: node.bounds,
-      };
+      stylesData[currentPath] = { ...node };
 
       // Process children recursively
       for (const child of node.children || []) {

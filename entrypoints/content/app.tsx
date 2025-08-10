@@ -17,6 +17,7 @@ import { ViewportRuler } from "@entrypoints/content/modules/PopupContainer/Viewp
 import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationUserActionsHandler.tsx";
 import NotificationManager from "@entrypoints/content/modules/NotificationManager/NotificationManager.tsx";
 import { TriggerScenarioEvaluator } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/TriggerForm/TriggerScenarioEvaluator.tsx";
+import HighlightOverlay from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlay.tsx";
 
 export const App = ({ shadowRoot }) => {
   const { activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
@@ -32,6 +33,7 @@ export const App = ({ shadowRoot }) => {
           <AppController>
             <NewModalProvider>
               <NotificationManager />
+              <HighlightOverlay />
               <TriggerScenarioEvaluator />
               {/*<FeatureHandler>*/}
               {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}

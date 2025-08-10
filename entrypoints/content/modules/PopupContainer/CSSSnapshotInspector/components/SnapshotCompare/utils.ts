@@ -27,7 +27,7 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
     // Include all elements with valid paths
     if (currentPathKey && currentPathKey.trim() !== "") {
       result[currentPathKey] = {
-        tagName: node.tag,
+        tagName: node.tagName,
         id: node.id || null,
         classes: Array.isArray(node.classes) ? Array.from(node.classes) : [],
         styles: node.styles || {},

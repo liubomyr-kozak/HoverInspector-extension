@@ -1,10 +1,13 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import { DOMTreeNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
 import { CacheProvider } from "@emotion/react";
 import { getEmotionCache } from "./emotionCache";
 import { useEmotionShadowDOMSync } from "./useEmotionShadowDOMSync";
 import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
 import DiffViewer, { LineData } from "@entrypoints/shared/components/react-diff-viewer-continued/src";
+import { setXPath } from "@entrypoints/content/store/highlight/highlightSlice";
+import { AppDispatch } from "@entrypoints/content/store/createStore";
 
 interface ReactDiffViewerProps {
   treeA: DOMTreeNode;
@@ -75,6 +78,38 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
   return result;
 };
 
+// Utility function to convert CSS selector path to XPath
+const cssPathToXPath = (cssPath: string): string => {
+  if (!cssPath) return '';
+  
+  // Split by > and clean up
+  const segments = cssPath.split('>').map(s => s.trim()).filter(Boolean);
+  
+  // Convert each segment to XPath format
+  const xpathSegments = segments.map(segment => {
+    // Handle cases like "div#id.class1.class2[attr=value]"
+    let tagName = segment.replace(/[#.\[].*/g, ''); // Extract just the tag name
+    
+    if (!tagName) {
+      tagName = '*'; // If no tag name, use wildcard
+    }
+    
+    return `//${tagName.toLowerCase()}`;
+  });
+  
+  // If we have segments, join them; otherwise use the original path as-is
+  if (xpathSegments.length > 0) {
+    // For now, just use the last segment as a simple XPath
+    // This is a basic implementation - could be enhanced later
+    const lastSegment = segments[segments.length - 1];
+    let tagName = lastSegment.replace(/[#.\[].*/g, '');
+    if (!tagName) tagName = '*';
+    return `//${tagName.toLowerCase()}`;
+  }
+  
+  return cssPath; // Fallback to original path
+};
+
 /**
  * Converts a DOM tree node to LineData format for diffing with metadata support
  */
@@ -122,6 +157,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
         ...node,
         nodeType: "self-closing",
         level,
+        xpath: node.path, // Add xpath from the path field
       },
     });
     return lines;
@@ -139,6 +175,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
       classes: node.classes,
       attributes: node.attributes,
       inlineStyles: node.inlineStyles,
+      xpath: node.path, // Add xpath from the path field
     },
   });
 
@@ -157,6 +194,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
       nodeType: "closing",
       tagName: node.tagName,
       level,
+      xpath: node.path, // Add xpath from the path field
     },
   });
 
@@ -200,16 +238,32 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   // Sync emotion styles to shadow DOM
   useEmotionShadowDOMSync();
 
-  const handleLineClick = (lineId: string, metadata: any) => {
-    // event.target is the DOM element that was clicked
+  const dispatch = useDispatch<AppDispatch>();
 
+  const handleLineClick = (lineId: string, metadata: any) => {
     console.log("🌟🌟🌟 ::handleLineClick -> lineId", lineId);
     console.log("🌟🌟🌟 ::handleLineClick -> metadata", metadata);
 
-    debugger;
+    // Extract xpath from metadata if available
+    if (metadata && metadata.xpath) {
+      // If xpath is a string, convert CSS path to XPath
+      let xpathToUse = typeof metadata.xpath === 'string' ? cssPathToXPath(metadata.xpath) : null;
+      
+      // If xpath is an object, try to get the best available path
+      if (!xpathToUse && typeof metadata.xpath === 'object') {
+        const rawPath = metadata.xpath.optimized || metadata.xpath.absolute || metadata.xpath.withId || metadata.xpath.withClasses || metadata.xpath.withAttributes;
+        xpathToUse = rawPath ? cssPathToXPath(rawPath) : null;
+      }
 
-    // console.log("Clicked node:", clickedNode);
-    // console.log("Line:", lineId);
+      if (xpathToUse) {
+        console.log("Setting XPath for highlight:", xpathToUse);
+        dispatch(setXPath(xpathToUse));
+      } else {
+        console.warn("No valid XPath found in metadata:", metadata.xpath);
+      }
+    } else {
+      console.warn("No metadata or xpath found for clicked line");
+    }
   };
 
   if (!cache || !shadowContainer) {

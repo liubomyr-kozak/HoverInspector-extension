@@ -34,8 +34,6 @@ export interface DOMTreeNode {
   children: DOMTreeNode[];
   /** Tree level (0 = root) */
   level: number;
-  /** Original element data for reference */
-  originalData?: any;
 }
 
 export interface ElementStyleData {
@@ -72,9 +70,6 @@ export function buildDOMTree(
 ): DOMTreeNode {
   const rootNode = createRootNode();
   const sortedPaths = getSortedElementPaths(Object.keys(stylesData));
-
-  // console.log("Building DOM tree with paths:", sortedPaths);
-  // console.log("Styles data keys:", Object.keys(stylesData));
 
   sortedPaths.forEach((path) => {
     const elementData = stylesData[path];
@@ -129,22 +124,19 @@ function insertElementIntoTree(
 
   // console.log("Creating element node for path:", elementPath, "with data:", elementData);
   // Create the element node
+
+  debugger;
+
   const elementNode: DOMTreeNode = {
     ...elementData,
     path: elementPath,
     name: elementName,
     tagName: elementData.tagName.toLowerCase(),
     id: cleanElementId(elementData.id),
-    classes: elementData.classes || [],
-    styles: elementData.styles || {},
-    inlineStyles: elementData.inlineStyles || {},
-    attributes: elementData.attributes,
     bounds: positionInfo || elementData.bounds,
-    text: elementData.text,
     children: [],
     level: pathSegments.length,
-    originalData: elementData,
-  };
+  } as any;
 
   parentNode.children.push(elementNode);
 }
@@ -262,7 +254,6 @@ function createParentNode(segment: string, path: string, level: number): DOMTree
     text: undefined,
     children: [],
     level,
-    originalData: undefined,
   };
 }
 
