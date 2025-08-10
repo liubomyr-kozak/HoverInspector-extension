@@ -2,10 +2,22 @@
  * Оптимізовані хуки для управління CSS знімками
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { CSSSnapshot, SnapshotOptions } from "../types";
 import { PERFORMANCE_LIMITS } from "../constants";
 import { createCSSSnapshot } from "../utils/snapshotBuilder";
 import { loadSnapshots, saveSnapshots, deleteSnapshot as deleteSnapshotUtil } from "../utils/snapshotStorage";
+import { RootState } from "@entrypoints/content/store/createStore";
+import {
+  selectSnapshots,
+  selectSnapshotLoading,
+  selectSnapshotError,
+  setSnapshots,
+  addSnapshot as addSnapshotAction,
+  removeSnapshot,
+  setLoading,
+  setError,
+} from "@entrypoints/content/store/snapshot/snapshotSlice";
 
 interface UseSnapshotsReturn {
   snapshots: readonly CSSSnapshot[];
@@ -25,11 +37,14 @@ interface UseSnapshotsReturn {
  * Основний хук для управління знімками з оптимізацією продуктивності
  */
 export const useSnapshots = (): UseSnapshotsReturn => {
-  const [snapshots, setSnapshots] = useState<CSSSnapshot[]>([]);
+  const dispatch = useDispatch();
+  const snapshots = useSelector(selectSnapshots);
+  const isLoadingRedux = useSelector(selectSnapshotLoading);
+  const errorRedux = useSelector(selectSnapshotError);
+  
   const [isCapturing, setIsCapturing] = useState(false);
   const [selectedSnapshot, setSelectedSnapshot] = useState<CSSSnapshot | null>(null);
   const [compareSnapshots, setCompareSnapshots] = useState<CSSSnapshot[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   // Завантажуємо знімки при ініціалізації
   useEffect(() => {
@@ -37,16 +52,22 @@ export const useSnapshots = (): UseSnapshotsReturn => {
 
     const loadInitialSnapshots = async () => {
       try {
+        dispatch(setLoading(true));
         const loadedSnapshots = await loadSnapshots();
 
         if (mounted) {
           // Обмежуємо кількість знімків у пам'яті
           const limitedSnapshots = loadedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
-          setSnapshots(limitedSnapshots);
+          dispatch(setSnapshots(limitedSnapshots));
+          dispatch(setError(null));
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : "Failed to load snapshots");
+          dispatch(setError(err instanceof Error ? err.message : "Failed to load snapshots"));
+        }
+      } finally {
+        if (mounted) {
+          dispatch(setLoading(false));
         }
       }
     };
@@ -68,7 +89,6 @@ export const useSnapshots = (): UseSnapshotsReturn => {
       setIsCapturing(true);
       setError(null);
 
-      debugger;
       try {
         const snapshot = await createCSSSnapshot(title, {
           maxElements: PERFORMANCE_LIMITS.MAX_ELEMENTS,
@@ -106,7 +126,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
       try {
         await deleteSnapshotUtil(id);
 
-        setSnapshots((prev) => prev.filter((snapshot) => snapshot.id !== id));
+        dispatch(removeSnapshot(id));
 
         // Скидаємо вибраний знімок якщо він був видалений
         if (selectedSnapshot?.id === id) {
@@ -116,14 +136,14 @@ export const useSnapshots = (): UseSnapshotsReturn => {
         // Видаляємо зі списку порівняння
         setCompareSnapshots((prev) => prev.filter((snapshot) => snapshot.id !== id));
 
-        setError(null);
+        dispatch(setError(null));
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to delete snapshot";
-        setError(errorMessage);
+        dispatch(setError(errorMessage));
         throw new Error(errorMessage);
       }
     },
-    [selectedSnapshot?.id],
+    [selectedSnapshot?.id, dispatch],
   );
 
   // Імпорт знімка з файлу
@@ -209,6 +229,30 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     setError(null);
   }, []);
 
+  // Додавання знімка напряму в стейт (для element selection)
+  const addSnapshot = useCallback(
+    async (snapshot: CSSSnapshot) => {
+      try {
+        const updatedSnapshots = [...snapshots, snapshot];
+        const limitedSnapshots = updatedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
+
+        try {
+          await saveSnapshots(limitedSnapshots);
+        } catch (saveError) {
+          console.warn("Failed to save added snapshot:", saveError);
+        }
+
+        // Redux automatically updates via saveSnapshots dispatch
+        dispatch(setError(null));
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to add snapshot";
+        dispatch(setError(errorMessage));
+        throw new Error(errorMessage);
+      }
+    },
+    [snapshots, dispatch],
+  );
+
   return {
     snapshots,
     isCapturing,
@@ -217,10 +261,11 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     captureSnapshot,
     deleteSnapshot,
     importSnapshot,
+    addSnapshot,
     selectSnapshot,
     toggleCompare,
     clearCompare,
-    error,
+    error: errorRedux,
   };
 };
 

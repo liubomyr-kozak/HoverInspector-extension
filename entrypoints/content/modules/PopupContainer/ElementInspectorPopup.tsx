@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Popover, Switch } from "antd";
-import { IconInfoCircle, IconSettings } from "@tabler/icons-react";
+import { IconInfoCircle, IconSettings, IconPointer } from "@tabler/icons-react";
+import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon";
 
 import HoverSelectedInfo from "@entrypoints/content/modules/SettingsIconBox/HoverSelectedInfo.tsx";
 import { onUpdateEventPreventDefaultWatcher } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
-import { BetaBadge } from "@entrypoints/shared/components/BetaBadge.tsx";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
+import {
+  PortalModalHeader,
+  HeaderPortalId,
+  PortalModalHeaderButtons,
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons";
 
 import { setIsSingleSelect, setPreventDefault, setShowAllBorders } from "../../store/app/app.slice";
 import PopupSettingModel from "@entrypoints/core/Models/PopupSettingModel.ts";
+import { INSPECTOR, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
 export const ElementInspectorPopup = () => {
   const dispatch = useDispatch();
@@ -98,25 +104,27 @@ export const ElementInspectorPopup = () => {
 
   return (
     <div className="w-full">
-      <div className="flex items-center mb-2">
-        <FeatureTitle className="mr-2 flex w-full">
-          hover inspector
-          <BetaBadge>Beta</BetaBadge>
-          <Popover
-            content={settingsContent}
-            zIndex={1150}
-            placement="topRight"
-            trigger="hover"
-            // @ts-ignore
-            getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
-          >
-            <span className={`cursor-pointer text-gray-500 hover:text-gray-700 transition-colors ml-auto`}>
-              <IconSettings size={18} />
-            </span>
-          </Popover>
-        </FeatureTitle>
-      </div>
+      <PortalModalHeader portalId={HeaderPortalId.ELEMENT_INSPECTOR}>
+        <FeatureTitle>
+          <FeatureIcon icon={INSPECTOR.icon} isBetta />
+          {INSPECTOR.title}
 
+          <PortalModalHeaderButtons>
+            <Popover
+              content={settingsContent}
+              zIndex={1150}
+              placement="topRight"
+              trigger="hover"
+              // @ts-ignore
+              getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
+            >
+              <span className={`cursor-pointer text-gray-500 hover:text-gray-700 transition-colors ml-auto`}>
+                <IconSettings size={18} />
+              </span>
+            </Popover>
+          </PortalModalHeaderButtons>
+        </FeatureTitle>
+      </PortalModalHeader>
       {/* Display active toggles directly in the UI */}
       <div className="mb-4">
         {preventDefault &&
@@ -152,7 +160,6 @@ export const ElementInspectorPopup = () => {
             },
           )}
       </div>
-
       <HoverSelectedInfo />
     </div>
   );

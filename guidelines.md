@@ -1,0 +1,3 @@
+- descriptive interface, types, enums, etc. in separate files
+- when you have a lot of types, group them in a folder
+- when you use switch statements, check if make sense to use emuns

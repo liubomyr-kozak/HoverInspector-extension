@@ -13,12 +13,15 @@ export const appSettingsInitial = {
   preventDefault: false,
   isSingleSelect: false,
   showAllBorders: false,
-  featurePopupIsMinimized: false,
   selectedElementType: "selectedElement",
   viewType: "code",
   launcher: {
-    iconOrder: [] as string[],
+    iconOrder: ["inspector"] as string[],
     activeIcons: ["inspector"] as string[],
+    minimizedPosition: {
+      x: 20,
+      y: 20,
+    },
   },
   user: {
     status: USER_STATUS_NEW,
@@ -27,5 +30,7 @@ export const appSettingsInitial = {
     hiddenUntil: 0, // Timestamp until which the sponsor message should be hidden (0 means not hidden)
   },
   colorHistory: [] as string[], // Store history of selected colors
-  version: "1.0.13",
+  visibleFeatures: [] as string[], // Store visible features list
+  minimizedFeatures: [] as string[], // Store features that should use minimized launcher
+  version: "1.0.14",
 };

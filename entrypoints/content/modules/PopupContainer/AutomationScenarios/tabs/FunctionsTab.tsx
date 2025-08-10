@@ -27,6 +27,10 @@ import {
   PortalId,
   ScenarioPortalFooterButtons,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalFooterButtons.tsx";
+import {
+  HeaderPortalId,
+  PortalModalHeader,
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { AutomationFooterContainer } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/styles.ts";
 
 /**
@@ -74,7 +78,7 @@ const FunctionsTab: React.FC = () => {
           code: values.code,
         };
 
-        saveFunction(functionToSave, activeFunctionId);
+        saveFunction(functionToSave, activeFunctionId as string);
       })
       .catch((error) => {
         console.error("Validation failed:", error);
@@ -95,6 +99,11 @@ const FunctionsTab: React.FC = () => {
         <>
           {isEditingFunction ? (
             <div>
+              {/* Inject header for function editing */}
+              <PortalModalHeader portalId={HeaderPortalId.FUNCTIONS_TAB}>
+                {activeFunctionId ? "Edit Function" : "Add Function"}
+              </PortalModalHeader>
+
               <AddFunctionForm form={functionForm} currentFunction={currentFunction} />
 
               <ScenarioPortalFooterButtons portalId={PortalId.FUNCTIONS_TAB}>

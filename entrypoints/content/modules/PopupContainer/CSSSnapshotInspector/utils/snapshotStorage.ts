@@ -4,6 +4,8 @@
 import { CSSSnapshot } from '../types';
 import ExtensionStorageManager from '@entrypoints/core/services/storage/ExtensionStorageManager';
 import { PERFORMANCE_LIMITS } from '../constants';
+import { store } from '@entrypoints/content/store/createStore';
+import { setSnapshots } from '@entrypoints/content/store/snapshot/snapshotSlice';
 
 /**
  * Завантажує всі знімки зі сховища
@@ -58,6 +60,9 @@ export const saveSnapshots = async (snapshots: CSSSnapshot[]): Promise<void> => 
         }
       }
     }
+    
+    // Оновлюємо Redux стейт після успішного збереження
+    store.dispatch(setSnapshots(optimizedSnapshots));
   } catch (error) {
     console.error('Failed to save snapshots:', error);
     throw error;

@@ -35,6 +35,7 @@ interface ExecutionHistoryViewerProps {
   executionHistory: ExecutionHistoryMap;
   onRefresh: () => void;
   onDelete: (id: string) => void;
+  onDeleteAll: (ids: string[]) => void;
   onExport: (entry: ExecutionHistoryEntry) => void;
   onExportAll: (entries: ExecutionHistoryEntry[]) => void;
   scenarios: Record<string, { title: string }>;
@@ -47,6 +48,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
   executionHistory,
   onRefresh,
   onDelete,
+  onDeleteAll,
   onExport,
   onExportAll,
   scenarios,
@@ -151,6 +153,20 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
 
     onExportAll(selectedEntries);
     message.success(`${selectedEntries.length} execution history entries exported`);
+  };
+
+  // Delete selected execution history entries
+  const deleteSelectedEntries = () => {
+    const selectedIds = selectedRowKeys.filter((key) => typeof key === "string") as string[];
+
+    if (selectedIds.length === 0) {
+      message.warning("No entries selected");
+      return;
+    }
+
+    onDeleteAll(selectedIds);
+    setSelectedRowKeys([]); // Clear selection after delete
+    message.success(`${selectedIds.length} execution history entries deleted`);
   };
 
   // Format timestamp to a readable format
@@ -338,14 +354,32 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
             : `${filteredEntries.length} entries`}
         </Text>
 
-        <Button
-          type="primary"
-          icon={<ExportOutlined />}
-          onClick={exportSelectedEntries}
-          disabled={selectedRowKeys.length === 0}
-        >
-          Export Selected
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            icon={<ExportOutlined />}
+            onClick={exportSelectedEntries}
+            disabled={selectedRowKeys.length === 0}
+          >
+            Export Selected
+          </Button>
+          <Popconfirm
+            title="Delete selected entries?"
+            description={`Are you sure you want to delete ${selectedRowKeys.length} execution history entries? This action cannot be undone.`}
+            onConfirm={deleteSelectedEntries}
+            okText="Yes"
+            cancelText="No"
+            disabled={selectedRowKeys.length === 0}
+            getPopupContainer={() =>
+              // @ts-ignore
+              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+            }
+          >
+            <Button danger icon={<DeleteOutlined />} disabled={selectedRowKeys.length === 0}>
+              Delete Selected
+            </Button>
+          </Popconfirm>
+        </Space>
       </div>
 
       <Table

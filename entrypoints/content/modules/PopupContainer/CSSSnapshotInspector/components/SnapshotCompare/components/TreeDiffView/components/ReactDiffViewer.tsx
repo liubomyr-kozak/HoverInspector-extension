@@ -4,9 +4,8 @@ import { DOMTreeNode } from "@entrypoints/content/modules/PopupContainer/CSSSnap
 import { CacheProvider } from "@emotion/react";
 import { getEmotionCache } from "./emotionCache";
 import { useEmotionShadowDOMSync } from "./useEmotionShadowDOMSync";
-import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
-import DiffViewer, { LineData } from "@entrypoints/shared/components/react-diff-viewer-continued/src";
-import { setXPath } from "@entrypoints/content/store/highlight/highlightSlice";
+import DiffViewer from "@entrypoints/shared/components/DiffViewerWrapper";
+import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { openElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 import { AppDispatch } from "@entrypoints/content/store/createStore";
 import {
@@ -14,6 +13,11 @@ import {
   convertToElementSideData,
 } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/styleComparison";
 import { createElementDiff } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/simpleDiff";
+
+interface LineData {
+  text: string;
+  metadata?: any;
+}
 
 interface ReactDiffViewerProps {
   treeA: DOMTreeNode;
@@ -218,10 +222,59 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   hideLineNumbers = false,
   displaySingleLineNumbers = false,
 }) => {
+  const highlightManager = useHighlightOverlay();
   const oldValue = useMemo(() => convertTreeToStringV2(treeA), [treeA]);
   const newValue = useMemo(() => convertTreeToStringV2(treeB), [treeB]);
 
+  // OPTIMIZATION: Pre-compute all element style comparisons once
+  const preComputedStyleComparisons = useMemo(() => {
+    const startTime = performance.now();
+    const styleCache = new Map<string, any>();
+
+    // Helper to collect all nodes with their paths from a tree
+    const collectAllNodes = (node: DOMTreeNode, collection = new Map<string, DOMTreeNode>()) => {
+      if (node.pathString) {
+        collection.set(node.pathString, node);
+      }
+      node.children?.forEach((child) => collectAllNodes(child, collection));
+      return collection;
+    };
+
+    // Collect all nodes from both trees
+    const nodesA = collectAllNodes(treeA);
+    const nodesB = collectAllNodes(treeB);
+
+    // Pre-compute style differences for all elements that exist in either tree
+    const allPaths = new Set([...nodesA.keys(), ...nodesB.keys()]);
+
+    allPaths.forEach((path) => {
+      const leftNode = nodesA.get(path) || null;
+      const rightNode = nodesB.get(path) || null;
+
+      if (leftNode || rightNode) {
+        // Pre-compute the element diff for this path
+        const styleDiff = createElementDiff(leftNode, rightNode, false);
+
+        // Cache the complete comparison data
+        styleCache.set(path, {
+          styleDiff,
+          leftNode,
+          rightNode,
+          showIdentity: false,
+          showBounds: false,
+          changedAttrs: [],
+          changedStyles: Object.keys(styleDiff.leftData),
+        });
+      }
+    });
+
+    const endTime = performance.now();
+
+    return styleCache;
+  }, [treeA, treeB]);
+
   // Helper: find counterpart node in other tree by pathString if available
+  // NOTE: This is kept for backward compatibility but should rarely be used now
   const findCounterpartByPath = (node: any, root: DOMTreeNode): DOMTreeNode | null => {
     if (!node?.pathString) return null;
     // simple DFS search by pathString
@@ -273,8 +326,6 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
     return lines.join("\n");
   };
 
-  // console.log("🌟🌟🌟 ::ReactDiffViewer -> oldValue", oldValue, newValue);
-
   // Get shadow DOM container
   const shadowContainer = useMemo(() => {
     const shadowRoot = document.querySelector("hover-inspector")?.shadowRoot as ShadowRoot;
@@ -317,43 +368,36 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
         variants?.withAttributes ||
         undefined;
 
-      // Prepare A/B compare content for Element Details popup
-      const leftNode = findCounterpartByPath(metadata, treeA);
-      const rightNode = findCounterpartByPath(metadata, treeB);
-
-      // Pre-calculate what sections have changes to avoid runtime computation in component
+      // OPTIMIZATION: Use pre-computed style comparisons instead of expensive DFS + on-demand computation
       let compareData: any = undefined;
-      if (leftNode || rightNode) {
-        // Use the simple style diff utility - temporarily show ALL styles for debugging
-        const styleDiff = createElementDiff(leftNode, rightNode, false); // Show all styles temporarily for debugging
+      const pathString = metadata.pathString;
 
-        console.log("handleLineClick - nodes found:", {
-          leftNode: leftNode
-            ? {
-                tagName: leftNode.tagName,
-                id: leftNode.id,
-                stylesCount: Object.keys(leftNode.styles || {}).length,
-              }
-            : null,
-          rightNode: rightNode
-            ? {
-                tagName: rightNode.tagName,
-                id: rightNode.id,
-                stylesCount: Object.keys(rightNode.styles || {}).length,
-              }
-            : null,
-        });
+      if (pathString && preComputedStyleComparisons.has(pathString)) {
+        // O(1) lookup from pre-computed cache - much faster than DFS search!
+        const cachedComparison = preComputedStyleComparisons.get(pathString);
 
-        compareData = {
-          styleDiff, // Simple diff data for ElementDiff component
-          // Legacy properties for backward compatibility
-          leftNode,
-          rightNode,
-          showIdentity: false, // We're focusing only on styles now
-          showBounds: false, // We're focusing only on styles now
-          changedAttrs: [],
-          changedStyles: Object.keys(styleDiff.leftData), // All keys are changed since we filter for differences
-        };
+        compareData = cachedComparison;
+      } else {
+        // Fallback to old method if pathString is not available (backward compatibility)
+        console.warn("⚠️ Falling back to DFS search - pathString not found:", pathString);
+        const leftNode = findCounterpartByPath(metadata, treeA);
+        const rightNode = findCounterpartByPath(metadata, treeB);
+
+        if (leftNode || rightNode) {
+          // Use the simple style diff utility - temporarily show ALL styles for debugging
+          const styleDiff = createElementDiff(leftNode, rightNode, false); // Show all styles temporarily for debugging
+
+          compareData = {
+            styleDiff, // Simple diff data for ElementDiff component
+            // Legacy properties for backward compatibility
+            leftNode,
+            rightNode,
+            showIdentity: false, // We're focusing only on styles now
+            showBounds: false, // We're focusing only on styles now
+            changedAttrs: [],
+            changedStyles: Object.keys(styleDiff.leftData), // All keys are changed since we filter for differences
+          };
+        }
       }
 
       dispatch(
@@ -402,8 +446,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
         metadata.xpath.withAttributes;
 
       if (xpathToUse) {
-        console.log("Setting XPath for highlight:", xpathToUse);
-        dispatch(setXPath(xpathToUse));
+        highlightManager.startHighlight(xpathToUse);
       } else {
         console.warn("No valid XPath found in metadata:", metadata.xpath);
       }
@@ -416,62 +459,59 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
     return <div>Loading diff viewer...</div>;
   }
 
+  // Create a mapping of line numbers to metadata for click handling
+  const [lineMetadataMap, setLineMetadataMap] = useState<Map<string, any>>(new Map());
+
+  useEffect(() => {
+    const metadataMap = new Map<string, any>();
+
+    // Map old/left side lines
+    oldValue.forEach((lineData, index) => {
+      const lineNumber = index + 1;
+      const lineId = `L${lineNumber}`;
+      if (lineData.metadata) {
+        metadataMap.set(lineId, lineData.metadata);
+      }
+    });
+
+    // Map new/right side lines
+    newValue.forEach((lineData, index) => {
+      const lineNumber = index + 1;
+      const lineId = `R${lineNumber}`;
+      if (lineData.metadata) {
+        metadataMap.set(lineId, lineData.metadata);
+      }
+    });
+
+    setLineMetadataMap(metadataMap);
+  }, [oldValue, newValue]);
+
+  const handleDiffViewerLineClick = (lineId: string, metadata: any, event: React.MouseEvent<HTMLElement>) => {
+    // Get metadata from our mapping
+    const lineMetadata = lineMetadataMap.get(lineId);
+    if (lineMetadata) {
+      handleLineClick(lineId, lineMetadata);
+    } else {
+      console.warn("No metadata found for line:", lineId);
+    }
+  };
+
   return (
-    <CacheProvider value={cache}>
+    // <CacheProvider value={cache}>
+    <div>
+      {/* Now using the implemented onLineClick functionality */}
       <DiffViewer
-        oldValue={oldValue}
-        newValue={newValue}
+        oldValue={oldValue.map((line) => line.text).join("\n")}
+        newValue={newValue.map((line) => line.text).join("\n")}
         splitView={splitView}
         useDarkTheme={false}
-        compareMethod={DiffMethod.JSON}
-        onLineClick={handleLineClick}
         leftTitle={splitView ? "Snapshot A" : undefined}
         rightTitle={splitView ? "Snapshot B" : undefined}
-        container={shadowContainer}
         showDiffOnly={showDiffOnly}
-        extraLinesSurroundingDiff={expandAll ? 999999 : 3}
         hideLineNumbers={hideLineNumbers}
-        displaySingleLineNumbers={displaySingleLineNumbers}
-        styles={{
-          contentText: {
-            fontFamily: "monospace",
-            fontSize: "14px",
-            lineHeight: "1.5",
-          },
-          // Force hide line numbers with CSS when hideLineNumbers is true
-          ...(hideLineNumbers && {
-            lineNumber: {
-              display: "none !important",
-              width: "0 !important",
-              maxWidth: "0 !important",
-            },
-            gutter: {
-              display: "none !important",
-              width: "0 !important",
-              maxWidth: "0 !important",
-            },
-            codeFoldGutter: {
-              display: "none !important",
-              width: "0 !important",
-              maxWidth: "0 !important",
-            },
-            emptyGutter: {
-              display: "none !important",
-              width: "0 !important",
-              maxWidth: "0 !important",
-            },
-            gutterBackground: {
-              display: "none !important",
-            },
-            addedGutterBackground: {
-              display: "none !important",
-            },
-            removedGutterBackground: {
-              display: "none !important",
-            },
-          }),
-        }}
+        onLineClick={handleDiffViewerLineClick}
       />
-    </CacheProvider>
+    </div>
+    // </CacheProvider>
   );
 };

@@ -1,5 +1,5 @@
 import { call, put, select, takeLatest, takeEvery, take } from "redux-saga/effects";
-import { automationActions } from "./automation.slice.ts";
+import { automationActions, ScenarioStatus } from "./automation.slice.ts";
 import { sagaEnhancer } from "@entrypoints/core/libs/sagaEnhancer.ts";
 import { eventChannel, END } from "redux-saga";
 import {
@@ -25,7 +25,7 @@ import {
   executeSteps,
   stopExecution,
 } from "../../modules/PopupContainer/AutomationScenarios/utils/stepExecutor.saga.ts";
-import ScriptInjectionService from "@entrypoints/core/services/ScriptInjectionService.ts";
+import { recordUrlNavigation } from "../../modules/PopupContainer/AutomationScenarios/utils/recordingUtils.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
@@ -35,6 +35,9 @@ export const loadScenariosWatcher = sagaEnhancer(function* loadScenariosWatcherE
     yield put(automationActions.setLoading(true));
     const scenarios = yield call(getAllScenariosFromLocalStorage);
     yield put(automationActions.setScenarios(scenarios));
+
+    // Automatically restore editing state after scenarios are loaded
+    yield put({ type: restoreEditingStateWatcher.actionType });
   } catch (error) {
     console.error("Error loading scenarios:", error);
     // Handle error
@@ -61,8 +64,6 @@ export const loadFunctionsWatcher = sagaEnhancer(function* loadFunctionsWatcherE
       });
 
       const data = yield response.json();
-
-      console.log("😜😜😜 ::loadFunctionsWatcherEnhancer -> data", data);
 
       injectScript({
         downloadUrl: data.downloadUrl,
@@ -151,6 +152,14 @@ export const saveScenarioWatcher = sagaEnhancer(function* saveScenarioWatcherEnh
         yield put(automationActions.updateScenario({ id: scenarioId, scenario }));
       }
       yield put(automationActions.resetScenarioForm());
+
+      // Clear the editing state when scenario is successfully saved
+      yield put(clearEditingStateWatcher.getPayload());
+
+      // Also clear the Redux state for current steps and status
+      yield put(automationActions.setCurrentSteps([]));
+      yield put(automationActions.setStatus(ScenarioStatus.IDLE));
+      yield put(automationActions.setActiveScenarioId(null));
     } else {
       // Handle error
       console.error("Failed to save scenario");
@@ -391,6 +400,42 @@ export const deleteExecutionHistoryWatcher = sagaEnhancer(function* deleteExecut
   }
 });
 
+// Delete Multiple Execution History
+export const deleteMultipleExecutionHistoryWatcher = sagaEnhancer(
+  function* deleteMultipleExecutionHistoryWatcherFn(action: { payload: string[] }) {
+    try {
+      const ids = action.payload;
+      const failedDeletes = [];
+
+      // Delete each entry from storage
+      for (const id of ids) {
+        try {
+          const success = yield call(removeExecutionHistoryFromLocalStorage, id);
+
+          if (!success) {
+            failedDeletes.push(id);
+          }
+        } catch (error) {
+          console.error(`Error deleting execution history entry ${id}:`, error);
+          failedDeletes.push(id);
+        }
+      }
+
+      // Update Redux store with successfully deleted entries
+      const successfulDeletes = ids.filter((id) => !failedDeletes.includes(id));
+      if (successfulDeletes.length > 0) {
+        yield put(automationActions.removeMultipleExecutionHistory(successfulDeletes));
+      }
+
+      if (failedDeletes.length > 0) {
+        console.error(`Failed to delete ${failedDeletes.length} execution history entries`);
+      }
+    } catch (error) {
+      console.error("Error deleting multiple execution history entries:", error);
+    }
+  },
+);
+
 // Create New Recording
 export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecordingFn() {
   try {
@@ -409,11 +454,11 @@ export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecording
       title,
       description: "",
       data: [],
+      repeat: 1,
       tags: [],
       category: "recording",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       executionSpeed: 1, // Default to medium speed (1x)
+      enableNavigation: false, // Default to false (checkbox unchecked)
     };
 
     // Save to storage
@@ -424,14 +469,20 @@ export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecording
     yield put(automationActions.addScenario({ id: scenarioId, scenario: newScenario }));
 
     // Clear any previously recorded steps
-    yield put(automationActions.setRecordedSteps([]));
+    yield put(automationActions.setCurrentSteps([]));
+
+    // Add initial URL navigation step
+    const initialUrl = window.location.href;
+    const initialUrlStep = recordUrlNavigation(initialUrl);
+    yield put(automationActions.addCurrentStep(initialUrlStep));
 
     yield put(automationActions.setActiveScenarioId(scenarioId));
 
-    // Set recording state to true
-    yield put(automationActions.setRecording(true));
+    // Set status to recording
+    yield put(automationActions.setStatus(ScenarioStatus.RECORDING));
 
-    console.log("New recording created:", title);
+    // Persist the recording state to ensure it survives page refresh
+    yield put({ type: persistEditingStateWatcher.actionType });
   } catch (error) {
     console.error("Error creating new recording:", error);
     // Handle error
@@ -441,16 +492,17 @@ export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecording
 // Stop Recording
 export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcherFn() {
   try {
-    // Set recording state to false
-    yield put(automationActions.setRecording(false));
+    // Set status to idle
+    yield put(automationActions.setStatus(ScenarioStatus.IDLE));
 
-    // Get the recorded steps
-    const recordedSteps = yield select((state) => state.automation.recordedSteps);
+    // Clear the recording state from storage
+    yield put({ type: clearEditingStateWatcher.actionType });
 
-    if (recordedSteps.length > 0) {
-      console.log(`Recording stopped with ${recordedSteps.length} steps`);
+    // Get the current steps
+    const currentSteps = yield select((state) => state.automation.currentSteps);
+
+    if (currentSteps.length > 0) {
     } else {
-      console.log("Recording stopped with no steps");
     }
   } catch (error) {
     console.error("Error stopping recording:", error);
@@ -478,8 +530,6 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
 
     // If this scenario is already executing, treat this as a stop action
     if (executing && activeScenarioId === id) {
-      console.log(`Stopping scenario: ${scenario.title}`);
-
       // Set execution status to CANCELLED before resetting state
       yield put(automationActions.setExecutionStatus(ExecutionStatus.CANCELLED));
 
@@ -493,8 +543,6 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
 
     // If any scenario is executing, stop it first
     if (executing) {
-      console.log(`Stopping previous scenario before starting a new one`);
-
       // Set execution status to CANCELLED before resetting state
       yield put(automationActions.setExecutionStatus(ExecutionStatus.CANCELLED));
 
@@ -529,21 +577,10 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
       yield put(automationActions.setCurrentStepIndex(startFromStep - 1));
     }
 
-    console.log(
-      `Playing scenario: ${scenario.title}${
-        singleStep
-          ? ` (running only step ${startFromStep + 1})`
-          : startFromStep > 0
-            ? ` (starting from step ${startFromStep + 1})`
-            : ""
-      }`,
-    );
-
     // Execute steps directly within the playScenarioWatcher
     // Get the necessary state for execution
     const functions = yield select((state) => state.automation.functions);
     const executionSpeed = yield select((state) => state.automation.executionSpeed);
-    const keepScenarioExpanded = yield select((state) => state.automation.keepScenarioExpanded);
 
     // Check if we should proceed with execution
     let shouldExecute = true;
@@ -564,17 +601,25 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
 
       // Set initial status for all steps
       for (let idx = 0; idx < totalSteps; idx++) {
-        // Steps before the starting point are considered successful
-        if (idx < startFromStep) {
-          yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.SUCCESS }));
-        }
-        // The current step is running
-        else if (idx === startFromStep) {
-          yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.RUNNING }));
-        }
-        // Future steps are pending
-        else {
-          yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.PENDING }));
+        // In single step mode, only set status for the target step
+        if (singleStep) {
+          if (idx === startFromStep) {
+            yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.RUNNING }));
+          }
+        } else {
+          // For normal execution, set status for all steps
+          // Steps before the starting point are considered successful
+          if (idx < startFromStep) {
+            yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.SUCCESS }));
+          }
+          // The current step is running
+          else if (idx === startFromStep) {
+            yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.RUNNING }));
+          }
+          // Future steps are pending
+          else {
+            yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.PENDING }));
+          }
         }
       }
 
@@ -633,13 +678,31 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
       );
 
       // Update the execution status based on the execution log
-      yield put(automationActions.setExecutionStatus(executionLog.status));
+      // However, preserve the PAUSED status if it was explicitly set by user
+      const currentExecutionStatus = yield select((state) => state.automation.executionStatus);
+      const isPausedByUser = currentExecutionStatus === ExecutionStatus.PAUSED;
+
+      // Only update the execution status if it's not already paused by user
+      if (!isPausedByUser) {
+        yield put(automationActions.setExecutionStatus(executionLog.status));
+      } else {
+        // If user paused, ensure the execution log also reflects the paused state
+        if (executionLog.status !== ExecutionStatus.PAUSED) {
+          executionLog.status = ExecutionStatus.PAUSED;
+        }
+      }
 
       // Handle different execution outcomes
       if (executionLog.status === ExecutionStatus.SUCCESS) {
-        // If execution completed successfully, mark all steps as successful
-        for (let idx = 0; idx < totalSteps; idx++) {
-          yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.SUCCESS }));
+        // If execution completed successfully
+        if (singleStep) {
+          // In single step mode, only mark the executed step as successful
+          yield put(automationActions.setStepStatus({ index: startFromStep, status: ExecutionStatus.SUCCESS }));
+        } else {
+          // In normal execution, mark all steps as successful
+          for (let idx = 0; idx < totalSteps; idx++) {
+            yield put(automationActions.setStepStatus({ index: idx, status: ExecutionStatus.SUCCESS }));
+          }
         }
       } else if (executionLog.status === ExecutionStatus.ERROR) {
         // If there was an error, set the error message and update step status
@@ -689,19 +752,28 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
       // Save the execution history entry
       yield put(saveExecutionHistoryWatcher.getPayload({ id: executionHistoryId, entry: historyEntry }));
 
-      // Only reset execution state when complete if the execution was not successful
-      // This prevents automatically closing successfully completed scripts
-      if (executionLog.status !== ExecutionStatus.SUCCESS) {
+      // Handle different execution outcomes for state reset
+      if (executionLog.status === ExecutionStatus.SUCCESS) {
+        // Reset execution state after successful completion to allow immediate re-execution
+        yield put(automationActions.resetExecutionState());
+        // Clear active scenario ID to prevent the next click from being treated as a stop action
+        yield put(automationActions.setActiveScenarioId(null));
+      } else if (executionLog.status === ExecutionStatus.PAUSED) {
+        // For paused scenarios, don't reset execution state but ensure they remain expanded
+        // Keep the scenario expanded so users can see the current state and resume
+        if (activeScenarioId) {
+          yield put(automationActions.setScenarioExpanded({ id: activeScenarioId, expanded: true }));
+        }
+      } else {
+        // For error, cancelled, and other non-success states
         yield put(automationActions.setExecuting(false));
         yield put(automationActions.setCurrentStepIndex(-1));
         yield put(automationActions.setPendingSteps([]));
 
-        // Don't collapse the scenario if user wants to keep it expanded
-        if (!keepScenarioExpanded && activeScenarioId) {
+        // Don't collapse scenarios that were manually stopped (CANCELLED status)
+        if (activeScenarioId && executionLog.status !== ExecutionStatus.CANCELLED) {
           yield put(automationActions.setScenarioExpanded({ id: activeScenarioId, expanded: false }));
         }
-        // Reset the keepScenarioExpanded flag for next execution
-        yield put(automationActions.setKeepScenarioExpanded(false));
       }
     }
   } catch (error) {
@@ -714,5 +786,75 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
 
     // Reset execution state
     yield put(automationActions.resetExecutionState());
+  }
+});
+
+const SCENARIO_EDITING_STATE_KEY = "automation_scenario_editing_state";
+
+/**
+ * Saga to persist the current editing state to storage
+ */
+export const persistEditingStateWatcher = sagaEnhancer(function* persistEditingStateWatcherFn() {
+  try {
+    const status = yield select((state) => state.automation.status);
+
+    // Persist state if either editing or recording
+    if (status !== ScenarioStatus.IDLE) {
+      const activeScenarioId = yield select((state) => state.automation.activeScenarioId);
+      const currentSteps = yield select((state) => state.automation.currentSteps);
+
+      yield call(ExtensionStorageManager.saveAutomationScenario, {
+        id: SCENARIO_EDITING_STATE_KEY,
+        scenario: {
+          status: status,
+          activeScenarioId,
+          currentSteps,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Error saving scenario editing state:", error);
+  }
+});
+
+/**
+ * Saga to restore editing state from storage
+ */
+export const restoreEditingStateWatcher = sagaEnhancer(function* restoreEditingStateWatcherFn() {
+  try {
+    const editingState = yield call(ExtensionStorageManager.getAutomationScenario, SCENARIO_EDITING_STATE_KEY);
+
+    if (editingState && editingState.status && editingState.status !== ScenarioStatus.IDLE) {
+      // Restore the unified status
+      yield put(automationActions.setStatus(editingState.status));
+
+      if (editingState.activeScenarioId) {
+        yield put(automationActions.setActiveScenarioId(editingState.activeScenarioId));
+      }
+
+      if (editingState.currentSteps && editingState.currentSteps.length > 0) {
+        yield put(automationActions.setCurrentSteps(editingState.currentSteps));
+      }
+    }
+  } catch (error) {
+    console.error("Error restoring scenario editing state:", error);
+  }
+});
+
+/**
+ * Saga to clear the editing state from storage
+ */
+export const clearEditingStateWatcher = sagaEnhancer(function* clearEditingStateWatcherFn() {
+  try {
+    yield call(ExtensionStorageManager.saveAutomationScenario, {
+      id: SCENARIO_EDITING_STATE_KEY,
+      scenario: {
+        status: ScenarioStatus.IDLE,
+        activeScenarioId: null,
+        currentSteps: [],
+      },
+    });
+  } catch (error) {
+    console.error("Error clearing scenario editing state:", error);
   }
 });

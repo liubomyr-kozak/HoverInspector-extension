@@ -19,7 +19,7 @@ export const useFunctionActions = () => {
    * @param id The ID of the function to edit
    * @param form The form instance to set values on
    */
-  const editFunction = (id: string, form?: Form<any>) => {
+  const editFunction = (id: string, form?: any) => {
     const func = functions[id];
 
     if (!func) {

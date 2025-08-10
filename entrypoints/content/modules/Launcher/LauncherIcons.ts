@@ -6,6 +6,7 @@ import {
   IconRuler,
   IconTransformFilled,
   IconCode,
+  IconBrush,
 } from "@tabler/icons-react";
 
 export const INSPECTOR = {
@@ -42,8 +43,8 @@ export const CONVERT_TOOLS = {
 
 export const ANALYZE_PAGE = {
   id: "analyzePage",
-  title: "Analyze Page UI",
-  icon: IconLayoutDashboard,
+  title: "Color Palette & Typography",
+  icon: IconBrush,
   activatable: true,
   multipleView: false,
 };

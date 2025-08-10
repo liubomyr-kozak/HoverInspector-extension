@@ -7,8 +7,6 @@ const requestProcessing = (data, callback, localExecFn) => {
     chrome.runtime.sendMessage(data, callback);
   }
 
-  console.log("👍👍👍 ::requestProcessing -> process.env.NODE_ENV", process.env.NODE_ENV);
-
   if (isProduction() || isPostProd()) {
     // додав для випадку коли використовується всторому коді, який не має доступу до chrome.runtime
     if (!chrome?.runtime?.id) return;

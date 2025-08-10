@@ -1,9 +1,8 @@
-export const ZINDEX_RULER_WRAPPER_LABEL = 10001
-export const ZINDEX_RULER_WRAPPER = 10000
+export const ZINDEX_RULER_WRAPPER_LABEL = 101;
+export const ZINDEX_RULER_WRAPPER = 100;
 
-export const ZINDEX_INSPECTOR_ELEMENT_TOOLTIP = 1200
-export const ZINDEX_LAUNCHER_CONTAINER = 1100
-export const ZINDEX_MODAL = 1000
-export const ZINDEX_POPUP_WRAPPER = 999// should be less then ZINDEX_MODAL
-export const ZINDEX_HOVERED_ELEMENT_BORDER = 998// should be less then ZINDEX_MODAL
-
+export const ZINDEX_INSPECTOR_ELEMENT_TOOLTIP = 1200;
+export const ZINDEX_LAUNCHER_CONTAINER = 1100;
+export const ZINDEX_MODAL = 1000;
+export const ZINDEX_POPUP_WRAPPER = 999; // should be less then ZINDEX_MODAL
+export const ZINDEX_HOVERED_ELEMENT_BORDER = 998; // should be less then ZINDEX_MODAL

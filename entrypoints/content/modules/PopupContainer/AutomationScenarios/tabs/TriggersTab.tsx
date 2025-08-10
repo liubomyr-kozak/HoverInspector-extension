@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Button, Form, message, Spin } from "antd";
+import React, { useEffect, useRef } from "react";
+import { Button, message, Spin } from "antd";
 import { IconPlus } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -49,8 +49,8 @@ const TriggersTab: React.FC = () => {
   // Custom hooks
   const { editTrigger, deleteTrigger, saveTrigger, toggleTriggerEnabled } = useTriggerActions();
 
-  // Form instance
-  const [triggerForm] = Form.useForm();
+  // Ref to store current form data
+  const currentFormDataRef = useRef<TriggerConfig | null>(null);
 
   // Load triggers and scenarios when component mounts
   useEffect(() => {
@@ -65,28 +65,28 @@ const TriggersTab: React.FC = () => {
   };
 
   const handleEditTrigger = (id: string) => {
-    editTrigger(id, triggerForm);
+    editTrigger(id);
+  };
+
+  const handleFormSubmit = (formData: TriggerConfig) => {
+    try {
+      saveTrigger(formData, activeTriggerID);
+    } catch (error) {
+      console.error("Save failed:", error);
+      message.error("Failed to save trigger. Please try again.");
+    }
+  };
+
+  const handleFormChange = (formData: TriggerConfig) => {
+    currentFormDataRef.current = formData;
   };
 
   const handleSaveTrigger = () => {
-    triggerForm
-      .validateFields()
-      .then((values) => {
-        const triggerToSave: TriggerConfig = {
-          title: values.title,
-          description: values.description,
-          scenarioId: values.scenarioId,
-          enabled: values.enabled,
-          type: values.type,
-          condition: values.condition,
-        };
-
-        saveTrigger(triggerToSave, activeTriggerID);
-      })
-      .catch((error) => {
-        console.error("Validation failed:", error);
-        message.error("Please fill in all required fields.");
-      });
+    if (currentFormDataRef.current) {
+      handleFormSubmit(currentFormDataRef.current);
+    } else {
+      message.error("Please fill in all required fields.");
+    }
   };
 
   const handleTriggerCancel = () => {
@@ -114,7 +114,12 @@ const TriggersTab: React.FC = () => {
                 </div>
               </div>
 
-              <TriggerForm form={triggerForm} currentTrigger={currentTrigger} scenarios={scenarios} />
+              <TriggerForm 
+                onFormChange={handleFormChange}
+                onSubmit={handleFormSubmit}
+                currentTrigger={currentTrigger} 
+                scenarios={scenarios} 
+              />
             </div>
           ) : (
             <>

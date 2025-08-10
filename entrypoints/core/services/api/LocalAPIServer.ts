@@ -31,7 +31,6 @@ class LocalAPIServer {
         },
       });
 
-      debugger;
 
       if (!response.ok) {
         console.error(`Failed to generate code: ${response.statusText}`);
@@ -79,7 +78,6 @@ class LocalAPIServer {
     const settings = await this.getServerSettings();
     if (!settings || !settings.syncFunctions) return;
 
-    debugger;
 
     try {
       const response = await fetch(`${settings.serverUrl}/api/functions`, {

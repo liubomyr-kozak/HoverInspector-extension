@@ -751,6 +751,7 @@ export const saveExecutionHistoryToLocalStorage = async (
     // The 'ex_hist_' prefix will help distinguish execution history entries from scenarios in the UI
     const key = id.startsWith("ex_hist_") ? id : `ex_hist_${id}`;
 
+
     const result = await ExtensionStorageManager.saveExecutionHistory({
       id: key,
       executionHistory: executionHistoryEntry,
@@ -772,6 +773,8 @@ export const removeExecutionHistoryFromLocalStorage = async (key: string): Promi
   try {
     // Extract the ID from the key (remove the 'ex_hist_' prefix)
     const id = key.replace(/^ex_hist_/, "");
+
+
     const result = await ExtensionStorageManager.removeAutomationScenario(id);
     return result.success;
   } catch (e) {

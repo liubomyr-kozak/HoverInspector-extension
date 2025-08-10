@@ -60,7 +60,6 @@ export function buildDOMTree(
 
   sortTreeChildren(rootNode);
 
-  console.log("????????? Built DOM tree:", structuredClone(rootNode));
 
   return structuredClone(rootNode);
 }
@@ -104,7 +103,6 @@ function insertElementIntoTree(
   // Navigate to the correct parent, creating intermediate nodes as needed
   const parentNode = findOrCreateParentNodes(rootNode, pathSegments, elementPath);
 
-  // console.log("Creating element node for path:", elementPath, "with data:", elementData);
   // Create the element node
 
   const elementNode: DOMTreeNode = {

@@ -1,19 +1,17 @@
-
-.zToolBoxBoxHover {
+.hover-inspector-box-box-hover {
   background: #4ba5ff;
   box-shadow: 0 0 0 0.3px #4ba5ff;
   position: fixed;
   z-index: 2;
 }
 
-
-.zToolBoxBoxSelected {
+.hover-inspector-box-box-selected {
   background: #ff5e2f;
   box-shadow: 0 0 0 0.3px #ff5e2f;
   position: fixed;
   z-index: 1;
 
-  &.zTool_left:after {
+  &.hover-inspector-left:after {
     position: fixed;
     top: 0;
     height: 100%;
@@ -24,7 +22,7 @@
     content: "";
   }
 
-  &.zTool_right:after {
+  &.hover-inspector-right:after {
     position: fixed;
     top: 0;
     height: 100%;
@@ -35,7 +33,7 @@
     content: "";
   }
 
-  &.zTool_top:after {
+  &.hover-inspector-top:after {
     position: fixed;
     left: 0;
     top: initial;
@@ -47,7 +45,7 @@
     content: "";
   }
 
-  &.zTool_bottom:after {
+  &.hover-inspector-bottom:after {
     position: fixed;
     left: 0;
     top: initial;
@@ -60,25 +58,25 @@
   }
 }
 
-[class^="zToolDistanceLine"] {
+[class^="hover-inspector-distance-line"] {
   position: fixed;
   border: 0.1px solid #ff5e2f;
   box-shadow: 0 0 0 0.3px #ff5e2f;
   z-index: 2;
 }
 
-[class^="zTool"] {
+[class^="hover-inspector"] {
   font-family: Helvetica, Arial, sans-serif;
   font-size: 15px;
   line-height: normal;
 }
 
-[class^="zTool"] * {
+[class^="hover-inspector"] * {
   font-family: Helvetica, Arial, sans-serif;
   font-size: 15px !important;
 }
 
-.zToolDistanceLineLabel {
+.hover-inspector-distance-line-label {
   border: none;
   top: 50%;
   left: 50%;
@@ -93,14 +91,14 @@
   z-index: 1;
 }
 
-.zToolInfoBoxContainer {
+.hover-inspector-info-box-container {
   position: fixed;
   width: 100%;
   left: 0;
   z-index: 2;
 }
 
-.zToolInfoBox {
+.hover-inspector-info-box {
   padding: 0 5px;
   line-height: 30px;
   box-sizing: border-box;
@@ -108,7 +106,7 @@
   color: white;
 }
 
-.zToolInfoBoxValueLabel {
+.hover-inspector-info-box-value-label {
   color: rgb(255, 254, 254);
   padding: 0 4px;
   border-radius: 2px;
@@ -117,16 +115,16 @@
   font-family: Helvetica, Arial, sans-serif;
 }
 
-//.zToolBoxLabel,
-.zToolBoxBoxHover,
-.zToolBoxBoxSelected,
-.zToolTooltipPadding,
-.zToolTooltipMargin,
-[class^="zToolDistanceLine"] {
-  pointer-events: none
+//.hover-inspector-box-label,
+.hover-inspector-box-box-hover,
+.hover-inspector-box-box-selected,
+.hover-inspector-tooltip-padding,
+.hover-inspector-tooltip-margin,
+[class^="hover-inspector-distance-line"] {
+  pointer-events: none;
 }
 
-.zToolTooltipPadding {
+.hover-inspector-tooltip-padding {
   background: rgba(52, 152, 219, 0.2);
   position: fixed;
   z-index: 2;
@@ -135,7 +133,7 @@
   border-style: solid;
 }
 
-.zToolTooltipMargin {
+.hover-inspector-tooltip-margin {
   position: fixed;
   z-index: 1;
   box-sizing: border-box;
@@ -143,7 +141,7 @@
   border-style: solid;
 }
 
-.zTool {
+.hover-inspector {
   & > * {
     box-sizing: initial;
   }

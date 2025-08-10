@@ -1,11 +1,15 @@
 import { useDispatch, useSelector } from "react-redux";
 import { FormInstance } from "antd";
-import { Scenario } from "../types";
-import { automationActions, selectScenarios } from "@entrypoints/content/store/automation/automation.slice.ts";
+import {
+  automationActions,
+  ScenarioStatus,
+  selectScenarios,
+} from "@entrypoints/content/store/automation/automation.slice.ts";
 import {
   deleteScenarioWatcher,
   playScenarioWatcher,
   saveScenarioWatcher,
+  persistEditingStateWatcher,
 } from "@entrypoints/content/store/automation/automation.saga.action";
 
 /**
@@ -27,7 +31,7 @@ export const useScenarioActions = () => {
 
   /**
    * Run only a single step from a scenario
-   * @param id The ID of the scenario 
+   * @param id The ID of the scenario
    * @param stepIndex The index of the specific step to run
    */
   const runSingleStep = (id: string, stepIndex: number) => {
@@ -49,12 +53,15 @@ export const useScenarioActions = () => {
 
     dispatch(automationActions.setCurrentSteps(scenario.data));
     dispatch(automationActions.setActiveScenarioId(id));
-    dispatch(automationActions.setIsEditingScenario(true));
+    dispatch(automationActions.setStatus(ScenarioStatus.EDITING));
 
     // Set execution speed from scenario if available
     if (scenario.executionSpeed !== undefined) {
       dispatch(automationActions.setExecutionSpeed(scenario.executionSpeed));
     }
+
+    // Persist the editing state to storage to ensure it survives page refreshes
+    dispatch(persistEditingStateWatcher.getPayload());
 
     if (form) {
       form.setFieldsValue({
@@ -62,7 +69,7 @@ export const useScenarioActions = () => {
         description: scenario.description || "",
         category: scenario.category || undefined,
         tags: scenario.tags || [],
-        repeat: scenario.repeat || 0,
+        repeat: 1,
       });
     }
   };

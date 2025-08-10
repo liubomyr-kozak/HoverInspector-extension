@@ -7,6 +7,7 @@ export enum PortalId {
   SCENARIOS_TAB = "scenarios-tab",
   RECORDING = "recording",
   STEP_EDIT = "step-edit",
+  INITIAL = "INITIAL",
 }
 
 export const ScenarioPortalFooterButtons: React.FC<{
@@ -20,12 +21,12 @@ export const ScenarioPortalFooterButtons: React.FC<{
     const shadowRoot = document.querySelector("hover-inspector")?.shadowRoot as ShadowRoot | null;
 
     if (shadowRoot) {
-      const container = shadowRoot.querySelector("#popup-buttons-container") as HTMLElement | null;
+      const container = shadowRoot.querySelector("#hover-inspector-popup-footer-container") as HTMLElement | null;
 
       if (container) {
         // Check if a portal with this ID already exists
         const existingPortal = container.querySelector(`[data-portal-id="${portalId}"]`) as HTMLElement | null;
-        
+
         if (existingPortal) {
           // If it exists, use it instead of creating a new one
           setPortalContainer(existingPortal);
@@ -33,7 +34,7 @@ export const ScenarioPortalFooterButtons: React.FC<{
             // Don't remove the element in cleanup, just set state to null
           };
         }
-        
+
         // Create a new portal element if it doesn't exist
         const portalElement = document.createElement("div");
         portalElement.dataset.portalId = portalId; // Для ідентифікації

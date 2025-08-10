@@ -2,27 +2,33 @@
  * Utility functions for recording automation scenarios
  */
 import { ScenarioStep } from "../types";
-import { generateXPath, generateXPaths } from "./xpathUtils";
+import { generateXPath, generateXPaths, validateAndImproveXPaths } from "./xpathUtils";
 
 /**
- * Creates a step object for a user action
+ * Creates a step object for a user action with XPath validation and auto-correction
  * 
  * @param type The type of action (click, input, select, hover)
+ * @param element The DOM element for validation
  * @param xpath The primary XPath of the element
  * @param alternativeXpaths Array of alternative XPaths for the element
  * @param value Optional value for input and select actions
- * @returns A ScenarioStep object
+ * @returns A ScenarioStep object with validated XPath and auto-update flag
  */
 function createStepObject(
   type: string, 
+  element: Element,
   xpath: string, 
   alternativeXpaths: string[] = [],
   value?: string
 ): ScenarioStep {
+  // Validate and improve XPaths for better uniqueness
+  const validatedXPaths = validateAndImproveXPaths(element, xpath, alternativeXpaths);
+  
   const step: ScenarioStep = {
     type,
-    xpath,
-    alternativeXpaths,
+    xpath: validatedXPaths.primaryXPath,
+    alternativeXpaths: validatedXPaths.alternativeXpaths,
+    xpathAutoUpdated: validatedXPaths.xpathAutoUpdated,
   };
   
   if (value !== undefined) {
@@ -42,7 +48,7 @@ export function recordClick(element: Element): ScenarioStep | null {
   if (!element) return null;
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("click", primaryXPath, alternativeXpaths);
+  return createStepObject("click", element, primaryXPath, alternativeXpaths);
 }
 
 /**
@@ -56,7 +62,7 @@ export function recordInput(element: Element, value: string): ScenarioStep | nul
   if (!element) return null;
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("input", primaryXPath, alternativeXpaths, value);
+  return createStepObject("input", element, primaryXPath, alternativeXpaths, value);
 }
 
 /**
@@ -70,7 +76,7 @@ export function recordSelect(element: Element, value: string): ScenarioStep | nu
   if (!element) return null;
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("select", primaryXPath, alternativeXpaths, value);
+  return createStepObject("select", element, primaryXPath, alternativeXpaths, value);
 }
 
 /**
@@ -133,5 +139,18 @@ export function recordHover(element: Element): ScenarioStep | null {
   }
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("hover", primaryXPath, alternativeXpaths);
+  return createStepObject("hover", element, primaryXPath, alternativeXpaths);
+}
+
+/**
+ * Creates a step object for a URL navigation action
+ *
+ * @param url The URL that was navigated to
+ * @returns A ScenarioStep object for URL navigation
+ */
+export function recordUrlNavigation(url: string): ScenarioStep {
+  return {
+    type: "navigate",
+    value: url,
+  };
 }

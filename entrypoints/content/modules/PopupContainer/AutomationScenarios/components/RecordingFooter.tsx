@@ -1,6 +1,6 @@
 import React from "react";
-import { Button, Form, Popover } from "antd";
-import { IconPlayerPause, IconPlayerPlay, IconDeviceFloppy, IconBolt } from "@tabler/icons-react";
+import { Button } from "antd";
+import { IconPlayerPause, IconPlayerPlay, IconDeviceFloppy } from "@tabler/icons-react";
 import { AutomationFooterContainer } from "../styles.ts";
 
 interface RecordingFooterProps {

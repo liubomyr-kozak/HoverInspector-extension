@@ -129,6 +129,177 @@ export function generateXPath(element: Element): string {
 }
 
 /**
+ * Validates if an XPath is unique (matches only one element)
+ * 
+ * @param xpath The XPath to validate
+ * @returns Object containing validation result and element count
+ */
+export function validateXPathUniqueness(xpath: string): { isUnique: boolean, elementCount: number, elements: Element[] } {
+  try {
+    const result = document.evaluate(
+      xpath,
+      document,
+      null,
+      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+      null
+    );
+    
+    const elements: Element[] = [];
+    for (let i = 0; i < result.snapshotLength; i++) {
+      const element = result.snapshotItem(i) as Element;
+      if (element) {
+        elements.push(element);
+      }
+    }
+    
+    return {
+      isUnique: elements.length === 1,
+      elementCount: elements.length,
+      elements
+    };
+  } catch (error) {
+    console.error('Error validating XPath:', error);
+    return { isUnique: false, elementCount: 0, elements: [] };
+  }
+}
+
+/**
+ * Generates improved XPaths for an element when the primary XPath is not unique
+ * 
+ * @param element The target element
+ * @param nonUniqueXPath The XPath that matches multiple elements
+ * @returns Array of more specific XPaths
+ */
+export function generateImprovedXPaths(element: Element, nonUniqueXPath: string): string[] {
+  if (!element) return [];
+  
+  const improvedXPaths: string[] = [];
+  
+  // Strategy 1: Add position/index to make XPath more specific
+  try {
+    const validation = validateXPathUniqueness(nonUniqueXPath);
+    if (!validation.isUnique && validation.elements.length > 1) {
+      // Find the position of our target element in the matched elements
+      const targetIndex = validation.elements.findIndex(el => el === element);
+      if (targetIndex !== -1) {
+        const positionBasedXPath = `(${nonUniqueXPath})[${targetIndex + 1}]`;
+        improvedXPaths.push(positionBasedXPath);
+      }
+    }
+  } catch (error) {
+    console.error('Error generating position-based XPath:', error);
+  }
+  
+  // Strategy 2: Add more specific attributes from the element
+  const attributes = element.attributes;
+  for (let i = 0; i < attributes.length; i++) {
+    const attr = attributes[i];
+    if (attr.name !== 'class' && attr.name !== 'style' && !attr.name.startsWith('data-')) {
+      const specificXPath = `//${element.tagName.toLowerCase()}[@${attr.name}="${attr.value}"]`;
+      const validation = validateXPathUniqueness(specificXPath);
+      if (validation.isUnique) {
+        improvedXPaths.push(specificXPath);
+      }
+    }
+  }
+  
+  // Strategy 3: Combine multiple attributes for higher specificity
+  if (element.id && element.classList.length > 0) {
+    const combinedXPath = `//${element.tagName.toLowerCase()}[@id="${element.id}" and contains(@class,"${element.classList[0]}")]`;
+    const validation = validateXPathUniqueness(combinedXPath);
+    if (validation.isUnique) {
+      improvedXPaths.push(combinedXPath);
+    }
+  }
+  
+  // Strategy 4: Use parent context for more specificity
+  if (element.parentElement) {
+    const parentTag = element.parentElement.tagName.toLowerCase();
+    let parentIdentifier = '';
+    
+    if (element.parentElement.id) {
+      parentIdentifier = `[@id="${element.parentElement.id}"]`;
+    } else if (element.parentElement.classList.length > 0) {
+      parentIdentifier = `[contains(@class,"${element.parentElement.classList[0]}")]`;
+    }
+    
+    if (parentIdentifier) {
+      const parentContextXPath = `//${parentTag}${parentIdentifier}/${element.tagName.toLowerCase()}`;
+      const validation = validateXPathUniqueness(parentContextXPath);
+      if (validation.isUnique) {
+        improvedXPaths.push(parentContextXPath);
+      }
+    }
+  }
+  
+  // Strategy 5: Use text content for uniqueness if available
+  const textContent = element.textContent?.trim();
+  if (textContent && textContent.length > 0 && textContent.length < 50) {
+    const textBasedXPath = `//${element.tagName.toLowerCase()}[normalize-space(text())="${textContent}"]`;
+    const validation = validateXPathUniqueness(textBasedXPath);
+    if (validation.isUnique) {
+      improvedXPaths.push(textBasedXPath);
+    }
+  }
+  
+  return improvedXPaths;
+}
+
+/**
+ * Validates and improves XPaths for better uniqueness
+ * 
+ * @param element The target element
+ * @param primaryXPath The primary XPath to validate
+ * @param alternativeXpaths Array of alternative XPaths
+ * @returns Object containing validated XPath data and auto-update flag
+ */
+export function validateAndImproveXPaths(element: Element, primaryXPath: string, alternativeXpaths: string[] = []): {
+  primaryXPath: string;
+  alternativeXpaths: string[];
+  xpathAutoUpdated: boolean;
+} {
+  if (!element || !primaryXPath) {
+    return { primaryXPath, alternativeXpaths, xpathAutoUpdated: false };
+  }
+  
+  const validation = validateXPathUniqueness(primaryXPath);
+  
+  // If primary XPath is unique, no changes needed
+  if (validation.isUnique) {
+    return { primaryXPath, alternativeXpaths, xpathAutoUpdated: false };
+  }
+  
+  console.warn(`Primary XPath matches ${validation.elementCount} elements, attempting to improve uniqueness`);
+  
+  // Try to find a unique XPath from existing alternatives
+  for (const altXPath of alternativeXpaths) {
+    const altValidation = validateXPathUniqueness(altXPath);
+    if (altValidation.isUnique) {
+      return {
+        primaryXPath: altXPath,
+        alternativeXpaths: [primaryXPath, ...alternativeXpaths.filter(x => x !== altXPath)],
+        xpathAutoUpdated: true
+      };
+    }
+  }
+  
+  // Generate improved XPaths
+  const improvedXPaths = generateImprovedXPaths(element, primaryXPath);
+  
+  if (improvedXPaths.length > 0) {
+    return {
+      primaryXPath: improvedXPaths[0],
+      alternativeXpaths: [primaryXPath, ...alternativeXpaths, ...improvedXPaths.slice(1)],
+      xpathAutoUpdated: true
+    };
+  }
+  
+  // If we can't improve it, keep original but mark that we tried
+  console.warn(`Could not generate better XPath for element, keeping original non-unique XPath`);
+  return { primaryXPath, alternativeXpaths, xpathAutoUpdated: false };
+}
+
+/**
  * Gets an element by its XPath
  * If the element has alternative XPaths stored, it will try those if the primary XPath fails
  * 
@@ -157,7 +328,6 @@ export function getElementByXPath(xpath: string, alternativeXpaths?: string[]): 
   
   // If primary XPath failed and we have alternatives, try them
   if (alternativeXpaths && alternativeXpaths.length > 0) {
-    console.log(`Primary XPath failed, trying ${alternativeXpaths.length} alternative XPaths`);
     
     for (const altXPath of alternativeXpaths) {
       try {
@@ -171,7 +341,6 @@ export function getElementByXPath(xpath: string, alternativeXpaths?: string[]): 
         
         const element = result.singleNodeValue as Element;
         if (element) {
-          console.log(`Found element using alternative XPath: ${altXPath}`);
           return element;
         }
       } catch (error) {

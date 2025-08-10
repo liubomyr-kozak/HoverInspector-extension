@@ -35,7 +35,6 @@ function createInlineScript(content: string, filename: string, downloadUrl: stri
   // script.src = chrome.runtime.getURL(downloadUrl); // або будь-який локальний шлях
   // document.documentElement.appendChild(script);
 
-  debugger;
 
   const script = document.createElement("script");
   script.src = downloadUrl;
@@ -65,7 +64,6 @@ class ScriptInjectionService {
     const { tabId, serverUrl = this.DEFAULT_SERVER_URL } = options;
 
     try {
-      debugger;
 
       const codeResponse = await this.generateCode(serverUrl);
       const targetTabId = await this.getTargetTab(tabId);
@@ -123,8 +121,6 @@ class ScriptInjectionService {
     const tabsAll = await browser.tabs?.query({});
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
 
-    console.log("🚀🚀🚀 ScriptInjectionService::getTargetTab -> tabsAll", tabsAll);
-    console.log("😀😀😀 ScriptInjectionService::getTargetTab -> tabs", tabs);
     if (tabs.length === 0) throw new Error("No active tab found");
 
     return tabs[0].id!;
@@ -144,7 +140,6 @@ class ScriptInjectionService {
     const scriptContent = await this.fetchScriptContent(codeResponse.downloadUrl);
 
     // browser.tabs.executeScript({
-    //   code: `!!!!!! console.log('location:', window.location.href);`,
     // });
 
     await sendMessage(DEV_SCRIPT_INJECTED, codeResponse as any, tabId);

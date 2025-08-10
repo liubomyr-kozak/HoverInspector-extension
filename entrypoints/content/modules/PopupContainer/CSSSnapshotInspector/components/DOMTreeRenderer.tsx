@@ -6,7 +6,7 @@
 
 import React, { useState, useCallback } from "react";
 import { IconChevronRight, IconChevronDown, IconEye, IconEyeOff } from "@tabler/icons-react";
-import { DOMTreeNode } from "../utils/domTreeBuilder";
+import { DOMTreeNode } from "../utils/domTreeBuilder.ts";
 
 export interface DOMTreeRendererProps {
   /** Root node of the tree */

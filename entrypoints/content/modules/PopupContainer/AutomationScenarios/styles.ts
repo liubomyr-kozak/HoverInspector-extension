@@ -4,15 +4,6 @@ import styled from "styled-components";
  * Styled components for the AutomationScenarios module
  */
 
-export const Title = styled.h2`
-  font-size: 18px;
-  margin-bottom: 16px;
-  color: #333;
-  display: flex;
-  gap: 5px;
-  align-items: baseline;
-`;
-
 export const ScenarioList = styled.ul`
   list-style: none;
   padding: 0;
@@ -91,6 +82,10 @@ export const PauseResumeButton = styled(ActionButton)<{ paused: boolean }>`
   color: white;
   font-weight: 500;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    background-color: ${(props) => (props.paused ? "#3da008" : "#d48806")};
+  }
 `;
 
 export const NextStepButton = styled(ActionButton)<{ disabled: boolean }>`
@@ -103,18 +98,10 @@ export const NextStepButton = styled(ActionButton)<{ disabled: boolean }>`
   color: ${(props) => (props.disabled ? "#bfbfbf" : "white")};
   font-weight: 500;
   box-shadow: ${(props) => (props.disabled ? "none" : "0 1px 2px rgba(0,0,0,0.1)")};
-`;
 
-export const ContinueButton = styled(ActionButton)<{ disabled: boolean }>`
-  background-color: ${(props) => (props.disabled ? "#f5f5f5" : "#722ed1")};
-  border: 1px solid;
-  border-color: ${(props) => (props.disabled ? "#d9d9d9" : "#531dab")};
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: ${(props) => (props.disabled ? "#bfbfbf" : "white")};
-  font-weight: 500;
-  box-shadow: ${(props) => (props.disabled ? "none" : "0 1px 2px rgba(0,0,0,0.1)")};
+  &:hover {
+    background-color: #096dd9;
+  }
 `;
 
 export const StopButton = styled(ActionButton)`
@@ -126,14 +113,19 @@ export const StopButton = styled(ActionButton)`
   color: white;
   font-weight: 500;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    background-color: #cf1322;
+  }
 `;
 
 export const MenuButton = styled(ActionButton)`
   opacity: ${(props) => (props.disabled ? 0.5 : 1)};
   border: 1px solid #d9d9d9;
   border-radius: 4px;
-  
-  &:active, &:focus {
+
+  &:active,
+  &:focus {
     opacity: 1;
     visibility: visible;
     outline: none;
@@ -252,6 +244,6 @@ export const AutomationFooterContainer = styled.div`
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 0 0 1px #a8bbd6;
-  background: #d4e3f7;
+  background: #f7f8f9;
   width: 100%;
 `;

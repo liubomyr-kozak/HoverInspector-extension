@@ -7,10 +7,46 @@ export const cutPx = (styleValue): number => {
 
 export const getTagMeta = (tag, id, className) => {
   return (
-    <div style={{ marginRight: "15px" }}>
-      <span style={tagStyle}>{tag}</span>
-      <span style={idStyle}>{id ? id : ""}</span>
-      <span style={classNameStyle}>{className ? className : ""}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '8px' }}>
+      <span style={{
+        ...tagStyle,
+        fontSize: '10px',
+        fontWeight: '700',
+        background: 'linear-gradient(135deg, #8a38ae, #9b59b6)',
+        color: 'white',
+        padding: '2px 6px',
+        borderRadius: '4px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px'
+      }}>{tag}</span>
+      {id && (
+        <span style={{
+          ...idStyle,
+          fontSize: '11px',
+          fontWeight: '600',
+          background: '#e3f2fd',
+          color: '#1976d2',
+          padding: '1px 5px',
+          borderRadius: '3px',
+          border: '1px solid #bbdefb'
+        }}>#{id}</span>
+      )}
+      {className && (
+        <span style={{
+          ...classNameStyle,
+          fontSize: '11px',
+          fontWeight: '600',
+          background: '#fff3e0',
+          color: '#ef6c00',
+          padding: '1px 5px',
+          borderRadius: '3px',
+          border: '1px solid #ffcc02',
+          maxWidth: '120px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>.{className}</span>
+      )}
     </div>
   );
 };
@@ -143,8 +179,8 @@ export const getLeftPosition = (popupAndHovered) => {
 
   if (!hoverInspectorEl && !hoverInspectorEl!.shadowRoot) return;
 
-  const topLabelNode = hoverInspectorEl!.shadowRoot!.querySelector(".zToolDistanceLine.zTool_top") as any;
-  const bottomLabelNode = hoverInspectorEl!.shadowRoot!.querySelector(".zToolDistanceLine.zTool_bottom") as any;
+  const topLabelNode = hoverInspectorEl!.shadowRoot!.querySelector(".hover-inspector-distance-line.hover-inspector-top") as any;
+  const bottomLabelNode = hoverInspectorEl!.shadowRoot!.querySelector(".hover-inspector-distance-line.hover-inspector-bottom") as any;
 
   const labelTopContainer = topLabelNode?.offsetTop;
   const labelTop = topLabelNode?.children?.[0].offsetTop;
@@ -161,12 +197,6 @@ export const getLeftPosition = (popupAndHovered) => {
 
   if (!isPopupCoverLabel) return popupAndHovered.popup.left;
 
-  // console.log("😎😎😎 ::getLeftPosition -> popupAndHovered.hovered.width", popupAndHovered.hovered.width);
-  // console.log("🌟🌟🌟 ::getLeftPosition -> popupAndHovered.hovered.marginLeft", popupAndHovered.hovered.marginLeft);
-  // console.log("😜😜😜 ::getLeftPosition -> popupAndHovered.popup.left", popupAndHovered.popup.left);
-  // console.log("👍👍👍 ::getLeftPosition ->  popupAndHovered.hovered.paddingLeft", popupAndHovered.hovered.paddingLeft);
-  // console.log("😎😎😎 ::getLeftPosition -> popupAndHovered.hovered.paddingRight", popupAndHovered.hovered.paddingRight);
-  // console.log("😜😜😜 ::getLeftPosition -> paddingLeft", popupAndHovered.hovered.paddingLeft);
 
   return (
     popupAndHovered.popup.left +

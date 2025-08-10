@@ -20,7 +20,13 @@ interface SortableItemProps {
   onToggleVisibility?: (id: string) => void;
 }
 
-const SortableItem = ({ id, title, icon, isVisible = true, onToggleVisibility }: SortableItemProps) => {
+const SortableItem = ({ 
+  id, 
+  title, 
+  icon, 
+  isVisible = true, 
+  onToggleVisibility
+}: SortableItemProps) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
   const Icon = icon;

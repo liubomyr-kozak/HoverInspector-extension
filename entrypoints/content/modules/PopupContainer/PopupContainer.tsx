@@ -1,4 +1,4 @@
-import React, { JSX, useRef, useState } from "react";
+import React, { JSX, useRef, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { IconX } from "@tabler/icons-react";
 import { createGlobalStyle } from "styled-components";
@@ -7,9 +7,8 @@ import {
   onChangeLauncherIconOrder,
 } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
-import { NewModal } from "@entrypoints/shared/components/NewModal/NewModal";
-import { hideSponsorMessage } from "@entrypoints/content/store/app/app.slice";
-import { Logo } from "@entrypoints/shared/components/Logo/Logo";
+import { FloatingPanel } from "@entrypoints/shared/components/FloatingPanel/FloatingPanel";
+import { hideSponsorMessage, clearAllActiveIcons } from "@entrypoints/content/store/app/app.slice";
 import { ElementInspectorPopup } from "@entrypoints/content/modules/PopupContainer/ElementInspectorPopup";
 import {
   ANALYZE_PAGE,
@@ -32,7 +31,9 @@ import {
   FeatureContainer,
   HideButton,
   FooterContainer,
+  HeaderContainer,
   ButtonsContainer,
+  HeaderButtonsContainer,
 } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import RandomBackground from "@entrypoints/shared/components/RandomBackground.tsx";
 import ViewportInfo from "@entrypoints/content/modules/PopupContainer/ViewportInfo.tsx";
@@ -73,7 +74,6 @@ export function PopupContainer() {
   const dispatch = useDispatch();
 
   const { activeIcons = [], iconOrder: iconOrderStorage } = useSelector((state: any) => state?.app.launcher);
-  const featurePopupIsMinimized = useSelector((state: any) => state?.app.featurePopupIsMinimized);
   const featurePopupPosition = useSelector((state: any) => state?.app.featurePopupPosition);
   const sponsorMessage = useSelector((state: any) => state?.app.sponsorMessage);
 
@@ -132,6 +132,15 @@ export function PopupContainer() {
 
   const shouldShowSponsorMessage = !sponsorMessage?.hiddenUntil || Date.now() > sponsorMessage.hiddenUntil;
 
+  // Create header content - now all features use portals to inject their headers
+  const renderHeaderContent = () => {
+    return (
+      <HeaderContainer>
+        <HeaderButtonsContainer id="popup-header-container" />
+      </HeaderContainer>
+    );
+  };
+
   // Check if iconOrderStorage contains all elements from POPUP_SUPPORT_TOOLS
   // If not, add missing elements to the end of the list
   let iconOrder = iconOrderStorage;
@@ -150,17 +159,22 @@ export function PopupContainer() {
     iconOrder = POPUP_SUPPORT_TOOLS;
   }
 
+  const FeatureView = useMemo(() => {
+    return iconOrder.filter((id) => activeIcons.includes(id)).map((id) => COMPONENT_MAP[id]);
+  }, [iconOrder, activeIcons]);
+
   return (
     <>
       <GlobalStyle />
-      <NewModal
-        open={!featurePopupIsMinimized}
-        title={<Logo />}
+      <FloatingPanel
+        open={activeIcons.length}
+        title={renderHeaderContent()}
         initialHeight={featurePopupPosition.height}
         initialWidth={featurePopupPosition.width}
         initialX={featurePopupPosition.x}
         initialY={featurePopupPosition.y}
         onModalStateChange={handleUpdatePopupSetting}
+        onCancel={() => dispatch(clearAllActiveIcons())}
         footer={
           <FooterContainer>
             {shouldShowSponsorMessage ? (
@@ -223,14 +237,12 @@ export function PopupContainer() {
                 </div>
               </BecomeASponsor>
             ) : null}
-            <ButtonsContainer id="popup-buttons-container" />
+            <ButtonsContainer id="hover-inspector-popup-footer-container" />
           </FooterContainer>
         }
       >
-        <FeatureContainer>
-          {iconOrder.filter((id) => activeIcons.includes(id)).map((id) => COMPONENT_MAP[id])}
-        </FeatureContainer>
-      </NewModal>
+        <FeatureContainer key={`PopupContainer-feature--${iconOrder.join(".")}`}>{FeatureView}</FeatureContainer>
+      </FloatingPanel>
     </>
   );
 }

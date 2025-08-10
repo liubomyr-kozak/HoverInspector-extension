@@ -1,7 +1,7 @@
 /**
  * Modern CSS Snapshot Inspector with styled-components
  */
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { IconCode } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
@@ -12,10 +12,12 @@ import { useSnapshots, useSnapshotFilter } from "./hooks/useSnapshots";
 import { useViewMode } from "./hooks/useViewMode";
 import { exportSnapshot } from "./utils/snapshotStorage";
 import { createCSSSnapshot } from "./utils/snapshotBuilder";
-import { Header } from "./components/Header";
+import { SnapshotManagerHeader } from "./components/SnapshotManagerHeader";
+import { SnapshotViewerHeader } from "./components/SnapshotViewerHeader";
+import { SnapshotCompareHeader } from "./components/SnapshotCompareHeader";
 import { ViewMode } from "./constants";
 import { CSSSnapshot } from "./types";
-import { ElementDetailsPopup } from "./components/ElementDetailsPopup";
+import { useElementPicker } from "./hooks/useElementPicker";
 
 // Styled Components
 const MainContainer = styled.div`
@@ -23,18 +25,6 @@ const MainContainer = styled.div`
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    135deg,
-    rgba(248, 250, 252, 0.8) 0%,
-    rgba(249, 250, 251, 0.6) 50%,
-    rgba(238, 242, 255, 0.4) 100%
-  );
-`;
-
-const StickyHeader = styled.div`
-  position: sticky;
-  top: 0;
-  z-index: 20;
 `;
 
 const FilterContainer = styled.div`
@@ -114,55 +104,12 @@ const ContentWrapper = styled.div`
   height: 100%;
 `;
 
-const EmptyStateContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  background: linear-gradient(135deg, rgba(248, 250, 252, 1) 0%, rgba(243, 244, 246, 1) 100%);
-  border-radius: 16px;
-  padding: 32px;
-  margin: 32px;
-`;
-
-const EmptyStateIcon = styled.div`
-  background: white;
-  border-radius: 50%;
-  padding: 24px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  margin-bottom: 24px;
-`;
-
-const EmptyStateTitle = styled.h3`
-  font-size: 24px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 8px;
-  text-align: center;
-`;
-
-const EmptyStateDescription = styled.p`
-  color: #6b7280;
-  text-align: center;
-  max-width: 400px;
-  line-height: 1.6;
-  margin-bottom: 24px;
-`;
-
-const EmptyStateTip = styled.div`
-  font-size: 14px;
-  color: #9ca3af;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 12px 16px;
-  border-radius: 20px;
-`;
-
 /**
  * Головний компонент CSS Snapshot Inspector з оптимізацією продуктивності
  */
 export const CSSSnapshotInspector: React.FC = () => {
   // Використовуємо оптимізовані хуки
+
   const {
     snapshots,
     isCapturing,
@@ -178,10 +125,19 @@ export const CSSSnapshotInspector: React.FC = () => {
   } = useSnapshots();
 
   // Хук для фільтрації з дебаунсом
-  const { filter, setFilter, filteredSnapshots } = useSnapshotFilter(snapshots);
+  const { filter: filterSnapshot, setFilter, filteredSnapshots } = useSnapshotFilter(snapshots);
 
   // State for search visibility
   const [isSearchVisible, setIsSearchVisible] = React.useState(false);
+
+  // Element picker hook with declarative API
+  const elementPicker = useElementPicker(snapshots, {
+    onSuccess: (snapshot) => {
+    },
+    onError: (error) => {
+      console.error("Element picker error:", error.message);
+    },
+  });
 
   // Хук для управління режимами перегляду
   const { viewMode, setViewMode, canCompare, canViewDetails, viewSnapshot, startComparison, backToList } = useViewMode(
@@ -218,13 +174,10 @@ export const CSSSnapshotInspector: React.FC = () => {
       return;
     }
 
-    console.log("Starting comparison with current page. Selected snapshot:", firstSnapshot);
 
     try {
       // Create a snapshot of the current page
-      console.log("Creating snapshot of current page...");
       const currentPageSnapshot = await createCSSSnapshot("Current Page");
-      console.log("Current page snapshot created:", currentPageSnapshot);
 
       // Clear existing comparison snapshots
       clearCompare();
@@ -236,38 +189,32 @@ export const CSSSnapshotInspector: React.FC = () => {
       // Start comparison view
       startComparison();
 
-      console.log("Comparison started successfully");
     } catch (error) {
       console.error("Failed to create current page snapshot:", error);
       // Handle error state if needed
     }
   };
 
-  // Enhanced content rendering with styled components
+  // Обробник для початку порівняння
+  const handleStartComparison = () => {
+    if (canCompare) {
+      startComparison();
+    }
+  };
 
   const renderContent = useMemo(() => {
     switch (viewMode) {
       case ViewMode.DETAIL:
-        return selectedSnapshot ? (
+        return (
           <SnapshotViewer
             snapshot={selectedSnapshot}
             onBack={backToList}
             onCompareWithCurrentPage={handleCompareWithCurrentPage}
           />
-        ) : (
-          <EmptyStateContainer>
-            <EmptyStateIcon>
-              <IconCode size={48} color="#9ca3af" />
-            </EmptyStateIcon>
-            <EmptyStateTitle>No Snapshot Selected</EmptyStateTitle>
-            <EmptyStateDescription>
-              Select a snapshot from the list to view its detailed DOM structure and styling information.
-            </EmptyStateDescription>
-          </EmptyStateContainer>
         );
 
       case ViewMode.COMPARE:
-        return compareSnapshots.length === 2 ? (
+        return (
           <SnapshotCompare
             snapshotA={compareSnapshots[0]}
             snapshotB={compareSnapshots[1]}
@@ -277,17 +224,6 @@ export const CSSSnapshotInspector: React.FC = () => {
             splitView={splitView}
             setSplitView={setSplitView}
           />
-        ) : (
-          <EmptyStateContainer>
-            <EmptyStateIcon>
-              <MdOutlineCompare size={48} color="#9ca3af" />
-            </EmptyStateIcon>
-            <EmptyStateTitle>Ready to Compare</EmptyStateTitle>
-            <EmptyStateDescription>
-              Select exactly two snapshots from the list to perform a detailed comparison analysis.
-            </EmptyStateDescription>
-            <EmptyStateTip>💡 Tip: Use checkboxes next to snapshots to select them for comparison</EmptyStateTip>
-          </EmptyStateContainer>
         );
 
       case ViewMode.LIST:
@@ -300,6 +236,7 @@ export const CSSSnapshotInspector: React.FC = () => {
             onDelete={deleteSnapshot}
             onExport={exportSnapshot}
             onToggleCompare={toggleCompare}
+            onStartComparison={handleStartComparison}
           />
         );
     }
@@ -313,6 +250,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     deleteSnapshot,
     exportSnapshot,
     toggleCompare,
+    handleStartComparison,
   ]);
 
   // Обробник для захоплення знімка з обробкою помилок
@@ -325,13 +263,6 @@ export const CSSSnapshotInspector: React.FC = () => {
     }
   };
 
-  // Обробник для початку порівняння
-  const handleStartComparison = () => {
-    if (canCompare) {
-      startComparison();
-    }
-  };
-
   // Handler for toggling search visibility
   const handleToggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
@@ -341,60 +272,72 @@ export const CSSSnapshotInspector: React.FC = () => {
     }
   };
 
-  // Event listener for COMPARE_SNAPSHOTS message from SnapshotViewer
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === "COMPARE_SNAPSHOTS") {
-        const snapshots = event.data.snapshots as CSSSnapshot[];
-        if (snapshots && snapshots.length === 2) {
-          // Clear existing comparison snapshots first
-          clearCompare();
+  const handleCaptureFromPickedElement = () => {
+    elementPicker.togglePicking();
+  };
 
-          // Set the snapshots for comparison
-          snapshots.forEach((snapshot) => {
-            toggleCompare(snapshot);
-          });
-
-          // Start comparison view
-          startComparison();
-        }
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
-  }, [toggleCompare, startComparison, clearCompare]);
+  // // Event listener for COMPARE_SNAPSHOTS message from SnapshotViewer
+  // useEffect(() => {
+  //   const handleMessage = (event: MessageEvent) => {
+  //     if (event.data && event.data.type === "COMPARE_SNAPSHOTS") {
+  //       const snapshots = event.data.snapshots as CSSSnapshot[];
+  //       if (snapshots && snapshots.length === 2) {
+  //         // Clear existing comparison snapshots first
+  //         clearCompare();
+  //
+  //         // Set the snapshots for comparison
+  //         snapshots.forEach((snapshot) => {
+  //           toggleCompare(snapshot);
+  //         });
+  //
+  //         // Start comparison view
+  //         startComparison();
+  //       }
+  //     }
+  //   };
+  //
+  //   window.addEventListener("message", handleMessage);
+  //
+  //   return () => {
+  //     window.removeEventListener("message", handleMessage);
+  //   };
+  // }, [toggleCompare, startComparison, clearCompare]);
 
   return (
     <MainContainer>
-      <ElementDetailsPopup />
-      {/* Modern Header Component with enhanced background */}
-      <StickyHeader>
-        <Header
-          viewMode={viewMode}
+      {viewMode === ViewMode.LIST && (
+        <SnapshotManagerHeader
           isCapturing={isCapturing}
-          compareSnapshotsCount={compareSnapshots.length}
           snapshotsCount={snapshots.length}
-          selectedSnapshot={selectedSnapshot}
           compareSnapshots={compareSnapshots}
           onCapture={handleCaptureSnapshot}
           onImport={importSnapshot}
           onCompare={handleStartComparison}
-          onBackToList={backToList}
           onToggleSearch={handleToggleSearch}
           isSearchVisible={isSearchVisible}
           error={error}
+          onCaptureFromPickedElement={handleCaptureFromPickedElement}
+          isSelectingElement={elementPicker.isActive || elementPicker.isProcessing}
+        />
+      )}
+      {viewMode === ViewMode.DETAIL && (
+        <SnapshotViewerHeader
+          selectedSnapshot={selectedSnapshot}
+          onBackToList={backToList}
+          error={error}
           onCompareWithCurrentPage={handleCompareWithCurrentPage}
+        />
+      )}
+      {viewMode === ViewMode.COMPARE && (
+        <SnapshotCompareHeader
+          onBackToList={backToList}
+          error={error}
           activeCompareView={activeCompareView}
           onChangeCompareView={(view) => setActiveCompareView(view as "diff" | "tree" | "stats")}
           splitView={splitView}
           onToggleSplitView={() => setSplitView(!splitView)}
         />
-      </StickyHeader>
-
+      )}
       {/* Enhanced Filter Bar - only for LIST view and when search is visible */}
       {viewMode === ViewMode.LIST && isSearchVisible && (
         <FilterContainer>
@@ -423,7 +366,6 @@ export const CSSSnapshotInspector: React.FC = () => {
           )}
         </FilterContainer>
       )}
-
       {/* Main Content Area with improved background and padding */}
       <ContentArea>
         <ContentWrapper>{renderContent}</ContentWrapper>

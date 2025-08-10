@@ -50,12 +50,10 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
   const stylesB = getStylesFromSnapshot(snapshotB);
 
   const { treeA, treeB } = useMemo(() => {
-    console.log("Building trees from styles...");
     const resultTrees = {
       treeA: buildDOMTree(stylesA),
       treeB: buildDOMTree(stylesB),
     };
-    console.log("Built trees:", resultTrees);
     return resultTrees;
   }, [stylesA, stylesB]);
 

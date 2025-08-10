@@ -16,7 +16,6 @@ interface SnapshotDetailsProps {
  * Shows the snapshot tree in unified view with all nodes auto-expanded
  */
 export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, title }) => {
-  console.log("😂😂😂 ::SnapshotDetails -> snapshot", snapshot);
 
   // Build DOM tree from snapshot data
   const tree = useMemo(() => {

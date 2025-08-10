@@ -6,7 +6,7 @@ import { Tag } from "antd";
  */
 
 export const ExpandedContent = styled.div`
-  padding: 12px 16px 16px 16px;
+  padding: 0 16px 16px 16px;
   background-color: #f9f9f9;
   border-top: 1px solid #f0f0f0;
   margin-bottom: 8px;
@@ -36,6 +36,7 @@ export const StepsHeading = styled.h4`
   display: flex;
   align-items: center;
   font-size: 14px;
+  padding-top: 12px;
 `;
 
 export const StepsHeadingText = styled.span`
@@ -59,11 +60,7 @@ export const StepsList = styled.ul`
 
 export const StepItem = styled.li<{ isActive?: boolean; isSearched?: boolean; borderColor?: string }>`
   padding: 8px 12px;
-  background-color: ${(props) => 
-    props.isActive ? "#e6f7ff" : 
-    props.isSearched ? "#fff7e6" : 
-    "white"
-  };
+  background-color: ${(props) => (props.isActive ? "#e6f7ff" : props.isSearched ? "#fff7e6" : "white")};
   border: 1px solid #f0f0f0;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -145,11 +142,13 @@ export const StepXPathContainer = styled.div`
   color: #666;
   font-family: monospace;
   background-color: #f5f5f5;
-  padding: 4px 8px;
+  padding: 4px 4px 4px 8px;
   border-radius: 4px;
   margin-top: 4px;
   overflow: auto;
   max-width: 100%;
+  display: flex;
+  align-items: center;
 `;
 
 export const StepXPathLabel = styled.span`

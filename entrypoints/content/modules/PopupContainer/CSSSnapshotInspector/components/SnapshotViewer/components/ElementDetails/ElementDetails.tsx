@@ -5,7 +5,7 @@ import { ElementProperties } from "./ElementProperties";
 import { StyleProperties } from "./StyleProperties";
 import { EmptyState } from "../../../../CSSSnapshotInspector.styled";
 import { ElementXPathSelector } from "./ElementXPathSelector";
-import { ElementDiff } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails/ElementDiff.tsx";
+import { ElementDiff } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiff.tsx";
 import { useSelector } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore.ts";
 
@@ -29,20 +29,23 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
 
   return (
     <>
-      <ElementSelector selectedElementData={selectedElementData} />
-      <ElementProperties selectedElementData={selectedElementData} />
-      <ElementXPathSelector />
+      {/*// this is depricated do not touch*/}
+      {/*<ElementSelector selectedElementData={selectedElementData} />*/}
+      {/*{state.styleDiffData || state.compareLeftData || state.compareRightData ? (*/}
+      <ElementDiff
+        diffData={state.styleDiffData}
+        left={state.compareLeftData as any}
+        right={state.compareRightData as any}
+      />
+      {/*) : null}*/}
 
-      {state.styleDiffData || state.compareLeftData || state.compareRightData ? (
-        <div style={{ marginTop: 12, borderTop: "1px solid #e5e7eb", paddingTop: 12 }}>
-          <ElementDiff 
-            diffData={state.styleDiffData}
-            left={state.compareLeftData as any} 
-            right={state.compareRightData as any} 
-          />
-        </div>
-      ) : null}
-      <StyleProperties selectedElementStyles={selectedElementStyles} />
+      {/*// this is depricated do not touch*/}
+      {/*<ElementProperties selectedElementData={selectedElementData} />*/}
+      {/*// this is depricated do not touch*/}
+      {/*<ElementXPathSelector />*/}
+      {/**/}
+      {/*// this is depricated do not touch*/}
+      {/*<StyleProperties selectedElementStyles={selectedElementStyles} />*/}
     </>
   );
 };

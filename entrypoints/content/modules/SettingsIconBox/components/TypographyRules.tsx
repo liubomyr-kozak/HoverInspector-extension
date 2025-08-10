@@ -11,7 +11,7 @@
  * and display relevant information.
  */
 import React, { useEffect, useState } from "react";
-import { IconEye, IconLetterCase, IconRuler } from "@tabler/icons-react";
+import { IconEye, IconLetterCase, IconRuler, IconBorderRadius, IconShadow } from "@tabler/icons-react";
 
 import {
   AggregatedTypographyProperties,
@@ -20,11 +20,23 @@ import {
   TypographyElement,
 } from "@entrypoints/shared/utils/typographyAnalysis";
 
+import { SpacingToken, BorderRadiusToken, ShadowToken } from "./ColorPaletteDefinition/paletteTypes";
+import {
+  extractSpacingTokens,
+  extractBorderRadiusTokens,
+  extractShadowTokens,
+} from "./ColorPaletteDefinition/utils/tokenExtraction";
+
 const TypographyRules: React.FC = () => {
   // State for typography elements and properties
   const [typographyElements, setTypographyElements] = useState<TypographyElement[]>([]);
   const [aggregatedProperties, setAggregatedProperties] = useState<AggregatedTypographyProperties | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // State for design tokens
+  const [spacingTokens, setSpacingTokens] = useState<SpacingToken[]>([]);
+  const [borderTokens, setBorderTokens] = useState<BorderRadiusToken[]>([]);
+  const [shadowTokens, setShadowTokens] = useState<ShadowToken[]>([]);
 
   useEffect(() => {
     const fetchTypographyData = () => {
@@ -35,8 +47,17 @@ const TypographyRules: React.FC = () => {
 
         const properties = aggregateTypographyProperties();
         setAggregatedProperties(properties);
+
+        // Extract design tokens
+        const extractedSpacingTokens = extractSpacingTokens();
+        const extractedBorderTokens = extractBorderRadiusTokens();
+        const extractedShadowTokens = extractShadowTokens();
+
+        setSpacingTokens(extractedSpacingTokens);
+        setBorderTokens(extractedBorderTokens);
+        setShadowTokens(extractedShadowTokens);
       } catch (error) {
-        console.error("Error fetching typography data:", error);
+        console.error("Error fetching typography and token data:", error);
       } finally {
         setIsLoading(false);
       }

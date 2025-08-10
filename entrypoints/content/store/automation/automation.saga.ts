@@ -18,6 +18,9 @@ import {
   saveScheduleWatcher,
   saveTriggerWatcher,
   stopRecordingWatcher,
+  persistEditingStateWatcher,
+  restoreEditingStateWatcher,
+  clearEditingStateWatcher,
 } from "./automation.saga.action";
 
 /**
@@ -50,4 +53,9 @@ export function* automationInit() {
   yield takeLatest(startNewRecordingWatcher.actionType, startNewRecordingWatcher);
   yield takeLatest(stopRecordingWatcher.actionType, stopRecordingWatcher);
   yield takeLatest(playScenarioWatcher.actionType, playScenarioWatcher);
+
+  // Editing state management watchers
+  yield takeLatest(persistEditingStateWatcher.actionType, persistEditingStateWatcher);
+  yield takeLatest(restoreEditingStateWatcher.actionType, restoreEditingStateWatcher);
+  yield takeLatest(clearEditingStateWatcher.actionType, clearEditingStateWatcher);
 }

@@ -10,99 +10,227 @@ import cx from "classnames";
 const PopupContainer = ({ data, hoverElement }) => {
   const { height, width, tag, className, id, padding, margin, border, color, backgroundColor, font } = data;
 
+  const renderColorInfo = (label, colorValue, showLabel = true) => {
+    if (!colorValue) return null;
+    
+    const hexValue = targetColorStringToHex(colorValue);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {showLabel && <span style={{ fontSize: '11px', color: '#666', minWidth: '50px' }}>{label}:</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{
+            ...colorBoxStyle(colorValue),
+            borderRadius: '3px',
+            border: '1px solid rgba(0,0,0,0.1)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }} />
+          <span style={{ 
+            fontSize: '11px', 
+            fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
+            color: '#333',
+            background: '#f8f9fa',
+            padding: '2px 6px',
+            borderRadius: '3px',
+            border: '1px solid #e9ecef'
+          }}>
+            {hexValue}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSpacingValue = (value) => {
+    if (!value) return null;
+    return (
+      <span style={{ 
+        fontSize: '11px', 
+        fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
+        color: '#495057',
+        background: '#f8f9fa',
+        padding: '2px 6px',
+        borderRadius: '3px',
+        border: '1px solid #e9ecef'
+      }}>
+        {value}
+      </span>
+    );
+  };
+
+  const renderBorderSide = (sideLabel, borderData) => {
+    if (!borderData) return null;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+        <span style={{ fontSize: '11px', color: '#666', minWidth: '60px' }}>{sideLabel}:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '11px', color: '#495057' }}>
+            {borderData.width} {borderData.style}
+          </span>
+          <span style={{
+            ...colorBoxStyle(borderData.color),
+            width: '12px',
+            height: '12px',
+            borderRadius: '2px',
+            border: '1px solid rgba(0,0,0,0.1)'
+          }} />
+          <span style={{ 
+            fontSize: '10px', 
+            fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
+            color: '#666'
+          }}>
+            {targetColorStringToHex(borderData.color)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <BoxLabelContainer className="BoxContainer">
-      <div className="flex">
-        {getTagMeta(tag, id, className)}
-        <span style={targetSizeStyle}>
-          {cutPx(width)} x {cutPx(height)}
-        </span>
+      {/* Header with element info and dimensions */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        marginBottom: '12px',
+        paddingBottom: '8px',
+        borderBottom: '1px solid #e9ecef'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {getTagMeta(tag, id, className)}
+        </div>
+        <div style={{
+          fontSize: '12px',
+          fontWeight: '600',
+          color: '#495057',
+          background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+          padding: '4px 8px',
+          borderRadius: '6px',
+          border: '1px solid #dee2e6'
+        }}>
+          {cutPx(width)} × {cutPx(height)}px
+        </div>
       </div>
 
-      {padding && (
-        <div className="flex">
-          <div style={targetTitleStyle}>Padding:</div>
-          <div style={flexChildRightStyle}>{padding}</div>
-        </div>
-      )}
-      {margin && (
-        <div className="flex">
-          <div style={targetTitleStyle}>Margin:</div>
-          <div style={flexChildRightStyle}>{margin}</div>
-        </div>
-      )}
-
-      {backgroundColor && (
-        <div className="flex">
-          <div style={targetTitleStyle}>Background:</div>
-          <div style={flexChildRightStyle}>
-            <span style={colorBoxStyle(backgroundColor)} />
-            {targetColorStringToHex(backgroundColor)}
+      {/* Spacing Section */}
+      {(padding || margin) && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: '600', 
+            color: '#495057', 
+            marginBottom: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Spacing
           </div>
-        </div>
-      )}
-
-      {isChildText(hoverElement.childNodes) && (
-        <>
-          {font && (
-            <div className="flex">
-              <div style={targetTitleStyle}>Font Size:</div>
-              <div style={flexChildRightStyle}>{font}</div>
-            </div>
-          )}
-          {color && (
-            <div className="flex">
-              <div style={targetTitleStyle}>Color:</div>
-              <div style={flexChildRightStyle}>
-                <span style={colorBoxStyle(color)} />
-                {targetColorStringToHex(color)}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
+            {padding && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '11px', color: '#666' }}>Padding:</span>
+                {renderSpacingValue(padding)}
               </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {border && border.type === "single" && (
-        <div className="flex">
-          <div style={targetTitleStyle}>Border:</div>
-          <div style={flexChildRightStyle}>
-            {border.width} {border.style} <span style={colorBoxStyle(border.color)} />
-            {targetColorStringToHex(border.color)}
+            )}
+            {margin && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '11px', color: '#666' }}>Margin:</span>
+                {renderSpacingValue(margin)}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {border && border.type === "multiple" && (
-        <>
-          <div className="flex">
-            <div style={targetTitleStyle}>Border-Right:</div>
-            <div style={flexChildRightStyle}>
-              {border.right.width} {border.right.style} <span style={colorBoxStyle(border.right.color)} />
-              {targetColorStringToHex(border.right.color)}
+      {/* Colors Section */}
+      {(backgroundColor || (isChildText(hoverElement.childNodes) && color)) && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: '600', 
+            color: '#495057', 
+            marginBottom: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Colors
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
+            {backgroundColor && renderColorInfo('Background', backgroundColor)}
+            {isChildText(hoverElement.childNodes) && color && renderColorInfo('Text', color)}
+          </div>
+        </div>
+      )}
+
+      {/* Typography Section */}
+      {isChildText(hoverElement.childNodes) && font && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: '600', 
+            color: '#495057', 
+            marginBottom: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Typography
+          </div>
+          <div style={{ paddingLeft: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', color: '#666' }}>Font Size:</span>
+              {renderSpacingValue(font)}
             </div>
           </div>
-          <div className="flex">
-            <div style={targetTitleStyle}>Border-Left:</div>
-            <div style={flexChildRightStyle}>
-              {border.left.width} {border.left.style} <span style={colorBoxStyle(border.left.color)} />
-              {targetColorStringToHex(border.left.color)}
-            </div>
+        </div>
+      )}
+
+      {/* Border Section */}
+      {border && (
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ 
+            fontSize: '11px', 
+            fontWeight: '600', 
+            color: '#495057', 
+            marginBottom: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Border
           </div>
-          <div className="flex">
-            <div style={targetTitleStyle}>Border-Top:</div>
-            <div style={flexChildRightStyle}>
-              {border.top.width} {border.top.style} <span style={colorBoxStyle(border.top.color)} />
-              {targetColorStringToHex(border.top.color)}
-            </div>
+          <div style={{ paddingLeft: '8px' }}>
+            {border.type === "single" ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '11px', color: '#666' }}>All sides:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: '#495057' }}>
+                    {border.width} {border.style}
+                  </span>
+                  <span style={{
+                    ...colorBoxStyle(border.color),
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '2px',
+                    border: '1px solid rgba(0,0,0,0.1)'
+                  }} />
+                  <span style={{ 
+                    fontSize: '10px', 
+                    fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
+                    color: '#666'
+                  }}>
+                    {targetColorStringToHex(border.color)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {renderBorderSide('Top', border.top)}
+                {renderBorderSide('Right', border.right)}
+                {renderBorderSide('Bottom', border.bottom)}
+                {renderBorderSide('Left', border.left)}
+              </div>
+            )}
           </div>
-          <div className="flex">
-            <div style={targetTitleStyle}>Border-Bottom:</div>
-            <div style={flexChildRightStyle}>
-              {border.bottom.width} {border.bottom.style} <span style={colorBoxStyle(border.bottom.color)} />
-              {targetColorStringToHex(border.bottom.color)}
-            </div>
-          </div>
-        </>
+        </div>
       )}
     </BoxLabelContainer>
   );
@@ -247,8 +375,6 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   }
 
   // console.group()
-  // console.log("🌟🌟🌟 ::getPopupPosition -> marginLeft", marginLeft);
-  // console.log("😎😎😎 ::getPopupPosition -> paddingLeft", paddingLeft);
   // console.groupEnd()
 
   // Визначаємо left
@@ -290,7 +416,6 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   if (finalTop <= 0) finalTop = 10;
 
   //
-  // console.log({
   //     bottom,
   //     ARROW_HEIGHT,
   //     marginBottom,
@@ -301,7 +426,6 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   //     canShowBottom
   // });
   //
-  // console.log({
   //     popupBottomPosition,
   //     popupHeight,
   //     sum: popupBottomPosition + popupHeight,
@@ -355,7 +479,6 @@ const Popup = React.memo(() => {
     setTimeout(() => {
       const position = getPopupPosition(hoverNodeParams, popupRef);
 
-      // console.log("🚀🚀🚀 :: -> position", position);
 
       setPopup((prev) => ({
         ...prev,

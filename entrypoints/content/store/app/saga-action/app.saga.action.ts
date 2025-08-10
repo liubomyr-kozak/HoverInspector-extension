@@ -1,4 +1,4 @@
-import { put, select, takeLatest } from "redux-saga/effects";
+import { delay, put, select, takeLatest } from "redux-saga/effects";
 
 import PopupSettingModel from "@entrypoints/core/Models/PopupSettingModel.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
@@ -6,12 +6,15 @@ import DomNodeManager from "@entrypoints/core/services/dom/DomNodeManager.ts";
 import { FreezeSelect } from "@entrypoints/core/services/FreezeSelect.ts";
 import { sagaEnhancer } from "@entrypoints/core/libs/sagaEnhancer.ts";
 import {
+  clearAllActiveIcons,
   forceLauncherActiveIcon,
   setFeaturePopupPosition,
   setLauncherIconOrder,
   setLocalAppSetting,
-  setMinimizedFeaturePopup,
+  setMinimizedLauncherPosition,
   setViewType,
+  toggleFeatureMinimized,
+  toggleFeatureVisibility,
   toggleLauncherActiveIcon,
   userEventHoverConfirm,
   userEventSelectConfirm,
@@ -31,7 +34,7 @@ export const onUpdateInspectorViewTypeWatcher = sagaEnhancer(function* updateIns
   yield put(setViewType(data.payload));
 });
 
-function* updateAppSettingWatcher() {
+export const onUpdateAppSettingWatcher = sagaEnhancer(function* updateAppSettingWatcherFn() {
   const { app } = yield select();
 
   ExtensionStorageManager.getState().then((settings) => {
@@ -42,11 +45,9 @@ function* updateAppSettingWatcher() {
     };
     ExtensionStorageManager.setState(storeSetting);
   });
-}
+});
 
-export const onUpdateAppSettingWatcher = sagaEnhancer(updateAppSettingWatcher);
-
-export const onUserEventSelectWatcher = sagaEnhancer(function* userEventSelectWatcher({ type: userEventType }) {
+export const onUserEventSelectWatcher = sagaEnhancer(function* userEventSelectWatcherFn({ type: userEventType }) {
   freezeSelect.precessFreeze(true);
 
   if (freezeSelect.isFreeze) {
@@ -72,7 +73,7 @@ export const onUserEventSelectWatcher = sagaEnhancer(function* userEventSelectWa
   yield put(userEventHoverConfirm());
 });
 
-export const onUserEventHoverWatcher = sagaEnhancer(function* userEventHoverWatcher({ type: userEventType }) {
+export const onUserEventHoverWatcher = sagaEnhancer(function* userEventHoverWatcherFn({ type: userEventType }) {
   freezeSelect.precessFreeze(false);
 
   if (freezeSelect.isFreeze) {
@@ -92,7 +93,7 @@ export const onInitAppSetting = sagaEnhancer(function* initAppSettingFn() {
   yield put(setLocalAppSetting(initData));
 });
 
-export const onChangeLauncherIconOrder = sagaEnhancer(function* changeLauncherIconOrder({
+export const onChangeLauncherIconOrder = sagaEnhancer(function* changeLauncherIconOrderFn({
   payload,
 }: {
   payload: string[];
@@ -102,7 +103,7 @@ export const onChangeLauncherIconOrder = sagaEnhancer(function* changeLauncherIc
   yield put(setLauncherIconOrder(payload));
 });
 
-export const onChangeFeaturePopupPosition = sagaEnhancer(function* changeFeaturePopupPosition({
+export const onChangeFeaturePopupPosition = sagaEnhancer(function* changeFeaturePopupPositionFn({
   payload,
 }: {
   payload: any;
@@ -112,7 +113,7 @@ export const onChangeFeaturePopupPosition = sagaEnhancer(function* changeFeature
   yield put(setFeaturePopupPosition(payload));
 });
 
-export const onChangeLauncherActiveFeature = sagaEnhancer(function* changeLauncherActiveFeature({
+export const onChangeLauncherActiveFeature = sagaEnhancer(function* changeLauncherActiveFeatureFn({
   payload,
 }: {
   payload: any;
@@ -134,15 +135,49 @@ export const onChangeLauncherActiveFeature = sagaEnhancer(function* changeLaunch
   let state = yield select();
 
   yield ExtensionStorageManager.changeLauncherActiveFeature(state.app.launcher.activeIcons);
+
+  // Check if feature popup goes out of window bounds and adjust position if needed
+  const { featurePopupPosition } = state.app;
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+
+  let adjustedPosition = { ...featurePopupPosition };
+  let needsAdjustment = false;
+
+  // Check if popup goes out of right boundary
+  if (featurePopupPosition.x + featurePopupPosition.width > windowWidth) {
+    adjustedPosition.x = Math.max(0, windowWidth - featurePopupPosition.width);
+    needsAdjustment = true;
+  }
+
+  // Check if popup goes out of bottom boundary
+  if (featurePopupPosition.y + featurePopupPosition.height > windowHeight) {
+    adjustedPosition.y = Math.max(0, windowHeight - featurePopupPosition.height);
+    needsAdjustment = true;
+  }
+
+  // Check if popup goes out of left boundary
+  if (featurePopupPosition.x < 0) {
+    adjustedPosition.x = 0;
+    needsAdjustment = true;
+  }
+
+  // Check if popup goes out of top boundary
+  if (featurePopupPosition.y < 0) {
+    adjustedPosition.y = 0;
+    needsAdjustment = true;
+  }
+
+  // If position needs adjustment, update both Redux state and localStorage
+  if (needsAdjustment) {
+    yield put(setFeaturePopupPosition(adjustedPosition));
+
+    yield delay(100);
+    yield ExtensionStorageManager.changeFeaturePopupPosition(adjustedPosition);
+  }
 });
 
-export const onMinimizedFeaturePopup = sagaEnhancer(function* onMinimizedFeaturePopup({ payload }: { payload: any }) {
-  yield ExtensionStorageManager.minimizedFeaturePopup(payload);
-
-  yield put(setMinimizedFeaturePopup(payload));
-});
-
-export const onToggleLauncherActiveIcon = sagaEnhancer(function* onToggleLauncherActiveIcon(action) {
+export const onToggleLauncherActiveIcon = sagaEnhancer(function* onToggleLauncherActiveIconFn(action) {
   // After the icon is toggled in the Redux state, we need to persist the changes
   // Wait for the state to update with the new activeIcons
   const state = yield select();
@@ -151,5 +186,83 @@ export const onToggleLauncherActiveIcon = sagaEnhancer(function* onToggleLaunche
   yield ExtensionStorageManager.changeLauncherActiveFeature(state.app.launcher.activeIcons);
 });
 
-// Set the correct action type to match the Redux action
-onToggleLauncherActiveIcon.actionType = "app/toggleLauncherActiveIcon";
+export const onChangeVisibleFeatures = sagaEnhancer(function* changeVisibleFeaturesFn({
+  payload,
+}: {
+  payload: string[];
+}) {
+  yield ExtensionStorageManager.changeVisibleFeatures(payload);
+});
+
+export const onToggleFeatureVisibility = sagaEnhancer(function* onToggleFeatureVisibilityFn(action) {
+  yield put(toggleFeatureVisibility(action.payload as string));
+
+  // After the feature visibility is toggled in the Redux state, persist the changes
+  const state = yield select();
+  // Save the updated visibleFeatures to storage
+  yield ExtensionStorageManager.changeVisibleFeatures(state.app.visibleFeatures);
+});
+
+export const onChangeMinimizedFeatures = sagaEnhancer(function* changeMinimizedFeaturesFn({
+  payload,
+}: {
+  payload: string[];
+}) {
+  yield ExtensionStorageManager.changeMinimizedFeatures(payload);
+});
+
+export const onToggleFeatureMinimized = sagaEnhancer(function* onToggleFeatureMinimizedFn({ payload }) {
+  // payload: { featureKey: "automation", isMinimized: true/false }
+
+  const currentState = yield select();
+  const { featureKey } = payload;
+  const isCurrentlyMinimized = currentState.app.minimizedFeatures?.includes(featureKey);
+
+  if (!isCurrentlyMinimized) {
+    // First click: Close current popup, minimize launcher, update storage
+    // Clear all active icons (closes current popup)
+    yield put(clearAllActiveIcons());
+    // Add feature to minimized features
+    yield put(toggleFeatureMinimized(featureKey));
+  } else {
+    // Second click: Close minimized, open feature popup and launcher, update storage
+    // Remove feature from minimized features
+    yield put(toggleFeatureMinimized(featureKey));
+    // Activate the feature (open launcher and feature popup)
+    yield put(forceLauncherActiveIcon(featureKey));
+  }
+
+  // After the feature minimized state is toggled in the Redux state, persist the changes
+  const state = yield select();
+
+  yield ExtensionStorageManager.changeMinimizedFeatures(state.app.minimizedFeatures);
+  yield delay(100);
+  yield ExtensionStorageManager.changeLauncherActiveFeature(state.app.launcher.activeIcons);
+
+  // // Save both minimizedFeatures and activeIcons atomically to avoid race condition
+  // yield ExtensionStorageManager.changeMinimizedFeaturesAndActiveIcons(
+  //   state.app.minimizedFeatures,
+  //   state.app.launcher.activeIcons,
+  // );
+});
+
+export const onClearAllActiveIcons = sagaEnhancer(function* onClearAllActiveIconsFn(action) {
+  // After the clearAllActiveIcons action is dispatched, we need to persist the changes
+  // Wait for the state to update with the cleared activeIcons (empty array)
+  const state = yield select();
+
+  // Save the updated activeIcons (now empty) to storage
+  yield ExtensionStorageManager.changeLauncherActiveFeature(state.app.launcher.activeIcons);
+});
+
+export const onChangeMinimizedLauncherPosition = sagaEnhancer(function* changeMinimizedLauncherPositionFn({
+  payload,
+}: {
+  payload: { x: number; y: number };
+}) {
+  // Update Redux state first
+  yield put(setMinimizedLauncherPosition(payload));
+
+  // Then persist to storage
+  yield ExtensionStorageManager.changeMinimizedLauncherPosition(payload);
+});

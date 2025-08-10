@@ -1,5 +1,5 @@
 import React, { createRoot } from "react-dom/client";
-import { ExtensionRoot } from "./extension-root.tsx";
+import { ExtensionRoot } from "./extension-root";
 
 import {
   HOVER_INSPECTOR_ACTIVATE,
@@ -10,7 +10,6 @@ import {
   SCRIPT_INJECTION_ERROR,
 } from "@entrypoints/shared/globalEvents";
 import { isProduction } from "@entrypoints/shared/helpers";
-import browserApi from "@entrypoints/core/services/api/BrowserApi.ts";
 
 // import {onMessage} from "webext-bridge/content-script";
 import "./style.scss";
@@ -65,7 +64,6 @@ export default defineContentScript({
 
     // Script injection message handlers
     onMessage(DEV_SCRIPT_INJECTED, (message) => {
-      console.log("Content: Received DEV script injection:", message);
 
       // In development mode, inject script via DOM
       if (message.data?.downloadUrl) {
@@ -73,7 +71,7 @@ export default defineContentScript({
         injectScript({
           downloadUrl: message.data.downloadUrl,
           filename: message.data.filename,
-          groupPrefix: "functions_"
+          groupPrefix: "functions_",
         });
       }
 
@@ -81,7 +79,6 @@ export default defineContentScript({
     });
 
     onMessage(PROD_SCRIPT_INJECTED, (message) => {
-      console.log("Content: Received PROD script injection notification:", message);
       return { success: true, mode: "production" };
     });
 
@@ -102,18 +99,21 @@ export default defineContentScript({
 
         const root = createRoot(wrapper);
 
-        const head = container!.parentElement!.childNodes[0];
-
         root.render(<ExtensionRoot shadowRoot={ui.shadow} />);
 
+        hotkeys("esc", function () {
+          ExtensionStorageManager.deactivateAppInTab();
+        });
+
         function checkAppHealth() {
-          if (browserApi?.runtime?.id) {
+          if (browser?.runtime?.id) {
             // window.dispatchEvent(new Event(HOVER_INSPECTOR_UPDATE_GLOBAL_ON_PAGE_FOCUS));
             // window.removeEventListener(HOVER_INSPECTOR_REINITAPP, checkAppInit);
           }
 
+
           if (!isProduction()) return;
-          if (browserApi?.runtime?.id) return;
+          if (browser?.runtime?.id) return;
 
           root.unmount();
           wrapper.remove();
@@ -122,10 +122,6 @@ export default defineContentScript({
         }
 
         checkAppHealth();
-
-        hotkeys("esc", function () {
-          ExtensionStorageManager.deactivateAppInTab();
-        });
 
         return { root, wrapper };
       },

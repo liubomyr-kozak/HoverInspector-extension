@@ -23,7 +23,6 @@ export const DraggableModal: FunctionComponent<DraggableModalProps> = (props: Dr
 
   // Memoize modalState to prevent unnecessary recalculations
   const modalState = useMemo(() => {
-    console.log("🚀🚀🚀 :: -> modalState", state);
 
     return getModalState({
       state,

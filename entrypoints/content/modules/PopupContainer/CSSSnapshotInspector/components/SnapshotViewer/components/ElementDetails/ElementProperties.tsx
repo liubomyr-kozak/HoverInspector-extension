@@ -12,27 +12,6 @@ export const ElementProperties: React.FC<ElementPropertiesProps> = ({ selectedEl
 
   return (
     <div style={{ marginBottom: "14px" }}>
-      {/* Tag */}
-      <div
-        style={{
-          marginBottom: "10px",
-          backgroundColor: "#f8fafc",
-          padding: "8px 10px",
-          borderRadius: "6px",
-          border: "1px solid #e2e8f0",
-        }}
-      >
-        <SectionHeader
-          title="Tag"
-          icon={<IconTag size={14} color="#2563eb" />}
-          content={selectedElementData.tagName}
-          description="HTML element type (e.g., div, span, button)"
-        />
-        <div style={{ paddingLeft: "12px", fontFamily: "monospace", fontSize: "13px", color: "#334155" }}>
-          {selectedElementData.tagName}
-        </div>
-      </div>
-
       {/* ID */}
       {selectedElementData.id && (
         <div

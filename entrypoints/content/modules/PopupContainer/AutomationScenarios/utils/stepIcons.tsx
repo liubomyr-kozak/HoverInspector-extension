@@ -12,6 +12,7 @@ import {
   IconHandMove,
   IconEdit,
   IconArrowRight,
+  IconBell,
 } from '@tabler/icons-react';
 import { ScenarioStep } from '../types';
 
@@ -50,6 +51,8 @@ export const getStepIcon = (stepType: string, size: number = 16): React.ReactEle
       return <IconSelector {...iconProps} />;
     case 'confirmation':
       return <IconCheck {...iconProps} />;
+    case 'notification':
+      return <IconBell {...iconProps} />;
     default:
       return <IconHandMove {...iconProps} />;
   }
@@ -82,6 +85,8 @@ export const getStepColor = (stepType: string): string => {
       return '#2f54eb'; // Indigo
     case 'confirmation':
       return '#52c41a'; // Green
+    case 'notification':
+      return '#faad14'; // Yellow/Orange
     default:
       return '#1890ff'; // Default blue
   }
@@ -114,6 +119,8 @@ export const getStepEmoji = (stepType: string): string => {
       return '📋';
     case 'confirmation':
       return '✅';
+    case 'notification':
+      return '🔔';
     default:
       return '⚙️';
   }

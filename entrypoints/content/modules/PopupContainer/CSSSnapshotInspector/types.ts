@@ -71,6 +71,8 @@ export interface SnapshotNode extends BaseElementNode {
   readonly xpath: XPathVariants;
   /** CSS classes */
   readonly classes: readonly string[];
+  /** CSS class rules from stylesheets */
+  readonly classRules?: Readonly<Record<string, Record<string, string>>>;
   /** HTML attributes (excluding id and class) */
   readonly attributes: Readonly<Record<string, string>>;
   /** Element bounds */

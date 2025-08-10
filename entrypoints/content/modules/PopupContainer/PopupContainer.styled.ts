@@ -160,6 +160,14 @@ export const FeatureContainer = styled.div`
   flex-direction: column;
 `;
 
+export const HeaderContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+`;
+
 export const FooterContainer = styled.div`
   display: flex;
   align-items: center;
@@ -171,4 +179,39 @@ export const ButtonsContainer = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
+`;
+
+export const HeaderButtonsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+`;
+
+export const MinimizeButton = styled.button<{ isMinimized?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: ${(props) => (props.isMinimized ? "rgba(34, 197, 94, 0.1)" : "rgba(156, 163, 175, 0.1)")};
+  border: 1px solid ${(props) => (props.isMinimized ? "#22c55e" : "#9ca3af")};
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: ${(props) => (props.isMinimized ? "#16a34a" : "#6b7280")};
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${(props) => (props.isMinimized ? "rgba(34, 197, 94, 0.2)" : "rgba(156, 163, 175, 0.2)")};
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
 `;

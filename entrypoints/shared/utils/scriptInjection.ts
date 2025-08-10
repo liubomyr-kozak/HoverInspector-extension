@@ -34,7 +34,6 @@ export function injectScript(options: ScriptInjectionOptions): boolean {
 
   // If script already exists — don't add it again
   if (existingScript) {
-    console.log(`Script ${filename} already loaded — skipping.`);
     return false;
   }
 
@@ -51,12 +50,10 @@ export function injectScript(options: ScriptInjectionOptions): boolean {
       const oldVersion = oldMatch ? Number(oldMatch[1]) : 0;
 
       if (newVersion <= oldVersion) {
-        console.log(`Older or same version (${newVersion}) of script ${filename} — skipping.`);
         return false;
       }
 
       // Remove old script
-      console.log(`Removing old script version ${oldVersion}`);
       oldScript.remove();
     }
   }
@@ -66,7 +63,6 @@ export function injectScript(options: ScriptInjectionOptions): boolean {
   script.src = downloadUrl;
   script.setAttribute("data-hover-inspector", filename);
   script.onload = () => {
-    console.log(`[[ Successfully ]] loaded script: ${filename}`);
   };
   script.onerror = (error) => {
     console.error(`Failed to load script: ${filename}`, error);

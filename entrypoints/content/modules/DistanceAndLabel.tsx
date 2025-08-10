@@ -52,17 +52,17 @@ const DistanceAndLabel = () => {
 
   return (
     <>
-      <div ref={topRef} className="zToolDistanceLine zTool_top">
-        <span className="zToolDistanceLineLabel" />
+      <div ref={topRef} className="hover-inspector-distance-line hover-inspector-top">
+        <span className="hover-inspector-distance-line-label" />
       </div>
-      <div ref={bottomRef} className="zToolDistanceLine zTool_bottom">
-        <span className="zToolDistanceLineLabel" />
+      <div ref={bottomRef} className="hover-inspector-distance-line hover-inspector-bottom">
+        <span className="hover-inspector-distance-line-label" />
       </div>
-      <div ref={leftRef} className="zToolDistanceLine zTool_left">
-        <span className="zToolDistanceLineLabel" />
+      <div ref={leftRef} className="hover-inspector-distance-line hover-inspector-left">
+        <span className="hover-inspector-distance-line-label" />
       </div>
-      <div ref={rightRef} className="zToolDistanceLine zTool_right">
-        <span className="zToolDistanceLineLabel" />
+      <div ref={rightRef} className="hover-inspector-distance-line hover-inspector-right">
+        <span className="hover-inspector-distance-line-label" />
       </div>
     </>
   );

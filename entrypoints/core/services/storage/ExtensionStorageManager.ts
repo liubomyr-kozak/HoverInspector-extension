@@ -4,8 +4,12 @@ import {
   changeFeaturePopupPosition,
   changeLauncherActiveFeature,
   changeLauncherIconOrder,
+  changeMinimizedFeatures,
+  changeMinimizedLauncherPosition,
+  changeMinimizedFeaturesAndActiveIcons,
   changePreventDefault,
   changeViewType,
+  changeVisibleFeatures,
   deactivateAppInTab,
   getAllAutomationScenarios,
   getAutomationScenario,
@@ -27,6 +31,14 @@ import {
   getCSSSnapshot,
   saveCSSSnapshot,
   removeCSSSnapshot,
+  // Element Details Storage Actions
+  getAllSavedElementDetails,
+  getSavedElementDetails,
+  saveElementDetails,
+  removeSavedElementDetails,
+  // Element Details Panel Position Actions
+  getElementDetailsPanelPosition,
+  saveElementDetailsPanelPosition,
 } from "@entrypoints/background/features/backgroundSlice.ts";
 import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
 
@@ -89,6 +101,22 @@ class ExtensionStorageManager {
 
   async changeViewType(preventDefault) {
     changeViewType(preventDefault);
+  }
+
+  async changeVisibleFeatures(visibleFeatures: string[]) {
+    changeVisibleFeatures(visibleFeatures);
+  }
+
+  async changeMinimizedFeatures(minimizedFeatures: string[]) {
+    changeMinimizedFeatures(minimizedFeatures);
+  }
+
+  async changeMinimizedFeaturesAndActiveIcons(minimizedFeatures: string[], activeIcons: string[]) {
+    changeMinimizedFeaturesAndActiveIcons({ data: { minimizedFeatures, activeIcons } });
+  }
+
+  async changeMinimizedLauncherPosition(minimizedPosition: { x: number; y: number }) {
+    changeMinimizedLauncherPosition(minimizedPosition);
   }
 
   // Automation Scenarios Methods
@@ -240,6 +268,58 @@ class ExtensionStorageManager {
    */
   async removeCSSSnapshot(id) {
     return await removeCSSSnapshot(id);
+  }
+
+  /**
+   * Get all saved element details
+   * @returns {Promise<Array>} Array of saved element details IDs
+   */
+  async getAllSavedElementDetails() {
+    return await getAllSavedElementDetails();
+  }
+
+  /**
+   * Get specific saved element details by ID
+   * @param {string} id - The ID of the element details to get
+   * @returns {Promise<Object|null>} The element details object or null if not found
+   */
+  async getSavedElementDetails(id) {
+    return await getSavedElementDetails(id);
+  }
+
+  /**
+   * Save element details
+   * @param {Object} data - Object containing id and element details
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  async saveElementDetails(data) {
+    return await saveElementDetails(data);
+  }
+
+  /**
+   * Remove saved element details
+   * @param {string} id - The ID of the element details to remove
+   * @returns {Promise<Object>} Object with success status
+   */
+  async removeSavedElementDetails(id) {
+    return await removeSavedElementDetails(id);
+  }
+
+  /**
+   * Get ElementDetails panel position and size
+   * @returns {Promise<Object|null>} The panel position/size object or null if not found
+   */
+  async getElementDetailsPanelPosition() {
+    return await getElementDetailsPanelPosition();
+  }
+
+  /**
+   * Save ElementDetails panel position and size
+   * @param {Object} position - Object containing x, y, width, height
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  async saveElementDetailsPanelPosition(position) {
+    return await saveElementDetailsPanelPosition({ data: position });
   }
 }
 

@@ -12,7 +12,6 @@ import { ModalID, ModalState } from "./draggableModalReducer";
 import "./index.css";
 
 import { dragModal, focusModal, mount, resizeModal, unmount } from "./store/draggableModalSlice";
-import { onMinimizedFeaturePopup } from "@entrypoints/content/store/app/saga-action/app.saga.action.ts";
 import { EDGE_PADDING, MIN_HEIGHT, MIN_WIDTH } from "./constant";
 
 const ModalTitle = styled.div`
@@ -61,7 +60,6 @@ function DraggableModalInnerNonMemo({
 
   // Call on mount and unmount.
   useEffect(() => {
-    console.log("😜😜😜 DraggableModalInnerNonMemo:: -> Call on mount and unmount.");
 
     // Calculate default position to center the modal if not provided
     const defaultWidth = initialWidth || 800;

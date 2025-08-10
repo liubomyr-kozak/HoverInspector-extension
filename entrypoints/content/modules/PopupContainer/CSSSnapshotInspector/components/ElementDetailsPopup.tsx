@@ -1,17 +1,57 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore";
 import { closeElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 import { ElementDetails } from "./SnapshotViewer/components/ElementDetails";
-import DiffViewer from "@entrypoints/shared/components/react-diff-viewer-continued/src";
-import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
-import { ElementDiff } from "./SnapshotViewer/components/ElementDetails/ElementDiff";
+import { ElementDiff } from "./SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiff.tsx";
+import { FloatingPanel } from "@entrypoints/shared/components/FloatingPanel/FloatingPanel";
+import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
 
 export const ElementDetailsPopup: React.FC = () => {
   const dispatch = useDispatch();
   const state = useSelector((s: RootState) => s.elementDetails);
 
-  if (!state?.isOpen) return null;
+  // Default position and size
+  const defaultPosition = {
+    x: window.innerWidth - 460,
+    y: 50,
+    width: 420,
+    height: 400,
+  };
+
+  // State for panel position and size
+  const [panelPosition, setPanelPosition] = useState(defaultPosition);
+  const [isPositionLoaded, setIsPositionLoaded] = useState(false);
+
+  // Load saved position on mount
+  useEffect(() => {
+    const loadPosition = async () => {
+      try {
+        const savedPosition = await ExtensionStorageManager.getElementDetailsPanelPosition();
+        if (savedPosition) {
+          setPanelPosition(savedPosition);
+        }
+        setIsPositionLoaded(true);
+      } catch (error) {
+        console.error("Failed to load ElementDetails panel position:", error);
+        setIsPositionLoaded(true);
+      }
+    };
+
+    loadPosition();
+  }, []);
+
+  // Handle position/size changes
+  const handleModalStateChange = async (newState: { x: number; y: number; width: number; height: number }) => {
+    setPanelPosition(newState);
+    try {
+      await ExtensionStorageManager.saveElementDetailsPanelPosition(newState);
+    } catch (error) {
+      console.error("Failed to save ElementDetails panel position:", error);
+    }
+  };
+
+  if (!state?.isOpen || !isPositionLoaded) return null;
 
   const selectedElementData = {
     tagName: state.tagName || "",
@@ -26,65 +66,22 @@ export const ElementDetailsPopup: React.FC = () => {
   const selectedElementStyles = Object.entries(state.styles || {});
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 2147483000,
-        pointerEvents: "none",
-      }}
+    <FloatingPanel
+      open={state.isOpen}
+      title="Element details"
+      onCancel={() => dispatch(closeElementDetails())}
+      initialWidth={panelPosition.width}
+      initialHeight={panelPosition.height}
+      initialX={panelPosition.x}
+      initialY={panelPosition.y}
+      onModalStateChange={handleModalStateChange}
+      footer={null}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: 50,
-          right: 40,
-          width: 420,
-          maxHeight: "calc(100% - 70px)",
-          background: "white",
-          border: "1px solid #e5e7eb",
-          borderRadius: 8,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-          overflow: "hidden",
-          pointerEvents: "auto",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "10px 12px",
-            borderBottom: "1px solid #e5e7eb",
-            background: "#fff",
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: 14 }}>Element details {state.title ? `— ${state.title}` : ""}</div>
-          <button
-            onClick={() => dispatch(closeElementDetails())}
-            style={{
-              background: "transparent",
-              border: "none",
-              padding: 6,
-              cursor: "pointer",
-              borderRadius: 6,
-            }}
-            aria-label="Close"
-            title="Close"
-          >
-            ×
-          </button>
-        </div>
-        <div style={{ padding: 12, overflow: "auto" }}>
-          <ElementDetails
-            selectedElement={1}
-            selectedElementData={selectedElementData}
-            selectedElementStyles={selectedElementStyles as Array<[string, any]>}
-          />
-        </div>
-      </div>
-    </div>
+      <ElementDetails
+        selectedElement={1}
+        selectedElementData={selectedElementData}
+        selectedElementStyles={selectedElementStyles as Array<[string, any]>}
+      />
+    </FloatingPanel>
   );
 };

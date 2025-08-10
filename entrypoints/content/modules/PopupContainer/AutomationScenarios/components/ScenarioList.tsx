@@ -49,10 +49,6 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
     return <EmptyState>No scenarios found. Create a new one to get started.</EmptyState>;
   }
 
-  console.log("😂😂😂 ::ScenarioList -> executing", executing);
-  console.log("👍👍👍 ::ScenarioList -> scenarioKeys", scenarioKeys);
-  console.log("😎😎😎 ::ScenarioList -> executing", executing);
-
   return (
     <StyledScenarioList>
       {scenarioKeys.map((key) => (

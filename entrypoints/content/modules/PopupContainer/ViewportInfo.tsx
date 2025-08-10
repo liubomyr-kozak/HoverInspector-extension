@@ -1,10 +1,16 @@
 import { breakpoints } from "./ViewportRuler";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { Button as AntButton, Card as AntCard, Tabs, Tag } from "antd";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
-import { BetaBadge } from "@entrypoints/shared/components/BetaBadge.tsx";
+import {
+  PortalModalHeader,
+  HeaderPortalId,
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons";
+import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
+import { IconDeviceDesktop } from "@tabler/icons-react";
+import { INSPECTOR, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
 const { TabPane } = Tabs;
 
@@ -129,9 +135,13 @@ export default function ViewportInfoPanel() {
 
   return (
     <Container>
-      <FeatureTitle>
-        Viewport Info <BetaBadge>Beta</BetaBadge>
-      </FeatureTitle>
+      <PortalModalHeader portalId={HeaderPortalId.VIEWPORT_INFO}>
+        <FeatureTitle>
+          <FeatureIcon icon={RULER.icon} isBetta />
+          {RULER.title}
+        </FeatureTitle>
+      </PortalModalHeader>
+
       <AntCard>
         <InfoList>
           <li>Inner Width: {info.width}px</li>

@@ -1,65 +1,118 @@
 import React, { useEffect, useState } from "react";
-import { Checkbox, Col, DatePicker, Divider, Form, Input, InputNumber, Row, Select, Switch, TimePicker } from "antd";
+import { Checkbox, Col, DatePicker, Divider, InputNumber, Row, Select, Switch, TimePicker } from "antd";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { DayOfWeek, ScenarioMap, ScheduleConfig, ScheduleFrequency } from "../types.ts";
 import dayjs from "dayjs";
 
+// Yup validation schema
+const validationSchema = yup.object().shape({
+  title: yup.string().required("Please enter a title for the schedule"),
+  description: yup.string(),
+  scenarioId: yup.string().required("Please select a scenario to run"),
+  frequency: yup.string().required("Please select a frequency"),
+  enabled: yup.boolean(),
+  startDate: yup.mixed(),
+  startTime: yup.mixed(),
+  endDate: yup.mixed(),
+  daysOfWeek: yup.array().when("frequency", {
+    is: ScheduleFrequency.WEEKLY,
+    then: (schema) => schema.min(1, "Please select at least one day"),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+  dayOfMonth: yup.number().when("frequency", {
+    is: ScheduleFrequency.MONTHLY,
+    then: (schema) => schema.required("Please enter the day of month").min(1).max(31),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+  interval: yup.number().when("frequency", {
+    is: ScheduleFrequency.CUSTOM,
+    then: (schema) => schema.required("Please enter an interval").min(1),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+});
+
 const { Option } = Select;
-const { TextArea } = Input;
 
 interface ScheduleFormProps {
-  form: any; // Form instance from antd
   currentSchedule: ScheduleConfig | null;
   scenarios: ScenarioMap;
+  onFormChange?: (formData: ScheduleConfig) => void;
 }
 
 /**
  * Component for adding or editing a schedule
  */
-const ScheduleForm: React.FC<ScheduleFormProps> = ({ form, currentSchedule, scenarios }) => {
-  // State for frequency selection to show/hide relevant fields
-  const [frequency, setFrequency] = useState<ScheduleFrequency>(currentSchedule?.frequency || ScheduleFrequency.ONCE);
+const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios, onFormChange }) => {
+  // Convert date strings to dayjs objects for form initialization
+  const initialValues = currentSchedule
+    ? {
+        ...currentSchedule,
+        startDate: currentSchedule.startDate ? dayjs(currentSchedule.startDate) : undefined,
+        startTime: currentSchedule.startTime ? dayjs(currentSchedule.startTime, "HH:mm") : undefined,
+        endDate: currentSchedule.endDate ? dayjs(currentSchedule.endDate) : undefined,
+      }
+    : {
+        enabled: true,
+        frequency: ScheduleFrequency.ONCE,
+        startDate: dayjs(),
+        startTime: dayjs(),
+      };
 
-  // Update frequency when currentSchedule changes
-  useEffect(() => {
-    if (currentSchedule) {
-      setFrequency(currentSchedule.frequency);
-    }
-  }, [currentSchedule]);
+  // Initialize React Hook Form
+  const {
+    control,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<ScheduleConfig>({
+    resolver: yupResolver(validationSchema),
+    defaultValues: initialValues,
+    mode: "onChange",
+  });
 
-  // Handle frequency change
+  const frequency = watch("frequency");
+
+  // Handle frequency change - reset fields that are not relevant
   const handleFrequencyChange = (value: ScheduleFrequency) => {
-    setFrequency(value);
+    setValue("frequency", value);
 
     // Reset fields that are not relevant to the new frequency
     if (value === ScheduleFrequency.ONCE) {
-      form.setFieldsValue({
-        daysOfWeek: undefined,
-        dayOfMonth: undefined,
-        interval: undefined,
-      });
+      setValue("daysOfWeek", undefined);
+      setValue("dayOfMonth", undefined);
+      setValue("interval", undefined);
     } else if (value === ScheduleFrequency.DAILY) {
-      form.setFieldsValue({
-        daysOfWeek: undefined,
-        dayOfMonth: undefined,
-        interval: undefined,
-      });
+      setValue("daysOfWeek", undefined);
+      setValue("dayOfMonth", undefined);
+      setValue("interval", undefined);
     } else if (value === ScheduleFrequency.WEEKLY) {
-      form.setFieldsValue({
-        dayOfMonth: undefined,
-        interval: undefined,
-      });
+      setValue("dayOfMonth", undefined);
+      setValue("interval", undefined);
     } else if (value === ScheduleFrequency.MONTHLY) {
-      form.setFieldsValue({
-        daysOfWeek: undefined,
-        interval: undefined,
-      });
+      setValue("daysOfWeek", undefined);
+      setValue("interval", undefined);
     } else if (value === ScheduleFrequency.CUSTOM) {
-      form.setFieldsValue({
-        daysOfWeek: undefined,
-        dayOfMonth: undefined,
-      });
+      setValue("daysOfWeek", undefined);
+      setValue("dayOfMonth", undefined);
     }
   };
+
+  // Watch form changes and notify parent
+  const watchedValues = watch();
+  useEffect(() => {
+    if (onFormChange) {
+      // Convert dayjs objects back to strings for the callback
+      const formData = {
+        ...watchedValues,
+        startDate: watchedValues.startDate ? watchedValues.startDate.format("YYYY-MM-DD") : undefined,
+        startTime: watchedValues.startTime ? watchedValues.startTime.format("HH:mm") : undefined,
+        endDate: watchedValues.endDate ? watchedValues.endDate.format("YYYY-MM-DD") : undefined,
+      };
+      onFormChange(formData as ScheduleConfig);
+    }
+  }, [watchedValues, onFormChange]);
 
   // Get scenario options for the select dropdown
   const scenarioOptions = Object.keys(scenarios).map((key) => ({
@@ -79,153 +132,323 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ form, currentSchedule, scen
   ];
 
   // Convert date strings to dayjs objects for form initialization
-  const initialValues = currentSchedule
-    ? {
-        ...currentSchedule,
-        startDate: currentSchedule.startDate ? dayjs(currentSchedule.startDate) : undefined,
-        startTime: currentSchedule.startTime ? dayjs(currentSchedule.startTime, "HH:mm") : undefined,
-        endDate: currentSchedule.endDate ? dayjs(currentSchedule.endDate) : undefined,
-      }
-    : {
-        enabled: true,
-        frequency: ScheduleFrequency.ONCE,
-        startDate: dayjs(),
-        startTime: dayjs(),
-      };
 
   return (
-    <Form form={form} layout="vertical" initialValues={initialValues}>
-      <Form.Item
-        name="title"
-        label="Schedule Title"
-        rules={[{ required: true, message: "Please enter a title for the schedule" }]}
-      >
-        <Input placeholder="Enter schedule title" />
-      </Form.Item>
-
-      <Form.Item name="description" label="Description" tooltip="A detailed description of what this schedule does">
-        <TextArea placeholder="Enter schedule description" rows={2} />
-      </Form.Item>
-
-      <Form.Item
-        name="scenarioId"
-        label="Scenario to Run"
-        rules={[{ required: true, message: "Please select a scenario to run" }]}
-      >
-        <Select
-          getPopupContainer={() =>
-            // @ts-ignore
-            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-          }
-          placeholder="Select a scenario"
-          options={scenarioOptions}
-          showSearch
-          optionFilterProp="label"
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+          Schedule Title
+        </label>
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <input 
+              {...field} 
+              type="text"
+              placeholder="Enter schedule title"
+              style={{
+                width: '100%',
+                padding: '4px 11px',
+                border: `1px solid ${errors.title ? '#ff4d4f' : '#d9d9d9'}`,
+                borderRadius: '6px',
+                fontSize: '14px',
+                lineHeight: '1.5',
+                transition: 'border-color 0.2s',
+                outline: 'none'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = errors.title ? '#ff4d4f' : '#1890ff';
+                e.target.style.boxShadow = `0 0 0 2px ${errors.title ? 'rgba(255, 77, 79, 0.2)' : 'rgba(24, 144, 255, 0.2)'}`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = errors.title ? '#ff4d4f' : '#d9d9d9';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          )}
         />
-      </Form.Item>
+        {errors.title && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+            {errors.title.message}
+          </div>
+        )}
+      </div>
 
-      <Form.Item name="enabled" label="Enabled" valuePropName="checked" tooltip="Enable or disable this schedule">
-        <Switch />
-      </Form.Item>
+      <div>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+          Description
+        </label>
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <textarea 
+              {...field} 
+              placeholder="Enter schedule description" 
+              rows={2}
+              style={{
+                width: '100%',
+                padding: '4px 11px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '6px',
+                fontSize: '14px',
+                lineHeight: '1.5',
+                transition: 'border-color 0.2s',
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#1890ff';
+                e.target.style.boxShadow = '0 0 0 2px rgba(24, 144, 255, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#d9d9d9';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          )}
+        />
+      </div>
+
+      <div>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+          Scenario to Run
+        </label>
+        <Controller
+          name="scenarioId"
+          control={control}
+          render={({ field }) => (
+            <Select
+              {...field}
+              getPopupContainer={() =>
+                // @ts-ignore
+                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+              }
+              placeholder="Select a scenario"
+              options={scenarioOptions}
+              showSearch
+              optionFilterProp="label"
+              status={errors.scenarioId ? "error" : undefined}
+            />
+          )}
+        />
+        {errors.scenarioId && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+            {errors.scenarioId.message}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+          Enabled
+        </label>
+        <Controller
+          name="enabled"
+          control={control}
+          render={({ field: { value, onChange } }) => (
+            <Switch
+              checked={value}
+              onChange={onChange}
+            />
+          )}
+        />
+      </div>
 
       <Divider orientation="left">Schedule Settings</Divider>
 
-      <Form.Item name="frequency" label="Frequency" rules={[{ required: true, message: "Please select a frequency" }]}>
-        <Select
-          getPopupContainer={() =>
-            // @ts-ignore
-            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-          }
-          placeholder="Select frequency"
-          onChange={handleFrequencyChange}
-        >
-          <Option value={ScheduleFrequency.ONCE}>One-time</Option>
-          <Option value={ScheduleFrequency.DAILY}>Daily</Option>
-          <Option value={ScheduleFrequency.WEEKLY}>Weekly</Option>
-          <Option value={ScheduleFrequency.MONTHLY}>Monthly</Option>
-          <Option value={ScheduleFrequency.CUSTOM}>Custom Interval</Option>
-        </Select>
-      </Form.Item>
-
-      <Form.Item
-        name="startDate"
-        label="Start Date"
-        rules={[{ required: true, message: "Please select a start date" }]}
-      >
-        <DatePicker
-          getPopupContainer={() =>
-            // @ts-ignore
-            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-          }
-          style={{ width: "100%" }}
+      <div>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+          Frequency
+        </label>
+        <Controller
+          name="frequency"
+          control={control}
+          render={({ field }) => (
+            <Select
+              {...field}
+              getPopupContainer={() =>
+                // @ts-ignore
+                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+              }
+              placeholder="Select frequency"
+              onChange={(value) => {
+                field.onChange(value);
+                handleFrequencyChange(value);
+              }}
+              status={errors.frequency ? "error" : undefined}
+            >
+              <Option value={ScheduleFrequency.ONCE}>One-time</Option>
+              <Option value={ScheduleFrequency.DAILY}>Daily</Option>
+              <Option value={ScheduleFrequency.WEEKLY}>Weekly</Option>
+              <Option value={ScheduleFrequency.MONTHLY}>Monthly</Option>
+              <Option value={ScheduleFrequency.CUSTOM}>Custom Interval</Option>
+            </Select>
+          )}
         />
-      </Form.Item>
+        {errors.frequency && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+            {errors.frequency.message}
+          </div>
+        )}
+      </div>
 
-      <Form.Item
-        name="startTime"
-        label="Start Time"
-        rules={[{ required: true, message: "Please select a start time" }]}
-      >
-        <TimePicker
-          getPopupContainer={() =>
-            // @ts-ignore
-            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-          }
-          format="HH:mm"
-          style={{ width: "100%" }}
+      <div>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+          Start Date
+        </label>
+        <Controller
+          name="startDate"
+          control={control}
+          render={({ field }) => (
+            <DatePicker
+              {...field}
+              getPopupContainer={() =>
+                // @ts-ignore
+                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+              }
+              style={{ width: "100%" }}
+              status={errors.startDate ? "error" : undefined}
+            />
+          )}
         />
-      </Form.Item>
+        {errors.startDate && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+            {errors.startDate.message}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+          Start Time
+        </label>
+        <Controller
+          name="startTime"
+          control={control}
+          render={({ field }) => (
+            <TimePicker
+              {...field}
+              getPopupContainer={() =>
+                // @ts-ignore
+                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+              }
+              format="HH:mm"
+              style={{ width: "100%" }}
+              status={errors.startTime ? "error" : undefined}
+            />
+          )}
+        />
+        {errors.startTime && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+            {errors.startTime.message}
+          </div>
+        )}
+      </div>
 
       {frequency === ScheduleFrequency.ONCE && (
-        <Form.Item name="endDate" label="End Date" tooltip="Optional end date for the schedule">
-          <DatePicker
-            getPopupContainer={() =>
-              // @ts-ignore
-              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-            }
-            style={{ width: "100%" }}
+        <div>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+            End Date
+          </label>
+          <Controller
+            name="endDate"
+            control={control}
+            render={({ field }) => (
+              <DatePicker
+                {...field}
+                getPopupContainer={() =>
+                  // @ts-ignore
+                  (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+                }
+                style={{ width: "100%" }}
+              />
+            )}
           />
-        </Form.Item>
+        </div>
       )}
 
       {frequency === ScheduleFrequency.WEEKLY && (
-        <Form.Item
-          name="daysOfWeek"
-          label="Days of Week"
-          rules={[{ required: true, message: "Please select at least one day of the week" }]}
-        >
-          <Checkbox.Group>
-            <Row>
-              {daysOfWeekOptions.map((option) => (
-                <Col span={8} key={option.value}>
-                  <Checkbox value={option.value}>{option.label}</Checkbox>
-                </Col>
-              ))}
-            </Row>
-          </Checkbox.Group>
-        </Form.Item>
+        <div>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+            Days of Week
+          </label>
+          <Controller
+            name="daysOfWeek"
+            control={control}
+            render={({ field }) => (
+              <Checkbox.Group {...field}>
+                <Row>
+                  {daysOfWeekOptions.map((option) => (
+                    <Col span={8} key={option.value}>
+                      <Checkbox value={option.value}>{option.label}</Checkbox>
+                    </Col>
+                  ))}
+                </Row>
+              </Checkbox.Group>
+            )}
+          />
+          {errors.daysOfWeek && (
+            <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+              {errors.daysOfWeek.message}
+            </div>
+          )}
+        </div>
       )}
 
       {frequency === ScheduleFrequency.MONTHLY && (
-        <Form.Item
-          name="dayOfMonth"
-          label="Day of Month"
-          rules={[{ required: true, message: "Please enter a day of the month" }]}
-        >
-          <InputNumber min={1} max={31} style={{ width: "100%" }} />
-        </Form.Item>
+        <div>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+            Day of Month
+          </label>
+          <Controller
+            name="dayOfMonth"
+            control={control}
+            render={({ field }) => (
+              <InputNumber 
+                {...field} 
+                min={1} 
+                max={31} 
+                style={{ width: "100%" }}
+                status={errors.dayOfMonth ? "error" : undefined}
+              />
+            )}
+          />
+          {errors.dayOfMonth && (
+            <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+              {errors.dayOfMonth.message}
+            </div>
+          )}
+        </div>
       )}
 
       {frequency === ScheduleFrequency.CUSTOM && (
-        <Form.Item
-          name="interval"
-          label="Interval (minutes)"
-          rules={[{ required: true, message: "Please enter an interval" }]}
-        >
-          <InputNumber min={1} style={{ width: "100%" }} />
-        </Form.Item>
+        <div>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+            Interval (minutes)
+          </label>
+          <Controller
+            name="interval"
+            control={control}
+            render={({ field }) => (
+              <InputNumber 
+                {...field} 
+                min={1} 
+                style={{ width: "100%" }}
+                status={errors.interval ? "error" : undefined}
+              />
+            )}
+          />
+          {errors.interval && (
+            <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+              {errors.interval.message}
+            </div>
+          )}
+        </div>
       )}
-    </Form>
+    </div>
   );
 };
 

@@ -15,6 +15,12 @@ import {
   CSS_SNAPSHOT_PREFIX,
   CSS_SNAPSHOTS_LIST_KEY,
 } from "@entrypoints/core/constants/cssSnapshot.ts";
+import {
+  ELEMENT_DETAILS_KEY,
+  ELEMENT_DETAILS_PREFIX,
+  ELEMENT_DETAILS_LIST_KEY,
+  ELEMENT_DETAILS_PANEL_POSITION_KEY,
+} from "@entrypoints/core/constants/elementDetails.ts";
 
 class AppStorageService {
   // незалежно від того чи юзер залогінений чи ні,
@@ -81,8 +87,6 @@ class AppStorageService {
    */
   getAutomationScenario = async ({ data: id }) => {
     const key = AUTOMATION_SCENARIO_KEY(id);
-
-    console.log("🌟🌟🌟 AppStorageService::getAutomationScenario ->±±±±±±±±± key", key);
 
     return await LocalStorage.get(key);
   };
@@ -272,6 +276,85 @@ class AppStorageService {
     await LocalStorage.set(CSS_SNAPSHOTS_LIST_KEY, updatedList);
 
     return { success: true };
+  };
+
+  /**
+   * Get all saved element details
+   * @returns {Promise<Array>} Array of element details IDs
+   */
+  getAllSavedElementDetails = async () => {
+    // Get the list of element details IDs
+    const elementDetailsList = await LocalStorage.get(ELEMENT_DETAILS_LIST_KEY);
+    // Ensure we always return an array
+    return Array.isArray(elementDetailsList) ? elementDetailsList : [];
+  };
+
+  /**
+   * Get specific saved element details by ID
+   * @param {string} id - The ID of the element details to get
+   * @returns {Promise<Object|null>} The element details object or null if not found
+   */
+  getSavedElementDetails = async (id) => {
+    const key = ELEMENT_DETAILS_KEY(id);
+    return await LocalStorage.get(key);
+  };
+
+  /**
+   * Save element details
+   * @param {Object} data - Object containing id and element details
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  saveElementDetails = async ({ id, elementDetails }) => {
+    const key = ELEMENT_DETAILS_KEY(id);
+
+    // Save the element details
+    await LocalStorage.set(key, elementDetails);
+
+    // Update the list of element details
+    const elementDetailsList = await this.getAllSavedElementDetails();
+    if (!elementDetailsList.includes(id)) {
+      elementDetailsList.push(id);
+      await LocalStorage.set(ELEMENT_DETAILS_LIST_KEY, elementDetailsList);
+    }
+
+    return { success: true, key };
+  };
+
+  /**
+   * Remove saved element details
+   * @param {string} id - The ID of the element details to remove
+   * @returns {Promise<Object>} Object with success status
+   */
+  removeSavedElementDetails = async (id) => {
+    const key = ELEMENT_DETAILS_KEY(id);
+
+    // Remove the element details
+    await LocalStorage.fullDestroy(key);
+
+    // Update the list of element details
+    const elementDetailsList = await this.getAllSavedElementDetails();
+    const updatedList = elementDetailsList.filter((elementId) => elementId !== id);
+    await LocalStorage.set(ELEMENT_DETAILS_LIST_KEY, updatedList);
+
+    return { success: true };
+  };
+
+  /**
+   * Get ElementDetails panel position and size
+   * @returns {Promise<Object|null>} The panel position/size object or null if not found
+   */
+  getElementDetailsPanelPosition = async () => {
+    return await LocalStorage.get(ELEMENT_DETAILS_PANEL_POSITION_KEY);
+  };
+
+  /**
+   * Save ElementDetails panel position and size
+   * @param {Object} position - Object containing x, y, width, height
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  saveElementDetailsPanelPosition = async (position) => {
+    await LocalStorage.set(ELEMENT_DETAILS_PANEL_POSITION_KEY, position);
+    return { success: true, key: ELEMENT_DETAILS_PANEL_POSITION_KEY };
   };
 }
 

@@ -4,10 +4,11 @@
  * Represents a single step in an automation scenario
  */
 export interface ScenarioStep {
-  type: string;
+  type: StepType;
   xpath?: string;
   alternativeXpaths?: string[]; // Array of alternative XPaths that can be used
   value?: string;
+  xpathAutoUpdated?: boolean; // Flag to indicate if xpath was automatically updated for better uniqueness
 }
 
 /**
@@ -22,6 +23,7 @@ export interface Scenario {
   category?: string;
   folderId?: string | null;
   executionSpeed?: number;
+  enableNavigation?: boolean; // Controls whether navigation steps should be executed during playback
 }
 
 /**
@@ -135,6 +137,7 @@ export interface TriggerConfig {
     // For domain triggers
     domainPattern?: string;
     exactMatch?: boolean;
+    useRegex?: boolean;
 
     // For element triggers
     elementXPath?: string;
@@ -156,22 +159,47 @@ export interface TriggerMap {
 }
 
 /**
+ * Types of automation steps
+ */
+export enum StepType {
+  NOT_SET = "",
+  VALUE = "value",
+  CLICK = "click",
+  HOVER = "hover",
+  INPUT = "input",
+  SELECT = "select",
+  NAVIGATE = "navigate",
+  CODE = "code",
+  FUNCTION = "function",
+  REDIRECT = "redirect",
+  UPDATE = "update",
+  WAIT = "wait",
+  WAIT_ELEMENT_VISIBLE = "waitElementVisible",
+  CONFIRMATION = "confirmation",
+  NOTIFICATION = "notification",
+  GET_TEXT = "getText",
+}
+
+/**
  * Options for step types in the form
  */
 export const stepTypeOptions = [
-  { value: "", label: "(not set)" },
-  { value: "value", label: "Change" },
-  { value: "click", label: "Click" },
-  { value: "hover", label: "Hover" },
-  { value: "input", label: "Input" },
-  { value: "select", label: "Select" },
-  { value: "code", label: "Code" },
-  { value: "function", label: "Function" },
-  { value: "redirect", label: "Redirect" },
-  { value: "update", label: "New page" },
-  { value: "wait", label: "Timer" },
-  { value: "confirmation", label: "Confirmation" },
-  { value: "getText", label: "Get Text" },
+  { value: StepType.NOT_SET, label: "(not set)" },
+  { value: StepType.VALUE, label: "Change" },
+  { value: StepType.CLICK, label: "Click" },
+  { value: StepType.HOVER, label: "Hover" },
+  { value: StepType.INPUT, label: "Input" },
+  { value: StepType.SELECT, label: "Select" },
+  { value: StepType.NAVIGATE, label: "Navigate" },
+  { value: StepType.CODE, label: "Code" },
+  { value: StepType.FUNCTION, label: "Function" },
+  { value: StepType.REDIRECT, label: "Redirect" },
+  { value: StepType.UPDATE, label: "New page" },
+  { value: StepType.WAIT, label: "Timer" },
+  { value: StepType.WAIT_ELEMENT_VISIBLE, label: "Wait Element Visible" },
+  { value: StepType.CONFIRMATION, label: "Confirmation" },
+  { value: StepType.NOTIFICATION, label: "Notification" },
+  { value: StepType.GET_TEXT, label: "Get Text" },
 ];
 
 /**
@@ -183,7 +211,7 @@ export const getFilteredStepTypeOptions = (syncFunctions: boolean = true) => {
   if (syncFunctions) {
     return stepTypeOptions;
   }
-  return stepTypeOptions.filter(option => option.value !== "function");
+  return stepTypeOptions.filter(option => option.value !== StepType.FUNCTION);
 };
 
 /**
@@ -205,7 +233,7 @@ export enum ExecutionStatus {
  */
 export interface ExecutionLogEntry {
   stepIndex: number;
-  stepType: string;
+  stepType: StepType;
   stepDescription: string;
   status: ExecutionStatus;
   timestamp: string; // ISO date string

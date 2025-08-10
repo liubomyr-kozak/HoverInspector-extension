@@ -20,7 +20,6 @@ export async function deactivate(tabId: number) {
   try {
     await sendMessage(HOVER_INSPECTOR_DEACTIVATE, null, tabId as number);
   } catch (error) {
-    console.log("🚀🚀🚀 deactivate::deactivate ->", tabId, error);
   }
 
   icon.deactivate(tabId);

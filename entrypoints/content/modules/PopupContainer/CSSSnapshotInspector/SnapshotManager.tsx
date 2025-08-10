@@ -16,11 +16,15 @@ import {
   IconPhotoPlus,
 } from "@tabler/icons-react";
 import { CSSSnapshot } from "./types";
+import {
+  HeaderPortalId,
+  PortalModalHeader,
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
+import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
+import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
 // Styled Components
-const ManagerContainer = styled.div`
-  padding: 16px;
-`;
+const ManagerContainer = styled.div``;
 
 const EmptyStateContainer = styled.div`
   display: flex;
@@ -92,7 +96,6 @@ const FeatureCard = styled.div`
 const SnapshotGrid = styled.div`
   display: flex;
   gap: 16px;
-  margin-top: 16px;
   flex-direction: column;
 `;
 
@@ -219,7 +222,7 @@ const ActionButtons = styled.div`
   gap: 6px;
 `;
 
-const ActionButton = styled.button<{ variant: "primary" | "secondary" | "danger" }>`
+const ActionButton = styled.button<{ variant: "primary" | "secondary" | "danger" | "green" }>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,6 +255,15 @@ const ActionButton = styled.button<{ variant: "primary" | "secondary" | "danger"
           &:hover {
             background: linear-gradient(135deg, #dc2626, #b91c1c);
             box-shadow: 0 1px 4px rgba(239, 68, 68, 0.3);
+          }
+        `;
+      case "green":
+        return `
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          &:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
           }
         `;
       default:
@@ -291,26 +303,29 @@ interface SnapshotManagerProps {
   readonly onDelete: (id: string) => void;
   readonly onExport: (snapshot: CSSSnapshot) => void;
   readonly onToggleCompare: (snapshot: CSSSnapshot) => void;
+  readonly onStartComparison?: () => void;
 }
 
 export const SnapshotManager = memo<SnapshotManagerProps>(
-  ({ snapshots, compareSnapshots, onView, onDelete, onExport, onToggleCompare }) => {
+  ({ snapshots, compareSnapshots, onView, onDelete, onExport, onToggleCompare, onStartComparison }) => {
     const [hoveredSnapshot, setHoveredSnapshot] = useState<string | null>(null);
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
     if (snapshots.length === 0) {
       return (
-        <ManagerContainer>
-          <EmptyStateContainer>
-            <EmptyStateIcon>
-              <IconPhotoPlus size={72} color="#9ca3af" />
-            </EmptyStateIcon>
-            <EmptyStateTitle>No Snapshots Yet</EmptyStateTitle>
-            <EmptyStateDescription>
-              Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time.
-            </EmptyStateDescription>
-          </EmptyStateContainer>
-        </ManagerContainer>
+        <>
+          <ManagerContainer>
+            <EmptyStateContainer>
+              <EmptyStateIcon>
+                <IconPhotoPlus size={72} color="#9ca3af" />
+              </EmptyStateIcon>
+              <EmptyStateTitle>No Snapshots Yet</EmptyStateTitle>
+              <EmptyStateDescription>
+                Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time.
+              </EmptyStateDescription>
+            </EmptyStateContainer>
+          </ManagerContainer>
+        </>
       );
     }
 
@@ -328,126 +343,190 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
     };
 
     return (
-      <ManagerContainer>
-        <SnapshotGrid>
-          {snapshots.map((snapshot) => {
-            const selected = isSelected(snapshot);
-            const hovered = hoveredSnapshot === snapshot.id;
+      <>
+        <ManagerContainer>
+          <SnapshotGrid>
+            {snapshots.map((snapshot) => {
+              const selected = isSelected(snapshot);
+              const hovered = hoveredSnapshot === snapshot.id;
 
-            return (
-              <SnapshotCard
-                key={snapshot.id}
-                isSelected={selected}
-                isHovered={hovered}
-                onClick={(e) => {
-                  // Toggle select/unselect on card click
-                  e.stopPropagation();
-                  onToggleCompare(snapshot);
-                }}
-                onMouseEnter={() => setHoveredSnapshot(snapshot.id)}
-                onMouseLeave={() => {
-                  setHoveredSnapshot(null);
-                  setMenuOpenId((id) => (id === snapshot.id ? null : id));
-                }}
-                style={{ display: "flex", flexDirection: "column", position: "relative" }}
-              >
-                <CardHeader>
-                  <CardTitle>
-                    {!selected ? (
-                      <div className="icon">
-                        <IconGlobe size={20} />
-                      </div>
-                    ) : (
-                      <SelectionBadge>
-                        <IconCheck size={14} />
-                        Selected
-                      </SelectionBadge>
+              return (
+                <SnapshotCard
+                  key={snapshot.id}
+                  isSelected={selected}
+                  isHovered={hovered}
+                  onClick={(e) => {
+                    // Toggle select/unselect on card click
+                    e.stopPropagation();
+                    onToggleCompare(snapshot);
+                  }}
+                  onMouseEnter={() => setHoveredSnapshot(snapshot.id)}
+                  onMouseLeave={() => {
+                    setHoveredSnapshot(null);
+                    setMenuOpenId((id) => (id === snapshot.id ? null : id));
+                  }}
+                  style={{ display: "flex", flexDirection: "column", position: "relative" }}
+                >
+                  <CardHeader>
+                    <CardTitle>
+                      {!selected ? (
+                        <div className="icon">
+                          <IconGlobe size={20} />
+                        </div>
+                      ) : (
+                        <SelectionBadge>
+                          <IconCheck size={14} />
+                          Selected
+                        </SelectionBadge>
+                      )}
+                      <div className="text">Snapshot #{snapshot.title}</div>
+                    </CardTitle>
+                    <OptionsButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId((id) => (id === snapshot.id ? null : snapshot.id));
+                      }}
+                      aria-label="More actions"
+                    >
+                      <IconDotsVertical size={18} color="#6b7280" />
+                    </OptionsButton>
+                    {menuOpenId === snapshot.id && (
+                      <DropdownMenu onClick={(e) => e.stopPropagation()}>
+                        <MenuItem
+                          onClick={() => {
+                            setMenuOpenId(null);
+                            onExport(snapshot);
+                          }}
+                        >
+                          <IconDownload size={16} /> Export
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            setMenuOpenId(null);
+                            // if (confirm("Are you sure you want to delete this snapshot?")) {
+                            onDelete(snapshot.id);
+                            // }
+                          }}
+                        >
+                          <IconTrash size={16} /> Delete
+                        </MenuItem>
+                      </DropdownMenu>
                     )}
-                    <div className="text">Snapshot #{snapshot.title}</div>
-                  </CardTitle>
-                  <OptionsButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpenId((id) => (id === snapshot.id ? null : snapshot.id));
-                    }}
-                    aria-label="More actions"
-                  >
-                    <IconDotsVertical size={18} color="#6b7280" />
-                  </OptionsButton>
-                  {menuOpenId === snapshot.id && (
-                    <DropdownMenu onClick={(e) => e.stopPropagation()}>
-                      <MenuItem
-                        onClick={() => {
-                          setMenuOpenId(null);
-                          onExport(snapshot);
-                        }}
-                      >
-                        <IconDownload size={16} /> Export
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => {
-                          setMenuOpenId(null);
-                          // if (confirm("Are you sure you want to delete this snapshot?")) {
-                          onDelete(snapshot.id);
-                          // }
-                        }}
-                      >
-                        <IconTrash size={16} /> Delete
-                      </MenuItem>
-                    </DropdownMenu>
-                  )}
-                  {/* View details button on right */}
-                </CardHeader>
+                    {/* View details button on right */}
+                  </CardHeader>
 
-                <MetadataGrid>
-                  <MetadataItem title={`Captured: ${formatDate(snapshot.timestamp)}`}>
-                    <IconCalendar size={14} className="icon" />
-                    <span className="value">{formatDate(snapshot.timestamp)}</span>
-                  </MetadataItem>
+                  <MetadataGrid>
+                    <MetadataItem title={`Captured: ${formatDate(snapshot.timestamp)}`}>
+                      <IconCalendar size={14} className="icon" />
+                      <span className="value">{formatDate(snapshot.timestamp)}</span>
+                    </MetadataItem>
 
-                  <MetadataItem title={`Elements: ${snapshot.elementCount || 0}`}>
-                    <IconStack3 size={14} className="icon" />
-                    <span className="value">{snapshot.elementCount || 0}</span>
-                  </MetadataItem>
+                    <MetadataItem title={`Elements: ${snapshot.elementCount || 0}`}>
+                      <IconStack3 size={14} className="icon" />
+                      <span className="value">{snapshot.elementCount || 0}</span>
+                    </MetadataItem>
 
-                  <MetadataItem title={snapshot.url || ""}>
-                    <IconGlobe size={14} className="icon" />
-                    <span className="value">{snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}</span>
-                  </MetadataItem>
-                </MetadataGrid>
+                    <MetadataItem title={snapshot.url || ""}>
+                      <IconGlobe size={14} className="icon" />
+                      <span className="value">{snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}</span>
+                    </MetadataItem>
+                  </MetadataGrid>
 
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <ActionButton
-                    variant="primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onView(snapshot);
-                    }}
-                    style={{ minWidth: 80 }}
-                    aria-label="View details"
-                  >
-                    <IconEye size={12} />
-                    View details
-                  </ActionButton>
-                  <ActionButton
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Compare with current page logic
-                      window.postMessage({ type: "COMPARE_SNAPSHOTS", snapshots: [snapshot, "CURRENT_PAGE"] }, "*");
-                    }}
-                    style={{ minWidth: 120 }}
-                    aria-label="Compare with current page"
-                  >
-                    <IconGitCompare size={14} />
-                    Compare with current page
-                  </ActionButton>
-                </div>
-              </SnapshotCard>
-            );
-          })}
-        </SnapshotGrid>
-      </ManagerContainer>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <ActionButton
+                      variant={selected ? "green" : "primary"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const isSelected = compareSnapshots.some((s) => s.id === snapshot.id);
+
+                        if (!isSelected && compareSnapshots.length === 0) {
+                          // No snapshots selected - show view details
+                          onView(snapshot);
+                        } else if (!isSelected && compareSnapshots.length === 1) {
+                          // One snapshot selected - select this one to compare
+                          onToggleCompare(snapshot);
+                        } else if (isSelected && compareSnapshots.length === 1) {
+                          // This is the first selected - just toggle selection
+                          onToggleCompare(snapshot);
+                        } else if (isSelected && compareSnapshots.length === 2) {
+                          // This is the second selected - start comparison
+                          if (onStartComparison) {
+                            onStartComparison();
+                          }
+                        }
+                      }}
+                      style={{ minWidth: 80 }}
+                      aria-label={(() => {
+                        const isSelected = compareSnapshots.some((s) => s.id === snapshot.id);
+                        if (!isSelected && compareSnapshots.length === 0) return "View details";
+                        if (!isSelected && compareSnapshots.length === 1) return "Select to compare";
+                        if (isSelected && compareSnapshots.length === 1) return "Compare (1/2)";
+                        if (isSelected && compareSnapshots.length === 2) return "Compare (2/2)";
+                        return "View details";
+                      })()}
+                    >
+                      {(() => {
+                        const isSelected = compareSnapshots.some((s) => s.id === snapshot.id);
+                        if (!isSelected && compareSnapshots.length === 0) {
+                          return (
+                            <>
+                              <IconEye size={12} />
+                              View details
+                            </>
+                          );
+                        }
+                        if (!isSelected && compareSnapshots.length === 1) {
+                          return (
+                            <>
+                              <IconGitCompare size={12} />
+                              Select to compare
+                            </>
+                          );
+                        }
+                        if (isSelected && compareSnapshots.length === 1) {
+                          return (
+                            <>
+                              <IconGitCompare size={12} />
+                              Compare (1/2)
+                            </>
+                          );
+                        }
+                        if (isSelected && compareSnapshots.length === 2) {
+                          return (
+                            <>
+                              <IconGitCompare size={12} />
+                              Compare (2/2)
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            <IconEye size={12} />
+                            View details
+                          </>
+                        );
+                      })()}
+                    </ActionButton>
+                    <ActionButton
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Compare with current page logic
+                        window.postMessage({ type: "COMPARE_SNAPSHOTS", snapshots: [snapshot, "CURRENT_PAGE"] }, "*");
+                      }}
+                      style={{ minWidth: 120 }}
+                      aria-label="Compare with current page"
+                    >
+                      <IconGitCompare size={14} />
+                      Compare with current page
+                    </ActionButton>
+                  </div>
+                </SnapshotCard>
+              );
+            })}
+          </SnapshotGrid>
+        </ManagerContainer>
+      </>
     );
   },
 );

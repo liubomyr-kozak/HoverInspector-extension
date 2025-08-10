@@ -36,10 +36,10 @@ const SelectedBox = () => {
 
   return (
     <>
-      <div ref={topRef} style={dnStyle} className="zToolBoxBoxSelected zTool_top" />
-      <div ref={bottomRef} style={dnStyle} className="zToolBoxBoxSelected zTool_bottom" />
-      <div ref={leftRef} style={dnStyle} className="zToolBoxBoxSelected zTool_left" />
-      <div ref={rightRef} style={dnStyle} className="zToolBoxBoxSelected zTool_right" />
+      <div ref={topRef} style={dnStyle} className="hover-inspector-box-box-selected hover-inspector-top" />
+      <div ref={bottomRef} style={dnStyle} className="hover-inspector-box-box-selected hover-inspector-bottom" />
+      <div ref={leftRef} style={dnStyle} className="hover-inspector-box-box-selected hover-inspector-left" />
+      <div ref={rightRef} style={dnStyle} className="hover-inspector-box-box-selected hover-inspector-right" />
     </>
   );
 };

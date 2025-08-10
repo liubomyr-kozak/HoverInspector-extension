@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Tabs } from "antd";
-import { IconBolt, IconCalendar, IconHistory, IconServer } from "@tabler/icons-react";
+import { IconBolt, IconCalendar, IconHistory, IconServer, IconMinus, IconMaximize } from "@tabler/icons-react";
 
-import ScenariosTab from "./tabs/ScenariosTab";
+import ScenariosListTab from "./tabs/ScenariosListTab.tsx";
 import FunctionsTab from "./tabs/FunctionsTab";
 import SchedulesTab from "./tabs/SchedulesTab";
 import TriggersTab from "./tabs/TriggersTab";
@@ -26,9 +26,16 @@ import {
   loadSchedulesWatcher,
   loadTriggersWatcher,
 } from "../../../store/automation/automation.saga.action";
-import { RecordingText, Title } from "./styles";
+import { onToggleFeatureMinimized } from "@entrypoints/content/store/app/saga-action/app.saga.action";
+import { RecordingText } from "./styles";
 import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationUserActionsHandler.tsx";
 import { PiVinylRecordDuotone } from "react-icons/pi";
+import { HeaderPortalId, PortalModalHeader, PortalModalHeaderButtons } from "./components/ScenarioPortalHeaderButtons";
+import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
+import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
+import { AUTOMATION } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
+import { TbWindowMinimize } from "react-icons/tb";
+import { clearAllActiveIcons } from "@entrypoints/content/store/app/app.slice.ts";
 
 export const AutomationScenarios: React.FC = () => {
   const dispatch = useDispatch();
@@ -41,11 +48,15 @@ export const AutomationScenarios: React.FC = () => {
   const { isServerTabVisible } = useServerTabVisibility();
   const { syncFunctions } = useServerSettings();
 
-  const { activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
+  const { activeIcons = [], iconOrder = [] } = useSelector((state: any) => state?.app.launcher);
   const isActive = React.useMemo(() => activeIcons.includes("automation"), [activeIcons]);
 
   const setActiveTab = (tab: string) => {
     dispatch(automationActions.setActiveTab(tab));
+  };
+
+  const handleToggleFeatureMinimized = (featureKey: string) => {
+    dispatch(onToggleFeatureMinimized.getPayload({ featureKey }));
   };
 
   useEffect(() => {
@@ -63,13 +74,13 @@ export const AutomationScenarios: React.FC = () => {
     if (!syncFunctions && activeTab === "functions") {
       setActiveTab("scenarios");
     }
-  }, [syncFunctions, activeTab, setActiveTab]);
+  }, [syncFunctions, activeTab]);
 
   useEffect(() => {
     if (executing && activeScenarioId) {
       dispatch(automationActions.expandOnlyScenario(activeScenarioId));
     }
-  }, [executing, activeScenarioId, dispatch]);
+  }, [executing, activeScenarioId]);
 
   if (!isActive) {
     return null;
@@ -77,21 +88,33 @@ export const AutomationScenarios: React.FC = () => {
 
   return (
     <div className="w-full">
-      <Title>
-        Automation
-        {recording && (
-          <RecordingText>
-            rec
-            <PiVinylRecordDuotone
-              size={10}
-              className="mr-1 animate-combined"
-              style={{ color: "red", verticalAlign: "middle" }}
-            />
-          </RecordingText>
-        )}
-      </Title>
-
-      {recording && <AutomationUserActionsHandler />}
+      <PortalModalHeader portalId={HeaderPortalId.SCENARIOS_TAB}>
+        <FeatureTitle>
+          <FeatureIcon icon={AUTOMATION.icon} isBetta />
+          {AUTOMATION.title}
+          {recording && (
+            <RecordingText>
+              rec
+              <PiVinylRecordDuotone
+                size={10}
+                className="mr-1 animate-combined"
+                style={{ color: "red", verticalAlign: "middle" }}
+              />
+            </RecordingText>
+          )}
+          <PortalModalHeaderButtons>
+            <div
+              className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
+              onClick={() => {
+                handleToggleFeatureMinimized("automation");
+              }}
+              title={`Minimize Automation`}
+            >
+              <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
+            </div>
+          </PortalModalHeaderButtons>
+        </FeatureTitle>
+      </PortalModalHeader>
 
       <Tabs
         activeKey={activeTab}
@@ -103,19 +126,23 @@ export const AutomationScenarios: React.FC = () => {
             label: "Scenarios",
             children: (
               <div className="w-full">
-                <ScenariosTab />
+                <ScenariosListTab />
               </div>
             ),
           },
-          ...(syncFunctions ? [{
-            key: "functions",
-            label: "Functions",
-            children: (
-              <div className="w-full">
-                <FunctionsTab />
-              </div>
-            ),
-          }] : []),
+          ...(syncFunctions
+            ? [
+                {
+                  key: "functions",
+                  label: "Functions",
+                  children: (
+                    <div className="w-full">
+                      <FunctionsTab />
+                    </div>
+                  ),
+                },
+              ]
+            : []),
           {
             key: "schedules",
             label: (
@@ -158,20 +185,24 @@ export const AutomationScenarios: React.FC = () => {
               </div>
             ),
           },
-          ...(isServerTabVisible ? [{
-            key: "server",
-            label: (
-              <span className="flex items-center">
-                <IconServer size={16} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                Server
-              </span>
-            ),
-            children: (
-              <div className="w-full">
-                <ServerTab />
-              </div>
-            ),
-          }] : []),
+          ...(isServerTabVisible
+            ? [
+                {
+                  key: "server",
+                  label: (
+                    <span className="flex items-center">
+                      <IconServer size={16} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                      Server
+                    </span>
+                  ),
+                  children: (
+                    <div className="w-full">
+                      <ServerTab />
+                    </div>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </div>

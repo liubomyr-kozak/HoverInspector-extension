@@ -1,6 +1,4 @@
 import { useDispatch, useSelector } from "react-redux";
-import { Form } from "antd";
-import { useEffect, useState } from "react";
 import { TriggerConfig, TriggerType } from "../types";
 import { automationActions, selectTriggers } from "@entrypoints/content/store/automation/automation.slice.ts";
 import {
@@ -22,9 +20,8 @@ export const useTriggerActions = () => {
   /**
    * Edit a trigger
    * @param id The ID of the trigger to edit
-   * @param form The form instance to set values on
    */
-  const editTrigger = (id: string, form?: Form<any>) => {
+  const editTrigger = (id: string) => {
     const trigger = triggers[id];
 
     if (!trigger) {
@@ -35,17 +32,6 @@ export const useTriggerActions = () => {
     dispatch(automationActions.setCurrentTrigger(trigger));
     dispatch(automationActions.setActiveTriggerID(id));
     dispatch(automationActions.setIsEditingTrigger(true));
-
-    if (form) {
-      form.setFieldsValue({
-        title: trigger.title,
-        description: trigger.description || "",
-        scenarioId: trigger.scenarioId,
-        enabled: trigger.enabled,
-        type: trigger.type,
-        condition: trigger.condition,
-      });
-    }
   };
 
   /**

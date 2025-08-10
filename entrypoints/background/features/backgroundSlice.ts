@@ -46,11 +46,25 @@ export const actionsContextSlice = chromeActionsSlice({
 
   changeLauncherActiveFeature: async ({ data: activeIcons }) => {
     const setting = await AppStorageService.getAppState();
-    await AppStorageService.setAppState({
+
+    const newState = {
       ...setting,
       launcher: {
         ...setting.launcher,
         activeIcons,
+      },
+    };
+
+    await AppStorageService.setAppState(newState);
+  },
+
+  changeMinimizedLauncherPosition: async ({ data: minimizedPosition }) => {
+    const setting = await AppStorageService.getAppState();
+    await AppStorageService.setAppState({
+      ...setting,
+      launcher: {
+        ...setting.launcher,
+        minimizedPosition,
       },
     });
   },
@@ -67,11 +81,33 @@ export const actionsContextSlice = chromeActionsSlice({
     }
   },
 
-  minimizedFeaturePopup: async ({ data: featurePopupIsMinimized }) => {
+  changeVisibleFeatures: async ({ data: visibleFeatures }) => {
     const setting = await AppStorageService.getAppState();
     await AppStorageService.setAppState({
       ...setting,
-      featurePopupIsMinimized,
+      visibleFeatures,
+    });
+  },
+
+  changeMinimizedFeatures: async ({ data: minimizedFeatures }) => {
+    const setting = await AppStorageService.getAppState();
+
+    await AppStorageService.setAppState({
+      ...setting,
+      minimizedFeatures,
+    });
+  },
+
+  changeMinimizedFeaturesAndActiveIcons: async ({ data: { minimizedFeatures, activeIcons } }) => {
+    const setting = await AppStorageService.getAppState();
+
+    await AppStorageService.setAppState({
+      ...setting,
+      minimizedFeatures,
+      launcher: {
+        ...setting.launcher,
+        activeIcons,
+      },
     });
   },
 
@@ -143,8 +179,6 @@ export const actionsContextSlice = chromeActionsSlice({
           headers: { accept: "application/json", "Content-Type": "application/json" },
         });
 
-        debugger;
-
         injectScript({
           downloadUrl: response.downloadUrl,
           filename: response.filename,
@@ -153,9 +187,7 @@ export const actionsContextSlice = chromeActionsSlice({
         // await ScriptInjectionService.generateAndInjectCode({
         //   serverUrl: settings.serverUrl,
         // });
-        console.log("Background: Auto-injected script after function save");
       } catch (error) {
-        console.error("Background: Failed to auto-inject script after function save:", error);
         // Don't fail the function save if injection fails
       }
     }
@@ -245,7 +277,6 @@ export const actionsContextSlice = chromeActionsSlice({
 
   injectGeneratedScript: async (data) => {
     // ExtensionLoader.loadStrategy.injectScript()
-    debugger;
     await ScriptInjectionService.generateAndInjectCode(data);
   },
 
@@ -265,6 +296,32 @@ export const actionsContextSlice = chromeActionsSlice({
   removeCSSSnapshot: async ({ data: id }) => {
     return await AppStorageService.removeCSSSnapshot(id);
   },
+
+  // Element Details Storage Actions
+  getAllSavedElementDetails: async () => {
+    return await AppStorageService.getAllSavedElementDetails();
+  },
+
+  getSavedElementDetails: async ({ data: id }) => {
+    return await AppStorageService.getSavedElementDetails(id);
+  },
+
+  saveElementDetails: async ({ data }) => {
+    return await AppStorageService.saveElementDetails(data);
+  },
+
+  removeSavedElementDetails: async ({ data: id }) => {
+    return await AppStorageService.removeSavedElementDetails(id);
+  },
+
+  // Element Details Panel Position Actions
+  getElementDetailsPanelPosition: async () => {
+    return await AppStorageService.getElementDetailsPanelPosition();
+  },
+
+  saveElementDetailsPanelPosition: async ({ data }) => {
+    return await AppStorageService.saveElementDetailsPanelPosition(data);
+  },
 });
 
 export const {
@@ -275,8 +332,11 @@ export const {
   changeLauncherIconOrder,
   changeFeaturePopupPosition,
   changeLauncherActiveFeature,
+  changeMinimizedLauncherPosition,
   changeCurrentWindowSize,
   minimizedFeaturePopup,
+  changeVisibleFeatures,
+  changeMinimizedFeatures,
   changePreventDefault,
   changeViewType,
   getAllAutomationScenarios,
@@ -298,4 +358,13 @@ export const {
   getCSSSnapshot,
   saveCSSSnapshot,
   removeCSSSnapshot,
+  // Element Details Storage Actions
+  getAllSavedElementDetails,
+  getSavedElementDetails,
+  saveElementDetails,
+  removeSavedElementDetails,
+  // Element Details Panel Position Actions
+  getElementDetailsPanelPosition,
+  saveElementDetailsPanelPosition,
+  changeMinimizedFeaturesAndActiveIcons,
 } = actionsContextSlice;

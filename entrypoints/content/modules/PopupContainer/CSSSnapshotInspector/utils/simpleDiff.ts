@@ -60,11 +60,11 @@ function areValuesEqual(left: any, right: any): boolean {
     return left.every((item, index) => areValuesEqual(item, right[index]));
   }
 
-  if (typeof left === 'object' && typeof right === 'object') {
+  if (typeof left === "object" && typeof right === "object") {
     const leftKeys = Object.keys(left);
     const rightKeys = Object.keys(right);
     if (leftKeys.length !== rightKeys.length) return false;
-    return leftKeys.every(key => areValuesEqual(left[key], right[key]));
+    return leftKeys.every((key) => areValuesEqual(left[key], right[key]));
   }
 
   return false;
@@ -103,7 +103,6 @@ export function createElementDiff(
   const changedRightData: Record<string, any> = {};
 
   const allKeys = new Set([...Object.keys(leftData), ...Object.keys(rightData)]);
-  console.log("All property keys:", Array.from(allKeys));
 
   let changedCount = 0;
   allKeys.forEach((key) => {
@@ -111,14 +110,11 @@ export function createElementDiff(
     const rightValue = rightData[key];
 
     if (!areValuesEqual(leftValue, rightValue)) {
-      console.log(`Property difference found for ${key}:`, { leftValue, rightValue });
       changedLeftData[key] = leftValue;
       changedRightData[key] = rightValue;
       changedCount++;
     }
   });
-
-  console.log(`Found ${changedCount} changed properties out of ${allKeys.size} total`);
 
   return {
     leftData: changedLeftData,

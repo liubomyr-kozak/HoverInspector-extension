@@ -5,6 +5,12 @@ import copy from "copy-to-clipboard";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 import SettingsButton from "@entrypoints/shared/components/SettingsButton";
 import { IconCopy, IconTrash } from "@tabler/icons-react";
+import {
+  PortalModalHeader,
+  HeaderPortalId,
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons";
+import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
+import { CONVERT_TOOLS, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
 const { Text } = Typography;
 
@@ -137,29 +143,35 @@ export const UnitConverter: React.FC = () => {
 
     // Check if this is just a case change from the last history item
     setHistory((prevHistory) => {
-      // If history is empty, add the new item
+      // Якщо історія порожня → додаємо новий елемент
       if (prevHistory.length === 0) {
         return [newHistoryItem];
       }
 
-      // Get the last history item
-      const lastItem = prevHistory[0];
+      // Знаходимо індекс дубліката (порівнюємо всі важливі поля)
+      const duplicateIndex = prevHistory.findIndex(
+        (item) =>
+          item.inputValue === newHistoryItem.inputValue &&
+          item.inputUnit.toLowerCase() === newHistoryItem.inputUnit.toLowerCase() &&
+          item.outputValue === newHistoryItem.outputValue &&
+          item.outputUnit.toLowerCase() === newHistoryItem.outputUnit.toLowerCase() &&
+          item.baseSize === newHistoryItem.baseSize,
+      );
 
-      // Check if only the case has changed (comparing input and output units case-insensitively)
-      const isCaseChangeOnly =
-        lastItem.inputValue === newHistoryItem.inputValue &&
-        lastItem.inputUnit.toLowerCase() === newHistoryItem.inputUnit.toLowerCase() &&
-        lastItem.outputValue === newHistoryItem.outputValue &&
-        lastItem.outputUnit.toLowerCase() === newHistoryItem.outputUnit.toLowerCase() &&
-        lastItem.baseSize === newHistoryItem.baseSize;
+      // Якщо дубліката нема → додаємо новий елемент в початок
+      if (duplicateIndex === -1) {
+        return [newHistoryItem, ...prevHistory].slice(0, 20);
+      }
 
-      // If it's just a case change, don't add to history
-      if (isCaseChangeOnly) {
+      // Якщо дублікат вже на початку → нічого не змінюємо
+      if (duplicateIndex === 0) {
         return prevHistory;
       }
 
-      // Otherwise, add to history (limit to 20 items to prevent excessive storage)
-      const updatedHistory = [newHistoryItem, ...prevHistory].slice(0, 20);
+      // Якщо дублікат є, але не на початку →
+      // видаляємо його зі старої позиції і переносимо на початок
+      const updatedHistory = [newHistoryItem, ...prevHistory.filter((_, idx) => idx !== duplicateIndex)].slice(0, 20);
+
       return updatedHistory;
     });
   };
@@ -182,41 +194,14 @@ export const UnitConverter: React.FC = () => {
     value: unit,
   }));
 
-  // Create the content for the settings popover
-  const settingsContent = (
-    <div className="p-2" style={{ minWidth: "250px" }}>
-      <div className="font-medium mb-2">Unit Converter Settings</div>
-      <div>
-        <div className="mb-4">
-          <Text>Base font size:</Text>
-          <InputNumber
-            min={1}
-            value={baseSize}
-            onChange={(v) => setBaseSize(v ?? 16)}
-            style={{ width: "100%", marginTop: "8px" }}
-            addonAfter="px"
-          />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className={"w-full"}>
-      <FeatureTitle className="mr-2 flex w-full">
-        Unit Converter
-        <Popover
-          content={settingsContent}
-          title={null}
-          trigger="hover"
-          placement="bottomRight"
-          zIndex={1150}
-          // @ts-ignore
-          getPopupContainer={() => document.querySelector("hover-inspector")?.shadowRoot as HTMLElement}
-        >
-          <SettingsButton />
-        </Popover>
-      </FeatureTitle>
+      <PortalModalHeader portalId={HeaderPortalId.UNIT_CONVERTER}>
+        <FeatureTitle>
+          <FeatureIcon icon={CONVERT_TOOLS.icon} isBetta />
+          {CONVERT_TOOLS.title}
+        </FeatureTitle>
+      </PortalModalHeader>
 
       <Row gutter={12} style={{ marginBottom: 16 }}>
         <Col span={10}>
@@ -277,8 +262,6 @@ export const UnitConverter: React.FC = () => {
           </div>
         </Col>
       </Row>
-
-      <Divider />
 
       {/* History Section */}
       {history.length > 0 && (

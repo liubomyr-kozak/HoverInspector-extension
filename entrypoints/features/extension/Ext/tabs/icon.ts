@@ -40,7 +40,6 @@ export class IconActivate {
       },
     };
 
-    // console.log("😜😜😜 IconActivate::idleIcon -> browser", browser.action.setIcon);
     // browser.action?.setIcon(setting);
   }
 }

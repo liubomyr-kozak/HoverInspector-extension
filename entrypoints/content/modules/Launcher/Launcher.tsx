@@ -1,11 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  IconBrandSlack,
-  IconDotsVertical,
-  IconExternalLink,
-  IconLayoutNavbarFilled,
-  IconMailFilled,
-} from "@tabler/icons-react";
+import React, { useMemo } from "react";
+import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -15,8 +9,8 @@ import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 import {
   onChangeLauncherActiveFeature,
   onChangeLauncherIconOrder,
-  onMinimizedFeaturePopup,
-} from "@entrypoints/content/store/app/saga-action/app.saga.action";
+} from "@entrypoints/content/store/app/saga-action/app.saga.action.ts";
+import { onToggleFeatureVisibility } from "@entrypoints/content/store/app/saga-action/app.saga.action.ts";
 
 import {
   Divider,
@@ -24,7 +18,6 @@ import {
   IconButton,
   LauncherBody,
   LauncherContainer,
-  LauncherMiniModal,
   LeftColumn,
   MenuContainer,
   MenuItem,
@@ -60,33 +53,15 @@ const UsefulLinks = ({ category }: { category?: string }) => {
 const Launcher: React.FC = () => {
   const dispatch = useDispatch();
   const { iconOrder = POPUP_SUPPORT_TOOLS, activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
-
-  const featurePopupIsMinimized = useSelector((state: any) => state?.app.featurePopupIsMinimized);
-
-  // State to track visible features
-  const [visibleFeatures, setVisibleFeatures] = useState<string[]>([]);
-
-  // Initialize visible features on component mount
-  useEffect(() => {
-    // Initially all features are visible
-    setVisibleFeatures(ICON_ITEMS.map((item) => item.id));
-  }, []);
+  const { visibleFeatures = [] } = useSelector((state: any) => state?.app);
 
   const normalizedIconOrder = useMemo(() => {
     return iconOrder.length ? iconOrder : ICON_ITEMS.map((i) => i.id);
   }, [iconOrder]);
 
-  console.log("🌟🌟🌟 ::Launcher -> normalizedIconOrder", normalizedIconOrder);
-
-  // Function to toggle feature visibility
-  const toggleFeatureVisibility = (id: string) => {
-    setVisibleFeatures((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((featureId) => featureId !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
+  // Function to toggle feature visibility using saga callback
+  const handleToggleFeatureVisibility = (id: string) => {
+    dispatch(onToggleFeatureVisibility.getPayload(id));
   };
 
   const sensors = useSensors(
@@ -109,10 +84,6 @@ const Launcher: React.FC = () => {
     }
   };
 
-  const onDisplayFeaturePopup = () => {
-    dispatch(onMinimizedFeaturePopup.getPayload(false));
-  };
-
   const content = (
     <MenuContainer>
       <MenuWrapper>
@@ -126,6 +97,7 @@ const Launcher: React.FC = () => {
                   const item = ICON_ITEMS.find((i) => i.id === id);
                   if (!item) return null;
                   const isVisible = visibleFeatures.includes(id);
+
                   return (
                     <SortableItem
                       key={id}
@@ -133,7 +105,7 @@ const Launcher: React.FC = () => {
                       title={item.title}
                       icon={item.icon}
                       isVisible={isVisible}
-                      onToggleVisibility={toggleFeatureVisibility}
+                      onToggleVisibility={handleToggleFeatureVisibility}
                     />
                   );
                 })}
@@ -219,21 +191,8 @@ const Launcher: React.FC = () => {
                       isActive,
                     };
 
-                    // якщо не мінімізований попап, тоді викликаємо звичайну функцію активації фічі
-                    if (!featurePopupIsMinimized) {
-                      item.activatable && dispatch(onChangeLauncherActiveFeature.getPayload(payload));
-
-                      return;
-                    }
-
-                    // якщо мінімізований попап, тоді відкриваємо його
-                    onDisplayFeaturePopup();
-
-                    // якщо клікнута фіча не активна, тоді активуємо її,
-                    // далі в залежності від логіки вона може деактиувавти попередню або добавтись
-                    if (!isActive) {
-                      item.activatable && dispatch(onChangeLauncherActiveFeature.getPayload(payload));
-                    }
+                    // Always use normal feature activation since minimize functionality is removed
+                    item.activatable && dispatch(onChangeLauncherActiveFeature.getPayload(payload));
                   }}
                 >
                   <Icon />
@@ -241,7 +200,6 @@ const Launcher: React.FC = () => {
               </Tooltip>
             );
           })}
-
         <Popover
           content={content}
           zIndex={1150}
@@ -255,16 +213,6 @@ const Launcher: React.FC = () => {
           </IconButton>
         </Popover>
       </LauncherBody>
-
-      {featurePopupIsMinimized && (
-        <LauncherMiniModal onClick={onDisplayFeaturePopup}>
-          <Tooltip placement="top" title={"Open Inspector Modal"}>
-            <IconButton $active={false}>
-              <IconLayoutNavbarFilled />
-            </IconButton>
-          </Tooltip>
-        </LauncherMiniModal>
-      )}
     </LauncherContainer>
   );
 };

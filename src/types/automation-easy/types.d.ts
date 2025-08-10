@@ -101,7 +101,8 @@ declare namespace AutomationEasy {
     | 'loop'
     | 'execute_script'
     | 'open_url'
-    | 'store_in_collection';
+    | 'store_in_collection'
+    | 'notification';
   
   // Base step interface
   interface BaseStep {

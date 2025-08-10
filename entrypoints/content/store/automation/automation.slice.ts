@@ -16,6 +16,13 @@ import {
   TriggerMap,
 } from "../../modules/PopupContainer/AutomationScenarios/types";
 
+// Scenario status enum
+export enum ScenarioStatus {
+  IDLE = 'idle',
+  RECORDING = 'recording', 
+  EDITING = 'editing'
+}
+
 // Define the state interface
 export interface AutomationState {
   // Shared state
@@ -24,7 +31,7 @@ export interface AutomationState {
   schedules: ScheduleMap;
   triggers: TriggerMap;
   executionHistory: ExecutionHistoryMap;
-  
+
   // Stored values from getText steps
   storedValues: { [key: string]: string };
 
@@ -38,15 +45,12 @@ export interface AutomationState {
   // UI state
   activeTab: string;
   expandedScenarios: string[];
-  keepScenarioExpanded: boolean;
 
   // Scenario state
   currentSteps: ScenarioStep[];
-  isEditingScenario: boolean;
+  status: ScenarioStatus;
   activeScenarioId: string | null;
-  recording: boolean;
   recordingPaused: boolean;
-  recordedSteps: ScenarioStep[];
   executing: boolean;
   currentStepIndex: number;
   executionProgress: number;
@@ -58,7 +62,7 @@ export interface AutomationState {
   shouldStop: boolean;
   pendingSteps: ScenarioStep[];
   stepStatuses: { [index: number]: ExecutionStatus };
-  
+
   // Execution modes
   singleStepMode: boolean; // true = execute one step and pause, false = continue execution
   searchedStepIndex: number | null;
@@ -106,15 +110,12 @@ const initialState: AutomationState = {
   // UI state
   activeTab: "scenarios",
   expandedScenarios: [],
-  keepScenarioExpanded: false,
 
   // Scenario state
   currentSteps: [],
-  isEditingScenario: false,
+  status: ScenarioStatus.IDLE,
   activeScenarioId: null,
-  recording: false,
   recordingPaused: false,
-  recordedSteps: [],
   executing: false,
   currentStepIndex: -1,
   executionProgress: 0,
@@ -196,9 +197,6 @@ const automationSlice = createSlice({
         state.expandedScenarios.splice(index, 1);
       }
     },
-    setKeepScenarioExpanded(state, action: PayloadAction<boolean>) {
-      state.keepScenarioExpanded = action.payload;
-    },
     collapseAllScenarios(state) {
       state.expandedScenarios = [];
     },
@@ -224,6 +222,9 @@ const automationSlice = createSlice({
     },
     addStep(state) {
       state.currentSteps.push({ type: "" });
+    },
+    addCurrentStep(state, action: PayloadAction<ScenarioStep>) {
+      state.currentSteps.push(action.payload);
     },
     insertStep(state, action: PayloadAction<number>) {
       state.currentSteps.splice(action.payload, 0, { type: "" });
@@ -252,26 +253,17 @@ const automationSlice = createSlice({
       const [movedStep] = state.currentSteps.splice(fromIndex, 1);
       state.currentSteps.splice(toIndex, 0, movedStep);
     },
-    setIsEditingScenario(state, action: PayloadAction<boolean>) {
-      state.isEditingScenario = action.payload;
+    setStatus(state, action: PayloadAction<ScenarioStatus>) {
+      state.status = action.payload;
     },
     setActiveScenarioId(state, action: PayloadAction<string | null>) {
       state.activeScenarioId = action.payload;
     },
-    setRecording(state, action: PayloadAction<boolean>) {
-      state.recording = action.payload;
-    },
     setRecordingPaused(state, action: PayloadAction<boolean>) {
       state.recordingPaused = action.payload;
     },
-    setRecordedSteps(state, action: PayloadAction<ScenarioStep[]>) {
-      state.recordedSteps = action.payload;
-    },
-    addRecordedStep(state, action: PayloadAction<ScenarioStep>) {
-      state.recordedSteps.push(action.payload);
-    },
-    addAlternativeXPathToRecordedStep(state, action: PayloadAction<{ index: number; xpath: string }>) {
-      const step = state.recordedSteps[action.payload.index];
+    addAlternativeXPathToCurrentStep(state, action: PayloadAction<{ index: number; xpath: string }>) {
+      const step = state.currentSteps[action.payload.index];
       if (!step.alternativeXpaths) {
         step.alternativeXpaths = [];
       }
@@ -422,6 +414,11 @@ const automationSlice = createSlice({
     removeExecutionHistory(state, action: PayloadAction<string>) {
       delete state.executionHistory[action.payload];
     },
+    removeMultipleExecutionHistory(state, action: PayloadAction<string[]>) {
+      action.payload.forEach(id => {
+        delete state.executionHistory[id];
+      });
+    },
     setExecutionLog(state, action: PayloadAction<ExecutionLog | null>) {
       state.executionLog = action.payload;
     },
@@ -437,7 +434,7 @@ const automationSlice = createSlice({
     // Reset actions
     resetScenarioForm(state) {
       state.currentSteps = [];
-      state.isEditingScenario = false;
+      state.status = ScenarioStatus.IDLE;
       state.activeScenarioId = null;
     },
     // resetStepEditForm removed - step editing is now handled locally in components
@@ -487,7 +484,7 @@ export const selectExecutionHistory = (state: { automation: AutomationState }) =
 
 // Stored values selectors
 export const selectStoredValues = (state: { automation: AutomationState }) => state.automation.storedValues;
-export const selectStoredValue = (key: string) => (state: { automation: AutomationState }) => 
+export const selectStoredValue = (key: string) => (state: { automation: AutomationState }) =>
   state.automation.storedValues[key];
 
 export const selectLoading = (state: { automation: AutomationState }) => state.automation.loading;
@@ -499,16 +496,16 @@ export const selectExecutionHistoryLoading = (state: { automation: AutomationSta
 
 export const selectActiveTab = (state: { automation: AutomationState }) => state.automation.activeTab;
 export const selectExpandedScenarios = (state: { automation: AutomationState }) => state.automation.expandedScenarios;
-export const selectKeepScenarioExpanded = (state: { automation: AutomationState }) =>
-  state.automation.keepScenarioExpanded;
 export const selectIsScenarioExpanded = (id: string) => (state: { automation: AutomationState }) =>
   state.automation.expandedScenarios.includes(id);
 export const selectCurrentSteps = (state: { automation: AutomationState }) => state.automation.currentSteps;
-export const selectIsEditingScenario = (state: { automation: AutomationState }) => state.automation.isEditingScenario;
+export const selectStatus = (state: { automation: AutomationState }) => state.automation.status;
 export const selectActiveScenarioId = (state: { automation: AutomationState }) => state.automation.activeScenarioId;
-export const selectRecording = (state: { automation: AutomationState }) => state.automation.recording;
 export const selectRecordingPaused = (state: { automation: AutomationState }) => state.automation.recordingPaused;
-export const selectRecordedSteps = (state: { automation: AutomationState }) => state.automation.recordedSteps;
+
+// Helper selectors for backward compatibility and cleaner usage
+export const selectIsEditingScenario = (state: { automation: AutomationState }) => state.automation.status === ScenarioStatus.EDITING;
+export const selectRecording = (state: { automation: AutomationState }) => state.automation.status === ScenarioStatus.RECORDING;
 
 export const selectExecuting = (state: { automation: AutomationState }) => state.automation.executing;
 export const selectCurrentStepIndex = (state: { automation: AutomationState }) => state.automation.currentStepIndex;

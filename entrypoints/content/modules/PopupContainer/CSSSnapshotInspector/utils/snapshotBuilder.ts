@@ -43,8 +43,10 @@ const shouldSkipElement = (element: Element): boolean => {
   }
 
   // Skip our own highlight overlay node
-  if ((element as HTMLElement).id === "hover-inspector-highlight-node" ||
-      (element as HTMLElement).classList?.contains("hover-inspector-highlight-node")) {
+  if (
+    (element as HTMLElement).id === "hover-inspector-highlight-node" ||
+    (element as HTMLElement).classList?.contains("hover-inspector-highlight-node")
+  ) {
     return true;
   }
 
@@ -154,6 +156,63 @@ const extractInlineStyles = (element: Element): Record<string, string> => {
 };
 
 /**
+ * Extracts CSS rules for element classes from document stylesheets
+ */
+const extractClassRules = (element: Element): Record<string, Record<string, string>> => {
+  
+  const classRules: Record<string, Record<string, string>> = {};
+  const classList = Array.from(element.classList);
+  
+  if (classList.length === 0) {
+    return classRules;
+  }
+  
+  
+  try {
+    // Iterate through all stylesheets
+    for (const styleSheet of Array.from(document.styleSheets)) {
+      try {
+        if (!styleSheet.cssRules) continue;
+        
+        // Iterate through CSS rules
+        for (const rule of Array.from(styleSheet.cssRules)) {
+          if (rule instanceof CSSStyleRule) {
+            // Check if rule selector matches any of the element's classes
+            for (const className of classList) {
+              const classSelector = `.${className}`;
+              if (rule.selectorText && rule.selectorText.includes(classSelector)) {
+                
+                if (!classRules[className]) {
+                  classRules[className] = {};
+                }
+                
+                // Extract CSS properties from the rule
+                const style = rule.style;
+                for (let i = 0; i < style.length; i++) {
+                  const property = style[i];
+                  const value = style.getPropertyValue(property);
+                  if (value) {
+                    classRules[className][property] = value;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Skip stylesheets that can't be accessed (CORS, etc.)
+        console.warn(`[CSS Snapshot] Could not access stylesheet:`, error);
+        continue;
+      }
+    }
+  } catch (error) {
+    console.error(`[CSS Snapshot] Error extracting class rules:`, error);
+  }
+  
+  return classRules;
+};
+
+/**
  * Будує вузол знімка для елемента, зберігаючи лише зміни відносно базового стану
  */
 const buildSnapshotNode = (
@@ -209,6 +268,9 @@ const buildSnapshotNode = (
   // Отримуємо inline стилі з атрибута style
   const inlineStyles = extractInlineStyles(element);
 
+  // Отримуємо CSS правила для класів елемента
+  const classRules = extractClassRules(element);
+
   // Отримуємо текстовий контент для листових вузлів
   const text =
     options.includeText && element.children.length === 0 ? element.textContent?.trim() || undefined : undefined;
@@ -249,6 +311,7 @@ const buildSnapshotNode = (
     id,
     xpath,
     classes,
+    classRules,
     attributes,
     bounds,
     styles,
@@ -270,8 +333,6 @@ export const buildSnapshotTree = (
 
   const tree = buildSnapshotNode(root, [], options, stats);
 
-  debugger;
-
   if (!tree) {
     throw new Error("Failed to build snapshot tree: root element was skipped");
   }
@@ -292,7 +353,6 @@ export const buildSnapshotTree = (
  * Створює оптимізований знімок CSS, зберігаючи лише зміни
  */
 export const createCSSSnapshot = async (title?: string, options: SnapshotOptions = {}): Promise<CSSSnapshot> => {
-  console.log("Creating optimized CSS snapshot with baseline comparison...");
 
   // Встановлюємо опції за замовчуванням
   const snapshotOptions: SnapshotOptions = {
@@ -306,7 +366,6 @@ export const createCSSSnapshot = async (title?: string, options: SnapshotOptions
   // Будуємо дерево знімка, зберігаючи лише зміни
   const { tree, stats } = buildSnapshotTree(document.body, snapshotOptions);
 
-  console.log(`Snapshot created: ${stats.totalNodes} nodes processed, ${stats.skippedNodes} nodes skipped`);
 
   const snapshot: CSSSnapshot = {
     id: `snapshot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

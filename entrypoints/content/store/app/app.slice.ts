@@ -92,10 +92,6 @@ const appSlice = createSlice({
       state.featurePopupPosition = action.payload;
     },
 
-    setMinimizedFeaturePopup(state, action: PayloadAction<any>) {
-      state.featurePopupIsMinimized = action.payload;
-    },
-
     setPreventDefault(state, action: PayloadAction<any>) {
       state.preventDefault = action.payload;
     },
@@ -127,11 +123,45 @@ const appSlice = createSlice({
       // Don't add duplicate colors
       if (!state.colorHistory.includes(action.payload)) {
         // Limit history to 10 colors (remove oldest if needed)
-        if (state.colorHistory.length >= 10) {
+        if (state.colorHistory.length >= 20) {
           state.colorHistory = state.colorHistory.slice(1);
         }
         state.colorHistory.push(action.payload);
       }
+    },
+
+    setVisibleFeatures(state, action: PayloadAction<string[]>) {
+      state.visibleFeatures = action.payload;
+    },
+
+    toggleFeatureVisibility(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      if (state.visibleFeatures.includes(id)) {
+        state.visibleFeatures = state.visibleFeatures.filter((featureId) => featureId !== id);
+      } else {
+        state.visibleFeatures = [...state.visibleFeatures, id];
+      }
+    },
+
+    setMinimizedFeatures(state, action: PayloadAction<string[]>) {
+      state.minimizedFeatures = action.payload;
+    },
+
+    toggleFeatureMinimized(state, action: PayloadAction<string>) {
+      const id = action.payload;
+      if (state.minimizedFeatures?.includes(id)) {
+        state.minimizedFeatures = state.minimizedFeatures.filter((featureId) => featureId !== id);
+      } else {
+        state.minimizedFeatures = [...(state.minimizedFeatures || []), id];
+      }
+    },
+
+    clearAllActiveIcons(state) {
+      state.launcher.activeIcons = [];
+    },
+
+    setMinimizedLauncherPosition(state, action: PayloadAction<{ x: number; y: number }>) {
+      state.launcher.minimizedPosition = action.payload;
     },
   },
 });
@@ -148,13 +178,16 @@ export const {
   setLauncherIconOrder,
   forceLauncherActiveIcon,
   setFeaturePopupPosition,
-  setMinimizedFeaturePopup,
   setPreventDefault,
   setIsSingleSelect,
   setShowAllBorders,
   setSelectedElementType,
   hideSponsorMessage,
   addColorToHistory,
+  toggleFeatureVisibility,
+  clearAllActiveIcons,
+  toggleFeatureMinimized,
+  setMinimizedLauncherPosition,
 } = appSlice.actions;
 
 export default appSlice.reducer;

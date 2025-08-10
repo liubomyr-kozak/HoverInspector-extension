@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { Button, Divider, Form, Input, InputNumber, Select, Space } from "antd";
-import { useSelector } from "react-redux";
+import { Button, Divider, InputNumber, Select, Space, Checkbox } from "antd";
+import { useForm, Controller } from "react-hook-form";
+import { FormInput, FormTextArea } from "@entrypoints/shared/components/FormInput/FormInput";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
-import { IconGripVertical, IconPlus, IconTrash, IconRefresh } from "@tabler/icons-react";
+import { IconGripVertical, IconPlus, IconTrash, IconRefresh, IconEdit } from "@tabler/icons-react";
 import { FunctionMap, ScenarioStep, getFilteredStepTypeOptions } from "../types.ts";
 import { useServerSettings } from "../hooks/useServerSettings.ts";
 import { EmptyState, StepContainer, StepHeader, StepTitle } from "../styles.ts";
+import { EditingStepItem, EditingStepHeader, EditingStepTitle } from "./ScenarioItem/ScenarioItem.styled";
+import StepEditForm from "./StepEditForm";
+
+// Yup validation schema
+const validationSchema = yup.object().shape({
+  title: yup.string().required("Please enter a title for the scenario"),
+  description: yup.string(),
+  category: yup.string(),
+  tags: yup.array().of(yup.string()),
+  enableNavigation: yup.boolean(),
+});
 
 // Predefined categories for scenarios
 const categoryOptions = [
@@ -18,28 +32,58 @@ const categoryOptions = [
 ];
 
 interface AddScenarioFormProps {
-  form: any; // Form instance from antd
   currentSteps: ScenarioStep[];
   functions?: FunctionMap; // Optional map of functions for function steps
   onAddStep: () => void;
   onRemoveStep: (index: number) => void;
   onUpdateStep: (index: number, field: keyof ScenarioStep, value: string) => void;
   onReorderSteps?: (fromIndex: number, toIndex: number) => void; // Optional callback for reordering steps
+  onFormChange?: (formData: {
+    title?: string;
+    description?: string;
+    category?: string;
+    tags?: (string | undefined)[];
+    enableNavigation?: boolean;
+  }) => void;
 }
 
 const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
-  form,
   currentSteps,
   functions = {}, // Default to empty object if not provided
   onAddStep,
   onRemoveStep,
   onUpdateStep,
   onReorderSteps,
+  onFormChange,
 }) => {
-  // State for tracking drag operation
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const { syncFunctions } = useServerSettings();
-  const stepTypeOptions = getFilteredStepTypeOptions(syncFunctions);
+  // Initialize React Hook Form
+  const {
+    control,
+    watch,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(validationSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      tags: [],
+      enableNavigation: false,
+    },
+    mode: "onChange",
+  });
+
+  // Watch form changes and notify parent
+  const watchedValues = watch();
+  useEffect(() => {
+    if (onFormChange) {
+      onFormChange(watchedValues);
+    }
+  }, [watchedValues, onFormChange]);
+  // State for tracking details section visibility
+  const [showDetails, setShowDetails] = useState<boolean>(false);
+  // State for step editing
+  const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
 
   // Function to scroll to the bottom of the steps container
   const scrollToBottom = () => {
@@ -70,84 +114,130 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
     }
   }, [currentSteps]);
 
-  // Handle drag start
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-    // Set a ghost image (optional)
-    try {
-      const draggedElement = e.currentTarget;
-      e.dataTransfer.setDragImage(draggedElement, 20, 20);
-    } catch (err) {
-      console.error("Error setting drag image:", err);
+  // Handler for closing the step edit form
+  const handleCloseStepEditForm = () => {
+    setEditingStepIndex(null);
+  };
+
+  // Handler for saving a step from StepEditForm
+  const handleSaveStep = (updatedStep: ScenarioStep) => {
+    if (editingStepIndex !== null) {
+      // Update the step using the existing onUpdateStep callback
+      const stepKeys = Object.keys(updatedStep) as (keyof ScenarioStep)[];
+      stepKeys.forEach((key) => {
+        if (updatedStep[key] !== undefined && updatedStep[key] !== currentSteps[editingStepIndex][key]) {
+          onUpdateStep(editingStepIndex, key, updatedStep[key] as string);
+        }
+      });
+
+      // Close the step edit form
+      handleCloseStepEditForm();
     }
   };
 
-  // Handle drag over
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    return false;
-  };
+  // Handler for deleting a step from StepEditForm
+  const handleDeleteStep = () => {
+    if (editingStepIndex !== null) {
+      // Remove the step using the existing onRemoveStep callback
+      onRemoveStep(editingStepIndex);
 
-  // Handle drop
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
-    e.preventDefault();
-
-    if (draggedIndex !== null && draggedIndex !== dropIndex && onReorderSteps) {
-      onReorderSteps(draggedIndex, dropIndex);
-      setDraggedIndex(null);
+      // Close the step edit form
+      handleCloseStepEditForm();
     }
-    return false;
-  };
-
-  // Handle drag end
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
   };
 
   return (
-    <Form form={form} layout="vertical" initialValues={{ title: "", repeat: 0 }}>
-      <Form.Item
-        name="title"
-        label="Scenario Title"
-        rules={[{ required: true, message: "Please enter a title for the scenario" }]}
-      >
-        <Input placeholder="Enter scenario title" />
-      </Form.Item>
-
-      <Form.Item name="description" label="Description" tooltip="A detailed description of what this scenario does">
-        <Input.TextArea placeholder="Enter scenario description" rows={3} />
-      </Form.Item>
-
-      <Form.Item name="category" label="Category" tooltip="Select a category for this scenario">
-        <Select
-          getPopupContainer={() =>
-            // @ts-ignore
-            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-          }
-          placeholder="Select a category"
-          options={categoryOptions}
-          allowClear
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div>
+        <div className="flex items-center" style={{ marginBottom: "8px" }}>
+          <label style={{ fontWeight: "500" }}>Scenario Title</label>
+          <button
+            className="cursor-pointer ml-4 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-500 text-blue-600 hover:text-white rounded transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDetails(!showDetails);
+            }}
+          >
+            {showDetails ? "Hide Details" : "Show Details"}
+          </button>
+        </div>
+        <Controller
+          name="title"
+          control={control}
+          render={({ field }) => (
+            <FormInput {...field} type="text" placeholder="Enter scenario title" error={!!errors.title} />
+          )}
         />
-      </Form.Item>
+        {errors.title && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.title.message}</div>
+        )}
+      </div>
 
-      <Form.Item name="tags" label="Tags" tooltip="Add tags to help organize and find your scenarios">
-        <Select
-          getPopupContainer={() =>
-            // @ts-ignore
-            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-          }
-          mode="tags"
-          placeholder="Add tags"
-          style={{ width: "100%" }}
-          tokenSeparators={[","]}
+      {/* Details fields - shown/hidden based on showDetails state */}
+      <div style={{ display: showDetails ? "block" : "none" }}>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Description</label>
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => <FormTextArea {...field} placeholder="Enter scenario description" rows={3} />}
         />
-      </Form.Item>
+      </div>
 
-      <Form.Item name="repeat" label="Repeat Count" tooltip="Number of times to repeat the scenario (0 = no repeat)">
-        <InputNumber min={0} defaultValue={0} style={{ width: "100%" }} />
-      </Form.Item>
+      <div style={{ display: showDetails ? "block" : "none" }}>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Category</label>
+        <Controller
+          name="category"
+          control={control}
+          render={({ field }) => (
+            <Select
+              {...field}
+              getPopupContainer={() =>
+                // @ts-ignore
+                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+              }
+              placeholder="Select a category"
+              options={categoryOptions}
+              allowClear
+            />
+          )}
+        />
+      </div>
+
+      <div style={{ display: showDetails ? "block" : "none" }}>
+        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Tags</label>
+        <Controller
+          name="tags"
+          control={control}
+          render={({ field }) => (
+            <Select
+              {...field}
+              getPopupContainer={() =>
+                // @ts-ignore
+                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+              }
+              mode="tags"
+              placeholder="Add tags"
+              style={{ width: "100%" }}
+              tokenSeparators={[","]}
+            />
+          )}
+        />
+      </div>
+
+      {/* Enable Navigation checkbox */}
+      <div style={{ marginBottom: "16px" }}>
+        <Controller
+          name="enableNavigation"
+          control={control}
+          render={({ field }) => (
+            <Tooltip title="When enabled, scenario will navigate to URLs during playback">
+              <Checkbox {...field} checked={field.value} style={{ fontSize: "12px" }}>
+                Enable Navigation
+              </Checkbox>
+            </Tooltip>
+          )}
+        />
+      </div>
 
       <Divider orientation="left">Steps</Divider>
 
@@ -160,138 +250,29 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
             marginBottom: "16px",
           }}
         >
-          {currentSteps.map((step, index) => (
-            <StepContainer
-              key={index}
-              draggable={true}
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragEnd={handleDragEnd}
-              style={{
-                cursor: "move",
-                opacity: draggedIndex === index ? 0.5 : 1,
-              }}
-            >
-              <StepHeader>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <IconGripVertical size={16} style={{ marginRight: "8px", cursor: "grab" }} />
-                  <StepTitle>Step {index + 1}</StepTitle>
-                </div>
-                <Button
-                  danger
-                  type="text"
-                  icon={<IconTrash size={16} />}
-                  onClick={() => onRemoveStep(index)}
-                  style={{ marginLeft: "auto" }}
-                >
-                  Remove
-                </Button>
-              </StepHeader>
-              <Form.Item label="Type" required style={{ marginBottom: "8px" }}>
-                <Select
-                  value={step.type}
-                  onChange={(value) => onUpdateStep(index, "type", value)}
-                  style={{ width: "100%" }}
-                  options={stepTypeOptions}
-                  getPopupContainer={() =>
-                    // @ts-ignore
-                    (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector(
-                      "html > body",
-                    )!
-                  }
+          {currentSteps.map((step, index) => {
+            return (
+              <EditingStepItem key={`editing-${index}`}>
+                <EditingStepHeader>
+                  <EditingStepTitle>Edit Step {index + 1}</EditingStepTitle>
+                </EditingStepHeader>
+                <StepEditForm
+                  step={currentSteps[index]}
+                  visible={true}
+                  onClose={handleCloseStepEditForm}
+                  onSave={handleSaveStep}
+                  onDelete={handleDeleteStep}
                 />
-              </Form.Item>
-              {/*{(step.type === "click" || step.type === "value") && (*/}
-              <Form.Item label="XPath" required style={{ marginBottom: "8px" }}>
-                <Space.Compact style={{ width: "100%" }}>
-                  <Input
-                    value={step.xpath || ""}
-                    onChange={(e) => onUpdateStep(index, "xpath", e.target.value)}
-                    placeholder="Enter XPath selector"
-                  />
-                  <Tooltip title="Set alternative XPath when recording">
-                    <Button
-                      icon={<IconRefresh size={16} />}
-                      onClick={() => {
-                        // When recording is active, this will allow setting an alternative XPath
-                        // by clicking on another element
-                        const message = {
-                          type: "SET_ALTERNATIVE_XPATH",
-                          stepIndex: index,
-                        };
-                        window.postMessage(message, "*");
-                      }}
-                    />
-                  </Tooltip>
-                </Space.Compact>
-                {step.alternativeXpaths && step.alternativeXpaths.length > 0 && (
-                  <div style={{ marginTop: "4px" }}>
-                    <small style={{ color: "#888" }}>Alternative XPaths: {step.alternativeXpaths.length}</small>
-                  </div>
-                )}
-              </Form.Item>
-              {/*)}*/}
-              {syncFunctions && step.type === "function" && (
-                <Form.Item label="Function" required style={{ marginBottom: "8px" }}>
-                  <Select
-                    value={step.value || ""}
-                    onChange={(value) => onUpdateStep(index, "value", value)}
-                    style={{ width: "100%" }}
-                    placeholder="Select a function"
-                    options={Object.keys(functions).map((key) => ({
-                      value: functions[key].title,
-                      label: functions[key].title,
-                    }))}
-                    getPopupContainer={() =>
-                      // @ts-ignore
-                      (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector(
-                        "html > body",
-                      )!
-                    }
-                  />
-                </Form.Item>
-              )}
-              {/*{step.type}*/}
-              {(step.type === "input" ||
-                step.type === "value" ||
-                step.type === "code" ||
-                step.type === "redirect" ||
-                step.type === "wait") && (
-                <Form.Item label="Value" required style={{ marginBottom: "8px" }}>
-                  {step.type === "code" ? (
-                    <Input.TextArea
-                      value={step.value || ""}
-                      onChange={(e) => onUpdateStep(index, "value", e.target.value)}
-                      placeholder="Enter code"
-                      rows={4}
-                    />
-                  ) : (
-                    <Input
-                      value={step.value || ""}
-                      onChange={(e) => onUpdateStep(index, "value", e.target.value)}
-                      placeholder={
-                        step.type === "value"
-                          ? "Enter value"
-                          : step.type === "redirect"
-                            ? "Enter URL"
-                            : step.type === "wait"
-                              ? "Enter wait time in ms"
-                              : ""
-                      }
-                    />
-                  )}
-                </Form.Item>
-              )}
-            </StepContainer>
-          ))}
+              </EditingStepItem>
+            );
+          })}
         </div>
       )}
 
       <Button type="dashed" onClick={onAddStep} block icon={<IconPlus size={16} />} style={{ marginTop: "16px" }}>
         Add Step
       </Button>
-    </Form>
+    </div>
   );
 };
 

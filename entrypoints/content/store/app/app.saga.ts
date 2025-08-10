@@ -2,8 +2,13 @@ import {
   onChangeFeaturePopupPosition,
   onChangeLauncherActiveFeature,
   onChangeLauncherIconOrder,
+  onChangeMinimizedFeatures,
+  onChangeMinimizedLauncherPosition,
+  onChangeVisibleFeatures,
+  onClearAllActiveIcons,
   onInitAppSetting,
-  onMinimizedFeaturePopup,
+  onToggleFeatureMinimized,
+  onToggleFeatureVisibility,
   onToggleLauncherActiveIcon,
   onUpdateAppSettingWatcher,
   onUpdateEventPreventDefaultWatcher,
@@ -23,6 +28,11 @@ export function* appInit() {
   yield takeLatest(onChangeLauncherIconOrder.actionType, onChangeLauncherIconOrder);
   yield takeLatest(onChangeFeaturePopupPosition.actionType, onChangeFeaturePopupPosition);
   yield takeLatest(onChangeLauncherActiveFeature.actionType, onChangeLauncherActiveFeature);
-  yield takeLatest(onMinimizedFeaturePopup.actionType, onMinimizedFeaturePopup);
   yield takeLatest(onToggleLauncherActiveIcon.actionType, onToggleLauncherActiveIcon);
+  yield takeLatest(onClearAllActiveIcons.actionType, onClearAllActiveIcons);
+  yield takeLatest(onChangeMinimizedLauncherPosition.actionType, onChangeMinimizedLauncherPosition);
+  yield takeLatest(onChangeVisibleFeatures.actionType, onChangeVisibleFeatures);
+  yield takeLatest(onToggleFeatureVisibility.actionType, onToggleFeatureVisibility);
+  yield takeLatest(onChangeMinimizedFeatures.actionType, onChangeMinimizedFeatures);
+  yield takeLatest(onToggleFeatureMinimized.actionType, onToggleFeatureMinimized);
 }

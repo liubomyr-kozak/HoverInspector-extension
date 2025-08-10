@@ -44,7 +44,6 @@ export class ExtensionInstanceTabLoader {
   // };
 
   injectScript = async (tabId) => {
-    console.log("ExtensionInstanceTabLoader::injectScript -> ???? injectScript");
 
     try {
       await browser?.scripting.executeScript({
@@ -56,7 +55,6 @@ export class ExtensionInstanceTabLoader {
       //     files: ['content-scripts/content.css'],
       // });
     } catch (error) {
-      console.log("[Error:_inject_] tab: " + tabId + " lastError: " + JSON.stringify(error));
     }
   };
 
@@ -87,7 +85,6 @@ export class ExtensionInstanceTabLoader {
           await sendMessage(HOVER_INSPECTOR_ACTIVATE, null, tabId);
           break;
         default:
-          console.log("Unknown action: ", action);
       }
     } catch (error) {
       console.error("[Error:_check_] sending message to tab:", error);

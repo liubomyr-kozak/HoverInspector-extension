@@ -1,11 +1,18 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import BestColorPicker from "react-best-gradient-color-picker";
 import styled from "styled-components";
 import { useDispatch, useSelector } from "react-redux";
 import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
-import { BetaBadge } from "@entrypoints/shared/components/BetaBadge.tsx";
+import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
+import { useDebouncedCallback } from "@entrypoints/shared/utils/useDebouncedCallback.ts";
 import { addColorToHistory } from "@entrypoints/content/store/app/app.slice.ts";
 import { IconHistory } from "@tabler/icons-react";
+import {
+  ScenarioPortalHeaderButtons as PortalHeaderButtons,
+  HeaderPortalId,
+  PortalModalHeaderButtons,
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons";
+import { INSPECTOR, PICKER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
 const Container = styled.div`
   position: relative;
@@ -75,7 +82,6 @@ const ColorPicker = () => {
 
   // Get color history from Redux store
   const colorHistory = useSelector((state: any) => state?.app.colorHistory || []);
-  console.log("🌟🌟🌟 ::ColorPicker -> colorHistory", colorHistory);
 
   const featurePopupPosition = useSelector((state: any) => state?.app.featurePopupPosition);
 
@@ -87,9 +93,9 @@ const ColorPicker = () => {
   }, [color, dispatch]);
 
   // Handle selecting a color from history
-  const handleSelectHistoryColor = (historyColor: string) => {
+  const handleSelectHistoryColor = useDebouncedCallback((historyColor: string) => {
     setColor(historyColor);
-  };
+  }, 120);
 
   // Toggle history visibility
   const toggleHistory = () => {
@@ -98,35 +104,38 @@ const ColorPicker = () => {
 
   return (
     <Container>
-      <TitleRow>
-        <FeatureTitle>
-          Color Picker
-          <BetaBadge>Beta</BetaBadge>
-          {colorHistory.length > 0 && (
-            <HistoryButton onClick={toggleHistory} title="Color History" style={{ position: "relative" }}>
-              <IconHistory size={20} color={showHistory ? "#4CAF50" : "#666"} />
-              <span
-                style={{
-                  position: "absolute",
-                  top: "-5px",
-                  right: "-5px",
-                  background: "#4CAF50",
-                  color: "white",
-                  borderRadius: "50%",
-                  width: "16px",
-                  height: "16px",
-                  fontSize: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {colorHistory.length}
-              </span>
-            </HistoryButton>
-          )}
+      {/* Move FeatureTitle to portal header */}
+      <PortalHeaderButtons portalId={HeaderPortalId.COLOR_PICKER}>
+        <FeatureTitle className="flex items-center">
+          <FeatureIcon icon={PICKER.icon} isBetta />
+          {PICKER.title}
+          <PortalModalHeaderButtons>
+            {colorHistory.length > 0 && (
+              <HistoryButton onClick={toggleHistory} title="Color History" style={{ position: "relative" }}>
+                <IconHistory size={20} color={showHistory ? "#4CAF50" : "#666"} />
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "-5px",
+                    right: "-5px",
+                    background: "#4CAF50",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: "16px",
+                    height: "16px",
+                    fontSize: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {colorHistory.length}
+                </span>
+              </HistoryButton>
+            )}
+          </PortalModalHeaderButtons>
         </FeatureTitle>
-      </TitleRow>
+      </PortalHeaderButtons>
 
       {/* Display color history if there are any saved colors and showHistory is true */}
       {colorHistory.length > 0 && showHistory && (

@@ -11,12 +11,12 @@ import { userEventScrollConfirm } from "@entrypoints/content/store/app/app.slice
 
 let preNodeTarget: any = null;
 let originalOutlines: Map<HTMLElement, string> = new Map();
-const HEIGHT_LITE_CLASS_NAME = "zTool-height-lite-indicator";
-const OUTLINE_CLASS_NAME = "zTool-element-outline";
+const HEIGHT_LITE_CLASS_NAME = "hover-inspector-height-lite-indicator";
+const OUTLINE_CLASS_NAME = "hover-inspector-element-outline";
 
 function hasAppClass(node: any) {
   return (
-    (typeof node.className === "string" && node.className.includes("zTool")) || node.localName === "hover-inspector"
+    (typeof node.className === "string" && node.className.includes("hover-inspector")) || node.localName === "hover-inspector"
   );
 }
 
@@ -122,7 +122,6 @@ const onHandlerInputMove = (e: any, dispatch: any) => {
 
   // Show outlines on all elements if showAllBorders is enabled
   if (PopupSettingModel.showAllBorders) {
-    debugger;
     showOutlinesOnAllElements();
   }
 

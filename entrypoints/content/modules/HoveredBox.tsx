@@ -35,8 +35,8 @@ const HoveredBox = () => {
 
   return (
     <>
-      <div ref={paddingRef} className="zToolTooltipPadding" />
-      <div ref={marginRef} className="zToolTooltipMargin" />
+      <div ref={paddingRef} className="hover-inspector-tooltip-padding" />
+      <div ref={marginRef} className="hover-inspector-tooltip-margin" />
     </>
   );
 };

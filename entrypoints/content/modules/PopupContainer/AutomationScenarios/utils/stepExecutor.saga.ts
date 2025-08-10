@@ -16,10 +16,14 @@
  * State management is handled through Redux actions and selectors.
  */
 import { call, put, select, delay, cancelled, race, take } from "redux-saga/effects";
-import { ExecutionLog, ExecutionLogEntry, ExecutionStatus, FunctionMap, ScenarioStep } from "../types";
+import { ExecutionLog, ExecutionLogEntry, ExecutionStatus, FunctionMap, ScenarioStep, StepType } from "../types";
 import { automationActions } from "../../../../store/automation/automation.slice";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { AUTOMATION_SCENARIO_KEY } from "@entrypoints/core/constants/automation.ts";
+import { toast } from "react-toastify";
+import { ConfirmationDialog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ConfirmationDialog.tsx";
+import { NotificationDialog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/NotificationDialog.tsx";
+import React from "react";
 
 /**
  * Default delay between steps in milliseconds
@@ -40,6 +44,11 @@ const getFunctions = (state) => state.automation.functions;
  * Selector to get whether execution should be stopped
  */
 const getShouldStop = (state) => state.automation.shouldStop;
+
+/**
+ * Selector to get whether execution is paused
+ */
+const getPaused = (state) => state.automation.paused;
 
 /**
  * Selector to get the execution speed
@@ -213,28 +222,31 @@ function getElementByXPath(xpath: string): Element | null {
  */
 export function getStepDescription(step: ScenarioStep): string {
   switch (step.type) {
-    case "click":
+    case StepType.CLICK:
       return `Click on element`;
-    case "hover":
+    case StepType.HOVER:
       return `Hover over element`;
-    case "input":
+    case StepType.INPUT:
       return `Input value "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
-    case "value":
+    case StepType.VALUE:
       return `Set value "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
-    case "code":
+    case StepType.CODE:
       return `Execute code`;
-    case "function":
+    case StepType.FUNCTION:
       return `Execute function "${step.value}"`;
-    case "redirect":
+    case StepType.REDIRECT:
+    case StepType.NAVIGATE:
       return `Navigate to "${step.value}"`;
-    case "update":
+    case StepType.UPDATE:
       return `Update page`;
-    case "wait":
+    case StepType.WAIT:
       return `Wait for ${step.value} ms`;
-    case "select":
+    case StepType.SELECT:
       return `Select value "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
-    case "confirmation":
+    case StepType.CONFIRMATION:
       return `Wait for confirmation: "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
+    case StepType.NOTIFICATION:
+      return `Show notification: "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
     default:
       return `Unknown step type: ${step.type}`;
   }
@@ -347,7 +359,6 @@ export function* executeCodeStep(step: ScenarioStep) {
     throw new Error("Code is required for code steps");
   }
 
-  debugger;
 
   try {
     // Execute the code
@@ -397,7 +408,6 @@ export function* executeFunctionStep(step: ScenarioStep) {
       throw Error(`Error executing function "${step.value}" ` + "NO FOUND FUNCTION" + executeFn);
     }
 
-    console.log("😀😀😀 executeFunctionStep::executeFunctionStep -> executeFn", executeFn);
 
     const result = executeFn?.();
     return result;
@@ -413,6 +423,33 @@ export function* executeFunctionStep(step: ScenarioStep) {
 export function* executeRedirectStep(step: ScenarioStep) {
   if (!step.value) {
     throw new Error("URL is required for redirect steps");
+  }
+
+  // Navigate to the URL
+  window.location.href = step.value;
+
+  // Wait for the page to load
+  yield new Promise((resolve) => {
+    window.addEventListener("load", resolve, { once: true });
+  });
+}
+
+/**
+ * Executes a navigate step (with conditional logic based on scenario settings)
+ */
+export function* executeNavigateStep(step: ScenarioStep) {
+  if (!step.value) {
+    throw new Error("URL is required for navigate steps");
+  }
+
+  // Get the current scenario from state to check enableNavigation setting
+  const activeScenarioId = yield select((state) => state.automation.activeScenarioId);
+  const scenarios = yield select((state) => state.automation.scenarios);
+  const currentScenario = scenarios[activeScenarioId];
+
+  // If enableNavigation is false, skip the navigation step
+  if (currentScenario && currentScenario.enableNavigation === false) {
+    return;
   }
 
   // Navigate to the URL
@@ -479,6 +516,104 @@ export function* executeSelectStep(step: ScenarioStep) {
 }
 
 /**
+ * Creates a confirmation dialog using react-toastify with React component
+ */
+function createConfirmationDialog(message: string): Promise<boolean> {
+  return new Promise(async (resolve) => {
+    // Create the confirmation dialog component with proper React rendering
+    const confirmationComponent = React.createElement(ConfirmationDialog, {
+      message,
+      onConfirm: () => {
+        toast.dismiss(toastId);
+        resolve(true);
+      },
+      onCancel: () => {
+        toast.dismiss(toastId);
+        resolve(false);
+      },
+    });
+
+    // Show toast with React component content
+    const toastId = toast(confirmationComponent, {
+      position: "bottom-left",
+      autoClose: false,
+      hideProgressBar: true,
+      closeOnClick: false,
+      pauseOnHover: true,
+      closeButton: false,
+      draggable: false,
+    });
+  });
+}
+
+/**
+ * Creates a notification dialog using react-toastify with React component and auto-close
+ */
+function createNotificationDialog(message: string, autoCloseTime: number = 3000): Promise<void> {
+  return new Promise((resolve) => {
+    // Create the notification dialog component with proper React rendering
+    const notificationComponent = React.createElement(NotificationDialog, {
+      message,
+    });
+
+    // Show toast with React component content and auto-close
+    const toastId = toast(notificationComponent, {
+      position: "bottom-left",
+      autoClose: autoCloseTime,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      closeButton: true,
+      draggable: false,
+      onClose: () => resolve(),
+    });
+
+    // Also resolve after the auto-close time to ensure the promise resolves
+    setTimeout(() => resolve(), autoCloseTime);
+  });
+}
+
+/**
+ * Executes a confirmation step
+ */
+export function* executeConfirmationStep(step: ScenarioStep) {
+  const message = step.value || "Please confirm to continue";
+
+  try {
+    // Use the confirmation dialog helper
+    const userConfirmed = yield call(() => createConfirmationDialog(message));
+
+    if (!userConfirmed) {
+      throw new Error("User cancelled the confirmation");
+    }
+  } catch (error) {
+    // Additional fallback to native browser confirm
+    console.warn("Confirmation dialog failed, using native confirm:", error);
+    const userConfirmed = window.confirm(message);
+    if (!userConfirmed) {
+      throw new Error("User cancelled the confirmation");
+    }
+  }
+}
+
+/**
+ * Executes a notification step
+ */
+export function* executeNotificationStep(step: ScenarioStep) {
+  const message = step.value || "Notification";
+  const autoCloseTime = step.delay || 3000; // Use step delay if provided, otherwise default to 3 seconds
+
+  try {
+    // Use the notification dialog helper
+    yield call(() => createNotificationDialog(message, autoCloseTime));
+  } catch (error) {
+    console.warn("Notification dialog failed:", error);
+    // Fallback to simple alert if toast fails
+    alert(message);
+  }
+}
+
+/**
  * Executes a single step
  *
  * This function handles the execution of a single automation step based on its type.
@@ -501,7 +636,7 @@ export function* executeSelectStep(step: ScenarioStep) {
 export function* executeStep(step: ScenarioStep, stepIndex: number) {
   try {
     // Check if this is a function step and syncFunctions is disabled
-    if (step.type === "function") {
+    if (step.type === StepType.FUNCTION) {
       // Get server settings to check if functions sync is enabled
       const serverSettings = yield call(ExtensionStorageManager.getAutomationScenario, "automation_server_settings");
       const syncFunctions = serverSettings?.syncFunctions ?? true;
@@ -530,35 +665,44 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
 
     // Execute the step based on its type
     switch (step.type) {
-      case "click":
+      case StepType.CLICK:
         yield call(executeClickStep, step);
         break;
-      case "hover":
+      case StepType.HOVER:
         yield call(executeHoverStep, step);
         break;
-      case "input":
+      case StepType.INPUT:
         yield call(executeInputStep, step);
         break;
-      case "value":
+      case StepType.VALUE:
         yield call(executeValueStep, step);
         break;
-      case "code":
+      case StepType.CODE:
         yield call(executeCodeStep, step);
         break;
-      case "function":
+      case StepType.FUNCTION:
         yield call(executeFunctionStep, step);
         break;
-      case "redirect":
+      case StepType.REDIRECT:
         yield call(executeRedirectStep, step);
         break;
-      case "update":
+      case StepType.NAVIGATE:
+        yield call(executeNavigateStep, step);
+        break;
+      case StepType.UPDATE:
         yield call(executeUpdateStep);
         break;
-      case "wait":
+      case StepType.WAIT:
         yield call(executeWaitStep, step);
         break;
-      case "select":
+      case StepType.SELECT:
         yield call(executeSelectStep, step);
+        break;
+      case StepType.CONFIRMATION:
+        yield call(executeConfirmationStep, step);
+        break;
+      case StepType.NOTIFICATION:
+        yield call(executeNotificationStep, step);
         break;
       default:
         throw new Error(`Unknown step type: ${step.type}`);
@@ -667,10 +811,28 @@ export function* executeSteps(
 
     // Execute each step
     for (let i = 0; i < steps.length; i++) {
+      // Check if execution is paused and wait for resume
+      let paused = yield select(getPaused);
+      while (paused) {
+        // Wait for either unpause or stop signal
+        const { resumed, stopped } = yield race({
+          resumed: take(automationActions.setPaused.type),
+          stopped: take(automationActions.setShouldStop.type),
+        });
+
+        if (stopped) {
+          return yield call(finalizeExecutionLog, ExecutionStatus.CANCELLED);
+        }
+
+        // Check if we're still paused after the action
+        paused = yield select(getPaused);
+        if (!paused) {
+        }
+      }
+
       // Check if execution should be stopped
       const shouldStop = yield select(getShouldStop);
       if (shouldStop) {
-        console.log("StepExecutor: Execution stopped by user");
         return yield call(finalizeExecutionLog, ExecutionStatus.CANCELLED);
       }
 
@@ -718,7 +880,6 @@ export function* executeSteps(
 
           // Check if execution was stopped during the delay
           if (stopped) {
-            console.log("StepExecutor: Execution stopped by user during delay");
             return yield call(finalizeExecutionLog, ExecutionStatus.CANCELLED);
           }
         }
@@ -762,8 +923,16 @@ export function* executeSteps(
   } finally {
     // Check if the task was cancelled
     if (yield cancelled()) {
-      console.log("StepExecutor: Task was cancelled");
-      yield call(finalizeExecutionLog, ExecutionStatus.CANCELLED);
+
+      // Don't call finalizeExecutionLog in finally block as it can cause React rendering issues
+      // The cancellation will be handled by the calling saga (playScenarioWatcher)
+      // Just ensure we don't leave any dangling state
+      try {
+        yield put(automationActions.setCurrentStepIndex(-1));
+      } catch (cleanupError) {
+        // If even cleanup fails, just log it and continue
+        console.warn("Error during cleanup after cancellation:", cleanupError);
+      }
     }
   }
 }

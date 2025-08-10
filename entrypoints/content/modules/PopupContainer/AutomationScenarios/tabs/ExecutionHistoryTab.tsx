@@ -15,6 +15,7 @@ import {
 // Import saga actions
 import {
   deleteExecutionHistoryWatcher,
+  deleteMultipleExecutionHistoryWatcher,
   loadExecutionHistoryWatcher,
   loadScenariosWatcher,
 } from "../../../../store/automation/automation.saga.action";
@@ -49,6 +50,10 @@ const ExecutionHistoryTab: React.FC = () => {
 
   const deleteExecutionHistory = (id: string) => {
     dispatch(deleteExecutionHistoryWatcher.getPayload(id));
+  };
+
+  const deleteAllExecutionHistory = (ids: string[]) => {
+    dispatch(deleteMultipleExecutionHistoryWatcher.getPayload(ids));
   };
 
   const exportExecutionHistory = (entry: ExecutionHistoryEntry) => {
@@ -125,6 +130,7 @@ const ExecutionHistoryTab: React.FC = () => {
           executionHistory={executionHistory}
           onRefresh={refreshExecutionHistory}
           onDelete={deleteExecutionHistory}
+          onDeleteAll={deleteAllExecutionHistory}
           onExport={exportExecutionHistory}
           onExportAll={exportAllExecutionHistory}
           scenarios={scenarios}

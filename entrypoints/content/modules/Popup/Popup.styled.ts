@@ -3,16 +3,30 @@ import { ZINDEX_POPUP_WRAPPER } from "@entrypoints/shared/constant/zIndex.ts";
 
 export const BoxLabelContainer = styled.div`
   color: #333;
-  border-radius: 4px;
-  font-size: 14px;
-  background: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  background: #ffffff;
   position: relative;
   z-index: 1;
   text-align: left;
-  padding: 5px 10px;
+  padding: 12px 14px;
   min-height: 20px;
-  min-width: 170px;
-  max-width: 350px;
+  min-width: 200px;
+  max-width: 320px;
+  border: 1px solid #e9ecef;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(8px);
+  line-height: 1.4;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Remove the old flex class styling */
+  .flex {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+  }
 `;
 
 export const PopupWrapper = styled.div<{
@@ -24,48 +38,53 @@ export const PopupWrapper = styled.div<{
   box-sizing: border-box;
   position: fixed;
   z-index: ${ZINDEX_POPUP_WRAPPER};
-  background: #fff;
-  border-radius: 4px;
+  background: #ffffff;
+  border-radius: 8px;
   opacity: 0;
+  border: 1px solid #e9ecef;
   box-shadow:
-    0 1px 5px 0 rgba(67, 67, 67, 0.47),
-    0 5px 5px 0 rgba(154, 160, 185, 0.05),
-    0 5px 30px 0 rgba(166, 173, 201, 0.22);
+    0 8px 25px rgba(0, 0, 0, 0.1),
+    0 4px 10px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.04);
   top: ${({ top }) => `${top || 0}`}px;
   left: ${({ left }) => `${left || 0}`}px;
+  transform: scale(0.95) translateY(-4px);
+  transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
 
   ${({ visible }) =>
     visible &&
     css`
       opacity: 1;
+      transform: scale(1) translateY(0);
     `}
+  
   &.bottom::before {
     content: "";
-    background: #f1f1f1;
+    background: #ffffff;
     position: absolute;
     display: block;
-    padding: 2px;
-    border-width: 0px 7px 7px 0px;
-    border-style: solid;
-    border-color: #ffffff;
-    box-shadow: 0 1px 5px 0 rgb(221 221 221);
+    width: 10px;
+    height: 10px;
+    border-left: 1px solid #e9ecef;
+    border-top: 1px solid #e9ecef;
     transform: rotate(45deg);
-    bottom: -5px;
-    left: 10px;
+    bottom: -6px;
+    left: 16px;
+    z-index: 1;
   }
 
   &.top::before {
     content: "";
-    background: #f1f1f1;
+    background: #ffffff;
     position: absolute;
     display: block;
-    padding: 2px;
-    border-width: 0px 7px 7px 0px;
-    border-style: solid;
-    border-color: #ffffff;
-    box-shadow: rgb(130 130 130 / 60%) 0px 1px 5px 0px;
-    transform: rotate(-135deg);
-    top: -5px;
-    left: 10px;
+    width: 10px;
+    height: 10px;
+    border-right: 1px solid #e9ecef;
+    border-bottom: 1px solid #e9ecef;
+    transform: rotate(45deg);
+    top: -6px;
+    left: 16px;
+    z-index: 1;
   }
 `;
