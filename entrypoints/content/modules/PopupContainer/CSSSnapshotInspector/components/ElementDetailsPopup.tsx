@@ -3,6 +3,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore";
 import { closeElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 import { ElementDetails } from "./SnapshotViewer/components/ElementDetails";
+import DiffViewer from "@entrypoints/shared/components/react-diff-viewer-continued/src";
+import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
+import { ElementDiff } from "./SnapshotViewer/components/ElementDetails/ElementDiff";
 
 export const ElementDetailsPopup: React.FC = () => {
   const dispatch = useDispatch();
@@ -17,7 +20,7 @@ export const ElementDetailsPopup: React.FC = () => {
     attributes: state.attributes || {},
     bounds: state.bounds,
     inlineStyles: state.inlineStyles || {},
-  xpath: state.xpath,
+    xpath: state.xpath,
   } as any;
 
   const selectedElementStyles = Object.entries(state.styles || {});
@@ -80,6 +83,16 @@ export const ElementDetailsPopup: React.FC = () => {
             selectedElementData={selectedElementData}
             selectedElementStyles={selectedElementStyles as Array<[string, any]>}
           />
+          {state.styleDiffData || state.compareLeftData || state.compareRightData ? (
+            <div style={{ marginTop: 12, borderTop: "1px solid #e5e7eb", paddingTop: 12 }}>
+              <ElementDiff 
+                diffData={state.styleDiffData}
+                left={state.compareLeftData as any} 
+                right={state.compareRightData as any}
+                config={state.compareConfig}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

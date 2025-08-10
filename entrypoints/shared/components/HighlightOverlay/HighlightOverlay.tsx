@@ -2,19 +2,17 @@
 import { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore";
-import { clearHighlight, setAutoHideTimer } from "@entrypoints/content/store/highlight/highlightSlice";
+import { clearHighlight, setAutoHideTimer, setXPath } from "@entrypoints/content/store/highlight/highlightSlice";
 
 export default function HighlightOverlay() {
-  const { 
-    hoverMode, 
-    xpath, 
-    autoHideEnabled, 
-    autoHideDelay, 
-    displayStyle, 
-    customStyles 
-  } = useSelector((state: RootState) => state.highlight);
+  const { hoverMode, xpath, autoHideEnabled, autoHideDelay, displayStyle, customStyles } = useSelector(
+    (state: RootState) => state.highlight,
+  );
+
   const dispatch = useDispatch();
   const overlayRef = useRef<HTMLDivElement | null>(null);
+
+  console.log("😜😜😜 default::HighlightOverlay -> xpath", xpath);
 
   // Створюємо overlay з CSS анімаціями
   useEffect(() => {
@@ -84,22 +82,22 @@ export default function HighlightOverlay() {
     const element = el as Element;
     const rect = element.getBoundingClientRect();
     const overlay = overlayRef.current;
-    
+
     // Apply position
     overlay.style.top = rect.top + window.scrollY + "px";
     overlay.style.left = rect.left + window.scrollX + "px";
     overlay.style.width = rect.width + "px";
     overlay.style.height = rect.height + "px";
     overlay.style.display = "block";
-    
+
     // Apply dynamic styling based on displayStyle
     const currentStyle = customStyles[displayStyle];
     if (currentStyle) {
       overlay.style.border = currentStyle.border;
       overlay.style.backgroundColor = currentStyle.backgroundColor;
-      overlay.style.animation = currentStyle.animation || 'none';
+      overlay.style.animation = currentStyle.animation || "none";
     }
-    
+
     // Start auto-hide timer if enabled and not in hover mode
     if (autoHideEnabled && !hoverMode) {
       const timer = setTimeout(() => {
@@ -113,7 +111,7 @@ export default function HighlightOverlay() {
     if (overlayRef.current) {
       overlayRef.current.style.display = "none";
       // Clear any active auto-hide timer when manually removing highlight
-      dispatch(setAutoHideTimer(null));
+      dispatch(clearHighlight());
     }
   };
 
@@ -148,12 +146,16 @@ export default function HighlightOverlay() {
 
   // Підсвітка за XPath
   useEffect(() => {
-    if (!xpath) return;
+    if (!xpath) {
+      removeHighlight();
+      return () => {};
+    }
 
     const el = getElementByXPath(xpath);
     if (!el) {
       removeHighlight();
-      return;
+
+      return () => {};
     }
 
     // Якщо елемент поза видимою зоною — прокручуємо до нього і підлаштовуємо overlay під час анімації

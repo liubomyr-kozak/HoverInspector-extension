@@ -125,7 +125,7 @@ const TypographyRules: React.FC = () => {
           {Array.from(aggregatedProperties?.fontFamilies.entries() || []).map(([family, count], index) => (
             <div
               key={index}
-              className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:border-blue-200 transition-colors duration-200"
+              className="border w-full border-gray-200 rounded-lg overflow-hidden shadow-sm hover:border-blue-200 transition-colors duration-200"
             >
               <div className="flex items-center justify-between text-sm p-3 bg-gradient-to-r from-blue-50 to-gray-50">
                 <div className="font-mono truncate max-w-[70%] font-medium">{family}</div>

@@ -17,6 +17,27 @@ export interface ElementDetailsState {
   styles?: Record<string, string>;
   inlineStyles?: Record<string, string>;
   bounds?: { top: number; left: number; width: number; height: number };
+  /** Optional: when present, display A/B diff in the details popup */
+  compareLeftTitle?: string;
+  compareRightTitle?: string;
+  /** Structured compare payload for inline diff UI */
+  compareLeftData?: any;
+  compareRightData?: any;
+  /** Pre-computed compare configuration to avoid runtime calculations */
+  compareConfig?: {
+    leftNode: any;
+    rightNode: any;
+    showIdentity: boolean;
+    showBounds: boolean;
+    changedAttrs: string[];
+    changedStyles: string[];
+  };
+  /** Simple element diff data for simplified comparison */
+  styleDiffData?: {
+    leftData: Record<string, any>;
+    rightData: Record<string, any>;
+    changedOnly?: boolean;
+  };
 }
 
 const initialState: ElementDetailsState = {

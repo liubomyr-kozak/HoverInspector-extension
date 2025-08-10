@@ -7,8 +7,322 @@ import {
   IconEye,
   IconPalette,
 } from "@tabler/icons-react";
-import { analyzeButtonColors, getColorInAllFormats, isLightColor } from "@entrypoints/shared/utils/colorAnalysis";
+import { analyzeButtonColors, getColorInAllFormats, isLightColor, calculateContrastRatio } from "@entrypoints/shared/utils/colorAnalysis";
+import ColorDetails from "./ColorDetails";
 import { categorizeAllElements, ElementCategory } from "@entrypoints/shared/utils/categorizeElements";
+
+// Styled Components
+interface StyledComponentProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const Container: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`bg-white p-5 rounded-lg mb-6 shadow-sm border border-gray-100 ${className}`}>
+    {children}
+  </div>
+);
+
+const Header: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`flex items-center gap-3 mb-6 ${className}`}>
+    {children}
+  </div>
+);
+
+const Title: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <h3 className={`text-xl font-semibold text-gray-800 ${className}`}>
+    {children}
+  </h3>
+);
+
+const Description: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <p className={`text-sm text-gray-600 mb-6 ${className}`}>
+    {children}
+  </p>
+);
+
+const CategoryTitle: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <h4 className={`text-lg font-semibold text-gray-800 mb-3 ${className}`}>
+    {children}
+  </h4>
+);
+
+const ColorGrid: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`flex gap-4 flex-wrap ${className}`}>
+    {children}
+  </div>
+);
+
+const ColorSquareContainer: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`flex flex-col ${className}`}>
+    {children}
+  </div>
+);
+
+interface ColorSquareProps {
+  color: string;
+  isSelected: boolean;
+  title: string;
+  onClick: () => void;
+  className?: string;
+}
+
+const ColorSquare: React.FC<ColorSquareProps> = ({ color, isSelected, title, onClick, className = "" }) => (
+  <div className="flex items-center">
+    <div
+      className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+        isSelected
+          ? "border-gray-500 shadow-lg scale-105"
+          : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+      } ${className}`}
+      style={{ backgroundColor: color }}
+      title={title}
+      onClick={onClick}
+    />
+  </div>
+);
+
+const DetailPanel: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 mt-4 w-80 ${className}`}>
+    {children}
+  </div>
+);
+
+const DetailHeader: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`flex items-center gap-3 mb-3 ${className}`}>
+    {children}
+  </div>
+);
+
+const ColorPreview: React.FC<{ color: string; className?: string }> = ({ color, className = "" }) => (
+  <div
+    className={`w-12 h-12 rounded-md border shadow-inner ${className}`}
+    style={{ backgroundColor: color }}
+  />
+);
+
+const ColorName: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <h4 className={`text-base font-medium ${className}`}>
+    {children}
+  </h4>
+);
+
+const ColorValue: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <span className={`text-sm font-mono text-gray-600 ${className}`}>
+    {children}
+  </span>
+);
+
+const FrequencyBadge: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <span className={`ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-700 font-medium border border-gray-200 ${className}`}>
+    {children}
+  </span>
+);
+
+const InfoSection: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`border-t border-gray-100 pt-3 ${className}`}>
+    {children}
+  </div>
+);
+
+const InfoTitle: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <h4 className={`text-sm font-semibold mb-2 text-gray-800 ${className}`}>
+    {children}
+  </h4>
+);
+
+const InfoGrid: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`grid grid-cols-2 gap-3 mb-3 ${className}`}>
+    {children}
+  </div>
+);
+
+const InfoItem: React.FC<{ label: string; value: string; className?: string }> = ({ label, value, className = "" }) => (
+  <div className={className}>
+    <p className="text-xs text-gray-500 mb-1">{label}</p>
+    <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">
+      {value}
+    </p>
+  </div>
+);
+
+const ContrastInfo: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`text-xs text-gray-600 mb-2 ${className}`}>
+    {children}
+  </div>
+);
+
+const ElementsSection: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`border-t border-gray-100 pt-3 mt-2 ${className}`}>
+    {children}
+  </div>
+);
+
+const ElementsHeader: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`flex items-center gap-2 mb-2 ${className}`}>
+    {children}
+  </div>
+);
+
+const ElementsTitle: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`text-sm text-gray-700 font-medium flex items-center gap-2 ${className}`}>
+    {children}
+  </div>
+);
+
+const ToggleButton: React.FC<{ onClick: () => void; isExpanded: boolean; className?: string }> = ({ 
+  onClick, 
+  isExpanded, 
+  className = "" 
+}) => (
+  <button
+    onClick={onClick}
+    className={`ml-2 text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200 hover:bg-blue-100 transition-colors duration-200 flex items-center gap-1 ${className}`}
+    title={isExpanded ? "Collapse elements" : "Show all elements"}
+  >
+    {isExpanded ? "Collapse" : "Show all"}
+  </button>
+);
+
+const ElementsList: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <div className={`flex flex-wrap gap-2 ${className}`}>
+    {children}
+  </div>
+);
+
+const ElementButton: React.FC<{ onClick: () => void; children: React.ReactNode; className?: string }> = ({ 
+  onClick, 
+  children, 
+  className = "" 
+}) => (
+  <button
+    onClick={onClick}
+    className={`text-xs bg-white px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-colors duration-200 flex items-center gap-1 ${className}`}
+    title="Click to navigate to this element"
+  >
+    <IconEye size={12} className="text-gray-600" />
+    {children}
+  </button>
+);
+
+const MoreElementsIndicator: React.FC<StyledComponentProps> = ({ children, className = "" }) => (
+  <span className={`text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200 ${className}`}>
+    {children}
+  </span>
+);
+
+// Utility functions
+const getElementDisplayName = (element: Element): string => {
+  const getClassNameAsString = (el: Element): string => {
+    const className: any = (el as any).className;
+    // Handle SVGAnimatedString for SVG elements
+    if (className && typeof className === "object" && "baseVal" in className) {
+      return (className as SVGAnimatedString).baseVal as unknown as string;
+    }
+    // Handle regular string className
+    return typeof className === "string" ? className : "";
+  };
+
+  const tagName = element.tagName?.toLowerCase();
+  const className = getClassNameAsString(element)
+    ? `.${getClassNameAsString(element).split(" ")[0]}`
+    : "";
+  const id = element.id ? `#${element.id}` : "";
+  return id || className || tagName;
+};
+
+// Composite Components
+// moved ColorDetails to ./ColorDetails for reuse
+
+interface ColorItemProps {
+  color: PaletteColor & { type: string };
+  isSelected: boolean;
+  formatColor: (color: string) => string;
+  onColorClick: (colorId: string) => void;
+  expandedSourceElements: Set<string>;
+  toggleSourceElementsExpansion: (colorId: string) => void;
+  navigateToElement: (element: Element) => void;
+}
+
+const ColorItem: React.FC<ColorItemProps> = ({
+  color,
+  isSelected,
+  formatColor,
+  onColorClick,
+  expandedSourceElements,
+  toggleSourceElementsExpansion,
+  navigateToElement
+}) => (
+  <ColorSquareContainer>
+    <ColorSquare
+      color={color.color}
+      isSelected={isSelected}
+      title={`${color.name}: ${formatColor(color.color)}`}
+      onClick={() => onColorClick(color.id)}
+    />
+    {isSelected && (
+      <ColorDetails
+        color={color}
+        formatColor={formatColor}
+        expandedSourceElements={expandedSourceElements}
+        toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+        navigateToElement={navigateToElement}
+      />
+    )}
+  </ColorSquareContainer>
+);
+
+interface ColorCategoryProps {
+  title: string;
+  colors: PaletteColor[];
+  categoryType: string;
+  selectedColorId: string | null;
+  formatColor: (color: string) => string;
+  onColorClick: (colorId: string) => void;
+  expandedSourceElements: Set<string>;
+  toggleSourceElementsExpansion: (colorId: string) => void;
+  navigateToElement: (element: Element) => void;
+  sortColorsByPaletteLogic: (colors: (PaletteColor & { type: string })[]) => (PaletteColor & { type: string })[];
+}
+
+const ColorCategory: React.FC<ColorCategoryProps> = ({
+  title,
+  colors,
+  categoryType,
+  selectedColorId,
+  formatColor,
+  onColorClick,
+  expandedSourceElements,
+  toggleSourceElementsExpansion,
+  navigateToElement,
+  sortColorsByPaletteLogic
+}) => {
+  if (colors.length === 0) return null;
+
+  const sortedColors = sortColorsByPaletteLogic(
+    colors.map(color => ({ ...color, type: categoryType }))
+  );
+
+  return (
+    <div>
+      <CategoryTitle>{title}</CategoryTitle>
+      <ColorGrid>
+        {sortedColors.map(color => (
+          <ColorItem
+            key={color.id}
+            color={color}
+            isSelected={selectedColorId === color.id}
+            formatColor={formatColor}
+            onColorClick={onColorClick}
+            expandedSourceElements={expandedSourceElements}
+            toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+            navigateToElement={navigateToElement}
+          />
+        ))}
+      </ColorGrid>
+    </div>
+  );
+};
 
 // Type for color system options
 type ColorSystem = "rgb" | "hex" | "hsl" | "hsv";
@@ -648,11 +962,11 @@ const ColorPaletteDefinition: React.FC = () => {
                           <div className="text-xs text-gray-600 mb-2">
                             <p className="mb-1">
                               <strong>Contrast ratio with white:</strong>{" "}
-                              {getColorInAllFormats(color.color)?.contrastWithWhite?.toFixed(2) || "N/A"}
+                              {calculateContrastRatio(color.color, "#ffffff").toFixed(2)}
                             </p>
                             <p>
                               <strong>Contrast ratio with black:</strong>{" "}
-                              {getColorInAllFormats(color.color)?.contrastWithBlack?.toFixed(2) || "N/A"}
+                              {calculateContrastRatio(color.color, "#000000").toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -682,7 +996,7 @@ const ColorPaletteDefinition: React.FC = () => {
                                   const className = el.className;
                                   // Handle SVGAnimatedString for SVG elements
                                   if (className && typeof className === "object" && "baseVal" in className) {
-                                    return className.baseVal;
+                                    return (className as SVGAnimatedString).baseVal as unknown as string;
                                   }
                                   // Handle regular string className
                                   return typeof className === "string" ? className : "";
@@ -836,11 +1150,11 @@ const ColorPaletteDefinition: React.FC = () => {
                           <div className="text-xs text-gray-600 mb-2">
                             <p className="mb-1">
                               <strong>Contrast ratio with white:</strong>{" "}
-                              {getColorInAllFormats(color.color)?.contrastWithWhite?.toFixed(2) || "N/A"}
+                              {calculateContrastRatio(color.color, "#ffffff").toFixed(2)}
                             </p>
                             <p>
                               <strong>Contrast ratio with black:</strong>{" "}
-                              {getColorInAllFormats(color.color)?.contrastWithBlack?.toFixed(2) || "N/A"}
+                              {calculateContrastRatio(color.color, "#000000").toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -870,7 +1184,7 @@ const ColorPaletteDefinition: React.FC = () => {
                                   const className = el.className;
                                   // Handle SVGAnimatedString for SVG elements
                                   if (className && typeof className === "object" && "baseVal" in className) {
-                                    return className.baseVal;
+                                    return (className as SVGAnimatedString).baseVal as unknown as string;
                                   }
                                   // Handle regular string className
                                   return typeof className === "string" ? className : "";
@@ -957,13 +1271,14 @@ const ColorPaletteDefinition: React.FC = () => {
   /**
    * Renders all colors with category tags
    */
+  type PaletteColorWithCategory = PaletteColor & { category: "primary" | "secondary" | "tertiary" };
   const renderColorsWithTags = () => {
     // Combine primary, secondary, and tertiary colors (sorted by HSL)
-    const allColors = sortColorsByHSL([
-      ...sortColorsByHSL(colorPalette.primary).map((color) => ({ ...color, category: "primary" })),
-      ...sortColorsByHSL(colorPalette.secondary).map((color) => ({ ...color, category: "secondary" })),
-      ...sortColorsByHSL(colorPalette.tertiary).map((color) => ({ ...color, category: "tertiary" })),
-    ]);
+    const allColors: PaletteColorWithCategory[] = [
+      ...sortColorsByHSL(colorPalette.primary).map((color) => ({ ...color, category: "primary" as const })),
+      ...sortColorsByHSL(colorPalette.secondary).map((color) => ({ ...color, category: "secondary" as const })),
+      ...sortColorsByHSL(colorPalette.tertiary).map((color) => ({ ...color, category: "tertiary" as const })),
+    ];
 
     // Get category display names
     const getCategoryName = (category: string): string => {
@@ -1084,11 +1399,11 @@ const ColorPaletteDefinition: React.FC = () => {
                       <div className="text-xs text-gray-600 mb-2">
                         <p className="mb-1">
                           <strong>Contrast ratio with white:</strong>{" "}
-                          {getColorInAllFormats(color.color)?.contrastWithWhite?.toFixed(2) || "N/A"}
+                          {calculateContrastRatio(color.color, "#ffffff").toFixed(2)}
                         </p>
                         <p>
                           <strong>Contrast ratio with black:</strong>{" "}
-                          {getColorInAllFormats(color.color)?.contrastWithBlack?.toFixed(2) || "N/A"}
+                          {calculateContrastRatio(color.color, "#000000").toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -1116,7 +1431,7 @@ const ColorPaletteDefinition: React.FC = () => {
                               const className = el.className;
                               // Handle SVGAnimatedString for SVG elements
                               if (className && typeof className === "object" && "baseVal" in className) {
-                                return className.baseVal;
+                                return (className as SVGAnimatedString).baseVal as unknown as string;
                               }
                               // Handle regular string className
                               return typeof className === "string" ? className : "";
@@ -1210,91 +1525,514 @@ const ColorPaletteDefinition: React.FC = () => {
   //   }
   // };
 
+  // Get all colors in a flat list
+  const getAllColorsFlat = (): (PaletteColor & { type: string })[] => {
+    const allColors: (PaletteColor & { type: string })[] = [];
+
+    // Add all colors from different categories
+    colorPalette.primary.forEach((color) => allColors.push({ ...color, type: "Primary" }));
+    colorPalette.secondary.forEach((color) => allColors.push({ ...color, type: "Secondary" }));
+    colorPalette.tertiary.forEach((color) => allColors.push({ ...color, type: "Tertiary" }));
+    colorPalette.neutral.forEach((color) => allColors.push({ ...color, type: "Neutral" }));
+    colorPalette.element.forEach((color) => allColors.push({ ...color, type: "Element" }));
+    colorPalette.text.forEach((color) => allColors.push({ ...color, type: "Text" }));
+    colorPalette.border.forEach((color) => allColors.push({ ...color, type: "Border" }));
+
+    return allColors;
+  };
+
+  // Sort colors by logical palette sequence: Red → Orange/Yellow → Green → Blue/Cyan → Purple → Gray → Transparent
+  const sortColorsByPaletteLogic = (
+    colors: (PaletteColor & { type: string })[],
+  ): (PaletteColor & { type: string })[] => {
+    const opaqueColors: (PaletteColor & { type: string })[] = [];
+    const transparentColors: (PaletteColor & { type: string })[] = [];
+
+    // Separate transparent colors
+    colors.forEach((color) => {
+      if (color.color.includes("rgba") && color.color.match(/rgba\([^)]+,\s*([01]?(?:\.\d+)?)\)/)) {
+        const alphaMatch = color.color.match(/rgba\([^)]+,\s*([01]?(?:\.\d+)?)\)/);
+        const alpha = alphaMatch ? parseFloat(alphaMatch[1]) : 1;
+        if (alpha < 1) {
+          transparentColors.push(color);
+        } else {
+          opaqueColors.push(color);
+        }
+      } else {
+        opaqueColors.push(color);
+      }
+    });
+
+    // Define hue ranges for color families (HSL hue is 0-360)
+    const getHueFamily = (hue: number): number => {
+      // Red: 0-15, 345-360
+      if (hue >= 345 || hue <= 15) return 0;
+      // Orange/Yellow: 16-60
+      if (hue >= 16 && hue <= 60) return 1;
+      // Green: 61-150
+      if (hue >= 61 && hue <= 150) return 2;
+      // Blue/Cyan: 151-240
+      if (hue >= 151 && hue <= 240) return 3;
+      // Purple: 241-300
+      if (hue >= 241 && hue <= 300) return 4;
+      // Gray (low saturation): 301-344
+      return 5;
+    };
+
+    // Sort opaque colors by hue family and lightness
+    const sortedOpaqueColors = opaqueColors.sort((a, b) => {
+      const aFormats = getColorInAllFormats(a.color);
+      const bFormats = getColorInAllFormats(b.color);
+
+      if (!aFormats || !bFormats) return 0;
+
+      // Extract HSL values
+      const aHSL = aFormats.hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+      const bHSL = bFormats.hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+
+      if (!aHSL || !bHSL) return 0;
+
+      const aHue = parseInt(aHSL[1], 10);
+      const bHue = parseInt(bHSL[1], 10);
+      const aSat = parseInt(aHSL[2], 10);
+      const bSat = parseInt(bHSL[2], 10);
+      const aLight = parseInt(aHSL[3], 10);
+      const bLight = parseInt(bHSL[3], 10);
+
+      // Handle grayscale colors (low saturation)
+      const aIsGray = aSat < 10;
+      const bIsGray = bSat < 10;
+
+      const aFamily = aIsGray ? 5 : getHueFamily(aHue);
+      const bFamily = bIsGray ? 5 : getHueFamily(bHue);
+
+      // First sort by hue family
+      if (aFamily !== bFamily) return aFamily - bFamily;
+
+      // Within same family, sort by lightness (lightest to darkest)
+      return bLight - aLight;
+    });
+
+    // Sort transparent colors by lightness
+    const sortedTransparentColors = transparentColors.sort((a, b) => {
+      const aFormats = getColorInAllFormats(a.color);
+      const bFormats = getColorInAllFormats(b.color);
+
+      if (!aFormats || !bFormats) return 0;
+
+      const aHSL = aFormats.hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+      const bHSL = bFormats.hsl.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+
+      if (!aHSL || !bHSL) return 0;
+
+      const aLight = parseInt(aHSL[3], 10);
+      const bLight = parseInt(bHSL[3], 10);
+
+      return bLight - aLight; // Lightest to darkest
+    });
+
+    return [...sortedOpaqueColors, ...sortedTransparentColors];
+  };
+
   return (
     <div className="bg-white p-5 rounded-lg mb-6 shadow-sm border border-gray-100">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <IconPalette size={24} className="text-purple-600" />
-          <h3 className="text-xl font-semibold text-gray-800">Color Palette Definition</h3>
-        </div>
+      <div className="flex items-center gap-3 mb-6">
+        <IconPalette size={24} className="text-purple-600" />
+        <h3 className="text-xl font-semibold text-gray-800">Color Palette Definition</h3>
+      </div>
 
-        {/* Color System Selector */}
+      <p className="text-sm text-gray-600 mb-6">
+        Colors from your page palette organized by category, with each category sorted by logical palette sequence.
+      </p>
 
-        <button
-          className="flex items-center gap-2 text-sm bg-white px-3  rounded-md border border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 transition-colors duration-200 shadow-sm"
-          onClick={toggleColorSystemMenu}
-        >
-          <IconColorPicker size={16} className="text-purple-500" />
-          <span className="font-medium">
-            Format: {colorSystems.find((cs) => cs.value === selectedColorSystem)?.label}
-          </span>
-          <IconChevronDown
-            size={16}
-            className={`transition-transform text-gray-500 ${colorSystemMenuOpen ? "rotate-180" : ""}`}
-          />
-        </button>
+      {/* Colors split by categories */}
+      <div className="space-y-6">
+        {/* Primary Colors */}
+        {colorPalette.primary.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Primary Colors</h4>
+            <div className="flex gap-4 flex-wrap">
+              {sortColorsByPaletteLogic(colorPalette.primary.map((color) => ({ ...color, type: "Primary" }))).map(
+                (color) => (
+                  <div key={color.id} className="flex flex-col">
+                    <div className="flex items-center">
+                      <div
+                        className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+                          selectedColorId === color.id
+                            ? "border-gray-500 shadow-lg scale-105"
+                            : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: color.color }}
+                        title={`${color.name}: ${formatColor(color.color)}`}
+                        onClick={() => setSelectedColorId(selectedColorId === color.id ? null : color.id)}
+                      />
+                    </div>
+                    {/* Color Details */}
+                    {selectedColorId === color.id && (
+                      <ColorDetails
+                        color={color}
+                        formatColor={formatColor}
+                        expandedSourceElements={expandedSourceElements}
+                        toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+                        navigateToElement={navigateToElement}
+                      />
+                    )}
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        )}
 
-        {colorSystemMenuOpen && (
-          <div className="absolute right-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 z-10 overflow-hidden">
-            {colorSystems.map((system) => (
-              <button
-                key={system.value}
-                className={`block w-full text-left px-4 py-2 text-sm hover:bg-purple-50 active:bg-purple-100 transition-colors duration-150 ${
-                  selectedColorSystem === system.value ? "bg-purple-100 font-medium text-purple-700" : "text-gray-700"
-                }`}
-                onClick={() => selectColorSystem(system.value)}
-              >
-                {system.label}
-              </button>
-            ))}
+        {/* Secondary Colors */}
+        {colorPalette.secondary.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Secondary Colors</h4>
+            <div className="flex gap-4 flex-wrap">
+              {sortColorsByPaletteLogic(colorPalette.secondary.map((color) => ({ ...color, type: "Secondary" }))).map(
+                (color) => (
+                  <div key={color.id} className="flex flex-col">
+                    <div className="flex items-center">
+                      <div
+                        className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+                          selectedColorId === color.id
+                            ? "border-gray-500 shadow-lg scale-105"
+                            : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: color.color }}
+                        title={`${color.name}: ${formatColor(color.color)}`}
+                        onClick={() => setSelectedColorId(selectedColorId === color.id ? null : color.id)}
+                      />
+                    </div>
+                    {/* Color Details */}
+                    {selectedColorId === color.id && (
+                      <ColorDetails
+                        color={color}
+                        formatColor={formatColor}
+                        expandedSourceElements={expandedSourceElements}
+                        toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+                        navigateToElement={navigateToElement}
+                      />
+                    )}
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tertiary Colors */}
+        {colorPalette.tertiary.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Tertiary Colors</h4>
+            <div className="flex gap-4 flex-wrap">
+              {sortColorsByPaletteLogic(colorPalette.tertiary.map((color) => ({ ...color, type: "Tertiary" }))).map(
+                (color) => (
+                  <div key={color.id} className="flex flex-col">
+                    <div className="flex items-center">
+                      <div
+                        className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+                          selectedColorId === color.id
+                            ? "border-gray-500 shadow-lg scale-105"
+                            : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: color.color }}
+                        title={`${color.name}: ${formatColor(color.color)}`}
+                        onClick={() => setSelectedColorId(selectedColorId === color.id ? null : color.id)}
+                      />
+                    </div>
+                    {/* Color Details */}
+                    {selectedColorId === color.id && (
+                      <ColorDetails
+                        color={color}
+                        formatColor={formatColor}
+                        expandedSourceElements={expandedSourceElements}
+                        toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+                        navigateToElement={navigateToElement}
+                      />
+                    )}
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Neutral Colors */}
+        {colorPalette.neutral.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Neutral Colors</h4>
+            <div className="flex gap-4 flex-wrap">
+              {sortColorsByPaletteLogic(colorPalette.neutral.map((color) => ({ ...color, type: "Neutral" }))).map(
+                (color) => (
+                  <div key={color.id} className="flex flex-col">
+                    <div className="flex items-center">
+                      <div
+                        className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+                          selectedColorId === color.id
+                            ? "border-gray-500 shadow-lg scale-105"
+                            : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: color.color }}
+                        title={`${color.name}: ${formatColor(color.color)}`}
+                        onClick={() => setSelectedColorId(selectedColorId === color.id ? null : color.id)}
+                      />
+                    </div>
+                    {/* Color Details */}
+                    {selectedColorId === color.id && (
+                      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mt-4 w-80">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div
+                            className="w-12 h-12 rounded-md border shadow-inner"
+                            style={{ backgroundColor: color.color }}
+                          />
+                          <div>
+                            <h4 className="text-base font-medium">{color.name}</h4>
+                            <span className="text-sm font-mono text-gray-600">{formatColor(color.color)}</span>
+                            {color.frequency && (
+                              <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-700 font-medium border border-gray-200">
+                                {color.frequency}x
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="border-t border-gray-100 pt-3">
+                          <h4 className="text-sm font-semibold mb-2 text-gray-800">Color Information</h4>
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">HEX</p>
+                              <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">
+                                {getColorInAllFormats(color.color)?.hex || color.color}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">RGB</p>
+                              <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">
+                                {getColorInAllFormats(color.color)?.rgb || ""}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">HSL</p>
+                              <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">
+                                {getColorInAllFormats(color.color)?.hsl || ""}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">HSV</p>
+                              <p className="text-sm font-mono bg-white p-1 rounded border border-gray-200">
+                                {getColorInAllFormats(color.color)?.hsv || ""}
+                              </p>
+                            </div>
+                          </div>
+                            <div className="text-xs text-gray-600 mb-2">
+                            <p className="mb-1">
+                              <strong>Contrast ratio with white:</strong>{" "}
+                              {calculateContrastRatio(color.color, "#ffffff").toFixed(2)}
+                            </p>
+                            <p>
+                              <strong>Contrast ratio with black:</strong>{" "}
+                              {calculateContrastRatio(color.color, "#000000").toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Source elements section */}
+                        {color.sourceElements && color.sourceElements.length > 0 && (
+                          <div className="border-t border-gray-100 pt-3 mt-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <IconEye size={16} className="text-blue-600" />
+                              <div className="text-sm text-gray-700 font-medium flex items-center gap-2">
+                                Found in {color.sourceElements.length} elements
+                                <button
+                                  onClick={() => toggleSourceElementsExpansion(color.id)}
+                                  className="ml-2 text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200 hover:bg-blue-100 transition-colors duration-200 flex items-center gap-1"
+                                  title={expandedSourceElements.has(color.id) ? "Collapse elements" : "Show all elements"}
+                                >
+                                  {expandedSourceElements.has(color.id) ? "Collapse" : "Show all"}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {(() => {
+                                const getClassNameAsString = (el: Element): string => {
+                                  const className = el.className;
+                                  // Handle SVGAnimatedString for SVG elements
+                                  if (className && typeof className === "object" && "baseVal" in className) {
+                                    return (className as SVGAnimatedString).baseVal as unknown as string;
+                                  }
+                                  // Handle regular string className
+                                  return typeof className === "string" ? className : "";
+                                };
+
+                                // Show all elements if expanded, otherwise show only first 5
+                                const elementsToShow = expandedSourceElements.has(color.id)
+                                  ? color.sourceElements
+                                  : color.sourceElements.slice(0, 5);
+
+                                return elementsToShow.map((element, idx) => {
+                                  const tagName = element.tagName?.toLowerCase();
+                                  const className = getClassNameAsString(element)
+                                    ? `.${getClassNameAsString(element).split(" ")[0]}`
+                                    : "";
+                                  const id = element.id ? `#${element.id}` : "";
+                                  const displayName = id || className || tagName;
+
+                                  return (
+                                    <button
+                                      key={idx}
+                                      onClick={() => navigateToElement(element)}
+                                      className="text-xs bg-white px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-colors duration-200 flex items-center gap-1"
+                                      title="Click to navigate to this element"
+                                    >
+                                      <IconEye size={12} className="text-gray-600" />
+                                      {displayName}
+                                    </button>
+                                  );
+                                });
+                              })()}
+                              {!expandedSourceElements.has(color.id) && color.sourceElements.length > 5 && (
+                                <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200">
+                                  +{color.sourceElements.length - 5} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Element Colors */}
+        {colorPalette.element.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Element Colors</h4>
+            <div className="flex gap-4 flex-wrap">
+              {sortColorsByPaletteLogic(colorPalette.element.map((color) => ({ ...color, type: "Element" }))).map(
+                (color) => (
+                  <div key={color.id} className="flex flex-col">
+                    <div className="flex items-center">
+                      <div
+                        className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+                          selectedColorId === color.id
+                            ? "border-gray-500 shadow-lg scale-105"
+                            : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: color.color }}
+                        title={`${color.name}: ${formatColor(color.color)}`}
+                        onClick={() => setSelectedColorId(selectedColorId === color.id ? null : color.id)}
+                      />
+                    </div>
+                    {/* Color Details */}
+                    {selectedColorId === color.id && (
+                      <ColorDetails
+                        color={color}
+                        formatColor={formatColor}
+                        expandedSourceElements={expandedSourceElements}
+                        toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+                        navigateToElement={navigateToElement}
+                      />
+                    )}
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Text Colors */}
+        {colorPalette.text.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Text Colors</h4>
+            <div className="flex gap-4 flex-wrap">
+              {sortColorsByPaletteLogic(colorPalette.text.map((color) => ({ ...color, type: "Text" }))).map((color) => (
+                <div key={color.id} className="flex flex-col">
+                  <div className="flex items-center">
+                    <div
+                      className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+                        selectedColorId === color.id
+                          ? "border-gray-500 shadow-lg scale-105"
+                          : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color.color }}
+                      title={`${color.name}: ${formatColor(color.color)}`}
+                      onClick={() => setSelectedColorId(selectedColorId === color.id ? null : color.id)}
+                    />
+                  </div>
+                  {/* Color Details */}
+                  {selectedColorId === color.id && (
+                    <ColorDetails
+                      color={color}
+                      formatColor={formatColor}
+                      expandedSourceElements={expandedSourceElements}
+                      toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+                      navigateToElement={navigateToElement}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Border Colors */}
+        {colorPalette.border.length > 0 && (
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Border Colors</h4>
+            <div className="flex gap-4 flex-wrap">
+              {sortColorsByPaletteLogic(colorPalette.border.map((color) => ({ ...color, type: "Border" }))).map(
+                (color) => (
+                  <div key={color.id} className="flex flex-col">
+                    <div className="flex items-center">
+                      <div
+                        className={`w-12 h-12 rounded border cursor-pointer transition-all duration-200 ${
+                          selectedColorId === color.id
+                            ? "border-gray-500 shadow-lg scale-105"
+                            : "border-gray-300 shadow-inner hover:shadow-md hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: color.color }}
+                        title={`${color.name}: ${formatColor(color.color)}`}
+                        onClick={() => setSelectedColorId(selectedColorId === color.id ? null : color.id)}
+                      />
+                    </div>
+                    {/* Color Details */}
+                    {selectedColorId === color.id && (
+                      <ColorDetails
+                        color={color}
+                        formatColor={formatColor}
+                        expandedSourceElements={expandedSourceElements}
+                        toggleSourceElementsExpansion={toggleSourceElementsExpansion}
+                        navigateToElement={navigateToElement}
+                      />
+                    )}
+                  </div>
+                ),
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-        Define and analyze the color palette used on your page. Colors are categorized into primary, secondary,
-        tertiary, and neutral groups based on their role. Additionally, colors are grouped by their usage type: element
-        backgrounds, text, and borders.
-      </p>
-
-      <div className="text-sm">
-        {/* Render primary, secondary, and tertiary colors with category tags */}
-        {renderColorsWithTags()}
-
-        {/* Render neutral colors separately */}
-        {renderNeutralColorCategory(
-          "Neutral Colors",
-          "These are used for text, backgrounds, borders, and other UI elements. They help create hierarchy and improve readability.",
+      {/* Extract colors button */}
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        <button
+          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+          onClick={extractColorsFromPage}
+          disabled={extractionStatus.isExtracting}
+        >
+          {extractionStatus.isExtracting ? "Extracting..." : "Extract Colors from Page"}
+        </button>
+        {extractionStatus.lastExtracted && (
+          <p className="text-sm text-gray-600 mt-2">
+            Last extracted: {extractionStatus.lastExtracted.toLocaleTimeString()}({extractionStatus.totalColorsFound}{" "}
+            colors from {extractionStatus.totalElementsAnalyzed} elements)
+          </p>
         )}
-
-        {/* Render usage-based categories */}
-        <div className="mt-8 border-t border-gray-200 pt-6">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Colors by Usage</h4>
-
-          {/* Element/Background Colors */}
-          {renderColorCategory(
-            "element",
-            "Element Colors",
-            "Background colors used for various UI elements like buttons, containers, and panels.",
-            <IconColorSwatch size={20} className="text-blue-600" />,
-          )}
-
-          {/* Text Colors */}
-          {renderColorCategory(
-            "text",
-            "Text Colors",
-            "Colors used for text content, including headings, paragraphs, and labels.",
-            <IconColorSwatch size={20} className="text-green-600" />,
-          )}
-
-          {/* Border Colors */}
-          {renderColorCategory(
-            "border",
-            "Border Colors",
-            "Colors used for borders, dividers, and outlines of UI elements.",
-            <IconColorSwatch size={20} className="text-purple-600" />,
-          )}
-        </div>
       </div>
     </div>
   );

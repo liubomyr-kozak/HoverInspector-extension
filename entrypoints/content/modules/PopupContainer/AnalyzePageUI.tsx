@@ -35,7 +35,7 @@ export const AnalyzePageUI = () => {
   const [activeTab, setActiveTab] = useState("color-palette");
 
   return (
-    <div>
+    <div className="w-full">
       <div className="flex items-center gap-2">
         <IconBrush size={20} className="text-blue-600" />
         <FeatureTitle className="text-xl font-semibold text-gray-800 m-0">

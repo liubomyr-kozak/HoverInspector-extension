@@ -5,6 +5,7 @@ import draggableModal from "@entrypoints/shared/components/ModalDraggable/store/
 import automation from "./automation/automation.slice.ts";
 import highlight from "./highlight/highlightSlice.ts";
 import elementDetails from "./elementDetails/elementDetails.slice.ts";
+import elementCompare from "./elementCompare/elementCompare.slice";
 
 const rootReducer = combineReducers({
   app,
@@ -12,6 +13,7 @@ const rootReducer = combineReducers({
   automation,
   highlight,
   elementDetails,
+  elementCompare,
 });
 
 export default rootReducer;
