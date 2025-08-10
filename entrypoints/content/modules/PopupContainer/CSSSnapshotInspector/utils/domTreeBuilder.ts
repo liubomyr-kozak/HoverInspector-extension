@@ -57,8 +57,10 @@ export function buildDOMTree(
   });
 
   sortTreeChildren(rootNode);
-  // console.log("Built DOM tree:", rootNode);
-  return rootNode;
+
+  console.log("????????? Built DOM tree:", structuredClone(rootNode));
+
+  return structuredClone(rootNode);
 }
 
 /**
@@ -66,7 +68,7 @@ export function buildDOMTree(
  */
 function createRootNode(): DOMTreeNode {
   return {
-  pathString: "",
+    pathString: "",
     displayName: "Root",
     tagName: "root",
     id: null,
@@ -103,11 +105,9 @@ function insertElementIntoTree(
   // console.log("Creating element node for path:", elementPath, "with data:", elementData);
   // Create the element node
 
-  debugger;
-
   const elementNode: DOMTreeNode = {
     ...elementData,
-  pathString: elementPath,
+    pathString: elementPath,
     displayName: elementName,
     tagName: elementData.tagName.toLowerCase(),
     id: cleanElementId(elementData.id),
@@ -189,6 +189,7 @@ function findOrCreateParentNodes(rootNode: DOMTreeNode, pathSegments: string[], 
     if (!existingNode) {
       // Create new parent node
       existingNode = createParentNode(segment, currentPath, i + 1);
+
       currentNode.children.push(existingNode);
     }
 
@@ -202,7 +203,7 @@ function findOrCreateParentNodes(rootNode: DOMTreeNode, pathSegments: string[], 
  * Build path segment incrementally
  */
 function buildPathSegment(currentPath: string, segment: string): string {
-  return currentPath ? `${currentPath}>${segment}` : segment;
+  return currentPath ? `${currentPath} > ${segment}` : segment;
 }
 
 /**
@@ -220,9 +221,10 @@ function createParentNode(segment: string, path: string, level: number): DOMTree
   const { tagName, id, classes } = parseSegmentForParentNode(segment);
 
   return {
-  pathString: path,
+    pathString: path,
     displayName: createParentNodeName(tagName, id, classes),
-    tagName: tagName.toLowerCase(),
+    tagName: "no-found-tag", // Use a placeholder for parent nodes if tagName is not available
+    // tagName: tagName.toLowerCase(),
     id: cleanElementId(id),
     classes: classes,
     styles: {},
@@ -287,7 +289,7 @@ function createParentNodeName(tagName: string, id?: string, classes: string[] = 
 function sortTreeChildren(node: DOMTreeNode): void {
   if (node.children.length > 0) {
     // Sort children by name for consistent ordering
-  node.children.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+    node.children.sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
 
     // Recursively sort grandchildren
     node.children.forEach((child) => sortTreeChildren(child));
@@ -319,7 +321,7 @@ export function flattenTree(root: DOMTreeNode): DOMTreeNode[] {
   const result: DOMTreeNode[] = [];
 
   function traverse(node: DOMTreeNode) {
-  if (node.pathString !== "") {
+    if (node.pathString !== "") {
       // Skip root
       result.push(node);
     }

@@ -80,33 +80,36 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
 
 // Utility function to convert CSS selector path to XPath
 const cssPathToXPath = (cssPath: string): string => {
-  if (!cssPath) return '';
-  
+  if (!cssPath) return "";
+
   // Split by > and clean up
-  const segments = cssPath.split('>').map(s => s.trim()).filter(Boolean);
-  
+  const segments = cssPath
+    .split(">")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   // Convert each segment to XPath format
-  const xpathSegments = segments.map(segment => {
+  const xpathSegments = segments.map((segment) => {
     // Handle cases like "div#id.class1.class2[attr=value]"
-    let tagName = segment.replace(/[#.\[].*/g, ''); // Extract just the tag name
-    
+    let tagName = segment.replace(/[#.\[].*/g, ""); // Extract just the tag name
+
     if (!tagName) {
-      tagName = '*'; // If no tag name, use wildcard
+      tagName = "*"; // If no tag name, use wildcard
     }
-    
+
     return `//${tagName.toLowerCase()}`;
   });
-  
+
   // If we have segments, join them; otherwise use the original path as-is
   if (xpathSegments.length > 0) {
     // For now, just use the last segment as a simple XPath
     // This is a basic implementation - could be enhanced later
     const lastSegment = segments[segments.length - 1];
-    let tagName = lastSegment.replace(/[#.\[].*/g, '');
-    if (!tagName) tagName = '*';
+    let tagName = lastSegment.replace(/[#.\[].*/g, "");
+    if (!tagName) tagName = "*";
     return `//${tagName.toLowerCase()}`;
   }
-  
+
   return cssPath; // Fallback to original path
 };
 
@@ -157,7 +160,8 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
         ...node,
         nodeType: "self-closing",
         level,
-        xpath: (node as any).pathString || (node as any).path, // support both during migration
+        // do not change the structure of metadata, do not touch  xpath
+        // xpath
       },
     });
     return lines;
@@ -168,14 +172,11 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
   lines.push({
     text: openTag,
     metadata: {
+      ...node,
       nodeType: "opening",
-      tagName: node.tagName,
       level,
-      id: node.id,
-      classes: node.classes,
-      attributes: node.attributes,
-      inlineStyles: node.inlineStyles,
-  xpath: (node as any).pathString || (node as any).path, // support both during migration
+      // do not change the structure of metadata, do not touch  xpath
+      // xpath
     },
   });
 
@@ -191,10 +192,11 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
   lines.push({
     text: closeTag,
     metadata: {
+      ...node,
       nodeType: "closing",
-      tagName: node.tagName,
       level,
-  xpath: (node as any).pathString || (node as any).path, // support both during migration
+      // do not change the structure of metadata, do not touch  xpath
+      // xpath
     },
   });
 
@@ -212,12 +214,12 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
 }) => {
   // Convert trees to string representation for diffing
 
-  console.log("😀😀😀 ::ReactDiffViewer -> treeA", treeA);
+  // console.log("😀😀😀 ::ReactDiffViewer -> treeA", treeA);
 
   const oldValue = useMemo(() => convertTreeToStringV2(treeA), [treeA]);
   const newValue = useMemo(() => convertTreeToStringV2(treeB), [treeB]);
 
-  console.log("🌟🌟🌟 ::ReactDiffViewer -> oldValue", oldValue, newValue);
+  // console.log("🌟🌟🌟 ::ReactDiffViewer -> oldValue", oldValue, newValue);
 
   // Get shadow DOM container
   const shadowContainer = useMemo(() => {
@@ -247,16 +249,17 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
     // Extract xpath from metadata if available
     if (metadata && metadata.xpath) {
       // If xpath is a string, convert CSS path to XPath
-      let xpathToUse = typeof metadata.xpath === 'string' ? cssPathToXPath(metadata.xpath) : null;
-      
-      // If xpath is an object, try to get the best available path
-      if (!xpathToUse && typeof metadata.xpath === 'object') {
-        const rawPath = metadata.xpath.optimized || metadata.xpath.absolute || metadata.xpath.withId || metadata.xpath.withClasses || metadata.xpath.withAttributes;
-        xpathToUse = rawPath ? cssPathToXPath(rawPath) : null;
-      }
+      const xpathToUse =
+        metadata.xpath.optimized ||
+        metadata.xpath.absolute ||
+        metadata.xpath.withId ||
+        metadata.xpath.withClasses ||
+        metadata.xpath.withAttributes;
 
       if (xpathToUse) {
         console.log("Setting XPath for highlight:", xpathToUse);
+        debugger;
+
         dispatch(setXPath(xpathToUse));
       } else {
         console.warn("No valid XPath found in metadata:", metadata.xpath);

@@ -1,17 +1,17 @@
-import { ElementStyle } from "./types";
 import { CSSSnapshot, SnapshotNode } from "../../types";
+import { ElementStyleData } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder.ts";
 
 /**
  * Helper function to get styles from snapshot
  */
-export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, ElementStyle> => {
+export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, ElementStyleData> => {
   // For backward compatibility
   if ((snapshot as any).styles) {
     return (snapshot as any).styles;
   }
 
   // Generate styles from snapshot.root
-  const result: Record<string, ElementStyle> = {};
+  const result: Record<string, ElementStyleData> = {};
 
   const processNode = (node: SnapshotNode): void => {
     // Build the path key for this node using the actual path from the snapshot
@@ -26,7 +26,7 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
 
     // Include all elements with valid paths
     if (currentPathKey && currentPathKey.trim() !== "") {
-      result[currentPathKey] = { ...node };
+      result[currentPathKey] = { ...node } as unknown as ElementStyleData;
     }
 
     // Process children recursively
@@ -40,7 +40,5 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
     processNode(snapshot.root);
   }
 
-  console.log("Generated styles from snapshot:", result);
-  console.log("Total elements processed:", Object.keys(result).length);
   return result;
 };

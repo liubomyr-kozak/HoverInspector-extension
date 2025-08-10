@@ -1,12 +1,4 @@
-import { CSSSnapshot, BaseElementNode } from "../../types";
-
-/**
- * Interface for element style information
- */
-export interface ElementStyle extends BaseElementNode {
-  // Override id to allow null for compatibility with existing code paths
-  id: string | null;
-}
+import { CSSSnapshot } from "../../types";
 
 /**
  * Props for the SnapshotCompare component
