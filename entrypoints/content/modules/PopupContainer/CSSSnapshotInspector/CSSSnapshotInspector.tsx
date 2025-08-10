@@ -3,7 +3,7 @@
  */
 import React, { useMemo, useEffect } from "react";
 import styled from "styled-components";
-import { IconCode, IconArrowLeft, IconHistory, IconEdit, IconCheck, IconX } from "@tabler/icons-react";
+import { IconCode } from "@tabler/icons-react";
 import { MdOutlineCompare } from "react-icons/md";
 import { SnapshotManager } from "./SnapshotManager";
 import { SnapshotCompare } from "./components/SnapshotCompare/SnapshotCompare.tsx";
@@ -13,8 +13,6 @@ import { useViewMode } from "./hooks/useViewMode";
 import { exportSnapshot } from "./utils/snapshotStorage";
 import { createCSSSnapshot } from "./utils/snapshotBuilder";
 import { Header } from "./components/Header";
-import { TabNavigation } from "./components/TabNavigation";
-import { FilterBar } from "./components/FilterBar";
 import { ViewMode } from "./constants";
 import { CSSSnapshot } from "./types";
 
@@ -113,54 +111,6 @@ const ContentArea = styled.div`
 
 const ContentWrapper = styled.div`
   height: 100%;
-`;
-
-const StickyFooter = styled.div`
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(229, 231, 235, 0.6);
-  box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.1);
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-`;
-
-const FooterInfo = styled.div`
-  font-size: 12px;
-  color: #6b7280;
-`;
-
-const FooterCompareButton = styled.button<{ disabled?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  border: none;
-  cursor: ${(p) => (p.disabled ? "not-allowed" : "pointer")};
-  transition: all 200ms ease;
-  ${(p) =>
-    p.disabled
-      ? `
-    background: #e5e7eb;
-    color: #9ca3af;
-  `
-      : `
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
-    &:hover { background: linear-gradient(135deg, #059669, #047857); transform: translateY(-1px); }
-    &:active { transform: translateY(0); }
-  `}
 `;
 
 const EmptyStateContainer = styled.div`

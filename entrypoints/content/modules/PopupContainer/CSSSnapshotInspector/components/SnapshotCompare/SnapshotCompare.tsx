@@ -39,13 +39,6 @@ const BackButton = styled.button`
   }
 `;
 
-const ContentArea = styled.div`
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 16px;
-  border: 1px solid rgba(229, 231, 235, 0.6);
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-`;
 export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
   snapshotA,
   snapshotB,
@@ -145,143 +138,125 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
 
   return (
     <CompareContainer>
-      <ContentArea>
-        {activeView === "diff" ? (
-          <ReactDiffViewer treeA={treeA} treeB={treeB} splitView={splitView} displaySingleLineNumbers={!splitView} />
-        ) : (
-          <div style={{ padding: "24px" }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: "24px",
-              }}
-            >
-              <div
+      {activeView === "diff" ? (
+        <ReactDiffViewer treeA={treeA} treeB={treeB} splitView={splitView} displaySingleLineNumbers={!splitView} />
+      ) : (
+        <div style={{ padding: "24px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "24px",
+            }}
+          >
+            <div>
+              <h4
                 style={{
-                  background: "rgba(255, 255, 255, 0.9)",
-                  borderRadius: "16px",
-                  padding: "24px",
-                  border: "1px solid rgba(229, 231, 235, 0.6)",
-                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  color: "#1f2937",
+                  marginBottom: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
-                <h4
+                <IconFileText size={18} color="#6366f1" />
+                Element Analysis
+              </h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div
                   style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    color: "#1f2937",
-                    marginBottom: "16px",
                     display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
+                    justifyContent: "space-between",
+                    paddingBottom: "8px",
+                    borderBottom: "1px solid #f3f4f6",
                   }}
                 >
-                  <IconFileText size={18} color="#6366f1" />
-                  Element Analysis
-                </h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div
+                  <span style={{ color: "#6b7280" }}>Before</span>
+                  <span style={{ fontWeight: "600" }}>{stats.totalA} elements</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    paddingBottom: "8px",
+                    borderBottom: "1px solid #f3f4f6",
+                  }}
+                >
+                  <span style={{ color: "#6b7280" }}>After</span>
+                  <span style={{ fontWeight: "600" }}>{stats.totalB} elements</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#6b7280" }}>Net Change</span>
+                  <span
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      paddingBottom: "8px",
-                      borderBottom: "1px solid #f3f4f6",
+                      fontWeight: "600",
+                      color: stats.diff > 0 ? "#059669" : stats.diff < 0 ? "#dc2626" : "#6b7280",
                     }}
                   >
-                    <span style={{ color: "#6b7280" }}>Before</span>
-                    <span style={{ fontWeight: "600" }}>{stats.totalA} elements</span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      paddingBottom: "8px",
-                      borderBottom: "1px solid #f3f4f6",
-                    }}
-                  >
-                    <span style={{ color: "#6b7280" }}>After</span>
-                    <span style={{ fontWeight: "600" }}>{stats.totalB} elements</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#6b7280" }}>Net Change</span>
-                    <span
-                      style={{
-                        fontWeight: "600",
-                        color: stats.diff > 0 ? "#059669" : stats.diff < 0 ? "#dc2626" : "#6b7280",
-                      }}
-                    >
-                      {stats.diff > 0 ? "+" : ""}
-                      {stats.diff}
-                    </span>
-                  </div>
+                    {stats.diff > 0 ? "+" : ""}
+                    {stats.diff}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              <div
+            <div>
+              <h4
                 style={{
-                  background: "rgba(255, 255, 255, 0.9)",
-                  borderRadius: "16px",
-                  padding: "24px",
-                  border: "1px solid rgba(229, 231, 235, 0.6)",
-                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  color: "#1f2937",
+                  marginBottom: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
-                <h4
+                <IconActivity size={18} color="#8b5cf6" />
+                Performance Impact
+              </h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div
                   style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    color: "#1f2937",
-                    marginBottom: "16px",
                     display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
+                    justifyContent: "space-between",
+                    paddingBottom: "8px",
+                    borderBottom: "1px solid #f3f4f6",
                   }}
                 >
-                  <IconActivity size={18} color="#8b5cf6" />
-                  Performance Impact
-                </h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div
+                  <span style={{ color: "#6b7280" }}>Size Before</span>
+                  <span style={{ fontWeight: "600" }}>{(stats.sizeA / 1024).toFixed(1)} KB</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    paddingBottom: "8px",
+                    borderBottom: "1px solid #f3f4f6",
+                  }}
+                >
+                  <span style={{ color: "#6b7280" }}>Size After</span>
+                  <span style={{ fontWeight: "600" }}>{(stats.sizeB / 1024).toFixed(1)} KB</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#6b7280" }}>Size Change</span>
+                  <span
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      paddingBottom: "8px",
-                      borderBottom: "1px solid #f3f4f6",
+                      fontWeight: "600",
+                      color: stats.sizeDiff > 0 ? "#dc2626" : stats.sizeDiff < 0 ? "#059669" : "#6b7280",
                     }}
                   >
-                    <span style={{ color: "#6b7280" }}>Size Before</span>
-                    <span style={{ fontWeight: "600" }}>{(stats.sizeA / 1024).toFixed(1)} KB</span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      paddingBottom: "8px",
-                      borderBottom: "1px solid #f3f4f6",
-                    }}
-                  >
-                    <span style={{ color: "#6b7280" }}>Size After</span>
-                    <span style={{ fontWeight: "600" }}>{(stats.sizeB / 1024).toFixed(1)} KB</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#6b7280" }}>Size Change</span>
-                    <span
-                      style={{
-                        fontWeight: "600",
-                        color: stats.sizeDiff > 0 ? "#dc2626" : stats.sizeDiff < 0 ? "#059669" : "#6b7280",
-                      }}
-                    >
-                      {stats.sizeDiff > 0 ? "+" : ""}
-                      {(stats.sizeDiff / 1024).toFixed(1)} KB
-                    </span>
-                  </div>
+                    {stats.sizeDiff > 0 ? "+" : ""}
+                    {(stats.sizeDiff / 1024).toFixed(1)} KB
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-        )}
-      </ContentArea>
+        </div>
+      )}
     </CompareContainer>
   );
 };
