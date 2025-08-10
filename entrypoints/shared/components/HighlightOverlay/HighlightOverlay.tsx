@@ -1,14 +1,42 @@
 // HighlightOverlay.tsx
 import { useEffect, useRef } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore";
+import { clearHighlight, setAutoHideTimer } from "@entrypoints/content/store/highlight/highlightSlice";
 
 export default function HighlightOverlay() {
-  const { hoverMode, xpath } = useSelector((state: RootState) => state.highlight);
+  const { 
+    hoverMode, 
+    xpath, 
+    autoHideEnabled, 
+    autoHideDelay, 
+    displayStyle, 
+    customStyles 
+  } = useSelector((state: RootState) => state.highlight);
+  const dispatch = useDispatch();
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
-  // Створюємо overlay
+  // Створюємо overlay з CSS анімаціями
   useEffect(() => {
+    // Add CSS animations to document head if not already present
+    const styleId = "hover-inspector-animations";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        @keyframes highlight-blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0.3; }
+        }
+        @keyframes highlight-pulse {
+          0% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.02); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     const overlay = document.createElement("div");
     overlay.id = "hover-inspector-highlight-node"; // Assign a stable id to the overlay
     overlayRef.current = overlay;
@@ -16,8 +44,6 @@ export default function HighlightOverlay() {
       position: "absolute",
       zIndex: 2147483647,
       pointerEvents: "none",
-      border: "2px solid red",
-      backgroundColor: "rgba(255, 0, 0, 0.1)",
       boxSizing: "border-box",
       display: "none",
     });
@@ -52,21 +78,43 @@ export default function HighlightOverlay() {
     }
   };
 
-  // Підсвітка елемента
+  // Підсвітка елемента з динамічним стилем
   const highlightElement = (el: Element | EventTarget | null) => {
     if (!el || !overlayRef.current) return;
     const element = el as Element;
     const rect = element.getBoundingClientRect();
     const overlay = overlayRef.current;
+    
+    // Apply position
     overlay.style.top = rect.top + window.scrollY + "px";
     overlay.style.left = rect.left + window.scrollX + "px";
     overlay.style.width = rect.width + "px";
     overlay.style.height = rect.height + "px";
     overlay.style.display = "block";
+    
+    // Apply dynamic styling based on displayStyle
+    const currentStyle = customStyles[displayStyle];
+    if (currentStyle) {
+      overlay.style.border = currentStyle.border;
+      overlay.style.backgroundColor = currentStyle.backgroundColor;
+      overlay.style.animation = currentStyle.animation || 'none';
+    }
+    
+    // Start auto-hide timer if enabled and not in hover mode
+    if (autoHideEnabled && !hoverMode) {
+      const timer = setTimeout(() => {
+        dispatch(clearHighlight());
+      }, autoHideDelay);
+      dispatch(setAutoHideTimer(timer));
+    }
   };
 
   const removeHighlight = () => {
-    if (overlayRef.current) overlayRef.current.style.display = "none";
+    if (overlayRef.current) {
+      overlayRef.current.style.display = "none";
+      // Clear any active auto-hide timer when manually removing highlight
+      dispatch(setAutoHideTimer(null));
+    }
   };
 
   // Перевіряє, чи елемент видимий у viewport
