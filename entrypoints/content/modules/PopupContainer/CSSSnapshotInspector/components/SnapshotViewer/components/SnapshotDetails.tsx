@@ -24,7 +24,7 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
     const stylesData: Record<string, any> = {};
 
     const processNode = (node: any, path: string[] = []) => {
-      const nodeKey = node.id || `${node.tag}-${path.length}`;
+      const nodeKey = node.key || `${node.tag}-${path.length}`;
       const currentPath = [...path, nodeKey].join(" > ");
 
       stylesData[currentPath] = {

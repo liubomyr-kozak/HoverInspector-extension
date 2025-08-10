@@ -13,28 +13,42 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
   // Generate styles from snapshot.root
   const result: Record<string, ElementStyle> = {};
 
-  const processNode = (node: SnapshotNode, path: string[] = []) => {
-    const currentPath = path.join(" > ");
+  const processNode = (node: SnapshotNode): void => {
+    // Build the path key for this node using the actual path from the snapshot
+    // The snapshot stores paths as arrays like ["body[0]", "div[1]", "span[0]"]
+    // The DOM tree builder expects strings like "body[0] > div[1] > span[0]"
+    let currentPathKey: string = "";
+    
+    if (node.path && node.path.length > 0) {
+      // Convert path array to string with " > " separator
+      currentPathKey = node.path.join(" > ");
+    }
 
-    // Convert to ElementStyle format
-    result[currentPath] = {
-      tagName: node.tag,
-      id: node.id || null,
-      classes: Array.from(node.classes),
-      styles: node.styles,
-      inlineStyles: node.inlineStyles || {},
-    };
+    // Include all elements with valid paths
+    if (currentPathKey && currentPathKey.trim() !== "") {
+      result[currentPathKey] = {
+        tagName: node.tag,
+        id: node.id || null,
+        classes: Array.isArray(node.classes) ? Array.from(node.classes) : [],
+        styles: node.styles || {},
+        inlineStyles: node.inlineStyles || {},
+        attributes: node.attributes || {},
+        bounds: node.bounds,
+      };
+    }
 
-    // Process children
+    // Process children recursively
     for (const child of node.children) {
-      processNode(child, [...path, child.id]);
+      processNode(child);
     }
   };
 
   // Start processing from the root node
   if (snapshot.root) {
-    processNode(snapshot.root, [snapshot.root.id]);
+    processNode(snapshot.root);
   }
 
+  console.log("Generated styles from snapshot:", result);
+  console.log("Total elements processed:", Object.keys(result).length);
   return result;
 };

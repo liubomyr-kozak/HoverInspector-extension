@@ -212,11 +212,18 @@ export const CSSSnapshotInspector: React.FC = () => {
       firstSnapshot = compareSnapshots[0];
     }
 
-    if (!firstSnapshot) return;
+    if (!firstSnapshot) {
+      console.error("No snapshot selected for comparison");
+      return;
+    }
+
+    console.log("Starting comparison with current page. Selected snapshot:", firstSnapshot);
 
     try {
       // Create a snapshot of the current page
+      console.log("Creating snapshot of current page...");
       const currentPageSnapshot = await createCSSSnapshot("Current Page");
+      console.log("Current page snapshot created:", currentPageSnapshot);
 
       // Clear existing comparison snapshots
       clearCompare();
@@ -227,6 +234,8 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       // Start comparison view
       startComparison();
+      
+      console.log("Comparison started successfully");
     } catch (error) {
       console.error("Failed to create current page snapshot:", error);
       // Handle error state if needed

@@ -55,11 +55,21 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
   const stylesA = getStylesFromSnapshot(snapshotA);
   const stylesB = getStylesFromSnapshot(snapshotB);
 
+  console.log("SnapshotCompare: Snapshot A:", snapshotA);
+  console.log("SnapshotCompare: Snapshot B:", snapshotB);
+  console.log("SnapshotCompare: Styles A:", stylesA);
+  console.log("SnapshotCompare: Styles B:", stylesB);
+
   const { treeA, treeB } = useMemo(
-    () => ({
-      treeA: buildDOMTree(stylesA),
-      treeB: buildDOMTree(stylesB),
-    }),
+    () => {
+      console.log("Building trees from styles...");
+      const resultTrees = {
+        treeA: buildDOMTree(stylesA),
+        treeB: buildDOMTree(stylesB),
+      };
+      console.log("Built trees:", resultTrees);
+      return resultTrees;
+    },
     [stylesA, stylesB],
   );
 

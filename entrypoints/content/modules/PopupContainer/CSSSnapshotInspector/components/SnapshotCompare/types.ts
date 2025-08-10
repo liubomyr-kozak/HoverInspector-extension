@@ -9,6 +9,13 @@ export interface ElementStyle {
   classes: string[];
   styles: Record<string, string>;
   inlineStyles: Record<string, string>;
+  attributes?: Record<string, string>;
+  bounds?: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  };
 }
 
 /**
