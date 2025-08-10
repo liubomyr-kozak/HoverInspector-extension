@@ -3,33 +3,11 @@
  * Pure utility for creating hierarchical DOM tree structure with all needed information
  * Used for both single snapshot view and comparison logic
  */
+import { BaseElementNode } from "../types";
 
-export interface DOMTreeNode {
-  /** Unique path to this element */
-  path: string;
-  /** Display name (e.g., "div#header.nav-item") */
-  displayName: string;
-  /** Tag name (div, span, etc.) */
-  tagName: string;
-  /** Element ID (without #) */
-  id?: string | null;
-  /** CSS classes array */
-  classes: string[];
-  /** All CSS styles as key-value pairs */
-  styles: Record<string, string>;
-  /** Inline styles from style attribute */
-  inlineStyles: Record<string, string>;
-  /** Element attributes */
-  attributes?: Record<string, string>;
-  /** Element bounds/position */
-  bounds?: {
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  };
-  /** Text content for leaf nodes */
-  text?: string;
+export interface DOMTreeNode extends BaseElementNode {
+  /** Unique path to this element as a string (e.g., body[0] > div[1]) */
+  pathString: string;
   /** Child elements */
   children: DOMTreeNode[];
   /** Tree level (0 = root) */
@@ -88,7 +66,7 @@ export function buildDOMTree(
  */
 function createRootNode(): DOMTreeNode {
   return {
-    path: "",
+  pathString: "",
     displayName: "Root",
     tagName: "root",
     id: null,
@@ -129,7 +107,7 @@ function insertElementIntoTree(
 
   const elementNode: DOMTreeNode = {
     ...elementData,
-    path: elementPath,
+  pathString: elementPath,
     displayName: elementName,
     tagName: elementData.tagName.toLowerCase(),
     id: cleanElementId(elementData.id),
@@ -231,7 +209,7 @@ function buildPathSegment(currentPath: string, segment: string): string {
  * Find child node by path
  */
 function findChildByPath(parentNode: DOMTreeNode, targetPath: string): DOMTreeNode | undefined {
-  return parentNode.children.find((child) => child.path === targetPath);
+  return parentNode.children.find((child) => child.pathString === targetPath);
 }
 
 /**
@@ -242,7 +220,7 @@ function createParentNode(segment: string, path: string, level: number): DOMTree
   const { tagName, id, classes } = parseSegmentForParentNode(segment);
 
   return {
-    path,
+  pathString: path,
     displayName: createParentNodeName(tagName, id, classes),
     tagName: tagName.toLowerCase(),
     id: cleanElementId(id),
@@ -309,7 +287,7 @@ function createParentNodeName(tagName: string, id?: string, classes: string[] = 
 function sortTreeChildren(node: DOMTreeNode): void {
   if (node.children.length > 0) {
     // Sort children by name for consistent ordering
-    node.children.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  node.children.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
 
     // Recursively sort grandchildren
     node.children.forEach((child) => sortTreeChildren(child));
@@ -320,7 +298,7 @@ function sortTreeChildren(node: DOMTreeNode): void {
  * Find element in tree by path
  */
 export function findElementInTree(root: DOMTreeNode, targetPath: string): DOMTreeNode | null {
-  if (root.path === targetPath) {
+  if (root.pathString === targetPath) {
     return root;
   }
 
@@ -341,7 +319,7 @@ export function flattenTree(root: DOMTreeNode): DOMTreeNode[] {
   const result: DOMTreeNode[] = [];
 
   function traverse(node: DOMTreeNode) {
-    if (node.path !== "") {
+  if (node.pathString !== "") {
       // Skip root
       result.push(node);
     }

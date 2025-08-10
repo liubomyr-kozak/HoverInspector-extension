@@ -157,7 +157,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
         ...node,
         nodeType: "self-closing",
         level,
-        xpath: node.path, // Add xpath from the path field
+        xpath: (node as any).pathString || (node as any).path, // support both during migration
       },
     });
     return lines;
@@ -175,7 +175,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
       classes: node.classes,
       attributes: node.attributes,
       inlineStyles: node.inlineStyles,
-      xpath: node.path, // Add xpath from the path field
+  xpath: (node as any).pathString || (node as any).path, // support both during migration
     },
   });
 
@@ -194,7 +194,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
       nodeType: "closing",
       tagName: node.tagName,
       level,
-      xpath: node.path, // Add xpath from the path field
+  xpath: (node as any).pathString || (node as any).path, // support both during migration
     },
   });
 

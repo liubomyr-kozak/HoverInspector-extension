@@ -128,8 +128,8 @@ function createElementMap(tree: DOMTreeNode): Map<string, DOMTreeNode> {
   const map = new Map<string, DOMTreeNode>();
 
   function traverse(node: DOMTreeNode) {
-    if (node.path !== "") { // Skip root node
-      map.set(node.path, node);
+    if ((node as any).pathString !== "") { // Skip root node
+      map.set((node as any).pathString, node);
     }
     node.children.forEach(traverse);
   }
@@ -162,7 +162,7 @@ function compareElements(
   return {
     hasChanges,
     modifiedElement: {
-      path: elementA.path,
+      path: (elementA as any).pathString || (elementA as any).path,
       elementA,
       elementB,
       styleChanges,

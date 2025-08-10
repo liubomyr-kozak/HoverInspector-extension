@@ -1,6 +1,45 @@
 import { DEFAULT_STYLES_TO_SKIP, DEFAULT_VALUES_TO_SKIP } from "./constants";
 
 /**
+ * Unified base node shape used across snapshot, tree, and style maps
+ */
+export interface BaseElementNode {
+  /** Human-friendly label for UI (optional) */
+  displayName?: string;
+  /** HTML tag name */
+  tagName: string;
+  /** HTML id attribute value (if present) */
+  id?: string | null;
+  /** CSS classes */
+  classes: readonly string[];
+  /** HTML attributes (excluding id and class) */
+  attributes?: Readonly<Record<string, string>>;
+  /** Element bounds */
+  bounds?: Readonly<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  }>;
+  /** Computed styles from DOM API (diff from UA defaults) */
+  styles: Readonly<Record<string, string>>;
+  /** Inline styles from style attribute */
+  inlineStyles: Readonly<Record<string, string>>;
+  /** Text content for leaf nodes */
+  text?: string;
+  /** Tree level (0 = root) */
+  level?: number;
+  /** Element path as array of segments (snapshot-native) */
+  path?: readonly string[];
+  /** Element path as a single string with separators (tree-native) */
+  pathString?: string;
+  /** Optional xpath variants */
+  xpath?: XPathVariants;
+  /** Optional fast key */
+  key?: string;
+}
+
+/**
  * XPath variants for element identification
  */
 export interface XPathVariants {
@@ -19,7 +58,7 @@ export interface XPathVariants {
 /**
  * Оптимізована структура вузла знімка
  */
-export interface SnapshotNode {
+export interface SnapshotNode extends BaseElementNode {
   /** Unique quick key for internal operations (hash-based) */
   readonly key: string;
   /** Element path array for hierarchy navigation */
@@ -45,8 +84,6 @@ export interface SnapshotNode {
   readonly styles: Readonly<Record<string, string>>;
   /** Inline styles from style attribute */
   readonly inlineStyles: Readonly<Record<string, string>>;
-  /** Text content for leaf nodes */
-  readonly text?: string;
   /** Child elements */
   readonly children: readonly SnapshotNode[];
 }
