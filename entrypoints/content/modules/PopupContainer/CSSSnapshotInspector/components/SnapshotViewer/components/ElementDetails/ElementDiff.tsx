@@ -43,7 +43,7 @@ export const ElementDiff: React.FC<{
         if (value.length === 0) {
           return "[]";
         }
-        return `[${value.map(item => String(item)).join(", ")}]`;
+        return `[${value.map((item) => String(item)).join(", ")}]`;
       } else {
         // For objects, we'll handle them specially in the Row component
         // Return a placeholder that indicates this is an object
@@ -55,9 +55,39 @@ export const ElementDiff: React.FC<{
     return String(value);
   };
 
-  // Helper function to check if a value is an object (not array, not null)
+  // Helper function to parse CSS string into object
+  const parseCSSString = (cssString: string): Record<string, string> | null => {
+    if (typeof cssString !== "string") return null;
+
+    // Check if it looks like CSS (contains colons and semicolons)
+    if (!cssString.includes(":") || !cssString.trim().includes(";")) return null;
+
+    const result: Record<string, string> = {};
+    const declarations = cssString.split(";").filter((decl) => decl.trim());
+
+    for (const declaration of declarations) {
+      const colonIndex = declaration.indexOf(":");
+      if (colonIndex === -1) continue;
+
+      const property = declaration.substring(0, colonIndex).trim();
+      const value = declaration.substring(colonIndex + 1).trim();
+
+      if (property && value) {
+        result[property] = value;
+      }
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
+  };
+
+  // Helper function to check if a value is an object (not array, not null) or CSS string
   const isObject = (value: any): boolean => {
     return value !== null && typeof value === "object" && !Array.isArray(value);
+  };
+
+  // Helper function to check if a value is a CSS string that should be parsed
+  const isCSSString = (value: any): boolean => {
+    return typeof value === "string" && parseCSSString(value) !== null;
   };
 
   const Row = ({
@@ -77,11 +107,22 @@ export const ElementDiff: React.FC<{
   }) => {
     const changed = propChanged !== undefined ? propChanged : JSON.stringify(leftValue) !== JSON.stringify(rightValue);
 
-    // Check if both values are objects that should be displayed in tabular format
-    if (isObject(leftValue) && isObject(rightValue)) {
+    // Parse CSS strings into objects if needed
+    let leftObjectValue = leftValue;
+    let rightObjectValue = rightValue;
+
+    if (isCSSString(leftValue)) {
+      leftObjectValue = parseCSSString(leftValue);
+    }
+    if (isCSSString(rightValue)) {
+      rightObjectValue = parseCSSString(rightValue);
+    }
+
+    // Check if both values are objects (or parsed CSS) that should be displayed in tabular format
+    if ((isObject(leftObjectValue) || isObject(leftValue)) && (isObject(rightObjectValue) || isObject(rightValue))) {
       // Get all unique keys from both objects
-      const leftKeys = Object.keys(leftValue || {});
-      const rightKeys = Object.keys(rightValue || {});
+      const leftKeys = Object.keys(leftObjectValue || {});
+      const rightKeys = Object.keys(rightObjectValue || {});
       const allKeys = Array.from(new Set([...leftKeys, ...rightKeys])).sort();
 
       return (
@@ -102,11 +143,11 @@ export const ElementDiff: React.FC<{
           </div>
           <div style={{ paddingLeft: 16 }}>
             {allKeys.map((key) => {
-              const leftVal = leftValue?.[key];
-              const rightVal = rightValue?.[key];
+              const leftVal = leftObjectValue?.[key];
+              const rightVal = rightObjectValue?.[key];
               const leftValStr = leftVal !== undefined ? String(leftVal) : "—";
               const rightValStr = rightVal !== undefined ? String(rightVal) : "—";
-              
+
               return (
                 <div
                   key={key}
@@ -225,7 +266,8 @@ export const ElementDiff: React.FC<{
             minWidth: "fit-content",
           }}
         >
-          {label}{changeIcon}
+          {label}
+          {changeIcon}
         </span>
         <span style={{ color: "#64748b" }}>(from snapshot 1 and 2)</span>
         <span
@@ -260,7 +302,6 @@ export const ElementDiff: React.FC<{
         Element Properties Differences{" "}
         {propertiesToShow.length > 0 ? `(${propertiesToShow.length} changes)` : "(No changes)"}
       </div>
-
 
       <div>
         <div style={{ fontWeight: 600, color: "#475569", marginBottom: 6 }}>Changed Properties</div>

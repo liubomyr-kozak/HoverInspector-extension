@@ -5,7 +5,7 @@ import { Tabs } from "antd";
 import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { BetaBadge } from "@entrypoints/shared/components/BetaBadge.tsx";
 import TypographyRules from "@entrypoints/content/modules/SettingsIconBox/components/TypographyRules.tsx";
-import ColorPaletteDefinition from "@entrypoints/content/modules/SettingsIconBox/components/ColorPaletteDefinition.tsx";
+import { ColorPaletteDefinition } from "@entrypoints/content/modules/SettingsIconBox/components/ColorPaletteDefinition.tsx";
 
 // Define the tab items
 const tabItems = [

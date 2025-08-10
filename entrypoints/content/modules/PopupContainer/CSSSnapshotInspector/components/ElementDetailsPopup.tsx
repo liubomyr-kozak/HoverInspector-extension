@@ -83,16 +83,6 @@ export const ElementDetailsPopup: React.FC = () => {
             selectedElementData={selectedElementData}
             selectedElementStyles={selectedElementStyles as Array<[string, any]>}
           />
-          {state.styleDiffData || state.compareLeftData || state.compareRightData ? (
-            <div style={{ marginTop: 12, borderTop: "1px solid #e5e7eb", paddingTop: 12 }}>
-              <ElementDiff 
-                diffData={state.styleDiffData}
-                left={state.compareLeftData as any} 
-                right={state.compareRightData as any}
-                config={state.compareConfig}
-              />
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
