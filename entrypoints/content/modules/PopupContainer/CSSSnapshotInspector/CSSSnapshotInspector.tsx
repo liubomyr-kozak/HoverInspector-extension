@@ -248,7 +248,17 @@ export const CSSSnapshotInspector: React.FC = () => {
 
   // Handler for comparing the selected snapshot with the current page
   const handleCompareWithCurrentPage = async () => {
-    if (!selectedSnapshot) return;
+    let firstSnapshot: CSSSnapshot | null = null;
+    
+    // Determine which snapshot to compare with based on the current view mode
+    if (viewMode === ViewMode.DETAIL && selectedSnapshot) {
+      firstSnapshot = selectedSnapshot;
+    } else if (viewMode === ViewMode.COMPARE && compareSnapshots.length > 0) {
+      // Use the first snapshot from the comparison
+      firstSnapshot = compareSnapshots[0];
+    }
+    
+    if (!firstSnapshot) return;
 
     try {
       // Create a snapshot of the current page
@@ -258,7 +268,7 @@ export const CSSSnapshotInspector: React.FC = () => {
       clearCompare();
 
       // Add both snapshots to comparison
-      toggleCompare(selectedSnapshot);
+      toggleCompare(firstSnapshot);
       toggleCompare(currentPageSnapshot);
 
       // Start comparison view
@@ -396,6 +406,7 @@ export const CSSSnapshotInspector: React.FC = () => {
           compareSnapshotsCount={compareSnapshots.length}
           snapshotsCount={snapshots.length}
           selectedSnapshot={selectedSnapshot}
+          compareSnapshots={compareSnapshots}
           onCapture={handleCaptureSnapshot}
           onImport={importSnapshot}
           onCompare={handleStartComparison}
@@ -440,26 +451,6 @@ export const CSSSnapshotInspector: React.FC = () => {
       <ContentArea>
         <ContentWrapper>
           {renderContent}
-          {viewMode === ViewMode.LIST && compareSnapshots.length > 0 && (
-            <StickyFooter>
-              <FooterInfo>
-                {compareSnapshots.length === 1
-                  ? "1 selected — select one more to compare"
-                  : "2 selected — ready to compare"}
-              </FooterInfo>
-              <FooterCompareButton
-                onClick={handleStartComparison}
-                disabled={compareSnapshots.length !== 2}
-                aria-label="Compare selected snapshots"
-                title={
-                  compareSnapshots.length !== 2 ? "Select exactly 2 snapshots to compare" : "Compare selected snapshots"
-                }
-              >
-                <MdOutlineCompare size={18} />
-                Compare ({compareSnapshots.length}/2)
-              </FooterCompareButton>
-            </StickyFooter>
-          )}
         </ContentWrapper>
       </ContentArea>
     </MainContainer>
