@@ -45,6 +45,14 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
     });
   }
 
+  // Add inline styles if present
+  if (node.inlineStyles && Object.keys(node.inlineStyles).length > 0) {
+    const styleString = Object.entries(node.inlineStyles)
+      .map(([property, value]) => `${property}: ${value}`)
+      .join("; ");
+    result += ` style="${styleString}"`;
+  }
+
   // If there are no children, close the tag
   if (!node.children || node.children.length === 0) {
     result += " />\n";
@@ -97,6 +105,14 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
     });
   }
 
+  // Add inline styles if present
+  if (node.inlineStyles && Object.keys(node.inlineStyles).length > 0) {
+    const styleString = Object.entries(node.inlineStyles)
+      .map(([property, value]) => `${property}: ${value}`)
+      .join("; ");
+    openTag += ` style="${styleString}"`;
+  }
+
   // If there are no children, close the tag
   if (!node.children || node.children.length === 0) {
     openTag += " />";
@@ -122,6 +138,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
       id: node.id,
       classes: node.classes,
       attributes: node.attributes,
+      inlineStyles: node.inlineStyles,
     },
   });
 

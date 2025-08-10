@@ -34,6 +34,7 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
         inlineStyles: node.inlineStyles || {},
         attributes: node.attributes || {},
         bounds: node.bounds,
+        text: node.text,
       };
     }
 

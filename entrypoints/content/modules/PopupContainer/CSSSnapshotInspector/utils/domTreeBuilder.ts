@@ -28,25 +28,38 @@ export interface DOMTreeNode {
     width: number;
     height: number;
   };
+  /** Text content for leaf nodes */
+  text?: string;
   /** Child elements */
   children: DOMTreeNode[];
   /** Tree level (0 = root) */
   level: number;
+  /** Original element data for reference */
+  originalData?: any;
 }
 
 export interface ElementStyleData {
+  /** HTML tag name */
   tagName: string;
+  /** Element ID (optional) */
   id?: string | null;
+  /** CSS classes array */
   classes?: string[];
+  /** All CSS styles as key-value pairs */
   styles: Record<string, string>;
+  /** Inline styles from style attribute */
   inlineStyles?: Record<string, string>;
+  /** Element attributes (excluding id and class) */
   attributes?: Record<string, string>;
+  /** Element bounds/position information */
   bounds?: {
     top: number;
     left: number;
     width: number;
     height: number;
   };
+  /** Text content for leaf nodes */
+  text?: string;
 }
 
 /**
@@ -60,8 +73,8 @@ export function buildDOMTree(
   const rootNode = createRootNode();
   const sortedPaths = getSortedElementPaths(Object.keys(stylesData));
 
-  console.log("Building DOM tree with paths:", sortedPaths);
-  console.log("Styles data keys:", Object.keys(stylesData));
+  // console.log("Building DOM tree with paths:", sortedPaths);
+  // console.log("Styles data keys:", Object.keys(stylesData));
 
   sortedPaths.forEach((path) => {
     const elementData = stylesData[path];
@@ -71,7 +84,7 @@ export function buildDOMTree(
   });
 
   sortTreeChildren(rootNode);
-  console.log("Built DOM tree:", rootNode);
+  // console.log("Built DOM tree:", rootNode);
   return rootNode;
 }
 
@@ -117,6 +130,7 @@ function insertElementIntoTree(
   // console.log("Creating element node for path:", elementPath, "with data:", elementData);
   // Create the element node
   const elementNode: DOMTreeNode = {
+    ...elementData,
     path: elementPath,
     name: elementName,
     tagName: elementData.tagName.toLowerCase(),
@@ -126,8 +140,10 @@ function insertElementIntoTree(
     inlineStyles: elementData.inlineStyles || {},
     attributes: elementData.attributes,
     bounds: positionInfo || elementData.bounds,
+    text: elementData.text,
     children: [],
     level: pathSegments.length,
+    originalData: elementData,
   };
 
   parentNode.children.push(elementNode);
@@ -241,8 +257,12 @@ function createParentNode(segment: string, path: string, level: number): DOMTree
     classes: classes,
     styles: {},
     inlineStyles: {},
+    attributes: {},
+    bounds: undefined,
+    text: undefined,
     children: [],
     level,
+    originalData: undefined,
   };
 }
 
