@@ -238,6 +238,10 @@ export const CSSSnapshotInspector: React.FC = () => {
     compareSnapshots,
   );
 
+  // State for comparison view controls
+  const [activeCompareView, setActiveCompareView] = React.useState<"diff" | "tree" | "stats">("diff");
+  const [splitView, setSplitView] = React.useState(true);
+
   // Обробник для перегляду знімка
   const handleViewSnapshot = (snapshot: typeof selectedSnapshot) => {
     if (snapshot) {
@@ -249,7 +253,7 @@ export const CSSSnapshotInspector: React.FC = () => {
   // Handler for comparing the selected snapshot with the current page
   const handleCompareWithCurrentPage = async () => {
     let firstSnapshot: CSSSnapshot | null = null;
-    
+
     // Determine which snapshot to compare with based on the current view mode
     if (viewMode === ViewMode.DETAIL && selectedSnapshot) {
       firstSnapshot = selectedSnapshot;
@@ -257,7 +261,7 @@ export const CSSSnapshotInspector: React.FC = () => {
       // Use the first snapshot from the comparison
       firstSnapshot = compareSnapshots[0];
     }
-    
+
     if (!firstSnapshot) return;
 
     try {
@@ -304,7 +308,15 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       case ViewMode.COMPARE:
         return compareSnapshots.length === 2 ? (
-          <SnapshotCompare snapshotA={compareSnapshots[0]} snapshotB={compareSnapshots[1]} onBack={backToList} />
+          <SnapshotCompare
+            snapshotA={compareSnapshots[0]}
+            snapshotB={compareSnapshots[1]}
+            onBack={backToList}
+            activeView={activeCompareView}
+            setActiveView={setActiveCompareView}
+            splitView={splitView}
+            setSplitView={setSplitView}
+          />
         ) : (
           <EmptyStateContainer>
             <EmptyStateIcon>
@@ -415,6 +427,10 @@ export const CSSSnapshotInspector: React.FC = () => {
           isSearchVisible={isSearchVisible}
           error={error}
           onCompareWithCurrentPage={handleCompareWithCurrentPage}
+          activeCompareView={activeCompareView}
+          onChangeCompareView={(view) => setActiveCompareView(view as "diff" | "tree" | "stats")}
+          splitView={splitView}
+          onToggleSplitView={() => setSplitView(!splitView)}
         />
       </StickyHeader>
 
@@ -449,9 +465,7 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       {/* Main Content Area with improved background and padding */}
       <ContentArea>
-        <ContentWrapper>
-          {renderContent}
-        </ContentWrapper>
+        <ContentWrapper>{renderContent}</ContentWrapper>
       </ContentArea>
     </MainContainer>
   );

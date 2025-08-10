@@ -20,5 +20,6 @@ export interface SnapshotCompareProps {
   activeView?: "diff" | "tree" | "stats";
   setActiveView?: (view: "diff" | "tree" | "stats") => void;
   splitView?: boolean;
+  showLineNumbers?: boolean;
   setSplitView?: (split: boolean) => void;
 }

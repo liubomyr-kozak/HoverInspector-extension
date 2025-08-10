@@ -1,21 +1,6 @@
 import React, { useState, useMemo } from "react";
 import styled from "styled-components";
-import {
-  IconGitCompare,
-  IconArrowLeft,
-  IconEye,
-  IconEyeOff,
-  IconLayoutSidebarRightExpand,
-  IconLayoutList,
-  IconChevronDown,
-  IconChevronUp,
-  IconCode,
-  IconFileText,
-  IconActivity,
-  IconTrendingUp,
-  IconTrendingDown,
-  IconEqual,
-} from "@tabler/icons-react";
+import { IconGitCompare, IconArrowLeft, IconFileText, IconActivity } from "@tabler/icons-react";
 import { ReactDiffViewer } from "./components/TreeDiffView/components/ReactDiffViewer";
 import { SnapshotCompareProps } from "./types";
 import { getStylesFromSnapshot } from "./utils";
@@ -30,21 +15,6 @@ const CompareContainer = styled.div`
   backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(229, 231, 235, 0.6);
-`;
-
-const CompareHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(229, 231, 235, 0.4);
-`;
-
-const HeaderLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 20px;
 `;
 
 const BackButton = styled.button`
@@ -69,191 +39,6 @@ const BackButton = styled.button`
   }
 `;
 
-const TitleSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-`;
-
-const TitleIcon = styled.div`
-  background: linear-gradient(135deg, #10b981, #059669);
-  padding: 16px;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
-`;
-
-const TitleContent = styled.div`
-  h1 {
-    font-size: 28px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #1f2937, #374151);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin: 0 0 8px 0;
-  }
-
-  p {
-    font-size: 16px;
-    font-weight: 500;
-    color: #6b7280;
-    margin: 0;
-  }
-`;
-
-const ViewControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-`;
-
-const ControlButton = styled.button<{ active?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 200ms ease;
-
-  ${(props) =>
-    props.active
-      ? `
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
-  `
-      : `
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #e5e7eb;
-    color: #374151;
-    
-    &:hover {
-      background: #f9fafb;
-      border-color: #d1d5db;
-    }
-  `}
-`;
-
-const StatsBar = styled.div<{ expanded: boolean }>`
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-  backdrop-filter: blur(8px);
-  transition: all 300ms ease;
-
-  ${(props) =>
-    !props.expanded &&
-    `
-    padding: 12px 16px;
-  `}
-`;
-
-const StatsHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-`;
-
-const StatsTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0;
-  }
-
-  .icon {
-    color: #6366f1;
-  }
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 24px;
-  margin-top: 24px;
-`;
-
-const StatItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 12px;
-  border: 1px solid rgba(229, 231, 235, 0.5);
-
-  .icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &.positive {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-    }
-
-    &.negative {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      color: white;
-    }
-
-    &.neutral {
-      background: linear-gradient(135deg, #6b7280, #4b5563);
-      color: white;
-    }
-  }
-
-  .content {
-    .label {
-      font-size: 12px;
-      font-weight: 500;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
-    }
-
-    .value {
-      font-size: 18px;
-      font-weight: 700;
-      color: #1f2937;
-      margin-bottom: 2px;
-    }
-
-    .change {
-      font-size: 12px;
-      font-weight: 500;
-
-      &.positive {
-        color: #059669;
-      }
-
-      &.negative {
-        color: #dc2626;
-      }
-
-      &.neutral {
-        color: #6b7280;
-      }
-    }
-  }
-`;
-
 const ContentArea = styled.div`
   background: rgba(255, 255, 255, 0.9);
   border-radius: 16px;
@@ -261,12 +46,18 @@ const ContentArea = styled.div`
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 `;
-
-export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({ snapshotA, snapshotB, onBack }) => {
-  const [splitView, setSplitView] = useState(true);
-  const [showLineNumbers, setShowLineNumbers] = useState(false);
-  const [isStatsExpanded, setIsStatsExpanded] = useState(true);
-  const [activeView, setActiveView] = useState<"diff" | "tree" | "stats">("diff");
+export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
+  snapshotA,
+  snapshotB,
+  onBack,
+  activeView = "diff",
+  setActiveView,
+  splitView = true,
+  showLineNumbers = false,
+  setSplitView,
+}) => {
+  // const [showLineNumbers, setShowLineNumbers] = useState(false);
+  // const [activeView, setActiveView] = useState<"diff" | "tree" | "stats">("diff");
 
   const stylesA = getStylesFromSnapshot(snapshotA);
   const stylesB = getStylesFromSnapshot(snapshotB);
@@ -356,12 +147,7 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({ snapshotA, sna
     <CompareContainer>
       <ContentArea>
         {activeView === "diff" ? (
-          <ReactDiffViewer
-            treeA={treeA}
-            treeB={treeB}
-            splitView={splitView}
-            displaySingleLineNumbers={showLineNumbers}
-          />
+          <ReactDiffViewer treeA={treeA} treeB={treeB} splitView={splitView} displaySingleLineNumbers={!splitView} />
         ) : (
           <div style={{ padding: "24px" }}>
             <div

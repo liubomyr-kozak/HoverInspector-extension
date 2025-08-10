@@ -683,26 +683,24 @@ export const Header = memo<HeaderProps>(
 
           <ActionsSection>
             {viewMode === ViewMode.COMPARE && (
-              <CompareHeader>
-                <ViewControls>
-                  <ControlButton active={activeCompareView === "diff"} onClick={() => onChangeCompareView("diff")}>
-                    <IconCode size={16} />
-                    Diff
-                  </ControlButton>
+              <ViewControls>
+                <ControlButton active={activeCompareView === "diff"} onClick={() => onChangeCompareView("diff")}>
+                  <IconCode size={16} />
+                  Diff
+                </ControlButton>
 
-                  <ControlButton active={activeCompareView === "stats"} onClick={() => onChangeCompareView("stats")}>
-                    <IconActivity size={16} />
-                    Stats
-                  </ControlButton>
+                <ControlButton active={activeCompareView === "stats"} onClick={() => onChangeCompareView("stats")}>
+                  <IconActivity size={16} />
+                  Stats
+                </ControlButton>
 
-                  {activeCompareView === "diff" && (
-                    <ControlButton onClick={onToggleSplitView}>
-                      {splitView ? <IconLayoutSidebarRightExpand size={16} /> : <IconLayoutList size={16} />}
-                      {splitView ? "Split" : "Unified"}
-                    </ControlButton>
-                  )}
-                </ViewControls>
-              </CompareHeader>
+                {activeCompareView === "diff" && (
+                  <ControlButton onClick={onToggleSplitView}>
+                    {splitView ? <IconLayoutSidebarRightExpand size={16} /> : <IconLayoutList size={16} />}
+                    {splitView ? "Split" : "Unified"}
+                  </ControlButton>
+                )}
+              </ViewControls>
             )}
 
             {viewMode === ViewMode.LIST && (
@@ -774,12 +772,12 @@ export const Header = memo<HeaderProps>(
                 </MenuContainer>
               </>
             )}
+            {/*// should work only with ViewMode.DETAIL */}
             {viewMode === ViewMode.DETAIL && onCompareWithCurrentPage && (
               <CompareButton
                 onClick={handleCompareWithCurrentPage}
                 disabled={isCreatingCurrentSnapshot}
                 aria-label="Compare with current page"
-                style={{ marginLeft: "auto" }}
               >
                 {isCreatingCurrentSnapshot ? (
                   <>
