@@ -8,7 +8,7 @@ export interface DOMTreeNode {
   /** Unique path to this element */
   path: string;
   /** Display name (e.g., "div#header.nav-item") */
-  name: string;
+  displayName: string;
   /** Tag name (div, span, etc.) */
   tagName: string;
   /** Element ID (without #) */
@@ -89,7 +89,7 @@ export function buildDOMTree(
 function createRootNode(): DOMTreeNode {
   return {
     path: "",
-    name: "Root",
+    displayName: "Root",
     tagName: "root",
     id: null,
     classes: [],
@@ -130,7 +130,7 @@ function insertElementIntoTree(
   const elementNode: DOMTreeNode = {
     ...elementData,
     path: elementPath,
-    name: elementName,
+    displayName: elementName,
     tagName: elementData.tagName.toLowerCase(),
     id: cleanElementId(elementData.id),
     bounds: positionInfo || elementData.bounds,
@@ -243,7 +243,7 @@ function createParentNode(segment: string, path: string, level: number): DOMTree
 
   return {
     path,
-    name: createParentNodeName(tagName, id, classes),
+    displayName: createParentNodeName(tagName, id, classes),
     tagName: tagName.toLowerCase(),
     id: cleanElementId(id),
     classes: classes,
@@ -309,7 +309,7 @@ function createParentNodeName(tagName: string, id?: string, classes: string[] = 
 function sortTreeChildren(node: DOMTreeNode): void {
   if (node.children.length > 0) {
     // Sort children by name for consistent ordering
-    node.children.sort((a, b) => a.name.localeCompare(b.name));
+    node.children.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
     // Recursively sort grandchildren
     node.children.forEach((child) => sortTreeChildren(child));

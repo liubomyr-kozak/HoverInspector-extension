@@ -264,6 +264,8 @@ export const buildSnapshotTree = (
 
   const tree = buildSnapshotNode(root, [], options, stats);
 
+  debugger;
+
   if (!tree) {
     throw new Error("Failed to build snapshot tree: root element was skipped");
   }

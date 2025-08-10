@@ -18,7 +18,7 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
     // The snapshot stores paths as arrays like ["body[0]", "div[1]", "span[0]"]
     // The DOM tree builder expects strings like "body[0] > div[1] > span[0]"
     let currentPathKey: string = "";
-    
+
     if (node.path && node.path.length > 0) {
       // Convert path array to string with " > " separator
       currentPathKey = node.path.join(" > ");
@@ -26,16 +26,7 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
 
     // Include all elements with valid paths
     if (currentPathKey && currentPathKey.trim() !== "") {
-      result[currentPathKey] = {
-        tagName: node.tagName,
-        id: node.id || null,
-        classes: Array.isArray(node.classes) ? Array.from(node.classes) : [],
-        styles: node.styles || {},
-        inlineStyles: node.inlineStyles || {},
-        attributes: node.attributes || {},
-        bounds: node.bounds,
-        text: node.text,
-      };
+      result[currentPathKey] = { ...node };
     }
 
     // Process children recursively
