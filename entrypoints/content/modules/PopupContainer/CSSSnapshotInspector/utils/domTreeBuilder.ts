@@ -17,6 +17,8 @@ export interface DOMTreeNode {
   classes: string[];
   /** All CSS styles as key-value pairs */
   styles: Record<string, string>;
+  /** Inline styles from style attribute */
+  inlineStyles: Record<string, string>;
   /** Element attributes */
   attributes?: Record<string, string>;
   /** Element bounds/position */
@@ -39,6 +41,7 @@ export interface ElementStyleData {
   id?: string | null;
   classes?: string[];
   styles: Record<string, string>;
+  inlineStyles?: Record<string, string>;
   attributes?: Record<string, string>;
   bounds?: {
     top: number;
@@ -81,6 +84,7 @@ function createRootNode(): DOMTreeNode {
     id: null,
     classes: [],
     styles: {},
+    inlineStyles: {},
     children: [],
     level: 0,
   };
@@ -116,6 +120,7 @@ function insertElementIntoTree(
     id: cleanElementId(elementData.id),
     classes: elementData.classes || [],
     styles: elementData.styles || {},
+    inlineStyles: elementData.inlineStyles || {},
     attributes: elementData.attributes,
     bounds: positionInfo || elementData.bounds,
     children: [],

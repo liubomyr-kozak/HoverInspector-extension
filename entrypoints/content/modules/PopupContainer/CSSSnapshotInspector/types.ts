@@ -16,7 +16,8 @@ export interface SnapshotNode {
     width: number;
     height: number;
   }>;
-  readonly styles: Readonly<Record<string, string>>;
+  readonly styles: Readonly<Record<string, string>>; // Computed styles from DOM API
+  readonly inlineStyles: Readonly<Record<string, string>>; // Inline styles from style attribute
   readonly text?: string;
   readonly children: readonly SnapshotNode[];
 }

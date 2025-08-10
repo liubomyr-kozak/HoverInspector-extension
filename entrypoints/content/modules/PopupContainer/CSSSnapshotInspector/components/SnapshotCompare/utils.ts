@@ -22,6 +22,7 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
       id: node.elementId || null,
       classes: Array.from(node.classes),
       styles: node.styles,
+      inlineStyles: node.inlineStyles || {},
     };
 
     // Process children

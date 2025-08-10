@@ -167,6 +167,30 @@ const extractStyles = (
 };
 
 /**
+ * Витягує inline стилі з атрибута style елемента
+ */
+const extractInlineStyles = (element: Element): Record<string, string> => {
+  const inlineStyles: Record<string, string> = {};
+  const htmlElement = element as HTMLElement;
+  
+  if (!htmlElement.style) {
+    return inlineStyles;
+  }
+  
+  // Перебираємо всі inline стилі
+  for (let i = 0; i < htmlElement.style.length; i++) {
+    const property = htmlElement.style[i];
+    const value = htmlElement.style.getPropertyValue(property);
+    
+    if (value && !shouldSkipProperty(property) && !isDefaultValue(value)) {
+      inlineStyles[property] = value;
+    }
+  }
+  
+  return inlineStyles;
+};
+
+/**
  * Будує вузол знімка для елемента, зберігаючи лише зміни відносно базового стану
  */
 const buildSnapshotNode = (
@@ -218,6 +242,9 @@ const buildSnapshotNode = (
   const computedStyle = window.getComputedStyle(element);
   const styles = extractStyles(element, computedStyle, options.styleFilter);
   
+  // Отримуємо inline стилі з атрибута style
+  const inlineStyles = extractInlineStyles(element);
+  
   // Отримуємо текстовий контент для листових вузлів
   const text = options.includeText && element.children.length === 0 
     ? element.textContent?.trim() || undefined
@@ -229,7 +256,7 @@ const buildSnapshotNode = (
     const childNode = buildSnapshotNode(child as Element, elementPath, options, stats);
     if (childNode) {
       // Додаємо дочірній вузол лише якщо він має стилі або дочірні елементи
-      if (Object.keys(childNode.styles).length > 0 || childNode.children.length > 0) {
+      if (Object.keys(childNode.styles).length > 0 || Object.keys(childNode.inlineStyles).length > 0 || childNode.children.length > 0) {
         children.push(childNode);
       } else {
         // Якщо вузол не має змін, пропускаємо його, але враховуємо в статистиці
@@ -240,10 +267,11 @@ const buildSnapshotNode = (
   
   // Перевіряємо, чи є зміни в стилях або дочірніх елементах
   const hasStyleChanges = Object.keys(styles).length > 0;
+  const hasInlineStyleChanges = Object.keys(inlineStyles).length > 0;
   const hasChildren = children.length > 0;
   
   // Якщо немає змін і немає дочірніх елементів, повертаємо null
-  if (!hasStyleChanges && !hasChildren && !options.includeUnchanged) {
+  if (!hasStyleChanges && !hasInlineStyleChanges && !hasChildren && !options.includeUnchanged) {
     return null;
   }
   
@@ -256,6 +284,7 @@ const buildSnapshotNode = (
     attributes,
     bounds,
     styles,
+    inlineStyles,
     text,
     children,
   };

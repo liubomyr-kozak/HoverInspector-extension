@@ -173,20 +173,39 @@ const TreeNodeRenderer: React.FC<TreeNodeRendererProps> = ({
           <span style={{ color: "#0969da" }}>{hasChildren ? ">" : " />"}</span>
 
           {/* Style count */}
-          {Object.keys(node.styles).length > 0 && (
-            <span
-              style={{
-                marginLeft: "8px",
-                fontSize: "11px",
-                color: "#656d76",
-                background: "#f6f8fa",
-                padding: "2px 6px",
-                borderRadius: "3px",
-              }}
-              onClick={handleDetailsClick}
-            >
-              {Object.keys(node.styles).length} styles
-            </span>
+          {(Object.keys(node.styles).length > 0 || Object.keys(node.inlineStyles || {}).length > 0) && (
+            <div style={{ marginLeft: "8px", display: "flex", gap: "4px" }}>
+              {Object.keys(node.styles).length > 0 && (
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: "#656d76",
+                    background: "#f6f8fa",
+                    padding: "2px 6px",
+                    borderRadius: "3px",
+                  }}
+                  onClick={handleDetailsClick}
+                  title="Computed styles from DOM API"
+                >
+                  {Object.keys(node.styles).length} computed
+                </span>
+              )}
+              {Object.keys(node.inlineStyles || {}).length > 0 && (
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: "#656d76",
+                    background: "#e6f3ff",
+                    padding: "2px 6px",
+                    borderRadius: "3px",
+                  }}
+                  onClick={handleDetailsClick}
+                  title="Inline styles from style attribute"
+                >
+                  {Object.keys(node.inlineStyles || {}).length} inline
+                </span>
+              )}
+            </div>
           )}
 
           {/* Change indicator */}

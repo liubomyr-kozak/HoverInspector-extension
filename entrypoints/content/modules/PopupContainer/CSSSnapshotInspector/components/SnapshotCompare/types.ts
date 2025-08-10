@@ -8,6 +8,7 @@ export interface ElementStyle {
   id: string | null;
   classes: string[];
   styles: Record<string, string>;
+  inlineStyles: Record<string, string>;
 }
 
 /**

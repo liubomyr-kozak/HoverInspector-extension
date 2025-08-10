@@ -717,9 +717,8 @@ export const Header = memo<HeaderProps>(
                     </>
                   ) : (
                     <>
-                      <IconCamera size={20} />
-                      <span>Capture Snapshot</span>
                       <IconSparkles size={16} />
+                      <span>Capture Snapshot</span>
                     </>
                   )}
                 </PrimaryButton>

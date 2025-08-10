@@ -309,20 +309,6 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
             <EmptyStateDescription>
               Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time.
             </EmptyStateDescription>
-            <FeatureGrid>
-              <FeatureCard>
-                <div className="emoji">📊</div>
-                <div className="text">Track Changes</div>
-              </FeatureCard>
-              <FeatureCard>
-                <div className="emoji">🔍</div>
-                <div className="text">Find Issues</div>
-              </FeatureCard>
-              <FeatureCard>
-                <div className="emoji">⚡</div>
-                <div className="text">Compare Fast</div>
-              </FeatureCard>
-            </FeatureGrid>
           </EmptyStateContainer>
         </ManagerContainer>
       );

@@ -32,6 +32,7 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
         id: node.elementId || null,
         classes: Array.from(node.classes || []),
         styles: node.styles || {},
+        inlineStyles: node.inlineStyles || {},
         attributes: node.attributes || {},
         bounds: node.bounds,
       };
