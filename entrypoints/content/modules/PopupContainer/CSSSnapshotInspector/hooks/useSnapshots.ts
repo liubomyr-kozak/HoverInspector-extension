@@ -1,11 +1,11 @@
 /**
  * Оптимізовані хуки для управління CSS знімками
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { CSSSnapshot, SnapshotOptions } from '../types';
-import { PERFORMANCE_LIMITS } from '../constants';
-import { createCSSSnapshot } from '../utils/snapshotBuilder';
-import { loadSnapshots, saveSnapshots, deleteSnapshot as deleteSnapshotUtil } from '../utils/snapshotStorage';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { CSSSnapshot, SnapshotOptions } from "../types";
+import { PERFORMANCE_LIMITS } from "../constants";
+import { createCSSSnapshot } from "../utils/snapshotBuilder";
+import { loadSnapshots, saveSnapshots, deleteSnapshot as deleteSnapshotUtil } from "../utils/snapshotStorage";
 
 interface UseSnapshotsReturn {
   snapshots: readonly CSSSnapshot[];
@@ -34,11 +34,11 @@ export const useSnapshots = (): UseSnapshotsReturn => {
   // Завантажуємо знімки при ініціалізації
   useEffect(() => {
     let mounted = true;
-    
+
     const loadInitialSnapshots = async () => {
       try {
         const loadedSnapshots = await loadSnapshots();
-        
+
         if (mounted) {
           // Обмежуємо кількість знімків у пам'яті
           const limitedSnapshots = loadedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
@@ -46,87 +46,91 @@ export const useSnapshots = (): UseSnapshotsReturn => {
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load snapshots');
+          setError(err instanceof Error ? err.message : "Failed to load snapshots");
         }
       }
     };
-    
+
     loadInitialSnapshots();
-    
+
     return () => {
       mounted = false;
     };
   }, []);
 
   // Захоплення нового знімка
-  const captureSnapshot = useCallback(async (
-    title?: string, 
-    options?: SnapshotOptions
-  ): Promise<CSSSnapshot> => {
-    if (isCapturing) {
-      throw new Error('Snapshot capture already in progress');
-    }
-    
-    setIsCapturing(true);
-    setError(null);
-    
-    try {
-      const snapshot = await createCSSSnapshot(title, {
-        maxElements: PERFORMANCE_LIMITS.MAX_ELEMENTS,
-        skipInvisible: true,
-        includeText: true,
-        ...options,
-      });
-      
-      const updatedSnapshots = [...snapshots, snapshot];
-      const limitedSnapshots = updatedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
-      
-      try {
-        await saveSnapshots(limitedSnapshots);
-      } catch (saveError) {
-        console.warn('Failed to save snapshots to storage:', saveError);
-        // Продовжуємо з знімком у пам'яті навіть якщо збереження не вдалося
+  const captureSnapshot = useCallback(
+    async (title?: string, options?: SnapshotOptions): Promise<CSSSnapshot> => {
+      if (isCapturing) {
+        throw new Error("Snapshot capture already in progress");
       }
-      
-      setSnapshots(limitedSnapshots);
-      return snapshot;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to capture snapshot';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsCapturing(false);
-    }
-  }, [snapshots, isCapturing]);
+
+      setIsCapturing(true);
+      setError(null);
+
+      debugger;
+      try {
+        const snapshot = await createCSSSnapshot(title, {
+          maxElements: PERFORMANCE_LIMITS.MAX_ELEMENTS,
+          skipInvisible: true,
+          includeText: true,
+          ...options,
+        });
+
+        const updatedSnapshots = [...snapshots, snapshot];
+        const limitedSnapshots = updatedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
+
+        try {
+          await saveSnapshots(limitedSnapshots);
+        } catch (saveError) {
+          console.warn("Failed to save snapshots to storage:", saveError);
+          // Продовжуємо з знімком у пам'яті навіть якщо збереження не вдалося
+        }
+
+        setSnapshots(limitedSnapshots);
+        return snapshot;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to capture snapshot";
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      } finally {
+        setIsCapturing(false);
+      }
+    },
+    [snapshots, isCapturing],
+  );
 
   // Видалення знімка
-  const deleteSnapshot = useCallback(async (id: string): Promise<void> => {
-    try {
-      await deleteSnapshotUtil(id);
-      
-      setSnapshots(prev => prev.filter(snapshot => snapshot.id !== id));
-      
-      // Скидаємо вибраний знімок якщо він був видалений
-      if (selectedSnapshot?.id === id) {
-        setSelectedSnapshot(null);
+  const deleteSnapshot = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await deleteSnapshotUtil(id);
+
+        setSnapshots((prev) => prev.filter((snapshot) => snapshot.id !== id));
+
+        // Скидаємо вибраний знімок якщо він був видалений
+        if (selectedSnapshot?.id === id) {
+          setSelectedSnapshot(null);
+        }
+
+        // Видаляємо зі списку порівняння
+        setCompareSnapshots((prev) => prev.filter((snapshot) => snapshot.id !== id));
+
+        setError(null);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to delete snapshot";
+        setError(errorMessage);
+        throw new Error(errorMessage);
       }
-      
-      // Видаляємо зі списку порівняння
-      setCompareSnapshots(prev => prev.filter(snapshot => snapshot.id !== id));
-      
-      setError(null);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete snapshot';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }, [selectedSnapshot?.id]);
+    },
+    [selectedSnapshot?.id],
+  );
 
   // Імпорт знімка з файлу
   const importSnapshot = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
     input.multiple = false;
 
     input.onchange = async (e: Event) => {
@@ -136,14 +140,14 @@ export const useSnapshots = (): UseSnapshotsReturn => {
       try {
         const text = await file.text();
         let snapshot = JSON.parse(text) as CSSSnapshot;
-        
+
         // Валідуємо структуру знімка
         if (!snapshot.id || !snapshot.timestamp || !snapshot.root) {
-          throw new Error('Invalid snapshot format');
+          throw new Error("Invalid snapshot format");
         }
 
         // Перевіряємо чи знімок вже існує
-        const existingIds = snapshots.map(s => s.id);
+        const existingIds = snapshots.map((s) => s.id);
         if (existingIds.includes(snapshot.id)) {
           // Створюємо новий знімок з новим ID
           snapshot = {
@@ -154,17 +158,17 @@ export const useSnapshots = (): UseSnapshotsReturn => {
 
         const updatedSnapshots = [...snapshots, snapshot];
         const limitedSnapshots = updatedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
-        
+
         try {
           await saveSnapshots(limitedSnapshots);
         } catch (saveError) {
-          console.warn('Failed to save imported snapshot:', saveError);
+          console.warn("Failed to save imported snapshot:", saveError);
         }
-        
+
         setSnapshots(limitedSnapshots);
         setError(null);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to import snapshot';
+        const errorMessage = err instanceof Error ? err.message : "Failed to import snapshot";
         setError(errorMessage);
         alert(`Import failed: ${errorMessage}`);
       }
@@ -181,11 +185,11 @@ export const useSnapshots = (): UseSnapshotsReturn => {
 
   // Переключення знімка для порівняння
   const toggleCompare = useCallback((snapshot: CSSSnapshot) => {
-    setCompareSnapshots(prev => {
-      const exists = prev.some(s => s.id === snapshot.id);
-      
+    setCompareSnapshots((prev) => {
+      const exists = prev.some((s) => s.id === snapshot.id);
+
       if (exists) {
-        return prev.filter(s => s.id !== snapshot.id);
+        return prev.filter((s) => s.id !== snapshot.id);
       } else {
         // Дозволяємо максимум 2 знімки для порівняння
         if (prev.length < 2) {
@@ -229,12 +233,10 @@ interface UseSnapshotFilterReturn {
 /**
  * Хук для фільтрації знімків з дебаунсом
  */
-export const useSnapshotFilter = (
-  snapshots: readonly CSSSnapshot[]
-): UseSnapshotFilterReturn => {
-  const [filter, setFilter] = useState('');
-  const [debouncedFilter, setDebouncedFilter] = useState('');
-  
+export const useSnapshotFilter = (snapshots: readonly CSSSnapshot[]): UseSnapshotFilterReturn => {
+  const [filter, setFilter] = useState("");
+  const [debouncedFilter, setDebouncedFilter] = useState("");
+
   // Дебаунс для фільтра
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -243,13 +245,13 @@ export const useSnapshotFilter = (
 
     return () => clearTimeout(timer);
   }, [filter]);
-  
+
   // Мемоізовані відфільтровані знімки
   const filteredSnapshots = useMemo(() => {
     if (!debouncedFilter) return snapshots;
-    
+
     const lowerFilter = debouncedFilter.toLowerCase();
-    return snapshots.filter(snapshot => {
+    return snapshots.filter((snapshot) => {
       return (
         snapshot.title.toLowerCase().includes(lowerFilter) ||
         snapshot.url.toLowerCase().includes(lowerFilter) ||
@@ -257,7 +259,7 @@ export const useSnapshotFilter = (
       );
     });
   }, [snapshots, debouncedFilter]);
-  
+
   return {
     filter,
     setFilter,

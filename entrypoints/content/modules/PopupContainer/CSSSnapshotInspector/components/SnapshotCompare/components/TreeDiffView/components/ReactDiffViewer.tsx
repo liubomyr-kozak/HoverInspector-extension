@@ -4,7 +4,7 @@ import { CacheProvider } from "@emotion/react";
 import { getEmotionCache } from "./emotionCache";
 import { useEmotionShadowDOMSync } from "./useEmotionShadowDOMSync";
 import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
-import DiffViewer from "@entrypoints/shared/components/react-diff-viewer-continued/src";
+import DiffViewer, { LineData } from "@entrypoints/shared/components/react-diff-viewer-continued/src";
 
 interface ReactDiffViewerProps {
   treeA: DOMTreeNode;
@@ -67,6 +67,85 @@ const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
   return result;
 };
 
+/**
+ * Converts a DOM tree node to LineData format for diffing with metadata support
+ */
+const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
+  const indent = "  ".repeat(level);
+  const lines: LineData[] = [];
+
+  // Start with the opening tag
+  let openTag = `${indent}<${node.tagName}`;
+
+  // Add ID if present
+  if (node.id) {
+    openTag += ` id="${node.id}"`;
+  }
+
+  // Add classes if present
+  if (node.classes && node.classes.length > 0) {
+    openTag += ` class="${node.classes.join(" ")}"`;
+  }
+
+  // Add attributes if present
+  if (node.attributes) {
+    Object.entries(node.attributes).forEach(([key, value]) => {
+      if (key !== "id" && key !== "class" && key !== "style") {
+        // Skip id and class as they're already handled
+        openTag += ` ${key}="${value}"`;
+      }
+    });
+  }
+
+  // If there are no children, close the tag
+  if (!node.children || node.children.length === 0) {
+    openTag += " />";
+    lines.push({
+      text: openTag,
+      metadata: {
+        ...node,
+        nodeType: "self-closing",
+        level,
+      },
+    });
+    return lines;
+  }
+
+  // Otherwise, add children
+  openTag += ">";
+  lines.push({
+    text: openTag,
+    metadata: {
+      nodeType: "opening",
+      tagName: node.tagName,
+      level,
+      id: node.id,
+      classes: node.classes,
+      attributes: node.attributes,
+    },
+  });
+
+  // Add each child
+  if (node.children) {
+    node.children.forEach((child) => {
+      lines.push(...convertTreeToStringV2(child, level + 1));
+    });
+  }
+
+  // Close the tag
+  const closeTag = `${indent}</${node.tagName}>`;
+  lines.push({
+    text: closeTag,
+    metadata: {
+      nodeType: "closing",
+      tagName: node.tagName,
+      level,
+    },
+  });
+
+  return lines;
+};
+
 export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   treeA,
   treeB,
@@ -77,10 +156,13 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   displaySingleLineNumbers = false,
 }) => {
   // Convert trees to string representation for diffing
-  const oldValue = useMemo(() => convertTreeToString(treeA), [treeA]);
-  const newValue = useMemo(() => convertTreeToString(treeB), [treeB]);
 
-  console.log("🌟🌟🌟 ::ReactDiffViewer -> oldValue", oldValue);
+  console.log("😀😀😀 ::ReactDiffViewer -> treeA", treeA);
+
+  const oldValue = useMemo(() => convertTreeToStringV2(treeA), [treeA]);
+  const newValue = useMemo(() => convertTreeToStringV2(treeB), [treeB]);
+
+  console.log("🌟🌟🌟 ::ReactDiffViewer -> oldValue", oldValue, newValue);
 
   // Get shadow DOM container
   const shadowContainer = useMemo(() => {
@@ -101,12 +183,16 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   // Sync emotion styles to shadow DOM
   useEmotionShadowDOMSync();
 
-  const handleLineClick = (lineId: string, event: React.MouseEvent<HTMLTableCellElement>) => {
+  const handleLineClick = (lineId: string, metadata: any) => {
     // event.target is the DOM element that was clicked
-    const clickedNode = event.target;
 
-    console.log("Clicked node:", clickedNode);
-    console.log("Line:", lineId);
+    console.log("🌟🌟🌟 ::handleLineClick -> lineId", lineId);
+    console.log("🌟🌟🌟 ::handleLineClick -> metadata", metadata);
+
+    debugger;
+
+    // console.log("Clicked node:", clickedNode);
+    // console.log("Line:", lineId);
   };
 
   if (!cache || !shadowContainer) {
@@ -121,7 +207,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
         splitView={splitView}
         useDarkTheme={false}
         compareMethod={DiffMethod.JSON}
-        onLineNumberClick={handleLineClick}
+        onLineClick={handleLineClick}
         leftTitle={splitView ? "Snapshot A" : undefined}
         rightTitle={splitView ? "Snapshot B" : undefined}
         container={shadowContainer}
