@@ -29,7 +29,7 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
 
       stylesData[currentPath] = {
         tagName: node.tag,
-        id: node.elementId || null,
+        id: node.id || null,
         classes: Array.from(node.classes || []),
         styles: node.styles || {},
         inlineStyles: node.inlineStyles || {},

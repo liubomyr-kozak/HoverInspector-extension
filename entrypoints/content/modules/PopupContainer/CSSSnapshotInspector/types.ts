@@ -1,24 +1,53 @@
 import { DEFAULT_STYLES_TO_SKIP, DEFAULT_VALUES_TO_SKIP } from "./constants";
 
 /**
+ * XPath variants for element identification
+ */
+export interface XPathVariants {
+  /** Full absolute XPath using element indices */
+  readonly absolute: string;
+  /** XPath using element IDs where available */
+  readonly withId: string;
+  /** XPath using CSS classes where available */
+  readonly withClasses: string;
+  /** XPath using attribute-based selectors */
+  readonly withAttributes: string;
+  /** Short optimized XPath for common patterns */
+  readonly optimized: string;
+}
+
+/**
  * Оптимізована структура вузла знімка
  */
 export interface SnapshotNode {
-  readonly id: string;
+  /** Unique quick key for internal operations (hash-based) */
+  readonly key: string;
+  /** Element path array for hierarchy navigation */
   readonly path: readonly string[];
+  /** HTML tag name */
   readonly tag: string;
-  readonly elementId?: string;
+  /** HTML id attribute value (if present) */
+  readonly id?: string;
+  /** XPath variants for element location */
+  readonly xpath: XPathVariants;
+  /** CSS classes */
   readonly classes: readonly string[];
+  /** HTML attributes (excluding id and class) */
   readonly attributes: Readonly<Record<string, string>>;
+  /** Element bounds */
   readonly bounds: Readonly<{
     top: number;
     left: number;
     width: number;
     height: number;
   }>;
-  readonly styles: Readonly<Record<string, string>>; // Computed styles from DOM API
-  readonly inlineStyles: Readonly<Record<string, string>>; // Inline styles from style attribute
+  /** Computed styles from DOM API (diff from UA defaults) */
+  readonly styles: Readonly<Record<string, string>>;
+  /** Inline styles from style attribute */
+  readonly inlineStyles: Readonly<Record<string, string>>;
+  /** Text content for leaf nodes */
   readonly text?: string;
+  /** Child elements */
   readonly children: readonly SnapshotNode[];
 }
 

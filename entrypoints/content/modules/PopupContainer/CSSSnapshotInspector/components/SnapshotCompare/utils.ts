@@ -19,7 +19,7 @@ export const getStylesFromSnapshot = (snapshot: CSSSnapshot): Record<string, Ele
     // Convert to ElementStyle format
     result[currentPath] = {
       tagName: node.tag,
-      id: node.elementId || null,
+      id: node.id || null,
       classes: Array.from(node.classes),
       styles: node.styles,
       inlineStyles: node.inlineStyles || {},

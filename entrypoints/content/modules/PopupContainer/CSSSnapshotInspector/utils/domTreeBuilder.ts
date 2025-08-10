@@ -57,15 +57,17 @@ export interface ElementStyleData {
  */
 export function buildDOMTree(
   stylesData: Record<string, ElementStyleData>,
-  positionData?: Record<string, any>
+  positionData?: Record<string, any>,
 ): DOMTreeNode {
   const rootNode = createRootNode();
   const sortedPaths = getSortedElementPaths(Object.keys(stylesData));
 
+  debugger;
+
   sortedPaths.forEach((path) => {
     const elementData = stylesData[path];
     const positionInfo = positionData?.[path];
-    
+
     insertElementIntoTree(rootNode, path, elementData, positionInfo);
   });
 
@@ -104,14 +106,16 @@ function insertElementIntoTree(
   rootNode: DOMTreeNode,
   elementPath: string,
   elementData: ElementStyleData,
-  positionInfo?: any
+  positionInfo?: any,
 ): void {
   const pathSegments = parseElementPath(elementPath);
   const elementName = createElementName(elementData);
-  
+
   // Navigate to the correct parent, creating intermediate nodes as needed
   const parentNode = findOrCreateParentNodes(rootNode, pathSegments, elementPath);
-  
+
+  debugger;
+
   // Create the element node
   const elementNode: DOMTreeNode = {
     path: elementPath,
@@ -138,7 +142,7 @@ function parseElementPath(path: string): string[] {
   return path
     .split(">")
     .filter(Boolean)
-    .map(segment => segment.trim());
+    .map((segment) => segment.trim());
 }
 
 /**
@@ -148,16 +152,16 @@ function parseElementPath(path: string): string[] {
 function createElementName(elementData: ElementStyleData): string {
   const { tagName, id, classes } = elementData;
   let name = tagName.toLowerCase();
-  
+
   // Add ID if it exists and is not randomly generated
   const cleanId = cleanElementId(id);
   if (cleanId) {
     name += `#${cleanId}`;
   }
-  
+
   // Add classes if they exist
   if (classes && classes.length > 0) {
-    name += `.${classes.join('.')}`;
+    name += `.${classes.join(".")}`;
   }
 
   return name;
@@ -169,28 +173,24 @@ function createElementName(elementData: ElementStyleData): string {
  */
 function cleanElementId(id?: string | null): string | null {
   if (!id) return null;
-  
+
   // Check if ID appears to be randomly generated
   const randomPatterns = [
-    /^el-[a-z0-9]{6}$/i,    // Pattern like "el-rnzjwo"
-    /^[a-z0-9]{8,}$/i,      // Long random strings (8+ chars)
-    /^_[a-z0-9]+$/i,        // IDs starting with underscore
-    /^[0-9]+$/,             // Pure numbers
+    /^el-[a-z0-9]{6}$/i, // Pattern like "el-rnzjwo"
+    /^[a-z0-9]{8,}$/i, // Long random strings (8+ chars)
+    /^_[a-z0-9]+$/i, // IDs starting with underscore
+    /^[0-9]+$/, // Pure numbers
     /^tmp[_-]?[a-z0-9]+$/i, // Temporary IDs
   ];
 
-  const isRandomId = randomPatterns.some(pattern => pattern.test(id));
+  const isRandomId = randomPatterns.some((pattern) => pattern.test(id));
   return isRandomId ? null : id;
 }
 
 /**
  * Find or create parent nodes for the given path segments
  */
-function findOrCreateParentNodes(
-  rootNode: DOMTreeNode,
-  pathSegments: string[],
-  fullPath: string
-): DOMTreeNode {
+function findOrCreateParentNodes(rootNode: DOMTreeNode, pathSegments: string[], fullPath: string): DOMTreeNode {
   let currentNode = rootNode;
   let currentPath = "";
 
@@ -198,16 +198,16 @@ function findOrCreateParentNodes(
   for (let i = 0; i < pathSegments.length - 1; i++) {
     const segment = pathSegments[i];
     currentPath = buildPathSegment(currentPath, segment);
-    
+
     // Try to find existing node
     let existingNode = findChildByPath(currentNode, currentPath);
-    
+
     if (!existingNode) {
       // Create new parent node
       existingNode = createParentNode(segment, currentPath, i + 1);
       currentNode.children.push(existingNode);
     }
-    
+
     currentNode = existingNode;
   }
 
@@ -225,7 +225,7 @@ function buildPathSegment(currentPath: string, segment: string): string {
  * Find child node by path
  */
 function findChildByPath(parentNode: DOMTreeNode, targetPath: string): DOMTreeNode | undefined {
-  return parentNode.children.find(child => child.path === targetPath);
+  return parentNode.children.find((child) => child.path === targetPath);
 }
 
 /**
@@ -234,7 +234,7 @@ function findChildByPath(parentNode: DOMTreeNode, targetPath: string): DOMTreeNo
 function createParentNode(segment: string, path: string, level: number): DOMTreeNode {
   // Parse the segment to extract tag, id, and classes
   const { tagName, id, classes } = parseSegmentForParentNode(segment);
-  
+
   return {
     path,
     name: createParentNodeName(tagName, id, classes),
@@ -257,21 +257,21 @@ function parseSegmentForParentNode(segment: string): {
 } {
   // Remove attribute selectors and nth-child selectors
   const cleanSegment = segment
-    .replace(/\[.*?\]/g, '')      // Remove [attr="value"]
-    .replace(/:nth-child\(\d+\)/g, ''); // Remove :nth-child(n)
+    .replace(/\[.*?\]/g, "") // Remove [attr="value"]
+    .replace(/:nth-child\(\d+\)/g, ""); // Remove :nth-child(n)
 
   // Extract tag name (everything before # or .)
   const tagMatch = cleanSegment.match(/^([a-zA-Z][a-zA-Z0-9]*)/);
-  const tagName = tagMatch ? tagMatch[1] : 'div';
-  
+  const tagName = tagMatch ? tagMatch[1] : "div";
+
   // Extract ID (after # and before .)
   const idMatch = cleanSegment.match(/#([^.]+)/);
   const id = idMatch ? idMatch[1] : undefined;
-  
+
   // Extract classes (after .)
   const classMatches = cleanSegment.match(/\.([^#.]+)/g);
-  const classes = classMatches ? classMatches.map(cls => cls.substring(1)) : [];
-  
+  const classes = classMatches ? classMatches.map((cls) => cls.substring(1)) : [];
+
   return { tagName, id, classes };
 }
 
@@ -280,16 +280,16 @@ function parseSegmentForParentNode(segment: string): {
  */
 function createParentNodeName(tagName: string, id?: string, classes: string[] = []): string {
   let name = tagName;
-  
+
   const cleanId = cleanElementId(id);
   if (cleanId) {
     name += `#${cleanId}`;
   }
-  
+
   if (classes.length > 0) {
-    name += `.${classes.join('.')}`;
+    name += `.${classes.join(".")}`;
   }
-  
+
   return name;
 }
 
@@ -300,9 +300,9 @@ function sortTreeChildren(node: DOMTreeNode): void {
   if (node.children.length > 0) {
     // Sort children by name for consistent ordering
     node.children.sort((a, b) => a.name.localeCompare(b.name));
-    
+
     // Recursively sort grandchildren
-    node.children.forEach(child => sortTreeChildren(child));
+    node.children.forEach((child) => sortTreeChildren(child));
   }
 }
 
@@ -313,14 +313,14 @@ export function findElementInTree(root: DOMTreeNode, targetPath: string): DOMTre
   if (root.path === targetPath) {
     return root;
   }
-  
+
   for (const child of root.children) {
     const result = findElementInTree(child, targetPath);
     if (result) {
       return result;
     }
   }
-  
+
   return null;
 }
 
@@ -329,14 +329,15 @@ export function findElementInTree(root: DOMTreeNode, targetPath: string): DOMTre
  */
 export function flattenTree(root: DOMTreeNode): DOMTreeNode[] {
   const result: DOMTreeNode[] = [];
-  
+
   function traverse(node: DOMTreeNode) {
-    if (node.path !== "") { // Skip root
+    if (node.path !== "") {
+      // Skip root
       result.push(node);
     }
     node.children.forEach(traverse);
   }
-  
+
   traverse(root);
   return result;
 }

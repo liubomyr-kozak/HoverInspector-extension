@@ -25,8 +25,9 @@ import {
   isDefaultValue,
   createElementId,
 } from "../types";
-import { PERFORMANCE_LIMITS } from "../constants";
-import { getDefaultStylesForTag } from "./defaultStyles";
+import { PERFORMANCE_LIMITS } from '../constants';
+import { getDefaultStylesForTag } from './defaultStyles';
+import { generateXPathVariants } from './xpathGenerator';
 
 // No baseline cache needed when diffing strictly against UA defaults
 
@@ -171,10 +172,11 @@ const buildSnapshotNode = (
   const tag = element.tagName.toLowerCase();
   const index = getElementIndex(element);
   const elementPath = [...path, `${tag}[${index}]`];
-  const id = createElementId(element, index);
+  const key = createElementId(element, index);
 
   // Отримуємо основні властивості
-  const elementId = element.id || undefined;
+  const id = element.id || undefined;
+  const xpath = generateXPathVariants(element);
   const classes = Array.from(element.classList);
   const attributes: Record<string, string> = {};
 
@@ -235,10 +237,11 @@ const buildSnapshotNode = (
   }
 
   return {
-    id,
+    key,
     path: elementPath,
     tag,
-    elementId,
+    id,
+    xpath,
     classes,
     attributes,
     bounds,

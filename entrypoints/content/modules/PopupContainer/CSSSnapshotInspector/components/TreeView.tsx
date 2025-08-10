@@ -79,7 +79,7 @@ const TreeNode = memo<TreeNodeProps>(({ node, comparison, selectedPath, onSelect
           </div>
         )}
         <span>{node.tag}</span>
-        {node.elementId && <span style={{ color: "#666" }}>#{node.elementId}</span>}
+        {node.id && <span style={{ color: "#666" }}>#{node.id}</span>}
         {node.classes.length > 0 && <span style={{ color: "#999" }}>.{node.classes.join(".")}</span>}
         {renderChangeIndicator(changeType)}
       </div>
