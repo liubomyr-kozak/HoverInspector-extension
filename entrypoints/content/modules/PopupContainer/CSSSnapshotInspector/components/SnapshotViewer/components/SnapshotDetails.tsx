@@ -43,8 +43,6 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
     return buildDOMTree(stylesData);
   }, [snapshot]);
 
-  console.log("😎😎😎 ::SnapshotDetails -> tree", tree);
-
   if (!tree) {
     return (
       <div

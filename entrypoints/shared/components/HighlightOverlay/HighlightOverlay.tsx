@@ -10,11 +10,11 @@ export default function HighlightOverlay() {
   // Створюємо overlay
   useEffect(() => {
     const overlay = document.createElement("div");
-  overlay.id = "hover-inspector-highlight-node"; // Assign a stable id to the overlay
+    overlay.id = "hover-inspector-highlight-node"; // Assign a stable id to the overlay
     overlayRef.current = overlay;
     Object.assign(overlay.style, {
       position: "absolute",
-      zIndex: 999999,
+      zIndex: 2147483647,
       pointerEvents: "none",
       border: "2px solid red",
       backgroundColor: "rgba(255, 0, 0, 0.1)",

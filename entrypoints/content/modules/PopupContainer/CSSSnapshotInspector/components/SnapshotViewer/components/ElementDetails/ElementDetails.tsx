@@ -1,6 +1,5 @@
 import React from "react";
 import { ElementDetailsProps } from "../../types";
-import { ElementHeader } from "./ElementHeader";
 import { ElementSelector } from "./ElementSelector";
 import { ElementProperties } from "./ElementProperties";
 import { StyleProperties } from "./StyleProperties";
@@ -24,7 +23,6 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
 
   return (
     <>
-      <ElementHeader selectedElementData={selectedElementData} />
       <ElementSelector selectedElementData={selectedElementData} />
       <ElementProperties selectedElementData={selectedElementData} />
       <StyleProperties selectedElementStyles={selectedElementStyles} />

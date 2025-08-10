@@ -15,6 +15,7 @@ import { createCSSSnapshot } from "./utils/snapshotBuilder";
 import { Header } from "./components/Header";
 import { ViewMode } from "./constants";
 import { CSSSnapshot } from "./types";
+import { ElementDetailsPopup } from "./components/ElementDetailsPopup";
 
 // Styled Components
 const MainContainer = styled.div`
@@ -234,7 +235,7 @@ export const CSSSnapshotInspector: React.FC = () => {
 
       // Start comparison view
       startComparison();
-      
+
       console.log("Comparison started successfully");
     } catch (error) {
       console.error("Failed to create current page snapshot:", error);
@@ -369,6 +370,7 @@ export const CSSSnapshotInspector: React.FC = () => {
 
   return (
     <MainContainer>
+      <ElementDetailsPopup />
       {/* Modern Header Component with enhanced background */}
       <StickyHeader>
         <Header

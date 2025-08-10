@@ -387,9 +387,9 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                       <MenuItem
                         onClick={() => {
                           setMenuOpenId(null);
-                          if (confirm("Are you sure you want to delete this snapshot?")) {
-                            onDelete(snapshot.id);
-                          }
+                          // if (confirm("Are you sure you want to delete this snapshot?")) {
+                          onDelete(snapshot.id);
+                          // }
                         }}
                       >
                         <IconTrash size={16} /> Delete

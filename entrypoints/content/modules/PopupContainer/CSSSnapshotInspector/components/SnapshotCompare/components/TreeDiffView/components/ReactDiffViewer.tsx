@@ -7,6 +7,7 @@ import { useEmotionShadowDOMSync } from "./useEmotionShadowDOMSync";
 import { DiffMethod } from "@entrypoints/shared/components/react-diff-viewer-continued/src/compute-lines";
 import DiffViewer, { LineData } from "@entrypoints/shared/components/react-diff-viewer-continued/src";
 import { setXPath } from "@entrypoints/content/store/highlight/highlightSlice";
+import { openElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 import { AppDispatch } from "@entrypoints/content/store/createStore";
 
 interface ReactDiffViewerProps {
@@ -246,6 +247,31 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
     console.log("🌟🌟🌟 ::handleLineClick -> lineId", lineId);
     console.log("🌟🌟🌟 ::handleLineClick -> metadata", metadata);
 
+    // Extract data from metadata if available and open details popup
+    if (metadata) {
+      const attrs = metadata.attributes || {};
+      const styles = metadata.styles || {};
+      const inlineStyles = metadata.inlineStyles || {};
+      const bounds = metadata.bounds;
+      const classes = metadata.classes || [];
+      const tagName = metadata.tagName;
+      const title = metadata.displayName || (tagName ? `<${tagName}>` : undefined);
+
+      dispatch(
+        openElementDetails({
+          isOpen: true,
+          title,
+          tagName,
+          id: metadata.id,
+          classes,
+          attributes: attrs,
+          styles,
+          inlineStyles,
+          bounds,
+        }),
+      );
+    }
+
     // Extract xpath from metadata if available
     if (metadata && metadata.xpath) {
       // If xpath is a string, convert CSS path to XPath
@@ -257,8 +283,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
         metadata.xpath.withAttributes;
 
       if (xpathToUse) {
-        console.log("Setting XPath for highlight:", xpathToUse);
-
+  console.log("Setting XPath for highlight:", xpathToUse);
         dispatch(setXPath(xpathToUse));
       } else {
         console.warn("No valid XPath found in metadata:", metadata.xpath);
