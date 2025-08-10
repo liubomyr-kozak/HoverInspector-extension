@@ -309,43 +309,6 @@ export const ElementProperties: React.FC<ElementPropertiesProps> = ({ selectedEl
           </div>
         </div>
       )}
-
-      {/* Path */}
-      <div
-        style={{
-          marginBottom: "10px",
-          backgroundColor: "#f1f5f9",
-          padding: "8px 10px",
-          borderRadius: "6px",
-          border: "1px solid #cbd5e1",
-        }}
-      >
-        <SectionHeader
-          title="Path"
-          icon={<IconSitemap size={14} color="#475569" />}
-          content={selectedElementData.path}
-          description="DOM path showing the element's position in the document hierarchy"
-        />
-        <div
-          style={{
-            paddingLeft: "12px",
-            fontFamily: "monospace",
-            wordBreak: "break-all",
-            backgroundColor: "#e2e8f0",
-            padding: "6px 8px",
-            borderRadius: "4px",
-            border: "1px solid #cbd5e1",
-            fontSize: "12px",
-            lineHeight: "1.4",
-            cursor: "pointer",
-            color: "#334155",
-          }}
-          onClick={() => copyToClipboard(selectedElementData.path)}
-          title="Click to copy path"
-        >
-          {selectedElementData.path}
-        </div>
-      </div>
     </div>
   );
 };

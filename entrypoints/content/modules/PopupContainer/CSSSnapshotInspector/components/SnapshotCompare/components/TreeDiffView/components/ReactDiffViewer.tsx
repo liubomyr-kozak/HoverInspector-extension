@@ -257,6 +257,10 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
       const tagName = metadata.tagName;
       const title = metadata.displayName || (tagName ? `<${tagName}>` : undefined);
 
+      // Determine an initial XPath to use and variants if present
+      const variants = metadata.xpath as any | undefined;
+      const initialXPath = variants?.optimized || variants?.absolute || variants?.withId || variants?.withClasses || variants?.withAttributes || undefined;
+
       dispatch(
         openElementDetails({
           isOpen: true,
@@ -268,12 +272,17 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
           styles,
           inlineStyles,
           bounds,
+          xpath: initialXPath,
+          xpathVariants: variants,
+          selectedXPathKey: variants
+            ? (variants.optimized ? "optimized" : variants.absolute ? "absolute" : variants.withId ? "withId" : variants.withClasses ? "withClasses" : "withAttributes")
+            : undefined,
         }),
       );
     }
 
     // Extract xpath from metadata if available
-    if (metadata && metadata.xpath) {
+  if (metadata && metadata.xpath) {
       // If xpath is a string, convert CSS path to XPath
       const xpathToUse =
         metadata.xpath.optimized ||
@@ -284,7 +293,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
 
       if (xpathToUse) {
   console.log("Setting XPath for highlight:", xpathToUse);
-        dispatch(setXPath(xpathToUse));
+  dispatch(setXPath(xpathToUse));
       } else {
         console.warn("No valid XPath found in metadata:", metadata.xpath);
       }

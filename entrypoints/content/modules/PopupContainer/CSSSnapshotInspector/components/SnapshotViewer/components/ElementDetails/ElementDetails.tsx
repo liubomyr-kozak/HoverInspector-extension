@@ -4,6 +4,7 @@ import { ElementSelector } from "./ElementSelector";
 import { ElementProperties } from "./ElementProperties";
 import { StyleProperties } from "./StyleProperties";
 import { EmptyState } from "../../../../CSSSnapshotInspector.styled";
+import { ElementXPathSelector } from "./ElementXPathSelector";
 
 /**
  * Main component for displaying element details
@@ -25,6 +26,7 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
     <>
       <ElementSelector selectedElementData={selectedElementData} />
       <ElementProperties selectedElementData={selectedElementData} />
+      <ElementXPathSelector />
       <StyleProperties selectedElementStyles={selectedElementStyles} />
     </>
   );

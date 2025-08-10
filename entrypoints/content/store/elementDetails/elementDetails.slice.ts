@@ -1,10 +1,15 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { XPathVariants } from "../../modules/PopupContainer/CSSSnapshotInspector/types";
 
 export interface ElementDetailsState {
   isOpen: boolean;
   title?: string;
   path?: string;
   xpath?: string;
+  /** Available XPath variants for this element */
+  xpathVariants?: XPathVariants;
+  /** Currently selected XPath key from variants */
+  selectedXPathKey?: keyof XPathVariants;
   tagName?: string;
   id?: string | null;
   classes?: string[];

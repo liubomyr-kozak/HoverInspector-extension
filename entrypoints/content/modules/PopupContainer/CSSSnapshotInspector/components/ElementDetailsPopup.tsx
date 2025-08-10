@@ -17,6 +17,7 @@ export const ElementDetailsPopup: React.FC = () => {
     attributes: state.attributes || {},
     bounds: state.bounds,
     inlineStyles: state.inlineStyles || {},
+  xpath: state.xpath,
   } as any;
 
   const selectedElementStyles = Object.entries(state.styles || {});

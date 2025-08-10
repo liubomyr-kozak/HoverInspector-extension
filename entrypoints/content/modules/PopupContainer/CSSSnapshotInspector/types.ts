@@ -33,8 +33,8 @@ export interface BaseElementNode {
   path?: readonly string[];
   /** Element path as a single string with separators (tree-native) */
   pathString?: string;
-  /** Optional xpath variants */
-  xpath?: XPathVariants;
+  /** XPath variants for element identification (mandatory in snapshots) */
+  xpath?: XPathVariants; // kept optional for legacy structures, but builder always sets it
   /** Optional fast key */
   key?: string;
 }

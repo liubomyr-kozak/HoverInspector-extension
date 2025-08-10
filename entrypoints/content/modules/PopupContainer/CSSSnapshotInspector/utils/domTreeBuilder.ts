@@ -3,7 +3,7 @@
  * Pure utility for creating hierarchical DOM tree structure with all needed information
  * Used for both single snapshot view and comparison logic
  */
-import { BaseElementNode } from "../types";
+import { BaseElementNode, XPathVariants } from "../types";
 
 export interface DOMTreeNode extends BaseElementNode {
   /** Unique path to this element as a string (e.g., body[0] > div[1]) */
@@ -36,6 +36,8 @@ export interface ElementStyleData {
   };
   /** Text content for leaf nodes */
   text?: string;
+  /** XPath variants for element identification (if provided by snapshot) */
+  xpath?: XPathVariants;
 }
 
 /**
