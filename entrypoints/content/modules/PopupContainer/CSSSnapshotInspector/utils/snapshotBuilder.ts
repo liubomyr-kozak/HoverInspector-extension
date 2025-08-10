@@ -42,6 +42,12 @@ const shouldSkipElement = (element: Element): boolean => {
     return true;
   }
 
+  // Skip our own highlight overlay node
+  if ((element as HTMLElement).id === "hover-inspector-highlight-node" ||
+      (element as HTMLElement).classList?.contains("hover-inspector-highlight-node")) {
+    return true;
+  }
+
   // Пропускаємо невидимі елементи з нульовими розмірами
   const rect = element.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) {

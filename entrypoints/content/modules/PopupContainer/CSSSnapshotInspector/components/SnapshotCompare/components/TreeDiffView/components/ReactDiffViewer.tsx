@@ -258,7 +258,6 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
 
       if (xpathToUse) {
         console.log("Setting XPath for highlight:", xpathToUse);
-        debugger;
 
         dispatch(setXPath(xpathToUse));
       } else {
