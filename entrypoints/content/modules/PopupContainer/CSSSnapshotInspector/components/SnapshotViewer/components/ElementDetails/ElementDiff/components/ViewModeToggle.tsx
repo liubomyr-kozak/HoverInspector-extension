@@ -1,5 +1,5 @@
 import React from "react";
-import { IconEye, IconCode } from "@tabler/icons-react";
+import { IconEye, IconCode, IconList } from "@tabler/icons-react";
 import type { ViewMode } from "../hooks/useViewMode";
 
 interface ViewModeToggleProps {
@@ -31,6 +31,15 @@ export const ViewModeToggle: React.FC<ViewModeToggleProps> = ({ mode, onChange }
       >
         <IconCode size={12} />
         Class View
+      </button>
+      <button
+        onClick={() => onChange("grouped")}
+        className={`${buttonBaseClass} ${
+          mode === "grouped" ? activeClass : inactiveClass
+        }`}
+      >
+        <IconList size={12} />
+        Grouped
       </button>
     </div>
   );

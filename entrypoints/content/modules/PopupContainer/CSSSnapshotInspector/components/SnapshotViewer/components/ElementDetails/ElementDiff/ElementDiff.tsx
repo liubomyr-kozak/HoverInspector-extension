@@ -9,8 +9,8 @@ import { useElementDiffSearch } from "./hooks/useElementDiffSearch";
 import { useChildStyles } from "./hooks/useChildStyles";
 
 // Components
-import { ComputedListView } from "./components/ComputedListView";
 import { ClassView } from "./components/ClassView";
+import { GroupedDiffView } from "./components/GroupedDiffView";
 import { SearchBar } from "./components/SearchBar";
 import { ViewModeToggle } from "./components/ViewModeToggle";
 
@@ -54,7 +54,6 @@ const HeaderTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 // --- Main Component ------------------------------------------------------------------------------------------------
 
 export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right }) => {
-  const { viewMode, setViewMode } = useViewMode("computed");
   const dispatch = useDispatch();
 
   const leftData = diffData?.leftData || { styles: left?.styles || {} };
@@ -97,6 +96,8 @@ export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right 
     );
   }
 
+  console.log("🚀🚀🚀 ::ElementDiff -> activeDiff", activeDiff);
+
   return (
     <DiffContainer data-diff-popup>
       <HeaderContainer>
@@ -130,16 +131,12 @@ export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right 
             )}
           </div>
         </HeaderTitle>
-        <ViewModeToggle mode={viewMode} onChange={setViewMode} />
       </HeaderContainer>
 
       <SearchBar search={search} onSearchChange={setSearch} onToggle={toggleSearch} show={showSearch} />
 
-      {viewMode === "computed" ? (
-        <ComputedListView diff={activeDiff} search={search} />
-      ) : (
-        <ClassView diff={activeDiff} search={search} leftNode={left || null} rightNode={right || null} />
-      )}
+      <GroupedDiffView diff={activeDiff} search={search} />
+      <ClassView diff={activeDiff} search={search} leftNode={left || null} rightNode={right || null} />
     </DiffContainer>
   );
 };

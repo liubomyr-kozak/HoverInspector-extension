@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 import svgr from "vite-plugin-svgr";
-import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   // Development mode with source maps
@@ -39,7 +38,7 @@ export default defineConfig({
       Browser: resolve(__dirname, ".standalone/polyfills/browser.ts"),
     },
   },
-  plugins: [react(), tailwindcss(), svgr()],
+  plugins: [react(), svgr()],
   server: {
     port: 4400,
     open: true,

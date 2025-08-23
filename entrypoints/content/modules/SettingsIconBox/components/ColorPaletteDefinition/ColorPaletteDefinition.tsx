@@ -236,21 +236,21 @@ export const ColorPaletteDefinition: React.FC = () => {
         title="Colors"
         placeholder="Paste color values here (e.g., #ff0000 rgb(255,0,0) blue)..."
         currentValues={[
-          ...colorPalette.primary.map(c => c.color),
-          ...colorPalette.secondary.map(c => c.color),
-          ...colorPalette.tertiary.map(c => c.color),
-          ...colorPalette.neutral.map(c => c.color),
-          ...colorPalette.element.map(c => c.color),
-          ...colorPalette.text.map(c => c.color),
-          ...colorPalette.border.map(c => c.color),
+          ...colorPalette.primary.map((c) => c.color),
+          ...colorPalette.secondary.map((c) => c.color),
+          ...colorPalette.tertiary.map((c) => c.color),
+          ...colorPalette.neutral.map((c) => c.color),
+          ...colorPalette.element.map((c) => c.color),
+          ...colorPalette.text.map((c) => c.color),
+          ...colorPalette.border.map((c) => c.color),
         ]}
         parseValue={(value) => {
           // Normalize color values for comparison
           const trimmed = value.trim().toLowerCase();
           // Handle different color formats
-          if (trimmed.startsWith('#')) return trimmed;
-          if (trimmed.startsWith('rgb')) return trimmed;
-          if (trimmed.startsWith('hsl')) return trimmed;
+          if (trimmed.startsWith("#")) return trimmed;
+          if (trimmed.startsWith("rgb")) return trimmed;
+          if (trimmed.startsWith("hsl")) return trimmed;
           // For named colors, return as-is
           return trimmed;
         }}

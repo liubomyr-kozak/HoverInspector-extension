@@ -17,7 +17,7 @@ export const ClassView: React.FC<ClassViewProps> = ({ diff, search, leftNode, ri
   const cssBlocks = generateClassCSS(leftNode, rightNode);
 
   // Apply search filter
-  const displayBlocks = search.trim() 
+  const displayBlocks = search.trim()
     ? {
         left: cssBlocks.left.toLowerCase().includes(search.toLowerCase()) ? cssBlocks.left : "",
         right: cssBlocks.right.toLowerCase().includes(search.toLowerCase()) ? cssBlocks.right : "",

@@ -147,20 +147,27 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
     if (isRegex) {
       try {
         new RegExp(pattern);
-        // Test if the regex matches the current URL
-        const currentUrl = window.location.hostname;
+        // Test if the regex matches the current URL (full URL for regex patterns)
+        const currentUrl = window.location.href;
         const regex = new RegExp(pattern);
         if (!regex.test(currentUrl)) {
-          return `Regex pattern doesn't match current domain (${currentUrl})`;
+          return `Regex pattern doesn't match current URL (${currentUrl})`;
         }
       } catch (error) {
         return 'Invalid regular expression syntax';
       }
     } else {
       // Simple domain validation for non-regex patterns
-      const currentUrl = window.location.hostname;
-      if (!currentUrl.includes(pattern) && !pattern.includes(currentUrl)) {
-        return `Domain pattern doesn't match current URL (${currentUrl})`;
+      // Check against both hostname and full URL to support various use cases
+      const currentHostname = window.location.hostname;
+      const currentUrl = window.location.href;
+      
+      // Pattern should match either hostname or be contained in the full URL
+      const matchesHostname = currentHostname.includes(pattern) || pattern.includes(currentHostname);
+      const matchesFullUrl = currentUrl.includes(pattern) || pattern.includes(currentUrl);
+      
+      if (!matchesHostname && !matchesFullUrl) {
+        return `Domain pattern doesn't match current URL (${currentHostname})`;
       }
     }
     
