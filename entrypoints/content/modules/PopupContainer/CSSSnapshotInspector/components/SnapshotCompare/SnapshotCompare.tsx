@@ -5,16 +5,19 @@ import { ReactDiffViewer } from "./components/TreeDiffView/components/ReactDiffV
 import { SnapshotCompareProps } from "./types";
 import { getStylesFromSnapshot } from "./utils";
 import { buildDOMTree } from "../../utils/domTreeBuilder";
+import { isDevelopment } from "@entrypoints/shared/helpers.ts";
 
 // Styled Components
-const CompareContainer = styled.div`
+const CompareContainer = styled.div.attrs({
+  id: isDevelopment() ? "hover-inspector-snapshot-compare-container" : "",
+})`
   background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
   padding: 20px;
-  margin: 16px;
   backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(229, 231, 235, 0.6);
+  height: 100%;
 `;
 
 const BackButton = styled.button`

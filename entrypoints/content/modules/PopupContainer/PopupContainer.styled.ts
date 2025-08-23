@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { isDevelopment } from "@entrypoints/shared/helpers.ts";
 
 export const PopupWrapper = styled.div<{ $x: number; $y: number }>`
   top: ${({ $y }) => $y}px;
@@ -153,11 +154,14 @@ export const FeatureTitle = styled.div`
   width: 100%;
 `;
 
-export const FeatureContainer = styled.div`
+export const FeatureContainer = styled.div.attrs({
+  id: isDevelopment() ? "hover-inspector-feature-container" : "",
+})`
   display: flex;
   align-items: flex-start;
   gap: 35px;
   flex-direction: column;
+  height: 100%;
 `;
 
 export const HeaderContainer = styled.div`

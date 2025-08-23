@@ -39,6 +39,10 @@ export const ElementDetailsPopup: React.FC = () => {
     };
 
     loadPosition();
+
+    return () => {
+      dispatch(closeElementDetails());
+    };
   }, []);
 
   // Handle position/size changes

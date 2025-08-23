@@ -221,14 +221,14 @@ const InternalDiffView = <T extends unknown>(
     <DiffViewContext.Provider value={value}>
       <LineClickContext.Provider value={lineClickValue}>
         <div
-          className="diff-tailwindcss-wrapper"
+          className="diff-tailwindcss-wrapper h-full"
           data-component="git-diff-view"
           data-theme={diffFile._getTheme() || "light"}
           data-highlighter={diffFile._getHighlighterName()}
           ref={wrapperRef}
         >
           <div
-            className="diff-style-root"
+            className="diff-style-root h-full"
             style={{
               // @ts-ignore
               [diffFontSizeName]: diffViewFontSize + "px",
@@ -236,7 +236,7 @@ const InternalDiffView = <T extends unknown>(
           >
             <div
               id={isMounted ? `diff-root${diffFileId}` : undefined}
-              className={"diff-view-wrapper" + (className ? ` ${className}` : "")}
+              className={"h-full diff-view-wrapper" + (className ? ` ${className}` : "")}
               style={style}
             >
               {diffViewMode & DiffModeEnum.Split ? (

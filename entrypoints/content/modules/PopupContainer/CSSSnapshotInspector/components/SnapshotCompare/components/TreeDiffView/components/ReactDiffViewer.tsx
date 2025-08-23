@@ -497,21 +497,16 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   };
 
   return (
-    // <CacheProvider value={cache}>
-    <div>
-      {/* Now using the implemented onLineClick functionality */}
-      <DiffViewer
-        oldValue={oldValue.map((line) => line.text).join("\n")}
-        newValue={newValue.map((line) => line.text).join("\n")}
-        splitView={splitView}
-        useDarkTheme={false}
-        leftTitle={splitView ? "Snapshot A" : undefined}
-        rightTitle={splitView ? "Snapshot B" : undefined}
-        showDiffOnly={showDiffOnly}
-        hideLineNumbers={hideLineNumbers}
-        onLineClick={handleDiffViewerLineClick}
-      />
-    </div>
-    // </CacheProvider>
+    <DiffViewer
+      oldValue={oldValue.map((line) => line.text).join("\n")}
+      newValue={newValue.map((line) => line.text).join("\n")}
+      splitView={splitView}
+      useDarkTheme={false}
+      leftTitle={splitView ? "Snapshot A" : undefined}
+      rightTitle={splitView ? "Snapshot B" : undefined}
+      showDiffOnly={showDiffOnly}
+      hideLineNumbers={hideLineNumbers}
+      onLineClick={handleDiffViewerLineClick}
+    />
   );
 };

@@ -10,7 +10,6 @@ import { LauncherManager } from "./modules/LauncherManager/LauncherManager.tsx";
 
 import { FloatingPanelProvider } from "@entrypoints/shared/components/FloatingPanel/FloatingPanelProvider";
 
-import "./app.css";
 import { useSelector, useDispatch } from "react-redux";
 import {
   loadScenariosWatcher,
@@ -25,6 +24,8 @@ import NotificationManager from "@entrypoints/content/modules/NotificationManage
 import { TriggerScenarioEvaluator } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/TriggerForm/TriggerScenarioEvaluator.tsx";
 import { ScheduleMonitor } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScheduleMonitor.tsx";
 import { HighlightOverlayProvider } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
+
+// import appStyles from "./app.css?inline";
 
 export const App = ({ shadowRoot }) => {
   const dispatch = useDispatch();
@@ -59,6 +60,7 @@ export const App = ({ shadowRoot }) => {
     <StyleSheetManager target={shadowRoot}>
       <StyleProvider container={shadowRoot}>
         <EmotionShadowRoot shadowRoot={shadowRoot}>
+          {/*<style>{appStyles}</style>*/}
           <AppController>
             <HighlightOverlayProvider>
               <FloatingPanelProvider>

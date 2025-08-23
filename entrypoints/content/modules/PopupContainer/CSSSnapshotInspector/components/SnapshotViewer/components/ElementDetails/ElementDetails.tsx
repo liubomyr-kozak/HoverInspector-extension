@@ -1,10 +1,6 @@
 import React from "react";
 import { ElementDetailsProps } from "../../types";
-import { ElementSelector } from "./ElementSelector";
-import { ElementProperties } from "./ElementProperties";
-import { StyleProperties } from "./StyleProperties";
 import { EmptyState } from "../../../../CSSSnapshotInspector.styled";
-import { ElementXPathSelector } from "./ElementXPathSelector";
 import { ElementDiff } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiff.tsx";
 import { useSelector } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore.ts";
@@ -29,8 +25,6 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
 
   return (
     <>
-      {/*// this is depricated do not touch*/}
-      {/*<ElementSelector selectedElementData={selectedElementData} />*/}
       {/*{state.styleDiffData || state.compareLeftData || state.compareRightData ? (*/}
       <ElementDiff
         diffData={state.styleDiffData}
@@ -40,12 +34,10 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
       {/*) : null}*/}
 
       {/*// this is depricated do not touch*/}
-      {/*<ElementProperties selectedElementData={selectedElementData} />*/}
       {/*// this is depricated do not touch*/}
       {/*<ElementXPathSelector />*/}
       {/**/}
       {/*// this is depricated do not touch*/}
-      {/*<StyleProperties selectedElementStyles={selectedElementStyles} />*/}
     </>
   );
 };

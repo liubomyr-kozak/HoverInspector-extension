@@ -4,9 +4,8 @@ import { Provider } from "react-redux";
 import { store } from "@entrypoints/content/store/createStore.ts";
 import { App as ContentApp } from "@entrypoints/content/app.tsx";
 
-import "../entrypoints/content/app.css";
 import "../entrypoints/content/style.scss";
-import "./app.css";
+import "./app-src.css";
 
 export const App = ({ shadowRoot }) => {
   return (

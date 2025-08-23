@@ -53,8 +53,6 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
   // Other props are ignored for now in this initial implementation
   ...otherProps
 }) => {
-
-
   // Inject CSS into shadow DOM for proper styling
   const diffFile = useMemo(() => {
     try {
@@ -125,7 +123,7 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
   }
 
   return (
-    <>
+    <div className="h-full">
       <style>{diffViewCss}</style>
       <DiffView
         diffFile={diffFile}
@@ -134,7 +132,6 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
         diffViewHighlight={true}
         className="diff-viewer-wrapper"
         onLineClick={(lineNumber: number, side: SplitSide, event: React.MouseEvent<HTMLElement>) => {
-
           if (onLineClick) {
             // Convert to the expected format for compatibility
             const lineId = `${side === SplitSide.old ? "L" : "R"}${lineNumber}`;
@@ -143,7 +140,7 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
           }
         }}
       />
-    </>
+    </div>
   );
 };
 
