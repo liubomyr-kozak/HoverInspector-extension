@@ -12,7 +12,7 @@ import {
 import { isProduction } from "@entrypoints/shared/helpers";
 
 // import {onMessage} from "webext-bridge/content-script";
-import "./style.scss";
+import "./style.css";
 
 import { onMessage } from "@entrypoints/features/extension/messaging.ts";
 import { store } from "@entrypoints/content/store/createStore.ts";
@@ -64,7 +64,6 @@ export default defineContentScript({
 
     // Script injection message handlers
     onMessage(DEV_SCRIPT_INJECTED, (message) => {
-
       // In development mode, inject script via DOM
       if (message.data?.downloadUrl) {
         // Use the utility function to inject the script
@@ -110,7 +109,6 @@ export default defineContentScript({
             // window.dispatchEvent(new Event(HOVER_INSPECTOR_UPDATE_GLOBAL_ON_PAGE_FOCUS));
             // window.removeEventListener(HOVER_INSPECTOR_REINITAPP, checkAppInit);
           }
-
 
           if (!isProduction()) return;
           if (browser?.runtime?.id) return;

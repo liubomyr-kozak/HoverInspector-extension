@@ -1,4 +1,6 @@
-@use "tailwindcss";
+@import "tailwindcss";
+
+@tailwind utilities;
 
 .hover-inspector-box-box-hover {
   background: #4ba5ff;
@@ -12,52 +14,52 @@
   box-shadow: 0 0 0 0.3px #ff5e2f;
   position: fixed;
   z-index: 1;
+}
 
-  &.hover-inspector-left:after {
-    position: fixed;
-    top: 0;
-    height: 100%;
-    width: 0;
-    border: 0.1px dashed #ff5e2f;
-    box-shadow: 0 0 0 0.2px #ff5e2f;
-    display: block;
-    content: "";
-  }
+.hover-inspector-box-box-selected.hover-inspector-left:after {
+  position: fixed;
+  top: 0;
+  height: 100%;
+  width: 0;
+  border: 0.1px dashed #ff5e2f;
+  box-shadow: 0 0 0 0.2px #ff5e2f;
+  display: block;
+  content: "";
+}
 
-  &.hover-inspector-right:after {
-    position: fixed;
-    top: 0;
-    height: 100%;
-    width: 0;
-    border: 0.1px dashed #ff5e2f;
-    box-shadow: 0 0 0 0.2px #ff5e2f;
-    display: block;
-    content: "";
-  }
+.hover-inspector-box-box-selected.hover-inspector-right:after {
+  position: fixed;
+  top: 0;
+  height: 100%;
+  width: 0;
+  border: 0.1px dashed #ff5e2f;
+  box-shadow: 0 0 0 0.2px #ff5e2f;
+  display: block;
+  content: "";
+}
 
-  &.hover-inspector-top:after {
-    position: fixed;
-    left: 0;
-    top: initial;
-    height: 0;
-    width: 100%;
-    border: 0.1px dashed #ff5e2f;
-    box-shadow: 0 0 0 0.2px #ff5e2f;
-    display: block;
-    content: "";
-  }
+.hover-inspector-box-box-selected.hover-inspector-top:after {
+  position: fixed;
+  left: 0;
+  top: initial;
+  height: 0;
+  width: 100%;
+  border: 0.1px dashed #ff5e2f;
+  box-shadow: 0 0 0 0.2px #ff5e2f;
+  display: block;
+  content: "";
+}
 
-  &.hover-inspector-bottom:after {
-    position: fixed;
-    left: 0;
-    top: initial;
-    height: 0;
-    width: 100%;
-    border: 0.1px dashed #ff5e2f;
-    box-shadow: 0 0 0 0.2px #ff5e2f;
-    display: block;
-    content: "";
-  }
+.hover-inspector-box-box-selected.hover-inspector-bottom:after {
+  position: fixed;
+  left: 0;
+  top: initial;
+  height: 0;
+  width: 100%;
+  border: 0.1px dashed #ff5e2f;
+  box-shadow: 0 0 0 0.2px #ff5e2f;
+  display: block;
+  content: "";
 }
 
 [class^="hover-inspector-distance-line"] {
@@ -117,7 +119,6 @@
   font-family: Helvetica, Arial, sans-serif;
 }
 
-//.hover-inspector-box-label,
 .hover-inspector-box-box-hover,
 .hover-inspector-box-box-selected,
 .hover-inspector-tooltip-padding,
@@ -143,8 +144,6 @@
   border-style: solid;
 }
 
-.hover-inspector {
-  & > * {
-    box-sizing: initial;
-  }
+.hover-inspector > * {
+  box-sizing: initial;
 }

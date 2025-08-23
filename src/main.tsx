@@ -3,8 +3,9 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "@/src/app.tsx";
 // Import CSS directly in main.tsx
-import "../entrypoints/content/style.scss";
+import "@entrypoints/content/style.css";
 
+// this need only for dev mode, this is not a common practice for production
 class HoverInspector extends HTMLElement {
   constructor() {
     super();
@@ -55,7 +56,7 @@ class HoverInspector extends HTMLElement {
 
     // Create link elements for CSS files
     this.injectCssLink("/src/app-src.css", shadow);
-    this.injectCssLink("/entrypoints/content/style.scss", shadow);
+    this.injectCssLink("/entrypoints/content/style.css", shadow);
     this.injectCssLink("/entrypoints/shared/components/ModalDraggable/index.css", shadow);
   }
 
