@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Checkbox, Divider, Input, Radio, Select, Switch, Tooltip } from "antd";
-import { IconWorldWww, IconRegex } from "@tabler/icons-react";
+import { IconWorldWww, IconRegex, IconCheck } from "@tabler/icons-react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -141,7 +141,7 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
   }));
 
   // Domain validation function
-  const validateDomainPattern = (pattern: string, isRegex: boolean): string | null => {
+  const validateDomainPattern = (pattern: string, isRegex: boolean, exactMatch: boolean = false): string | null => {
     if (!pattern) return null;
     
     if (isRegex) {
@@ -157,17 +157,33 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
         return 'Invalid regular expression syntax';
       }
     } else {
-      // Simple domain validation for non-regex patterns
-      // Check against both hostname and full URL to support various use cases
       const currentHostname = window.location.hostname;
       const currentUrl = window.location.href;
+      const currentPort = window.location.port;
       
-      // Pattern should match either hostname or be contained in the full URL
-      const matchesHostname = currentHostname.includes(pattern) || pattern.includes(currentHostname);
-      const matchesFullUrl = currentUrl.includes(pattern) || pattern.includes(currentUrl);
-      
-      if (!matchesHostname && !matchesFullUrl) {
-        return `Domain pattern doesn't match current URL (${currentHostname})`;
+      if (exactMatch) {
+        // For exact match, compare against specific URL components
+        const hostnameWithPort = currentPort ? `${currentHostname}:${currentPort}` : currentHostname;
+        const baseUrl = `${window.location.protocol}//${hostnameWithPort}`;
+        
+        // Check exact matches against different URL formats
+        const exactMatches = 
+          pattern === currentHostname ||                    // hostname only
+          pattern === hostnameWithPort ||                   // hostname:port
+          pattern === baseUrl ||                            // protocol://hostname:port
+          pattern === currentUrl;                           // full URL with path
+        
+        if (!exactMatches) {
+          return `Domain pattern doesn't exactly match current URL (${currentHostname})`;
+        }
+      } else {
+        // Non-exact match: use substring matching (original behavior)
+        const matchesHostname = currentHostname.includes(pattern) || pattern.includes(currentHostname);
+        const matchesFullUrl = currentUrl.includes(pattern) || pattern.includes(currentUrl);
+        
+        if (!matchesHostname && !matchesFullUrl) {
+          return `Domain pattern doesn't match current URL (${currentHostname})`;
+        }
       }
     }
     
@@ -186,14 +202,17 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
     // Validate current pattern with new regex setting
     const pattern = currentCondition.domainPattern;
     if (pattern) {
-      const error = validateDomainPattern(pattern, checked);
+      const exactMatch = currentCondition.exactMatch || false;
+      const error = validateDomainPattern(pattern, checked, exactMatch);
       setDomainValidationError(error);
     }
   };
 
   // Handler for domain pattern change
   const handleDomainPatternChange = (value: string) => {
-    const error = validateDomainPattern(value, useRegex);
+    const currentCondition = getValues("condition") || {};
+    const exactMatch = currentCondition.exactMatch || false;
+    const error = validateDomainPattern(value, useRegex, exactMatch);
     setDomainValidationError(error);
   };
 
@@ -210,7 +229,8 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
       });
       
       // Validate the new pattern
-      const error = validateDomainPattern(domain, useRegex);
+      const exactMatch = currentCondition.exactMatch || false;
+      const error = validateDomainPattern(domain, useRegex, exactMatch);
       setDomainValidationError(error);
     } catch (error) {
       console.error("Failed to get current URL:", error);
@@ -354,6 +374,7 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
             />
             {errors.condition?.domainPattern && <div style={{ color: '#ff4d4f', fontSize: '14px', marginTop: '4px' }}>{errors.condition.domainPattern.message}</div>}
             {domainValidationError && <div style={{ color: '#fa8c16', fontSize: '14px', marginTop: '4px' }}>⚠️ {domainValidationError}</div>}
+            {!domainValidationError && getValues("condition.domainPattern") && <div style={{ color: '#52c41a', fontSize: '14px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><IconCheck size={16} /> Domain pattern is valid</div>}
           </div>
 
           <div style={{ marginBottom: '16px' }}>

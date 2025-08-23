@@ -77,6 +77,21 @@ export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right 
   const hasChanges = hasDiffChanges(activeDiff);
   const changeCount = countDiffChanges(activeDiff);
 
+  // For single element view, create a fake diff to show properties
+  const elementHasData = (leftData && Object.keys(leftData.styles || {}).length > 0) || 
+                        (rightData && Object.keys(rightData.styles || {}).length > 0) ||
+                        (left && Object.keys(left.styles || {}).length > 0) ||
+                        (right && Object.keys(right.styles || {}).length > 0);
+
+  // If no changes but we have element data, create a display-only diff
+  const displayDiff = !hasChanges && elementHasData ? {
+    ...activeDiff,
+    added: rightData?.styles || right?.styles || leftData?.styles || left?.styles || {},
+    removed: {},
+    modified: {},
+    selector: activeDiff?.selector || "Element Properties"
+  } : activeDiff;
+
   // Search functionality - create dummy CSS blocks for search hook
   const dummyCSSBlocks = { left: "", right: "" };
   const { search, showSearch, setSearch, setShowSearch, toggleSearch } = useElementDiffSearch(dummyCSSBlocks);
@@ -88,10 +103,14 @@ export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right 
     });
   }, []);
 
-  if (!hasChanges) {
+  // Updated logic: show content if there are changes OR if we have element data to display
+  const shouldShowContent = hasChanges || elementHasData;
+  const displayChangeCount = hasChanges ? changeCount : (Object.keys(displayDiff?.added || {}).length);
+  
+  if (!shouldShowContent) {
     return (
-      <div className="text-[11px] text-green-700 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md px-3 py-2">
-        No property differences
+      <div className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+        No element data available
       </div>
     );
   }
@@ -104,9 +123,11 @@ export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right 
         <HeaderTitle>
           <div>
             <div className="font-semibold text-sm text-gray-800">
-              {showChildStyles ? `${activeDiff?.selector} > children` : activeDiff?.selector}
+              {showChildStyles ? `${displayDiff?.selector} > children` : displayDiff?.selector}
             </div>
-            <div className="text-xs text-gray-600 mt-1">{changeCount} properties changed</div>
+            <div className="text-xs text-gray-600 mt-1">
+              {hasChanges ? `${displayChangeCount} properties changed` : `${displayChangeCount} properties`}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -135,8 +156,8 @@ export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right 
 
       <SearchBar search={search} onSearchChange={setSearch} onToggle={toggleSearch} show={showSearch} />
 
-      <GroupedDiffView diff={activeDiff} search={search} />
-      <ClassView diff={activeDiff} search={search} leftNode={left || null} rightNode={right || null} />
+      <GroupedDiffView diff={displayDiff} search={search} />
+      <ClassView diff={displayDiff} search={search} leftNode={left || null} rightNode={right || null} />
     </DiffContainer>
   );
 };

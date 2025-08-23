@@ -105,6 +105,55 @@ export const GroupedDiffView: React.FC<GroupedDiffViewProps> = ({ diff, search }
 
   const groups: DiffGroup[] = [];
 
+  const copyText = async (text: string) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+    } catch {}
+  };
+
+  const Highlight = ({
+    text,
+    query,
+    context = "neutral",
+  }: {
+    text: string;
+    query: string;
+    context?: "neutral" | "added" | "removed";
+  }) => {
+    if (!query?.trim()) return <>{text}</>;
+    const q = query.toLowerCase();
+    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig"));
+    const cls =
+      context === "neutral"
+        ? "rounded px-0.5 bg-amber-200/70 text-amber-950 ring-1 ring-amber-300/60"
+        : "rounded px-0.5 bg-white/70 text-current ring-1 ring-amber-300/60";
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.toLowerCase() === q ? (
+            <mark key={i} className={cls}>
+              {part}
+            </mark>
+          ) : (
+            <React.Fragment key={i}>{part}</React.Fragment>
+          ),
+        )}
+      </>
+    );
+  };
+
   // Added properties group
   const addedItems = Object.entries(diff.added).map(([key, value]) => ({ key, value }));
   if (addedItems.length > 0) {
@@ -152,25 +201,50 @@ export const GroupedDiffView: React.FC<GroupedDiffViewProps> = ({ diff, search }
   }
 
   return (
-    <div className="max-h-96 overflow-auto p-4 space-y-4">
+    <div className="p-4 space-y-4">
       {visibleGroups.map((group, groupIndex) => (
-        <div key={group.type} className={`rounded-lg border ${group.borderColor} ${group.bgColor}`}>
+        <div
+          key={group.type}
+          className={`rounded-xl border ${group.borderColor} ${group.bgColor} shadow-sm hover:shadow-md transition-shadow`}
+        >
           {/* Group Header */}
-          <div className={`px-3 py-2 border-b ${group.borderColor} ${group.textColor} font-semibold text-sm`}>
-            {group.title} ({group.items.length})
+          <div
+            className={`px-3 py-2 border-b ${group.borderColor} ${group.textColor} font-semibold text-sm flex items-center justify-between sticky top-[-15px] z-10 backdrop-blur-sm bg-white/60`}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className={
+                  group.type === "added"
+                    ? "inline-flex h-2 w-2 rounded-full bg-green-500"
+                    : group.type === "removed"
+                      ? "inline-flex h-2 w-2 rounded-full bg-red-500"
+                      : "inline-flex h-2 w-2 rounded-full bg-blue-500"
+                }
+              />
+              <span>
+                {group.title} ({group.items.length})
+              </span>
+            </div>
+            {search?.trim() && <span className="text-xs text-gray-500">filtered by “{search}”</span>}
           </div>
 
           {/* Group Items */}
           <div className="p-3 space-y-2">
             {group.items.map((item, itemIndex) => (
               <div key={`${groupIndex}-${itemIndex}`} className="font-mono text-xs">
-                <div className="flex items-start">
-                  <span className="font-semibold text-gray-700 mr-2 min-w-0 break-all">{item.key}:</span>
+                <div className="flex items-start gap-2 rounded-lg border border-black/5 bg-white/60 px-2 py-1 hover:bg-white/80">
+                  <span className="font-semibold text-gray-800 mr-1 min-w-0 break-all">
+                    <Highlight text={`${item.key}`} query={search} context="neutral" />:
+                  </span>
 
-                  {group.type === "modified" && typeof item.value === "object" && item.value.old && item.value.new ? (
+                  {group.type === "modified" &&
+                  typeof item.value === "object" &&
+                  (item.value as any).old &&
+                  (item.value as any).new ? (
                     <div className="flex-1 min-w-0">
                       {(() => {
-                        const diff = compareProperties(item.value.old, item.value.new);
+                        const modifiedVal = item.value as { old: string; new: string };
+                        const diff = compareProperties(modifiedVal.old, modifiedVal.new);
                         const hasComplexDiff =
                           Object.keys(diff.unchanged).length > 0 || Object.keys(diff.changed).length > 0;
 
@@ -178,42 +252,54 @@ export const GroupedDiffView: React.FC<GroupedDiffViewProps> = ({ diff, search }
                           return (
                             <div className="grid grid-cols-2 gap-2">
                               {/* Left Column - Old Values */}
-                              <div className="bg-red-50 border border-red-200 rounded px-2 py-1">
-                                <div className="text-red-700 text-xs font-semibold mb-1">Snapshot 1</div>
+                              <div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                                <div className="text-red-700 text-[11px] font-semibold mb-1">Snapshot 1</div>
                                 <div className="space-y-1">
                                   {/* Changed properties first - show old values */}
                                   {Object.entries(diff.changed).map(([key, value]) => {
-                                    const oldParsed = parseComplexProperty(item.value.old);
+                                    const oldParsed = parseComplexProperty(modifiedVal.old);
                                     const oldVal = oldParsed[key];
                                     return oldVal ? (
-                                      <div key={key} className="text-red-700 text-xs bg-red-100 px-1 rounded">
-                                        <span className="font-medium">{key}:</span> {oldVal}
+                                      <div key={key} className="text-red-800 text-xs bg-red-100 px-1 rounded">
+                                        <span className="font-medium">
+                                          <Highlight text={`${key}:`} query={search} context="removed" />
+                                        </span>{" "}
+                                        <Highlight text={`${oldVal}`} query={search} context="removed" />
                                       </div>
                                     ) : null;
                                   })}
                                   {/* Unchanged properties at bottom - minimal styling */}
                                   {Object.entries(diff.unchanged).map(([key, value]) => (
-                                    <div key={key} className="text-gray-400 text-xs opacity-50">
-                                      <span className="font-normal">{key}:</span> {value}
+                                    <div key={key} className="text-gray-500 text-[11px] opacity-60">
+                                      <span className="font-normal">
+                                        <Highlight text={`${key}:`} query={search} context="neutral" />
+                                      </span>{" "}
+                                      <Highlight text={`${value}`} query={search} context="neutral" />
                                     </div>
                                   ))}
                                 </div>
                               </div>
 
                               {/* Right Column - New Values */}
-                              <div className="bg-green-50 border border-green-200 rounded px-2 py-1">
-                                <div className="text-green-700 text-xs font-semibold mb-1">Snapshot 2</div>
+                              <div className="bg-green-50 border border-green-200 rounded-lg px-2 py-1">
+                                <div className="text-green-700 text-[11px] font-semibold mb-1">Snapshot 2</div>
                                 <div className="space-y-1">
                                   {/* Changed properties first - show new values */}
                                   {Object.entries(diff.changed).map(([key, value]) => (
-                                    <div key={key} className="text-green-700 text-xs bg-green-100 px-1 rounded">
-                                      <span className="font-medium">{key}:</span> {value}
+                                    <div key={key} className="text-green-800 text-xs bg-green-100 px-1 rounded">
+                                      <span className="font-medium">
+                                        <Highlight text={`${key}:`} query={search} context="added" />
+                                      </span>{" "}
+                                      <Highlight text={`${value}`} query={search} context="added" />
                                     </div>
                                   ))}
                                   {/* Unchanged properties at bottom - minimal styling */}
                                   {Object.entries(diff.unchanged).map(([key, value]) => (
-                                    <div key={key} className="text-gray-400 text-xs opacity-50">
-                                      <span className="font-normal">{key}:</span> {value}
+                                    <div key={key} className="text-gray-500 text-[11px] opacity-60">
+                                      <span className="font-normal">
+                                        <Highlight text={`${key}:`} query={search} context="neutral" />
+                                      </span>{" "}
+                                      <Highlight text={`${value}`} query={search} context="neutral" />
                                     </div>
                                   ))}
                                 </div>
@@ -224,13 +310,17 @@ export const GroupedDiffView: React.FC<GroupedDiffViewProps> = ({ diff, search }
                           // Fallback to original layout for simple values
                           return (
                             <div>
-                              <div className="bg-red-100 border border-red-200 rounded px-2 py-1 mb-1">
-                                <span className="text-red-700 text-xs font-semibold">Old: </span>
-                                <span className="break-all">{formatValue(item.value.old)}</span>
+                              <div className="bg-red-100 border border-red-200 rounded-lg px-2 py-1 mb-1">
+                                <span className="text-red-700 text-[11px] font-semibold">Old: </span>
+                                <span className="break-all">
+                                  <Highlight text={`${formatValue(modifiedVal.old)}`} query={search} context="removed" />
+                                </span>
                               </div>
-                              <div className="bg-green-100 border border-green-200 rounded px-2 py-1">
-                                <span className="text-green-700 text-xs font-semibold">New: </span>
-                                <span className="break-all">{formatValue(item.value.new)}</span>
+                              <div className="bg-green-100 border border-green-200 rounded-lg px-2 py-1">
+                                <span className="text-green-700 text-[11px] font-semibold">New: </span>
+                                <span className="break-all">
+                                  <Highlight text={`${formatValue(modifiedVal.new)}`} query={search} context="added" />
+                                </span>
                               </div>
                             </div>
                           );
@@ -238,8 +328,26 @@ export const GroupedDiffView: React.FC<GroupedDiffViewProps> = ({ diff, search }
                       })()}
                     </div>
                   ) : (
-                    <span className="flex-1 min-w-0 break-all text-gray-600">{formatValue(item.value)}</span>
+                    <span className="flex-1 min-w-0 break-all text-gray-700">
+                      <Highlight text={`${formatValue(item.value)}`} query={search} context="neutral" />
+                    </span>
                   )}
+
+                  <button
+                    className="ml-auto text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Copy"
+                    onClick={() =>
+                      copyText(
+                        `${item.key}: ${
+                          typeof item.value === "object" && (item.value as any).old !== undefined
+                            ? `${formatValue((item.value as any).old)} -> ${formatValue((item.value as any).new)}`
+                            : formatValue(item.value)
+                        }`,
+                      )
+                    }
+                  >
+                    📋
+                  </button>
                 </div>
               </div>
             ))}

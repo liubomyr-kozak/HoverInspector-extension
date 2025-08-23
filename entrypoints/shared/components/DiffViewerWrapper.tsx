@@ -66,9 +66,9 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
       const safeOldValue = oldValue || "";
       const safeNewValue = newValue || "";
 
-      // If both values are identical, no need for diff
+      // If both values are identical, return early to avoid diff parsing errors
       if (safeOldValue === safeNewValue) {
-        // Still create a diff file to show the content
+        return "IDENTICAL_CONTENT";
       }
 
       // Use generateDiffFile as shown in the working example
@@ -112,6 +112,26 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
       }
     }
   }, [oldValue, newValue, leftTitle, rightTitle]);
+
+  // Handle identical content case
+  if (diffFile === "IDENTICAL_CONTENT") {
+    const content = oldValue || "";
+    return (
+      <div className="h-full">
+        <style>{diffViewCss}</style>
+        <div style={{ padding: "20px", fontFamily: "monospace", whiteSpace: "pre-wrap", fontSize: "14px", backgroundColor: "#f8f9fa" }}>
+          {leftTitle && (
+            <div style={{ marginBottom: "10px", fontWeight: "bold", color: "#24292e" }}>
+              {leftTitle}
+            </div>
+          )}
+          <pre style={{ margin: 0, overflow: "auto", maxHeight: "calc(100vh - 100px)" }}>
+            {content}
+          </pre>
+        </div>
+      </div>
+    );
+  }
 
   if (!diffFile) {
     return (

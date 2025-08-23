@@ -23,21 +23,21 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
     );
   }
 
-  return (
-    <>
-      {/*{state.styleDiffData || state.compareLeftData || state.compareRightData ? (*/}
-      <ElementDiff
-        diffData={state.styleDiffData}
-        left={state.compareLeftData as any}
-        right={state.compareRightData as any}
-      />
-      {/*) : null}*/}
+  console.log("👍👍👍 ::ElementDetails -> state", state);
+  console.log("👍👍👍 ::ElementDetails -> selectedElement", selectedElement);
+  console.log("👍👍👍 ::ElementDetails -> selectedElementData", selectedElementData);
+  console.log("👍👍👍 ::ElementDetails -> selectedElementStyles", selectedElementStyles);
 
-      {/*// this is depricated do not touch*/}
-      {/*// this is depricated do not touch*/}
-      {/*<ElementXPathSelector />*/}
-      {/**/}
-      {/*// this is depricated do not touch*/}
-    </>
+  // Use Redux state if available, otherwise fallback to props
+  const diffData = state.styleDiffData;
+  const leftData = state.compareLeftData || selectedElementData;
+  const rightData = state.compareRightData || selectedElementStyles;
+
+  return (
+    <ElementDiff
+      diffData={diffData}
+      left={leftData as any}
+      right={rightData as any}
+    />
   );
 };
