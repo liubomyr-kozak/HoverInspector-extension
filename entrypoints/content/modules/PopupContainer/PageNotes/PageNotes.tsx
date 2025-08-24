@@ -60,6 +60,7 @@ export const PageNotes: React.FC = () => {
   const highlightOverlay = useHighlightOverlay();
 
   const { activeIcons = [], iconOrder = [] } = useSelector((state: any) => state?.app.launcher);
+  const { refreshTrigger } = useSelector((state: any) => state?.notes || { refreshTrigger: 0 });
   const isActive = React.useMemo(() => activeIcons.includes("pageNotes"), [activeIcons]);
 
   const [notesState, setNotesState] = useState<NotesState>({
@@ -77,11 +78,6 @@ export const PageNotes: React.FC = () => {
     dispatch(onToggleFeatureMinimized.getPayload({ featureKey }));
   };
 
-  // Load notes data on component mount
-  useEffect(() => {
-    loadNotesData();
-  }, []);
-
   const loadNotesData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -95,6 +91,18 @@ export const PageNotes: React.FC = () => {
       setIsLoading(false);
     }
   }, []);
+
+  // Load notes data on component mount
+  useEffect(() => {
+    loadNotesData();
+  }, [loadNotesData]);
+
+  // Listen for refresh trigger and reload data
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      loadNotesData();
+    }
+  }, [refreshTrigger, loadNotesData]);
 
   const handleCreateNote = useCallback(() => {
     dispatch(openNoteForm({ editingNote: null }));
@@ -170,7 +178,7 @@ export const PageNotes: React.FC = () => {
           // Pin note - start element selection mode
           const subscription = highlightOverlay.streamSelectionMode().subscribe({
             next: (event) => {
-              if (event.type === "elementSelected") {
+              if (event.type === "selected") {
                 // Generate XPath for the selected element
                 const xpath = highlightOverlay.generateXPath(event.element);
 
@@ -376,7 +384,7 @@ export const PageNotes: React.FC = () => {
       <NotesList
         notesState={notesState}
         onCreateNote={handleCreateNote}
-        onUpdateNote={handleUpdateNote}
+        onEditNote={handleEditNote}
         onDeleteNote={handleDeleteNote}
         onSelectNote={handleSelectNote}
         onPinNote={handlePinNote}

@@ -7,8 +7,9 @@ import {
   PortalId,
   ScenarioPortalFooterButtons,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalFooterButtons.tsx";
-import { closeNoteForm } from "@entrypoints/content/store/notes/notes.slice.ts";
+import { closeNoteForm, triggerRefresh } from "@entrypoints/content/store/notes/notes.slice.ts";
 import { useDispatch } from "react-redux";
+import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -44,7 +45,10 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [content, setContent] = useState("");
   const [groupId, setGroupId] = useState<string | undefined>();
   const [selectedColorId, setSelectedColorId] = useState<string>("blue");
+  const [elementXPath, setElementXPath] = useState<string | undefined>();
+  const [isSelectingElement, setIsSelectingElement] = useState(false);
   const dispatch = useDispatch();
+  const highlightOverlay = useHighlightOverlay();
 
   // Color management state
   const [colorPalettes, setColorPalettes] = useState<ColorPalette[]>(DEFAULT_COLORS);
@@ -71,12 +75,14 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           content: editingNote.content,
           groupId: editingNote.groupId,
           colorId: editingNote.colorId,
+          elementXPath: editingNote.elementXPath,
         }
       : initialFormData;
 
     setTitle(initialData?.title || "");
     setContent(initialData?.content || "");
     setGroupId(initialData?.groupId);
+    setElementXPath(initialData?.elementXPath);
 
     const initialColorId = initialData?.colorId || "blue";
     setSelectedColorId(initialColorId);
@@ -94,6 +100,45 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     }
   }, []);
 
+  const handleElementSelection = useCallback(() => {
+    if (isSelectingElement) {
+      // Cancel selection
+      setIsSelectingElement(false);
+      highlightOverlay.stopSelectionMode();
+      return;
+    }
+
+    setIsSelectingElement(true);
+    const subscription = highlightOverlay.streamSelectionMode().subscribe({
+      next: (event) => {
+        if (event.type === "selected") {
+          // Generate XPath for the selected element
+          const xpath = highlightOverlay.generateXPath(event.element);
+          setElementXPath(xpath);
+          setIsSelectingElement(false);
+          subscription.unsubscribe();
+        }
+      },
+      error: (err) => {
+        console.error("Element selection failed:", err);
+        setIsSelectingElement(false);
+        subscription.unsubscribe();
+      },
+    });
+
+    // Auto-cancel after 10 seconds
+    setTimeout(() => {
+      if (!subscription.closed) {
+        setIsSelectingElement(false);
+        subscription.unsubscribe();
+      }
+    }, 10000);
+  }, [isSelectingElement, highlightOverlay]);
+
+  const handleClearElementAttachment = useCallback(() => {
+    setElementXPath(undefined);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -103,6 +148,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         content: content.trim(),
         groupId,
         colorId: selectedColorId,
+        elementXPath,
       };
 
       if (editingNote) {
@@ -120,6 +166,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         });
       }
 
+      // Trigger refresh in other components
+      dispatch(triggerRefresh());
       dispatch(closeNoteForm());
     } catch (error) {
       console.error("Failed to save note:", error);
@@ -280,6 +328,39 @@ export const NoteForm: React.FC<NoteFormProps> = ({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="block mb-1 font-medium text-gray-700">Element Attachment</label>
+          <div className="flex items-center gap-2">
+            {elementXPath ? (
+              <>
+                <span className="flex-1 text-sm text-green-600 bg-green-50 px-3 py-2 rounded border">
+                  ✓ Attached to element
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearElementAttachment}
+                  className="px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded bg-red-50 hover:bg-red-100"
+                >
+                  Clear
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleElementSelection}
+                disabled={isSelectingElement}
+                className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
+                  isSelectingElement
+                    ? "bg-yellow-50 border-yellow-300 text-yellow-700 cursor-not-allowed"
+                    : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400"
+                }`}
+              >
+                {isSelectingElement ? "Click on an element..." : "Attach to element"}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mb-3">

@@ -24,6 +24,7 @@ import NotificationManager from "@entrypoints/content/modules/NotificationManage
 import { TriggerScenarioEvaluator } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/TriggerForm/TriggerScenarioEvaluator.tsx";
 import { ScheduleMonitor } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScheduleMonitor.tsx";
 import { HighlightOverlayProvider } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
+import { VisibleNotesProvider } from "@entrypoints/content/modules/VisibleNotesProvider/VisibleNotesProvider.tsx";
 
 // import appStyles from "./app.css?inline";
 
@@ -63,27 +64,29 @@ export const App = ({ shadowRoot }) => {
           <AppController>
             <HighlightOverlayProvider>
               <FloatingModalProvider>
-                <NotificationManager />
-                <TriggerScenarioEvaluator />
-                <ScheduleMonitor />
-                {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
-                {activeIcons.includes(RULER.id) && <ViewportRuler />}
-                <LauncherManager />
-                <ToastContainer
-                  position="top-center"
-                  autoClose={5000}
-                  hideProgressBar={false}
-                  newestOnTop={false}
-                  closeOnClick={true}
-                  rtl={false}
-                  pauseOnFocusLoss={true}
-                  draggable={true}
-                  pauseOnHover={true}
-                  theme="light"
-                  style={{
-                    zIndex: 9999999,
-                  }}
-                />
+                <VisibleNotesProvider>
+                  <NotificationManager />
+                  <TriggerScenarioEvaluator />
+                  <ScheduleMonitor />
+                  {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
+                  {activeIcons.includes(RULER.id) && <ViewportRuler />}
+                  <LauncherManager />
+                  <ToastContainer
+                    position="top-center"
+                    autoClose={5000}
+                    hideProgressBar={false}
+                    newestOnTop={false}
+                    closeOnClick={true}
+                    rtl={false}
+                    pauseOnFocusLoss={true}
+                    draggable={true}
+                    pauseOnHover={true}
+                    theme="light"
+                    style={{
+                      zIndex: 9999999,
+                    }}
+                  />
+                </VisibleNotesProvider>
               </FloatingModalProvider>
             </HighlightOverlayProvider>
           </AppController>

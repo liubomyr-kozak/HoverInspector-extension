@@ -5,12 +5,14 @@ export interface NotesState {
   isFormOpen: boolean;
   editingNote?: Note | null;
   initialFormData?: Partial<NoteFormData>;
+  refreshTrigger: number; // Timestamp to trigger data refresh
 }
 
 const initialState: NotesState = {
   isFormOpen: false,
   editingNote: null,
   initialFormData: undefined,
+  refreshTrigger: 0,
 };
 
 const notesSlice = createSlice({
@@ -30,8 +32,11 @@ const notesSlice = createSlice({
     setEditingNote: (state, action: PayloadAction<Note | null>) => {
       state.editingNote = action.payload;
     },
+    triggerRefresh: (state) => {
+      state.refreshTrigger = Date.now();
+    },
   },
 });
 
-export const { openNoteForm, closeNoteForm, setEditingNote } = notesSlice.actions;
+export const { openNoteForm, closeNoteForm, setEditingNote, triggerRefresh } = notesSlice.actions;
 export default notesSlice.reducer;

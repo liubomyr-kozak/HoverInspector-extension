@@ -23,6 +23,7 @@ import {
 } from "@entrypoints/core/constants/elementDetails.ts";
 import {
   NOTEFORM_PANEL_POSITION_KEY,
+  NOTES_STORAGE_KEY,
 } from "@entrypoints/core/constants/notes.ts";
 
 class AppStorageService {
@@ -376,6 +377,26 @@ class AppStorageService {
   saveNoteFormPanelPosition = async (position) => {
     await LocalStorage.set(NOTEFORM_PANEL_POSITION_KEY, position);
     return { success: true, key: NOTEFORM_PANEL_POSITION_KEY };
+  };
+
+  /**
+   * Get notes data
+   * @returns {Promise<Object|null>} The notes object containing notes, groups, search query, etc. or null if not found
+   */
+  getNotesData = async () => {
+    const notesData = await LocalStorage.get(NOTES_STORAGE_KEY);
+    // Return default structure if no data exists
+    return notesData || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+  };
+
+  /**
+   * Save notes data
+   * @param {Object} notesData - Object containing notes, groups, searchQuery, showOnlyCurrentDomain, selectedNoteId, etc.
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  setNotesData = async (notesData) => {
+    await LocalStorage.set(NOTES_STORAGE_KEY, notesData);
+    return { success: true, key: NOTES_STORAGE_KEY };
   };
 }
 

@@ -1,6 +1,28 @@
 import { Observable } from "rxjs";
 import { finalize, share } from "rxjs/operators";
 
+// Predefined highlight style variants
+export const HIGHLIGHT_STYLES = {
+  selection: {
+    border: "2px solid red",
+    backgroundColor: "rgba(255,0,0,0.1)",
+  },
+  hover: {
+    border: "2px solid #3b82f6", 
+    backgroundColor: "rgba(59,130,246,0.1)",
+  },
+  note: {
+    border: "2px solid #22c55e",
+    backgroundColor: "rgba(34, 197, 94, 0.1)",
+  },
+  picker: {
+    border: "2px solid #22c55e",
+    backgroundColor: "rgba(34, 197, 94, 0.1)",
+  },
+} as const;
+
+export type HighlightStyleVariant = keyof typeof HIGHLIGHT_STYLES;
+
 export interface SelectionEvent {
   type: "started" | "selected" | "stopped";
   xpath?: string;
@@ -66,7 +88,7 @@ class HighlightOverlayManager {
     return "/" + segments.join("/");
   }
 
-  private getElementByXPath(xpath: string): Element | null {
+  public getElementByXPath(xpath: string): Element | null {
     try {
       return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
         .singleNodeValue as Element | null;
@@ -108,7 +130,7 @@ class HighlightOverlayManager {
     document.head.appendChild(style);
   }
 
-  public startHighlight(xpath: string, styles?: Partial<CSSStyleDeclaration>) {
+  public startHighlight(xpath: string, variant: HighlightStyleVariant = 'selection', customStyles?: Partial<CSSStyleDeclaration>) {
     const el = this.getElementByXPath(xpath);
 
     if (!el) return this.stopHighlight();
@@ -117,9 +139,8 @@ class HighlightOverlayManager {
     this.clearHighlightTimer();
 
     this.applyOverlayStyles(el.getBoundingClientRect(), {
-      border: "2px solid red",
-      backgroundColor: "rgba(255,0,0,0.1)",
-      ...styles,
+      ...HIGHLIGHT_STYLES[variant],
+      ...customStyles,
     });
 
     // Add blink animation
@@ -139,7 +160,7 @@ class HighlightOverlayManager {
 
   private _preHighlightedElement: Element | null = null;
 
-  public startMouseMoveHighlight(styles?: Partial<CSSStyleDeclaration>) {
+  public startMouseMoveHighlight(variant: HighlightStyleVariant = 'hover', customStyles?: Partial<CSSStyleDeclaration>) {
     this.mouseMoveHandler = (e: MouseEvent) => {
       const target = e.target as Element;
 
@@ -152,9 +173,8 @@ class HighlightOverlayManager {
       if (!target || target.nodeType !== Node.ELEMENT_NODE || this.isExtensionElement(target)) return;
 
       this.applyOverlayStyles(target.getBoundingClientRect(), {
-        border: "2px solid #3b82f6",
-        backgroundColor: "rgba(59,130,246,0.1)",
-        ...styles,
+        ...HIGHLIGHT_STYLES[variant],
+        ...customStyles,
       });
     };
 

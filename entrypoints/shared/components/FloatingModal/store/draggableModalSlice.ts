@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { getWindowSize } from "./getWindowSize";
-import { clamp } from "./clamp";
-import { EDGE_PADDING, MIN_HEIGHT, MIN_WIDTH } from "@entrypoints/shared/components/ModalDraggable/constant.ts";
+import { getWindowSize } from "./getWindowSize.ts";
+import { clamp } from "./clamp.ts";
+import { EDGE_PADDING, MIN_HEIGHT, MIN_WIDTH } from "@entrypoints/shared/components/FloatingModal/constant.ts";
 import { ZINDEX_MODAL } from "@entrypoints/shared/constant/zIndex.ts";
 
 // Ініціалізація стану

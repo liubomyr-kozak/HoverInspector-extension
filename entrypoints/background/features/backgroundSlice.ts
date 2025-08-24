@@ -334,15 +334,13 @@ export const actionsContextSlice = chromeActionsSlice({
 
   // Notes Management Actions
   getAllNotes: async () => {
-    const state = await AppStorageService.getAppState();
-    return state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    return await AppStorageService.getNotesData();
   },
 
   createNote: async ({ data }) => {
     debugger;
 
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     const newNote = {
       ...data,
@@ -355,13 +353,12 @@ export const actionsContextSlice = chromeActionsSlice({
     };
 
     notes.notes.push(newNote);
-    await AppStorageService.setAppState({ ...state, notes });
+    await AppStorageService.setNotesData(notes);
     return newNote;
   },
 
   updateNote: async ({ data: { id, updates } }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     const noteIndex = notes.notes.findIndex((note) => note.id === id);
     if (noteIndex !== -1) {
@@ -370,40 +367,36 @@ export const actionsContextSlice = chromeActionsSlice({
         ...updates,
         updatedAt: Date.now(),
       };
-      await AppStorageService.setAppState({ ...state, notes });
+      await AppStorageService.setNotesData(notes);
       return notes.notes[noteIndex];
     }
     return null;
   },
 
   deleteNote: async ({ data: id }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     notes.notes = notes.notes.filter((note) => note.id !== id);
-    await AppStorageService.setAppState({ ...state, notes });
+    await AppStorageService.setNotesData(notes);
     return { success: true };
   },
 
   updateNotesSearchQuery: async ({ data: searchQuery }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     notes.searchQuery = searchQuery;
-    await AppStorageService.setAppState({ ...state, notes });
+    await AppStorageService.setNotesData(notes);
   },
 
   toggleNotesShowOnlyCurrentDomain: async ({ data: showOnlyCurrentDomain }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     notes.showOnlyCurrentDomain = showOnlyCurrentDomain;
-    await AppStorageService.setAppState({ ...state, notes });
+    await AppStorageService.setNotesData(notes);
   },
 
   createNoteGroup: async ({ data }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     const newGroup = {
       ...data,
@@ -414,13 +407,12 @@ export const actionsContextSlice = chromeActionsSlice({
     };
 
     notes.groups.push(newGroup);
-    await AppStorageService.setAppState({ ...state, notes });
+    await AppStorageService.setNotesData(notes);
     return newGroup;
   },
 
   updateNoteGroup: async ({ data: { id, updates } }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     const groupIndex = notes.groups.findIndex((group) => group.id === id);
     if (groupIndex !== -1) {
@@ -429,30 +421,28 @@ export const actionsContextSlice = chromeActionsSlice({
         ...updates,
         updatedAt: Date.now(),
       };
-      await AppStorageService.setAppState({ ...state, notes });
+      await AppStorageService.setNotesData(notes);
       return notes.groups[groupIndex];
     }
     return null;
   },
 
   deleteNoteGroup: async ({ data: id }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     // Remove group and unassign notes from this group
     notes.groups = notes.groups.filter((group) => group.id !== id);
     notes.notes = notes.notes.map((note) => (note.groupId === id ? { ...note, groupId: undefined } : note));
 
-    await AppStorageService.setAppState({ ...state, notes });
+    await AppStorageService.setNotesData(notes);
     return { success: true };
   },
 
   setSelectedNote: async ({ data: selectedNoteId }) => {
-    const state = await AppStorageService.getAppState();
-    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    const notes = await AppStorageService.getNotesData();
 
     notes.selectedNoteId = selectedNoteId;
-    await AppStorageService.setAppState({ ...state, notes });
+    await AppStorageService.setNotesData(notes);
   },
 });
 

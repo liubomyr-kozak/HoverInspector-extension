@@ -1,7 +1,8 @@
-import React, { useState, useRef } from "react";
+import React from "react";
 import { IconEdit, IconTrash, IconPin, IconGripVertical } from "@tabler/icons-react";
 import styled from "styled-components";
-import { Note as NoteType } from "@entrypoints/shared/types/notes";
+import { Note as NoteType, ColorPalette } from "@entrypoints/shared/types/notes";
+import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 
 const NoteContainer = styled.div<{ $color?: string; $isSelected: boolean }>`
   background: ${props => props.$color || '#fef3c7'};
@@ -75,39 +76,6 @@ const NoteContent = styled.div`
   word-break: break-word;
 `;
 
-const EditableInput = styled.input`
-  width: 100%;
-  border: none;
-  background: transparent;
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 4px;
-  outline: none;
-  border-bottom: 1px solid #d1d5db;
-
-  &:focus {
-    border-bottom-color: #3b82f6;
-  }
-`;
-
-const EditableTextarea = styled.textarea`
-  width: 100%;
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  color: #4b5563;
-  resize: vertical;
-  min-height: 60px;
-  outline: none;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 8px;
-
-  &:focus {
-    border-color: #3b82f6;
-  }
-`;
 
 const NoteMeta = styled.div`
   display: flex;
@@ -145,7 +113,8 @@ const DragHandle = styled.div`
 interface NoteProps {
   note: NoteType;
   isSelected: boolean;
-  onEdit: (id: string, updates: Partial<NoteType>) => void;
+  colorPalette: ColorPalette[];
+  onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   onPin: (id: string) => void;
@@ -154,42 +123,27 @@ interface NoteProps {
 export const Note: React.FC<NoteProps> = ({
   note,
   isSelected,
+  colorPalette,
   onEdit,
   onDelete,
   onSelect,
   onPin,
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(note.title || '');
-  const [editContent, setEditContent] = useState(note.content || '');
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const highlightOverlay = useHighlightOverlay();
+  
+  // Map colorId to actual color value
+  const noteColor = colorPalette.find(color => color.id === note.colorId)?.value || '#fef3c7';
 
-  const handleEdit = () => {
-    setIsEditing(true);
-    setTimeout(() => titleInputRef.current?.focus(), 0);
-  };
-
-  const handleSave = () => {
-    if (editTitle.trim() || editContent.trim()) {
-      onEdit(note.id, {
-        title: editTitle.trim(),
-        content: editContent.trim(),
-      });
+  // Handle highlighting attached DOM element when note is hovered
+  const handleMouseEnter = () => {
+    if (note.elementXPath) {
+      highlightOverlay.startHighlight(note.elementXPath, 'note');
     }
-    setIsEditing(false);
   };
 
-  const handleCancel = () => {
-    setEditTitle(note.title || '');
-    setEditContent(note.content || '');
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      handleCancel();
+  const handleMouseLeave = () => {
+    if (note.elementXPath) {
+      highlightOverlay.stopHighlight();
     }
   };
 
@@ -206,27 +160,18 @@ export const Note: React.FC<NoteProps> = ({
 
   return (
     <NoteContainer
-      $color={note.color}
+      $color={noteColor}
       $isSelected={isSelected}
       onClick={() => onSelect(note.id)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <DragHandle>
         <IconGripVertical />
       </DragHandle>
 
       <NoteHeader>
-        {isEditing ? (
-          <EditableInput
-            ref={titleInputRef}
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleSave}
-            placeholder="Note title..."
-          />
-        ) : (
-          <NoteTitle>{note.title || 'Untitled Note'}</NoteTitle>
-        )}
+        <NoteTitle>{note.title || 'Untitled Note'}</NoteTitle>
 
         <NoteActions>
           <ActionButton
@@ -245,7 +190,7 @@ export const Note: React.FC<NoteProps> = ({
           <ActionButton
             onClick={(e) => {
               e.stopPropagation();
-              handleEdit();
+              onEdit(note.id);
             }}
             title="Edit note"
           >
@@ -265,17 +210,7 @@ export const Note: React.FC<NoteProps> = ({
         </NoteActions>
       </NoteHeader>
 
-      {isEditing ? (
-        <EditableTextarea
-          value={editContent}
-          onChange={(e) => setEditContent(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Note content..."
-          autoFocus={!titleInputRef.current}
-        />
-      ) : (
-        <NoteContent>{note.content || 'No content'}</NoteContent>
-      )}
+      <NoteContent>{note.content || 'No content'}</NoteContent>
 
       <NoteMeta>
         <span>{note.domain}</span>

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { windowResizeForModal } from "../ModalDraggable/store/draggableModalSlice";
+import { windowResizeForModal } from "@entrypoints/shared/components/FloatingModal/store/draggableModalSlice";
 
 // Helper function to get window dimensions
 const getWindowSize = () => ({

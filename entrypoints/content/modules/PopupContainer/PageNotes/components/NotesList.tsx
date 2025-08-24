@@ -11,7 +11,19 @@ import {
 } from "@tabler/icons-react";
 import styled from "styled-components";
 import { Note as NoteComponent } from "./Note";
-import { Note as NoteType, NoteGroup, NotesState } from "@entrypoints/shared/types/notes";
+import { Note as NoteType, NoteGroup, NotesState, ColorPalette } from "@entrypoints/shared/types/notes";
+
+// Default color palette with IDs
+const DEFAULT_COLORS: ColorPalette[] = [
+  { id: "blue", name: "Blue", value: "#3B82F6", isDefault: true, createdAt: Date.now() },
+  { id: "red", name: "Red", value: "#EF4444", isDefault: true, createdAt: Date.now() },
+  { id: "green", name: "Green", value: "#10B981", isDefault: true, createdAt: Date.now() },
+  { id: "yellow", name: "Yellow", value: "#F59E0B", isDefault: true, createdAt: Date.now() },
+  { id: "purple", name: "Purple", value: "#8B5CF6", isDefault: true, createdAt: Date.now() },
+  { id: "orange", name: "Orange", value: "#F97316", isDefault: true, createdAt: Date.now() },
+  { id: "pink", name: "Pink", value: "#EC4899", isDefault: true, createdAt: Date.now() },
+  { id: "cyan", name: "Cyan", value: "#06B6D4", isDefault: true, createdAt: Date.now() },
+];
 
 const Container = styled.div`
   display: flex;
@@ -218,7 +230,7 @@ const EmptyDescription = styled.p`
 interface NotesListProps {
   notesState: NotesState;
   onCreateNote: () => void;
-  onUpdateNote: (id: string, updates: Partial<NoteType>) => void;
+  onEditNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onSelectNote: (id: string) => void;
   onPinNote: (id: string) => void;
@@ -230,7 +242,7 @@ interface NotesListProps {
 export const NotesList: React.FC<NotesListProps> = ({
   notesState,
   onCreateNote,
-  onUpdateNote,
+  onEditNote,
   onDeleteNote,
   onSelectNote,
   onPinNote,
@@ -372,7 +384,8 @@ export const NotesList: React.FC<NotesListProps> = ({
                       key={note.id}
                       note={note}
                       isSelected={note.id === notesState.selectedNoteId}
-                      onEdit={onUpdateNote}
+                      colorPalette={DEFAULT_COLORS}
+                      onEdit={onEditNote}
                       onDelete={onDeleteNote}
                       onSelect={onSelectNote}
                       onPin={onPinNote}
@@ -390,7 +403,8 @@ export const NotesList: React.FC<NotesListProps> = ({
                     key={note.id}
                     note={note}
                     isSelected={note.id === notesState.selectedNoteId}
-                    onEdit={onUpdateNote}
+                    colorPalette={DEFAULT_COLORS}
+                    onEdit={onEditNote}
                     onDelete={onDeleteNote}
                     onSelect={onSelectNote}
                     onPin={onPinNote}

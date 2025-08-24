@@ -34,10 +34,6 @@ export function useElementPicker(
   });
 
   const {
-    highlightStyles = {
-      border: "2px solid #22c55e",
-      backgroundColor: "rgba(34, 197, 94, 0.1)"
-    },
     onSuccess,
     onError
   } = config;
@@ -128,7 +124,7 @@ export function useElementPicker(
         });
 
       // Start hover highlighting
-      highlightManager.startMouseMoveHighlight(highlightStyles);
+      highlightManager.startMouseMoveHighlight('picker');
     } catch (error) {
       setState(prev => ({ 
         ...prev, 
@@ -142,7 +138,7 @@ export function useElementPicker(
       subscription?.unsubscribe();
       highlightManager.stopMouseMoveHighlight();
     };
-  }, [state.isActive, highlightManager, highlightStyles, handleElementSelection, onError]);
+  }, [state.isActive, highlightManager, handleElementSelection, onError]);
 
   // Start element picking
   const startPicking = useCallback(() => {
