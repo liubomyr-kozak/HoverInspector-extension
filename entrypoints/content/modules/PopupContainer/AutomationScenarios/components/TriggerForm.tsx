@@ -141,7 +141,6 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
     label: scenarios[key].title,
   }));
 
-
   // Handler for regex toggle
   const handleRegexToggle = (checked: boolean) => {
     setUseRegex(checked);
@@ -353,6 +352,11 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
                 }}
               >
                 <IconCheck size={16} /> Domain pattern is valid
+              </div>
+            )}
+            {useRegex && (
+              <div style={{ marginLeft: "8px", fontSize: "12px", color: "#8c8c8c" }}>
+                `new RegExp("${getValues("condition.domainPattern")}").test(window.location.href);`
               </div>
             )}
           </div>

@@ -147,3 +147,15 @@
 .hover-inspector > * {
   box-sizing: initial;
 }
+
+
+.hover-inspector-visible-note .modal-drag-handle {
+    padding: 0;
+    background: #efefef;
+}
+.hover-inspector-visible-note .modal-drag-handle-close-button {
+    height: 10px;
+    width: 10px;
+    left: -10px;
+    top: -4px;
+}

@@ -13,6 +13,7 @@ import { NoteForm } from "./NoteForm";
 // шляпа зі стилями.. він не шарить що в мене shadow DOM
 import NoteFormPopupStyles from "./NoteFormPopup.css?inline";
 import { ButtonsContainer } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";
 
 export const NoteFormPopup: React.FC = () => {
   const dispatch = useDispatch();
@@ -91,14 +92,16 @@ export const NoteFormPopup: React.FC = () => {
       footer={<ButtonsContainer id="hover-inspector-popup-footer-note" />}
     >
       <style>{NoteFormPopupStyles}</style>
-      <NoteForm
-        editingNote={notesState.editingNote}
-        initialFormData={notesState.initialFormData}
-        formId={formId}
-        onCancel={handleCancel}
-        showTitleField={showTitleField}
-        onShowTitleFieldChange={setShowTitleField}
-      />
+      <ModalOverlayModal>
+        <NoteForm
+          editingNote={notesState.editingNote}
+          initialFormData={notesState.initialFormData}
+          formId={formId}
+          onCancel={handleCancel}
+          showTitleField={showTitleField}
+          onShowTitleFieldChange={setShowTitleField}
+        />
+      </ModalOverlayModal>
     </FloatingModal>
   );
 };

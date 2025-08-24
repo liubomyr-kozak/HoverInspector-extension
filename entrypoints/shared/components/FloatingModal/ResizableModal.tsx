@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Rnd } from "react-rnd";
 import { motion } from "framer-motion";
 import { TbGripVertical } from "react-icons/tb";
@@ -6,6 +6,7 @@ import { IoCloseSharp } from "react-icons/io5";
 import * as React from "react";
 import { ZINDEX_MODAL } from "@entrypoints/shared/constant/zIndex.ts";
 import { RESIZE_HANDLE_STYLES } from "@entrypoints/shared/components/FloatingModal/FloatingModal.constant";
+import { ModalOverlay } from "./FloatingModal.styled";
 
 interface ResizableModalProps {
   isOpen: boolean;
@@ -44,48 +45,7 @@ export function ResizableModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      className={`fixed inset-0 pointer-events-none`}
-      style={{
-        zIndex: ZINDEX_MODAL,
-      }}
-    >
-      <style>
-        {`
-        /* Base styles for all resize handles */
-        .resize-handle {
-          opacity: 0;
-          transition: opacity 0.2s ease-in-out;
-          pointer-events: auto;
-        }
-        
-        /* Individual hover and active effects */
-        .resize-handle-top:hover, .resize-handle-top:active, .resizing .resize-handle-top {
-          opacity: 1 !important;
-        }
-        .resize-handle-right:hover, .resize-handle-right:active, .resizing .resize-handle-right {
-          opacity: 1 !important;
-        }
-        .resize-handle-bottom:hover, .resize-handle-bottom:active, .resizing .resize-handle-bottom {
-          opacity: 1 !important;
-        }
-        .resize-handle-left:hover, .resize-handle-left:active, .resizing .resize-handle-left {
-          opacity: 1 !important;
-        }
-        .resize-handle-top-left:hover, .resize-handle-top-left:active, .resizing .resize-handle-top-left {
-          opacity: 1 !important;
-        }
-        .resize-handle-top-right:hover, .resize-handle-top-right:active, .resizing .resize-handle-top-right {
-          opacity: 1 !important;
-        }
-        .resize-handle-bottom-right:hover, .resize-handle-bottom-right:active, .resizing .resize-handle-bottom-right {
-          opacity: 1 !important;
-        }
-        .resize-handle-bottom-left:hover, .resize-handle-bottom-left:active, .resizing .resize-handle-bottom-left {
-          opacity: 1 !important;
-        }
-        `}
-      </style>
+    <ModalOverlay $zIndex={ZINDEX_MODAL}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -99,8 +59,8 @@ export function ResizableModal({
             width: initialSize.width,
             height: initialSize.height,
           }}
-          minWidth={300}
-          minHeight={200}
+          minWidth={10}
+          minHeight={10}
           maxHeight={800}
           // bounds="parent"
           dragHandleClassName="modal-drag-handle"
@@ -164,7 +124,7 @@ export function ResizableModal({
               </div>
               <button
                 onClick={handleCloseClick}
-                className="h-8 w-8 p-0 hover:bg-accent z-10 relative"
+                className="modal-drag-handle-close-button h-8 w-8 p-0 hover:bg-accent z-10 relative"
                 style={{ pointerEvents: "auto", cursor: "pointer" }}
               >
                 <IoCloseSharp size={"20px"} />
@@ -172,13 +132,13 @@ export function ResizableModal({
             </div>
 
             {/* Body */}
-            <div className="flex-1 p-4 overflow-auto bg-white bg-card">{children}</div>
+            {children}
 
             {/* Footer */}
             {footer && <div className="border-t border-gray-200 bg-white bg-card">{footer}</div>}
           </div>
         </Rnd>
       </motion.div>
-    </div>
+    </ModalOverlay>
   );
 }

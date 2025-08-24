@@ -39,6 +39,9 @@ export const FloatingModal: FunctionComponent<FloatingModalProps> = (props): Rea
   const positionRef = useRef({ x: initialX, y: initialY });
   const sizeRef = useRef({ width: initialWidth, height: initialHeight });
 
+  console.log("😀😀😀 ::FloatingModal -> positionRef", positionRef.current);
+  console.log("😜😜😜 ::FloatingModal -> sizeRef", sizeRef.current);
+
   // Update refs when props change
   useEffect(() => {
     positionRef.current = { x: initialX, y: initialY };

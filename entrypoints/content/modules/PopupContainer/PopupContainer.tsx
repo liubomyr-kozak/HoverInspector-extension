@@ -41,6 +41,7 @@ import {
 import RandomBackground from "@entrypoints/shared/components/RandomBackground.tsx";
 import ViewportInfo from "@entrypoints/content/modules/PopupContainer/ViewportInfo.tsx";
 import { PiCloverDuotone } from "react-icons/pi";
+import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";
 
 const GlobalStyle = createGlobalStyle`
     @keyframes spin {
@@ -245,7 +246,9 @@ export function PopupContainer() {
           </FooterContainer>
         }
       >
-        <FeatureContainer key={`PopupContainer-feature--${iconOrder.join(".")}`}>{FeatureView}</FeatureContainer>
+        <ModalOverlayModal>
+          <FeatureContainer key={`PopupContainer-feature--${iconOrder.join(".")}`}>{FeatureView}</FeatureContainer>
+        </ModalOverlayModal>
       </FloatingModal>
     </>
   );

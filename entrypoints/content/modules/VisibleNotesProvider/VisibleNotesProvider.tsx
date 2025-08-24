@@ -55,7 +55,21 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
     height: 150,
   });
 
-  const noteColor = colorPalette.find((color) => color.id === note.colorId)?.value || "#fef3c7";
+  // Helper function to convert hex to rgba with opacity
+  const hexToRgba = (hex: string, opacity: number = 0.85): string => {
+    // Remove # if present
+    hex = hex.replace("#", "");
+
+    // Parse r, g, b values
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
+
+  const hexColor = colorPalette.find((color) => color.id === note.colorId)?.value || "#fef3c7";
+  const noteColor = hexToRgba(hexColor, 0.5);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -129,9 +143,23 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
     }
   };
 
-  const handleClose = () => {
-    // Notes don't close, they just get repositioned
+  const handleClose = async () => {
+    try {
+      // Hide the note by setting isVisible to false
+      await updateNote({
+        data: {
+          id: note.id,
+          updates: {
+            isVisible: false,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Failed to close note:", error);
+    }
   };
+
+  console.log("😜😜😜 ::VisibleNote -> position", position);
 
   return (
     <FloatingModal
@@ -151,7 +179,7 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
       }}
     >
-      <div style={{ background: noteColor, minHeight: "100px" }}>
+      <div style={{ background: noteColor, minHeight: "100px", height: "100%" }}>
         {note.title && <NoteTitle>{note.title}</NoteTitle>}
         <NoteContentText>{note.content || "No content"}</NoteContentText>
         <NoteMeta>
@@ -279,9 +307,11 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
   return (
     <>
       {children}
-      {visibleNotes.map((note) => (
-        <VisibleNote key={note.id} note={note} colorPalette={DEFAULT_COLORS} highlightOverlay={highlightOverlay} />
-      ))}
+      <div className="hover-inspector-visible-note">
+        {visibleNotes.map((note) => (
+          <VisibleNote key={note.id} note={note} colorPalette={DEFAULT_COLORS} highlightOverlay={highlightOverlay} />
+        ))}
+      </div>
     </>
   );
 };

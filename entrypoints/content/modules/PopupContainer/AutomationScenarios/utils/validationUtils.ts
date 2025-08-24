@@ -9,12 +9,15 @@
  * @param exactMatch - Whether to perform exact matching (default: false)
  * @returns Error message if validation fails, null if valid
  */
-export const validateDomainPattern = (pattern: string, isRegex: boolean, exactMatch: boolean = false): string | null => {
+export const validateDomainPattern = (
+  pattern: string,
+  isRegex: boolean,
+  exactMatch: boolean = false,
+): string | null => {
   if (!pattern) return null;
 
   if (isRegex) {
     try {
-      new RegExp(pattern);
       // Test if the regex matches the current URL (full URL for regex patterns)
       const currentUrl = window.location.href;
       const regex = new RegExp(pattern);
@@ -53,13 +56,13 @@ export const validateDomainPattern = (pattern: string, isRegex: boolean, exactMa
 
       // Try to parse pattern as URL to extract host:port, otherwise treat as raw host pattern
       let patternHostPort = normalizedPattern;
-      
+
       try {
         // Check for malformed URLs like "http:localhost" (missing "//")
         if (normalizedPattern.includes(":") && !normalizedPattern.includes("://") && !normalizedPattern.includes("/")) {
           throw new Error("Malformed URL - protocol without proper separator");
         }
-        
+
         const u = new URL(normalizedPattern);
         if (u.host) {
           patternHostPort = u.host; // host includes port if present
@@ -72,7 +75,7 @@ export const validateDomainPattern = (pattern: string, isRegex: boolean, exactMa
         if (e instanceof Error && e.message === "Malformed URL - protocol without proper separator") {
           return "Invalid domain pattern";
         }
-        
+
         if (normalizedPattern.includes("/")) {
           // Likely missing protocol but contains path; assume http to parse
           try {

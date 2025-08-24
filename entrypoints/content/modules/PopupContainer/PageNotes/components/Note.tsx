@@ -131,8 +131,22 @@ export const Note: React.FC<NoteProps> = ({
 }) => {
   const highlightOverlay = useHighlightOverlay();
   
-  // Map colorId to actual color value
-  const noteColor = colorPalette.find(color => color.id === note.colorId)?.value || '#fef3c7';
+  // Helper function to convert hex to rgba with opacity
+  const hexToRgba = (hex: string, opacity: number = 0.85): string => {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    
+    // Parse r, g, b values
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
+
+  // Map colorId to actual color value with rgba opacity
+  const hexColor = colorPalette.find(color => color.id === note.colorId)?.value || '#fef3c7';
+  const noteColor = hexToRgba(hexColor, 0.85);
 
   // Handle highlighting attached DOM element when note is hovered
   const handleMouseEnter = () => {

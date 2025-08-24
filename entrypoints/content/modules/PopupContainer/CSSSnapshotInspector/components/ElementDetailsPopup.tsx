@@ -6,6 +6,7 @@ import { ElementDetails } from "./SnapshotViewer/components/ElementDetails";
 import { ElementDiff } from "./SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiff.tsx";
 import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
+import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";
 
 export const ElementDetailsPopup: React.FC = () => {
   const dispatch = useDispatch();
@@ -81,11 +82,13 @@ export const ElementDetailsPopup: React.FC = () => {
       onModalStateChange={handleModalStateChange}
       footer={null}
     >
-      <ElementDetails
-        selectedElement={1}
-        selectedElementData={selectedElementData}
-        selectedElementStyles={selectedElementStyles as Array<[string, any]>}
-      />
+      <ModalOverlayModal>
+        <ElementDetails
+          selectedElement={1}
+          selectedElementData={selectedElementData}
+          selectedElementStyles={selectedElementStyles as Array<[string, any]>}
+        />
+      </ModalOverlayModal>
     </FloatingModal>
   );
 };
