@@ -436,29 +436,22 @@ export function* executeRedirectStep(step: ScenarioStep) {
  * Executes a navigate step (with conditional logic based on scenario settings)
  */
 export function* executeNavigateStep(step: ScenarioStep) {
-  console.log(`[SCENARIO EXECUTION] Starting navigation step execution`, {
-    stepValue: step.value,
-    stepType: step.type,
-    stepXPath: step.xpath,
-  });
+  // Starting navigation step execution - console.log removed\n
 
   if (!step.value) {
     console.error(`[SCENARIO EXECUTION] Navigation step failed: URL is required`, step);
     throw new Error("URL is required for navigate steps");
   }
 
-  console.log(`[SCENARIO EXECUTION] Navigation validation`, {
-    stepEnableNavigation: step.enableNavigation,
-    targetUrl: step.value,
-  });
+  // Navigation validation completed - console.log removed\n
 
   // If enableNavigation is false on the step, skip the navigation step
   if (!step.enableNavigation) {
-    console.log(`[SCENARIO EXECUTION] Navigation step skipped: enableNavigation is false for this step`);
+    // Navigation step skipped: enableNavigation is false - console.log removed\n
     return;
   }
 
-  console.log(`[SCENARIO EXECUTION] Executing navigation to: ${step.value}`);
+  // Executing navigation - console.log removed\n
 
   // Navigate to the URL
   window.location.href = step.value;
@@ -468,7 +461,7 @@ export function* executeNavigateStep(step: ScenarioStep) {
     window.addEventListener("load", resolve, { once: true });
   });
 
-  console.log(`[SCENARIO EXECUTION] Navigation completed to: ${step.value}`);
+  // Navigation completed - console.log removed\n
 }
 
 /**
@@ -644,12 +637,7 @@ export function* executeNotificationStep(step: ScenarioStep) {
  * @returns The log entry for the executed step
  */
 export function* executeStep(step: ScenarioStep, stepIndex: number) {
-  console.log(`[SCENARIO EXECUTION] Starting step ${stepIndex}`, {
-    stepType: step.type,
-    stepValue: step.value,
-    stepXPath: step.xpath,
-    stepDescription: step.description || `${step.type} step`,
-  });
+  // Starting step execution - console.log removed\n
 
   try {
     // Check if this is a function step and syncFunctions is disabled
@@ -659,7 +647,7 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
       const syncFunctions = serverSettings?.syncFunctions ?? true;
 
       if (!syncFunctions) {
-        console.log(`[SCENARIO EXECUTION] Skipping function step ${stepIndex}: Functions sync disabled`);
+        // Skipping function step: Functions sync disabled - console.log removed\n
         // Skip function step execution when syncFunctions is false
         const logEntry: ExecutionLogEntry = {
           stepIndex,
@@ -681,7 +669,7 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
     const startTime = Date.now();
     const description = getStepDescription(step);
 
-    console.log(`[SCENARIO EXECUTION] Executing step ${stepIndex} of type ${step.type}`);
+    // Executing step of specified type - console.log removed\n
 
     // Execute the step based on its type
     switch (step.type) {
@@ -732,11 +720,7 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
     const endTime = Date.now();
     const executionTime = endTime - startTime;
 
-    console.log(`[SCENARIO EXECUTION] Step ${stepIndex} completed successfully`, {
-      stepType: step.type,
-      executionTime: `${executionTime}ms`,
-      description,
-    });
+    // Step completed successfully - console.log removed\n
 
     // Create a log entry
     const logEntry: ExecutionLogEntry = {
@@ -811,12 +795,7 @@ export function* executeSteps(
   functions?: FunctionMap,
   speed: number = 1,
 ) {
-  console.log(`[SCENARIO EXECUTION] Starting scenario execution`, {
-    totalSteps: steps?.length || 0,
-    speed,
-    hasFunctions: !!functions,
-    hasCallback: !!onStepComplete,
-  });
+  // Starting scenario execution - console.log removed\n
 
   try {
     // Initialize the execution log
