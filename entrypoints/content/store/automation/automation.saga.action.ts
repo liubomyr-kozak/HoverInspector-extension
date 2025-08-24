@@ -458,7 +458,6 @@ export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecording
       tags: [],
       category: "recording",
       executionSpeed: 1, // Default to medium speed (1x)
-      enableNavigation: false, // Default to false (checkbox unchecked)
     };
 
     // Save to storage

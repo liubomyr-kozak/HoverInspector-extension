@@ -9,6 +9,7 @@ export interface ScenarioStep {
   alternativeXpaths?: string[]; // Array of alternative XPaths that can be used
   value?: string;
   xpathAutoUpdated?: boolean; // Flag to indicate if xpath was automatically updated for better uniqueness
+  enableNavigation?: boolean; // Controls whether navigation steps should be executed during playback (only applies to navigate steps)
 }
 
 /**
@@ -23,7 +24,6 @@ export interface Scenario {
   category?: string;
   folderId?: string | null;
   executionSpeed?: number;
-  enableNavigation?: boolean; // Controls whether navigation steps should be executed during playback
 }
 
 /**

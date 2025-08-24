@@ -26,7 +26,6 @@ const validationSchema = yup.object().shape({
   description: yup.string(),
   category: yup.string(),
   tags: yup.array().of(yup.string()),
-  enableNavigation: yup.boolean(),
 });
 
 // Predefined categories for scenarios
@@ -51,7 +50,6 @@ interface AddScenarioFormProps {
     description?: string;
     category?: string;
     tags?: (string | undefined)[];
-    enableNavigation?: boolean;
   }) => void;
 }
 
@@ -76,7 +74,6 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
       description: "",
       category: "",
       tags: [],
-      enableNavigation: false,
     },
     mode: "onChange",
   });
@@ -151,6 +148,20 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
 
       // Close the step edit form
       handleCloseStepEditForm();
+    }
+  };
+
+  // Handler for moving a step up
+  const handleMoveStepUp = (stepIndex: number) => {
+    if (stepIndex > 0 && onReorderSteps) {
+      onReorderSteps(stepIndex, stepIndex - 1);
+    }
+  };
+
+  // Handler for moving a step down
+  const handleMoveStepDown = (stepIndex: number) => {
+    if (stepIndex < currentSteps.length - 1 && onReorderSteps) {
+      onReorderSteps(stepIndex, stepIndex + 1);
     }
   };
 
@@ -232,20 +243,6 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
         />
       </div>
 
-      {/* Enable Navigation checkbox */}
-      <div style={{ marginBottom: "16px" }}>
-        <Controller
-          name="enableNavigation"
-          control={control}
-          render={({ field }) => (
-            <Tooltip title="When enabled, scenario will navigate to URLs during playback">
-              <Checkbox {...field} checked={field.value} style={{ fontSize: "12px" }}>
-                Enable Navigation
-              </Checkbox>
-            </Tooltip>
-          )}
-        />
-      </div>
 
       <Divider orientation="left">Steps</Divider>
 
@@ -270,6 +267,10 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
                   onClose={handleCloseStepEditForm}
                   onSave={handleSaveStep}
                   onDelete={handleDeleteStep}
+                  onMoveUp={onReorderSteps ? handleMoveStepUp : undefined}
+                  onMoveDown={onReorderSteps ? handleMoveStepDown : undefined}
+                  stepIndex={index}
+                  totalSteps={currentSteps.length}
                 />
               </EditingStepItem>
             );

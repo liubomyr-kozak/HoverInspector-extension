@@ -359,7 +359,6 @@ export function* executeCodeStep(step: ScenarioStep) {
     throw new Error("Code is required for code steps");
   }
 
-
   try {
     // Execute the code
     // eslint-disable-next-line no-new-func
@@ -408,7 +407,6 @@ export function* executeFunctionStep(step: ScenarioStep) {
       throw Error(`Error executing function "${step.value}" ` + "NO FOUND FUNCTION" + executeFn);
     }
 
-
     const result = executeFn?.();
     return result;
   } catch (error) {
@@ -438,19 +436,29 @@ export function* executeRedirectStep(step: ScenarioStep) {
  * Executes a navigate step (with conditional logic based on scenario settings)
  */
 export function* executeNavigateStep(step: ScenarioStep) {
+  console.log(`[SCENARIO EXECUTION] Starting navigation step execution`, {
+    stepValue: step.value,
+    stepType: step.type,
+    stepXPath: step.xpath,
+  });
+
   if (!step.value) {
+    console.error(`[SCENARIO EXECUTION] Navigation step failed: URL is required`, step);
     throw new Error("URL is required for navigate steps");
   }
 
-  // Get the current scenario from state to check enableNavigation setting
-  const activeScenarioId = yield select((state) => state.automation.activeScenarioId);
-  const scenarios = yield select((state) => state.automation.scenarios);
-  const currentScenario = scenarios[activeScenarioId];
+  console.log(`[SCENARIO EXECUTION] Navigation validation`, {
+    stepEnableNavigation: step.enableNavigation,
+    targetUrl: step.value,
+  });
 
-  // If enableNavigation is false, skip the navigation step
-  if (currentScenario && currentScenario.enableNavigation === false) {
+  // If enableNavigation is false on the step, skip the navigation step
+  if (!step.enableNavigation) {
+    console.log(`[SCENARIO EXECUTION] Navigation step skipped: enableNavigation is false for this step`);
     return;
   }
+
+  console.log(`[SCENARIO EXECUTION] Executing navigation to: ${step.value}`);
 
   // Navigate to the URL
   window.location.href = step.value;
@@ -459,6 +467,8 @@ export function* executeNavigateStep(step: ScenarioStep) {
   yield new Promise((resolve) => {
     window.addEventListener("load", resolve, { once: true });
   });
+
+  console.log(`[SCENARIO EXECUTION] Navigation completed to: ${step.value}`);
 }
 
 /**
@@ -634,6 +644,13 @@ export function* executeNotificationStep(step: ScenarioStep) {
  * @returns The log entry for the executed step
  */
 export function* executeStep(step: ScenarioStep, stepIndex: number) {
+  console.log(`[SCENARIO EXECUTION] Starting step ${stepIndex}`, {
+    stepType: step.type,
+    stepValue: step.value,
+    stepXPath: step.xpath,
+    stepDescription: step.description || `${step.type} step`,
+  });
+
   try {
     // Check if this is a function step and syncFunctions is disabled
     if (step.type === StepType.FUNCTION) {
@@ -642,6 +659,7 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
       const syncFunctions = serverSettings?.syncFunctions ?? true;
 
       if (!syncFunctions) {
+        console.log(`[SCENARIO EXECUTION] Skipping function step ${stepIndex}: Functions sync disabled`);
         // Skip function step execution when syncFunctions is false
         const logEntry: ExecutionLogEntry = {
           stepIndex,
@@ -662,6 +680,8 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
     // Create a log entry for this step
     const startTime = Date.now();
     const description = getStepDescription(step);
+
+    console.log(`[SCENARIO EXECUTION] Executing step ${stepIndex} of type ${step.type}`);
 
     // Execute the step based on its type
     switch (step.type) {
@@ -711,6 +731,12 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
     // Calculate execution time
     const endTime = Date.now();
     const executionTime = endTime - startTime;
+
+    console.log(`[SCENARIO EXECUTION] Step ${stepIndex} completed successfully`, {
+      stepType: step.type,
+      executionTime: `${executionTime}ms`,
+      description,
+    });
 
     // Create a log entry
     const logEntry: ExecutionLogEntry = {
@@ -785,6 +811,13 @@ export function* executeSteps(
   functions?: FunctionMap,
   speed: number = 1,
 ) {
+  console.log(`[SCENARIO EXECUTION] Starting scenario execution`, {
+    totalSteps: steps?.length || 0,
+    speed,
+    hasFunctions: !!functions,
+    hasCallback: !!onStepComplete,
+  });
+
   try {
     // Initialize the execution log
     yield call(initializeExecutionLog);
@@ -794,7 +827,7 @@ export function* executeSteps(
 
     // Validate input parameters
     if (!steps || !Array.isArray(steps)) {
-      console.error("Invalid steps parameter:", steps);
+      console.error("[SCENARIO EXECUTION] Invalid steps parameter:", steps);
       return yield call(finalizeExecutionLog, ExecutionStatus.ERROR);
     }
 
@@ -805,9 +838,11 @@ export function* executeSteps(
 
     // If there are no steps, return success immediately
     if (steps.length === 0) {
-      console.warn("No steps to execute");
+      console.warn("[SCENARIO EXECUTION] No steps to execute");
       return yield call(finalizeExecutionLog, ExecutionStatus.SUCCESS);
     }
+
+    console.log(`[SCENARIO EXECUTION] Beginning execution of ${steps.length} steps`);
 
     // Execute each step
     for (let i = 0; i < steps.length; i++) {
@@ -897,11 +932,13 @@ export function* executeSteps(
     // Clear current step index when all steps are completed
     yield put(automationActions.setCurrentStepIndex(-1));
 
+    console.log(`[SCENARIO EXECUTION] All ${steps.length} steps executed successfully`);
+
     // All steps executed successfully
     return yield call(finalizeExecutionLog, ExecutionStatus.SUCCESS);
   } catch (error) {
     // Something went wrong during execution
-    console.error("Error executing steps:", error);
+    console.error("[SCENARIO EXECUTION] Error executing steps:", error);
 
     try {
       // Finalize the execution log with error status
@@ -923,7 +960,6 @@ export function* executeSteps(
   } finally {
     // Check if the task was cancelled
     if (yield cancelled()) {
-
       // Don't call finalizeExecutionLog in finally block as it can cause React rendering issues
       // The cancellation will be handled by the calling saga (playScenarioWatcher)
       // Just ensure we don't leave any dangling state

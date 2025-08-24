@@ -17,7 +17,7 @@ export const appSettingsInitial = {
   selectedElementType: "selectedElement",
   viewType: "code",
   launcher: {
-    iconOrder: ["inspector"] as string[],
+    iconOrder: [] as string[],
     activeIcons: ["inspector"] as string[],
     minimizedPosition: {
       x: 20,
@@ -31,7 +31,7 @@ export const appSettingsInitial = {
     hiddenUntil: 0, // Timestamp until which the sponsor message should be hidden (0 means not hidden)
   },
   colorHistory: [] as string[], // Store history of selected colors
-  visibleFeatures: [] as string[], // Store visible features list
+  visibleFeatures: ["inspector"] as string[], // Store visible features list
   minimizedFeatures: [] as string[], // Store features that should use minimized launcher
   notes: {
     notes: [],

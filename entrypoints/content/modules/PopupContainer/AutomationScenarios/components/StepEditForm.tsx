@@ -7,7 +7,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useSelector } from "react-redux";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
-import { AimOutlined, DeleteOutlined, SelectOutlined } from "@ant-design/icons";
+import { AimOutlined, DeleteOutlined, SelectOutlined, UpOutlined, DownOutlined } from "@ant-design/icons";
 import { getFilteredStepTypeOptions, ScenarioStep, StepType } from "../types";
 import { useServerSettings } from "../hooks/useServerSettings";
 import { selectFunctions, selectStoredValues } from "@entrypoints/content/store/automation/automation.slice";
@@ -43,13 +43,26 @@ interface StepEditFormProps {
   onClose: () => void;
   onSave: (updatedStep: ScenarioStep) => void;
   onDelete?: () => void;
+  onMoveUp?: (stepIndex: number) => void;
+  onMoveDown?: (stepIndex: number) => void;
+  stepIndex?: number;
+  totalSteps?: number;
 }
 
 /**
  * Form a component for editing a step in a scenario
  */
 // step = {} додав, виникає коли новий ценарій був доданий, і він перемальовується.. тимчасово постійне рішення
-const StepEditForm: React.FC<StepEditFormProps> = ({ step = {} as ScenarioStep, onClose, onSave, onDelete }) => {
+const StepEditForm: React.FC<StepEditFormProps> = ({
+  step = {} as ScenarioStep,
+  onClose,
+  onSave,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  stepIndex = 0,
+  totalSteps = 1,
+}) => {
   const functions = useSelector(selectFunctions);
   const storedValues = useSelector(selectStoredValues);
   const { syncFunctions } = useServerSettings();
@@ -692,12 +705,44 @@ const StepEditForm: React.FC<StepEditFormProps> = ({ step = {} as ScenarioStep, 
       <Divider style={{ margin: "12px 0" }} />
 
       <div className="w-full flex justify-between">
-        {onDelete && (
-          <Button type="default" danger icon={<DeleteOutlined />} onClick={onDelete}>
-            Delete
-          </Button>
-        )}
-        <Space className={onDelete ? "" : "w-full flex justify-end"}>
+        <div className="flex gap-2">
+          {onDelete && (
+            <Button type="default" danger icon={<DeleteOutlined />} onClick={onDelete}>
+              Delete
+            </Button>
+          )}
+          {onMoveUp && (
+            <Tooltip title="Move step up">
+              <Button
+                type="text"
+                size="small"
+                className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
+                icon={<UpOutlined />}
+                disabled={stepIndex === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveUp(stepIndex);
+                }}
+              />
+            </Tooltip>
+          )}
+          {onMoveDown && (
+            <Tooltip title="Move step down">
+              <Button
+                type="text"
+                size="small"
+                className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
+                icon={<DownOutlined />}
+                disabled={stepIndex === totalSteps - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveDown(stepIndex);
+                }}
+              />
+            </Tooltip>
+          )}
+        </div>
+        <Space>
           <Button type="primary" onClick={handleFormSubmit}>
             Save
           </Button>

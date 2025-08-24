@@ -21,6 +21,9 @@ import {
   ELEMENT_DETAILS_LIST_KEY,
   ELEMENT_DETAILS_PANEL_POSITION_KEY,
 } from "@entrypoints/core/constants/elementDetails.ts";
+import {
+  NOTEFORM_PANEL_POSITION_KEY,
+} from "@entrypoints/core/constants/notes.ts";
 
 class AppStorageService {
   // незалежно від того чи юзер залогінений чи ні,
@@ -355,6 +358,24 @@ class AppStorageService {
   saveElementDetailsPanelPosition = async (position) => {
     await LocalStorage.set(ELEMENT_DETAILS_PANEL_POSITION_KEY, position);
     return { success: true, key: ELEMENT_DETAILS_PANEL_POSITION_KEY };
+  };
+
+  /**
+   * Get NoteForm panel position and size
+   * @returns {Promise<Object|null>} The panel position/size object or null if not found
+   */
+  getNoteFormPanelPosition = async () => {
+    return await LocalStorage.get(NOTEFORM_PANEL_POSITION_KEY);
+  };
+
+  /**
+   * Save NoteForm panel position and size
+   * @param {Object} position - Object containing x, y, width, height
+   * @returns {Promise<Object>} Object with success status and key
+   */
+  saveNoteFormPanelPosition = async (position) => {
+    await LocalStorage.set(NOTEFORM_PANEL_POSITION_KEY, position);
+    return { success: true, key: NOTEFORM_PANEL_POSITION_KEY };
   };
 }
 

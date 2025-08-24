@@ -170,6 +170,10 @@ class HighlightOverlayManager {
     this.clearHandlers();
   }
 
+  public isSelectionActive(): boolean {
+    return !!(this.clickHandler && this.escHandler);
+  }
+
   public streamSelectionMode(): Observable<SelectionEvent> {
     return new Observable<SelectionEvent>((subscriber) => {
       subscriber.next({ type: "started" });

@@ -13,7 +13,8 @@ export enum PortalId {
 export const ScenarioPortalFooterButtons: React.FC<{
   children?: React.ReactNode;
   portalId: string;
-}> = ({ children, portalId }) => {
+  containerId?: string;
+}> = ({ children, portalId, containerId = "hover-inspector-popup-footer-container" }) => {
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export const ScenarioPortalFooterButtons: React.FC<{
     const shadowRoot = document.querySelector("hover-inspector")?.shadowRoot as ShadowRoot | null;
 
     if (shadowRoot) {
-      const container = shadowRoot.querySelector("#hover-inspector-popup-footer-container") as HTMLElement | null;
+      const container = shadowRoot.querySelector(`#${containerId}`) as HTMLElement | null;
 
       if (container) {
         // Check if a portal with this ID already exists
