@@ -5,7 +5,7 @@ import { TbGripVertical } from "react-icons/tb";
 import { IoCloseSharp } from "react-icons/io5";
 import * as React from "react";
 import { ZINDEX_MODAL } from "@entrypoints/shared/constant/zIndex.ts";
-import { RESIZE_HANDLE_STYLES } from "@entrypoints/shared/components/FloatingPanel/FloatingPanel.constant";
+import { RESIZE_HANDLE_STYLES } from "@entrypoints/shared/components/FloatingModal/FloatingModal.constant";
 
 interface ResizableModalProps {
   isOpen: boolean;

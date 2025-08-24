@@ -3,10 +3,10 @@ import { ModalProps } from "antd/lib/modal";
 import { ResizableModal } from "./ResizableModal";
 
 /**
- * NewModal props interface
+ * FloatingModal props interface
  * Extends Ant Design's ModalProps but replaces 'open' with our own implementation
  */
-export interface FloatingPanelProps extends Omit<ModalProps, "open"> {
+export interface FloatingModalProps extends Omit<ModalProps, "open"> {
   initialWidth?: number;
   initialHeight?: number;
   initialX?: number;
@@ -17,10 +17,10 @@ export interface FloatingPanelProps extends Omit<ModalProps, "open"> {
 }
 
 /**
- * NewModal component
+ * FloatingModal component
  * A simplified wrapper around ResizableModal that maintains compatibility with existing code
  */
-export const FloatingPanel: FunctionComponent<FloatingPanelProps> = (props): ReactElement => {
+export const FloatingModal: FunctionComponent<FloatingModalProps> = (props): ReactElement => {
   const {
     initialWidth = 600,
     initialHeight = 400,

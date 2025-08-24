@@ -322,6 +322,129 @@ export const actionsContextSlice = chromeActionsSlice({
   saveElementDetailsPanelPosition: async ({ data }) => {
     return await AppStorageService.saveElementDetailsPanelPosition(data);
   },
+
+  // Notes Management Actions
+  getAllNotes: async () => {
+    const state = await AppStorageService.getAppState();
+    return state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+  },
+
+  createNote: async ({ data }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    const newNote = {
+      ...data,
+      id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      domain: data.domain || '',
+      url: data.url || '',
+      isVisible: true,
+    };
+
+    notes.notes.push(newNote);
+    await AppStorageService.setAppState({ ...state, notes });
+    return newNote;
+  },
+
+  updateNote: async ({ data: { id, updates } }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    const noteIndex = notes.notes.findIndex(note => note.id === id);
+    if (noteIndex !== -1) {
+      notes.notes[noteIndex] = {
+        ...notes.notes[noteIndex],
+        ...updates,
+        updatedAt: Date.now(),
+      };
+      await AppStorageService.setAppState({ ...state, notes });
+      return notes.notes[noteIndex];
+    }
+    return null;
+  },
+
+  deleteNote: async ({ data: id }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    notes.notes = notes.notes.filter(note => note.id !== id);
+    await AppStorageService.setAppState({ ...state, notes });
+    return { success: true };
+  },
+
+  updateNotesSearchQuery: async ({ data: searchQuery }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    notes.searchQuery = searchQuery;
+    await AppStorageService.setAppState({ ...state, notes });
+  },
+
+  toggleNotesShowOnlyCurrentDomain: async ({ data: showOnlyCurrentDomain }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    notes.showOnlyCurrentDomain = showOnlyCurrentDomain;
+    await AppStorageService.setAppState({ ...state, notes });
+  },
+
+  createNoteGroup: async ({ data }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    const newGroup = {
+      ...data,
+      id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isExpanded: true,
+    };
+
+    notes.groups.push(newGroup);
+    await AppStorageService.setAppState({ ...state, notes });
+    return newGroup;
+  },
+
+  updateNoteGroup: async ({ data: { id, updates } }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    const groupIndex = notes.groups.findIndex(group => group.id === id);
+    if (groupIndex !== -1) {
+      notes.groups[groupIndex] = {
+        ...notes.groups[groupIndex],
+        ...updates,
+        updatedAt: Date.now(),
+      };
+      await AppStorageService.setAppState({ ...state, notes });
+      return notes.groups[groupIndex];
+    }
+    return null;
+  },
+
+  deleteNoteGroup: async ({ data: id }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    // Remove group and unassign notes from this group
+    notes.groups = notes.groups.filter(group => group.id !== id);
+    notes.notes = notes.notes.map(note => 
+      note.groupId === id ? { ...note, groupId: undefined } : note
+    );
+    
+    await AppStorageService.setAppState({ ...state, notes });
+    return { success: true };
+  },
+
+  setSelectedNote: async ({ data: selectedNoteId }) => {
+    const state = await AppStorageService.getAppState();
+    const notes = state.notes || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
+    
+    notes.selectedNoteId = selectedNoteId;
+    await AppStorageService.setAppState({ ...state, notes });
+  },
 });
 
 export const {
@@ -367,4 +490,15 @@ export const {
   getElementDetailsPanelPosition,
   saveElementDetailsPanelPosition,
   changeMinimizedFeaturesAndActiveIcons,
+  // Notes Management Actions
+  getAllNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+  updateNotesSearchQuery,
+  toggleNotesShowOnlyCurrentDomain,
+  createNoteGroup,
+  updateNoteGroup,
+  deleteNoteGroup,
+  setSelectedNote,
 } = actionsContextSlice;

@@ -5,6 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { ScenarioMap, TriggerConfig, TriggerType } from "../types.ts";
+import { validateDomainPattern } from "../utils/validationUtils.ts";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -53,7 +54,7 @@ interface TriggerFormProps {
 const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, currentTrigger, scenarios }) => {
   // State for trigger type selection to show/hide relevant fields
   const [triggerType, setTriggerType] = useState<TriggerType>(currentTrigger?.type || TriggerType.DOMAIN);
-  
+
   // State for regex mode and domain validation
   const [useRegex, setUseRegex] = useState<boolean>(currentTrigger?.condition?.useRegex || false);
   const [domainValidationError, setDomainValidationError] = useState<string | null>(null);
@@ -140,55 +141,6 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
     label: scenarios[key].title,
   }));
 
-  // Domain validation function
-  const validateDomainPattern = (pattern: string, isRegex: boolean, exactMatch: boolean = false): string | null => {
-    if (!pattern) return null;
-    
-    if (isRegex) {
-      try {
-        new RegExp(pattern);
-        // Test if the regex matches the current URL (full URL for regex patterns)
-        const currentUrl = window.location.href;
-        const regex = new RegExp(pattern);
-        if (!regex.test(currentUrl)) {
-          return `Regex pattern doesn't match current URL (${currentUrl})`;
-        }
-      } catch (error) {
-        return 'Invalid regular expression syntax';
-      }
-    } else {
-      const currentHostname = window.location.hostname;
-      const currentUrl = window.location.href;
-      const currentPort = window.location.port;
-      
-      if (exactMatch) {
-        // For exact match, compare against specific URL components
-        const hostnameWithPort = currentPort ? `${currentHostname}:${currentPort}` : currentHostname;
-        const baseUrl = `${window.location.protocol}//${hostnameWithPort}`;
-        
-        // Check exact matches against different URL formats
-        const exactMatches = 
-          pattern === currentHostname ||                    // hostname only
-          pattern === hostnameWithPort ||                   // hostname:port
-          pattern === baseUrl ||                            // protocol://hostname:port
-          pattern === currentUrl;                           // full URL with path
-        
-        if (!exactMatches) {
-          return `Domain pattern doesn't exactly match current URL (${currentHostname})`;
-        }
-      } else {
-        // Non-exact match: use substring matching (original behavior)
-        const matchesHostname = currentHostname.includes(pattern) || pattern.includes(currentHostname);
-        const matchesFullUrl = currentUrl.includes(pattern) || pattern.includes(currentUrl);
-        
-        if (!matchesHostname && !matchesFullUrl) {
-          return `Domain pattern doesn't match current URL (${currentHostname})`;
-        }
-      }
-    }
-    
-    return null;
-  };
 
   // Handler for regex toggle
   const handleRegexToggle = (checked: boolean) => {
@@ -198,7 +150,7 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
       ...currentCondition,
       useRegex: checked,
     });
-    
+
     // Validate current pattern with new regex setting
     const pattern = currentCondition.domainPattern;
     if (pattern) {
@@ -212,7 +164,9 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
   const handleDomainPatternChange = (value: string) => {
     const currentCondition = getValues("condition") || {};
     const exactMatch = currentCondition.exactMatch || false;
+
     const error = validateDomainPattern(value, useRegex, exactMatch);
+
     setDomainValidationError(error);
   };
 
@@ -227,7 +181,7 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
         ...currentCondition,
         domainPattern: domain,
       });
-      
+
       // Validate the new pattern
       const exactMatch = currentCondition.exactMatch || false;
       const error = validateDomainPattern(domain, useRegex, exactMatch);
@@ -252,31 +206,29 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '4px' }}>Trigger Title</label>
+      <div style={{ marginBottom: "16px" }}>
+        <label style={{ display: "block", marginBottom: "4px" }}>Trigger Title</label>
         <Controller
           name="title"
           control={control}
-          render={({ field }) => (
-            <Input {...field} placeholder="Enter trigger title" />
-          )}
+          render={({ field }) => <Input {...field} placeholder="Enter trigger title" />}
         />
-        {errors.title && <div style={{ color: '#ff4d4f', fontSize: '14px', marginTop: '4px' }}>{errors.title.message}</div>}
+        {errors.title && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.title.message}</div>
+        )}
       </div>
 
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '4px' }}>Description</label>
+      <div style={{ marginBottom: "16px" }}>
+        <label style={{ display: "block", marginBottom: "4px" }}>Description</label>
         <Controller
           name="description"
           control={control}
-          render={({ field }) => (
-            <TextArea {...field} placeholder="Enter trigger description" rows={2} />
-          )}
+          render={({ field }) => <TextArea {...field} placeholder="Enter trigger description" rows={2} />}
         />
       </div>
 
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '4px' }}>Scenario to Run</label>
+      <div style={{ marginBottom: "16px" }}>
+        <label style={{ display: "block", marginBottom: "4px" }}>Scenario to Run</label>
         <Controller
           name="scenarioId"
           control={control}
@@ -294,32 +246,35 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
             />
           )}
         />
-        {errors.scenarioId && <div style={{ color: '#ff4d4f', fontSize: '14px', marginTop: '4px' }}>{errors.scenarioId.message}</div>}
+        {errors.scenarioId && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.scenarioId.message}</div>
+        )}
       </div>
 
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '4px' }}>Enabled</label>
+      <div style={{ marginBottom: "16px" }}>
+        <label style={{ display: "block", marginBottom: "4px" }}>Enabled</label>
         <Controller
           name="enabled"
           control={control}
-          render={({ field: { value, onChange } }) => (
-            <Switch checked={value} onChange={onChange} />
-          )}
+          render={({ field: { value, onChange } }) => <Switch checked={value} onChange={onChange} />}
         />
       </div>
 
       <Divider orientation="left">Trigger Settings</Divider>
 
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '4px' }}>Trigger Type</label>
+      <div style={{ marginBottom: "16px" }}>
+        <label style={{ display: "block", marginBottom: "4px" }}>Trigger Type</label>
         <Controller
           name="type"
           control={control}
           render={({ field: { value, onChange } }) => (
-            <Radio.Group value={value} onChange={(e) => {
-              onChange(e.target.value);
-              handleTriggerTypeChange(e.target.value);
-            }}>
+            <Radio.Group
+              value={value}
+              onChange={(e) => {
+                onChange(e.target.value);
+                handleTriggerTypeChange(e.target.value);
+              }}
+            >
               <Radio.Button value={TriggerType.DOMAIN}>Domain</Radio.Button>
               <Radio.Button value={TriggerType.PAGE_LOAD}>Page Load</Radio.Button>
               <Radio.Button value={TriggerType.ELEMENT_PRESENT}>Element Present</Radio.Button>
@@ -327,27 +282,33 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
             </Radio.Group>
           )}
         />
-        {errors.type && <div style={{ color: '#ff4d4f', fontSize: '14px', marginTop: '4px' }}>{errors.type.message}</div>}
+        {errors.type && (
+          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.type.message}</div>
+        )}
       </div>
 
       {triggerType === TriggerType.DOMAIN && (
         <>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px' }}>Domain Pattern</label>
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ display: "block", marginBottom: "4px" }}>Domain Pattern</label>
             <Controller
               name="condition.domainPattern"
               control={control}
               render={({ field }) => (
                 <>
                   <Input.Group compact>
-                    <Input 
+                    <Input
                       {...field}
                       onChange={(e) => {
                         field.onChange(e);
                         handleDomainPatternChange(e.target.value);
                       }}
-                      placeholder={useRegex ? "Enter regex pattern (e.g., .*\\.example\\.com)" : "Enter domain pattern (e.g., example.com)"} 
-                      style={{ width: "calc(100% - 200px)" }} 
+                      placeholder={
+                        useRegex
+                          ? "Enter regex pattern (e.g., .*\\.example\\.com)"
+                          : "Enter domain pattern (e.g., example.com)"
+                      }
+                      style={{ width: "calc(100% - 200px)" }}
                     />
                     <Tooltip title={useRegex ? "Toggle to simple pattern" : "Toggle to regex pattern"}>
                       <Button
@@ -372,12 +333,31 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
                 </>
               )}
             />
-            {errors.condition?.domainPattern && <div style={{ color: '#ff4d4f', fontSize: '14px', marginTop: '4px' }}>{errors.condition.domainPattern.message}</div>}
-            {domainValidationError && <div style={{ color: '#fa8c16', fontSize: '14px', marginTop: '4px' }}>⚠️ {domainValidationError}</div>}
-            {!domainValidationError && getValues("condition.domainPattern") && <div style={{ color: '#52c41a', fontSize: '14px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><IconCheck size={16} /> Domain pattern is valid</div>}
+            {errors.condition?.domainPattern && (
+              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+                {errors.condition.domainPattern.message}
+              </div>
+            )}
+            {domainValidationError && (
+              <div style={{ color: "#fa8c16", fontSize: "14px", marginTop: "4px" }}>⚠️ {domainValidationError}</div>
+            )}
+            {!domainValidationError && getValues("condition.domainPattern") && (
+              <div
+                style={{
+                  color: "#52c41a",
+                  fontSize: "14px",
+                  marginTop: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <IconCheck size={16} /> Domain pattern is valid
+              </div>
+            )}
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: "16px" }}>
             <Controller
               name="condition.exactMatch"
               control={control}
@@ -392,35 +372,39 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
       )}
 
       {triggerType === TriggerType.ELEMENT_PRESENT && (
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Element XPath</label>
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>Element XPath</label>
           <Controller
             name="condition.elementXPath"
             control={control}
-            render={({ field }) => (
-              <Input {...field} placeholder="Enter XPath (e.g., //button[@id='submit'])" />
-            )}
+            render={({ field }) => <Input {...field} placeholder="Enter XPath (e.g., //button[@id='submit'])" />}
           />
-          {errors.condition?.elementXPath && <div style={{ color: '#ff4d4f', fontSize: '14px', marginTop: '4px' }}>{errors.condition.elementXPath.message}</div>}
+          {errors.condition?.elementXPath && (
+            <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+              {errors.condition.elementXPath.message}
+            </div>
+          )}
         </div>
       )}
 
       {triggerType === TriggerType.CUSTOM_EVENT && (
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Event Name</label>
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>Event Name</label>
           <Controller
             name="condition.eventName"
             control={control}
-            render={({ field }) => (
-              <Input {...field} placeholder="Enter event name (e.g., myCustomEvent)" />
-            )}
+            render={({ field }) => <Input {...field} placeholder="Enter event name (e.g., myCustomEvent)" />}
           />
-          {errors.condition?.eventName && <div style={{ color: '#ff4d4f', fontSize: '14px', marginTop: '4px' }}>{errors.condition.eventName.message}</div>}
+          {errors.condition?.eventName && (
+            <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
+              {errors.condition.eventName.message}
+            </div>
+          )}
         </div>
       )}
 
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '4px' }}>Additional Condition (JavaScript)</label>
+      <div style={{ marginBottom: "16px" }}>
+        <label style={{ display: "block", marginBottom: "4px" }}>Additional Condition (JavaScript)</label>
         <Controller
           name="condition.customCondition"
           control={control}

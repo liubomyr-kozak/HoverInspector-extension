@@ -12,6 +12,14 @@ import { EmptyState, StepContainer, StepHeader, StepTitle } from "../styles.ts";
 import { EditingStepItem, EditingStepHeader, EditingStepTitle } from "./ScenarioItem/ScenarioItem.styled";
 import StepEditForm from "./StepEditForm";
 
+// Function to generate a default scenario name
+const generateDefaultScenarioName = (): string => {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const dateString = now.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  return `New Scenario ${dateString} ${timeString}`;
+};
+
 // Yup validation schema
 const validationSchema = yup.object().shape({
   title: yup.string().required("Please enter a title for the scenario"),
@@ -64,7 +72,7 @@ const AddScenarioForm: React.FC<AddScenarioFormProps> = ({
   } = useForm({
     resolver: yupResolver(validationSchema),
     defaultValues: {
-      title: "",
+      title: generateDefaultScenarioName(),
       description: "",
       category: "",
       tags: [],

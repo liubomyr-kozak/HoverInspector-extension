@@ -1,4 +1,5 @@
 import { USER_STATUS_NEW } from "@entrypoints/content/store/app.constant";
+import { NotesState } from "@entrypoints/shared/types/notes";
 
 export const appSettingsInitial = {
   name: "settings",
@@ -32,5 +33,12 @@ export const appSettingsInitial = {
   colorHistory: [] as string[], // Store history of selected colors
   visibleFeatures: [] as string[], // Store visible features list
   minimizedFeatures: [] as string[], // Store features that should use minimized launcher
+  notes: {
+    notes: [],
+    groups: [],
+    searchQuery: "",
+    showOnlyCurrentDomain: false,
+    selectedNoteId: undefined,
+  } as NotesState, // Store page notes
   version: "1.0.14",
 };

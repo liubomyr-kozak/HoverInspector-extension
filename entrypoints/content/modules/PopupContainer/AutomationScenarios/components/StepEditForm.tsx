@@ -63,10 +63,10 @@ const StepEditForm: React.FC<StepEditFormProps> = ({ step = {} as ScenarioStep, 
   } = useForm<ScenarioStep>({
     resolver: yupResolver(validationSchema),
     defaultValues: {
-      type: step.type || StepType.CLICK,
-      xpath: step.xpath || "",
-      value: step.value || "",
-      alternativeXpaths: step.alternativeXpaths || [],
+      type: step?.type || StepType.CLICK,
+      xpath: step?.xpath || "",
+      value: step?.value || "",
+      alternativeXpaths: step?.alternativeXpaths || [],
       ...step,
     },
     mode: "onChange",
@@ -190,19 +190,19 @@ const StepEditForm: React.FC<StepEditFormProps> = ({ step = {} as ScenarioStep, 
 
   // Local state for the form
   const [formValues, setFormValues] = useState<ScenarioStep>({
-    type: step.type || "",
-    xpath: step.xpath || "",
-    value: step.value || "",
-    alternativeXpaths: step.alternativeXpaths || [],
+    type: step?.type || "",
+    xpath: step?.xpath || "",
+    value: step?.value || "",
+    alternativeXpaths: step?.alternativeXpaths || [],
   });
 
   // Update local state when the step prop changes
   useEffect(() => {
     setFormValues({
-      type: step.type || "",
-      xpath: step.xpath || "",
-      value: step.value || "",
-      alternativeXpaths: step.alternativeXpaths || [],
+      type: step?.type || "",
+      xpath: step?.xpath || "",
+      value: step?.value || "",
+      alternativeXpaths: step?.alternativeXpaths || [],
     });
   }, [step]);
 
@@ -532,11 +532,11 @@ const StepEditForm: React.FC<StepEditFormProps> = ({ step = {} as ScenarioStep, 
                 Tip: You can use stored values with ${"{variableName}"} syntax
               </div>
             )}
-            
+
             {/* Enable Navigation checkbox for navigate step type */}
             <div style={{ marginTop: "16px" }}>
               <Tooltip title="When enabled, this navigation step will be executed during playback">
-                <Checkbox 
+                <Checkbox
                   checked={formValues.enableNavigation || false}
                   onChange={(e) => handleChange("enableNavigation", e.target.checked)}
                   style={{ fontSize: "12px" }}

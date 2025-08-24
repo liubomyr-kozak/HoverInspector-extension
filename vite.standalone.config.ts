@@ -61,7 +61,6 @@ export default defineConfig({
       "src",
     ],
   },
-
   // Configure entry points
   // In Vite, we need to ensure the polyfills are loaded before the main entry
   // We'll do this by adding a script tag to the HTML template

@@ -12,6 +12,7 @@ import {
   selectPaused,
   selectSearchedStepIndex,
   selectExecutionSpeed,
+  selectIsEditingScenario,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
 import { AnimatedStepIcon, getStepColor } from "../../utils/stepIcons";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
@@ -110,6 +111,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
   const paused = useSelector(selectPaused);
   const searchedStepIndex = useSelector(selectSearchedStepIndex);
   const executionSpeed = useSelector(selectExecutionSpeed);
+  const isEditingScenario = useSelector(selectIsEditingScenario);
 
   // State for step editing
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
@@ -546,7 +548,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                                 size="small"
                                 className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
                                 icon={<UpOutlined />}
-                                disabled={originalIndex === 0}
+                                disabled={!isEditingScenario || originalIndex === 0}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleMoveStepUp(originalIndex);
@@ -559,7 +561,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                                 size="small"
                                 className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
                                 icon={<DownOutlined />}
-                                disabled={originalIndex === scenario.data.length - 1}
+                                disabled={!isEditingScenario || originalIndex === scenario.data.length - 1}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleMoveStepDown(originalIndex);

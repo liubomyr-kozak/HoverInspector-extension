@@ -8,7 +8,7 @@ import toastifyStyles from "react-toastify/dist/ReactToastify.css?inline";
 import AppController from "./modules/AppController/AppController.tsx";
 import { LauncherManager } from "./modules/LauncherManager/LauncherManager.tsx";
 
-import { FloatingPanelProvider } from "@entrypoints/shared/components/FloatingPanel/FloatingPanelProvider";
+import { FloatingModalProvider } from "@entrypoints/shared/components/FloatingModal/FloatingModalProvider";
 
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -60,18 +60,15 @@ export const App = ({ shadowRoot }) => {
     <StyleSheetManager target={shadowRoot}>
       <StyleProvider container={shadowRoot}>
         <EmotionShadowRoot shadowRoot={shadowRoot}>
-          {/*<style>{appStyles}</style>*/}
           <AppController>
             <HighlightOverlayProvider>
-              <FloatingPanelProvider>
+              <FloatingModalProvider>
                 <NotificationManager />
                 <TriggerScenarioEvaluator />
                 <ScheduleMonitor />
-                {/*<FeatureHandler>*/}
                 {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
                 {activeIcons.includes(RULER.id) && <ViewportRuler />}
                 <LauncherManager />
-                {/*</FeatureHandler>*/}
                 <ToastContainer
                   position="top-center"
                   autoClose={5000}
@@ -87,7 +84,7 @@ export const App = ({ shadowRoot }) => {
                     zIndex: 9999999,
                   }}
                 />
-              </FloatingPanelProvider>
+              </FloatingModalProvider>
             </HighlightOverlayProvider>
           </AppController>
         </EmotionShadowRoot>

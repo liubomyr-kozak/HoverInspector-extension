@@ -9,7 +9,7 @@ const getWindowSize = () => ({
   height: typeof window !== "undefined" ? window.innerHeight : 0,
 });
 
-export const FloatingPanelProvider = ({ children }: { children: React.ReactNode }): React.ReactElement => {
+export const FloatingModalProvider = ({ children }: { children: React.ReactNode }): React.ReactElement => {
   const dispatch = useDispatch();
 
   useEffect(() => {

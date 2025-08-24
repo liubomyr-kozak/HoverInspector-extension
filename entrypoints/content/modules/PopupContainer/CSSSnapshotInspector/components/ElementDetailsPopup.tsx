@@ -4,7 +4,7 @@ import { RootState } from "@entrypoints/content/store/createStore";
 import { closeElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 import { ElementDetails } from "./SnapshotViewer/components/ElementDetails";
 import { ElementDiff } from "./SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiff.tsx";
-import { FloatingPanel } from "@entrypoints/shared/components/FloatingPanel/FloatingPanel";
+import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
 
 export const ElementDetailsPopup: React.FC = () => {
@@ -70,7 +70,7 @@ export const ElementDetailsPopup: React.FC = () => {
   const selectedElementStyles = Object.entries(state.styles || {});
 
   return (
-    <FloatingPanel
+    <FloatingModal
       open={state.isOpen}
       title="Element details"
       onCancel={() => dispatch(closeElementDetails())}
@@ -86,6 +86,6 @@ export const ElementDetailsPopup: React.FC = () => {
         selectedElementData={selectedElementData}
         selectedElementStyles={selectedElementStyles as Array<[string, any]>}
       />
-    </FloatingPanel>
+    </FloatingModal>
   );
 };

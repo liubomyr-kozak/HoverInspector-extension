@@ -313,7 +313,11 @@ export const GroupedDiffView: React.FC<GroupedDiffViewProps> = ({ diff, search }
                               <div className="bg-red-100 border border-red-200 rounded-lg px-2 py-1 mb-1">
                                 <span className="text-red-700 text-[11px] font-semibold">Old: </span>
                                 <span className="break-all">
-                                  <Highlight text={`${formatValue(modifiedVal.old)}`} query={search} context="removed" />
+                                  <Highlight
+                                    text={`${formatValue(modifiedVal.old)}`}
+                                    query={search}
+                                    context="removed"
+                                  />
                                 </span>
                               </div>
                               <div className="bg-green-100 border border-green-200 rounded-lg px-2 py-1">
@@ -328,9 +332,9 @@ export const GroupedDiffView: React.FC<GroupedDiffViewProps> = ({ diff, search }
                       })()}
                     </div>
                   ) : (
-                    <span className="flex-1 min-w-0 break-all text-gray-700">
+                    <pre className="flex-1 min-w-0 break-all text-gray-700">
                       <Highlight text={`${formatValue(item.value)}`} query={search} context="neutral" />
-                    </span>
+                    </pre>
                   )}
 
                   <button

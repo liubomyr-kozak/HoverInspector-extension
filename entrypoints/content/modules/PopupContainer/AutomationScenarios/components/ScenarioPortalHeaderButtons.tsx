@@ -16,6 +16,7 @@ export enum HeaderPortalId {
   ELEMENT_INSPECTOR = "element-inspector-header",
   UNIT_CONVERTER = "unit-converter-header",
   VIEWPORT_INFO = "viewport-info-header",
+  PAGE_NOTES = "page-notes-header",
 }
 
 // Universal header portal component for all features

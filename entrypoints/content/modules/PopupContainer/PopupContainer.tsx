@@ -7,7 +7,7 @@ import {
   onChangeLauncherIconOrder,
 } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
-import { FloatingPanel } from "@entrypoints/shared/components/FloatingPanel/FloatingPanel";
+import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
 import { hideSponsorMessage, clearAllActiveIcons } from "@entrypoints/content/store/app/app.slice";
 import { ElementInspectorPopup } from "@entrypoints/content/modules/PopupContainer/ElementInspectorPopup";
 import {
@@ -17,6 +17,7 @@ import {
   CSS_SNAPSHOT,
   INSPECTOR,
   PICKER,
+  PAGE_NOTES,
   POPUP_SUPPORT_TOOLS,
   RULER,
 } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
@@ -25,6 +26,8 @@ import ColorPicker from "@entrypoints/content/modules/PopupContainer/ColorPicker
 import AnalyzePageUI from "@entrypoints/content/modules/PopupContainer/AnalyzePageUI.tsx";
 import { AutomationScenarios } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationScenarios.tsx";
 import { CSSSnapshotInspector } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/CSSSnapshotInspector.tsx";
+import { PageNotes } from "@entrypoints/content/modules/PopupContainer/PageNotes/PageNotes.tsx";
+import { HighlightOverlayProvider } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
 import {
   BecomeASponsor,
   BecomeASponsorText,
@@ -68,6 +71,7 @@ const COMPONENT_MAP: Record<string, JSX.Element> = {
   [ANALYZE_PAGE.id]: <AnalyzePageUI />,
   [AUTOMATION.id]: <AutomationScenarios />,
   [CSS_SNAPSHOT.id]: <CSSSnapshotInspector />,
+  [PAGE_NOTES.id]: <PageNotes />,
 };
 
 export function PopupContainer() {
@@ -166,7 +170,7 @@ export function PopupContainer() {
   return (
     <>
       <GlobalStyle />
-      <FloatingPanel
+      <FloatingModal
         open={activeIcons.length}
         title={renderHeaderContent()}
         initialHeight={featurePopupPosition.height}
@@ -242,7 +246,7 @@ export function PopupContainer() {
         }
       >
         <FeatureContainer key={`PopupContainer-feature--${iconOrder.join(".")}`}>{FeatureView}</FeatureContainer>
-      </FloatingPanel>
+      </FloatingModal>
     </>
   );
 }
