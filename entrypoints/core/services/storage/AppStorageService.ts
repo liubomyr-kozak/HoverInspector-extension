@@ -77,7 +77,7 @@ class AppStorageService {
           scenarios[strippedKey] = data;
         }
       } catch (e) {
-        console.log("1 AppStorageService::getAllAutomationScenarios -> e", e);
+        // Error handling - console.log removed\n
       }
     }
 

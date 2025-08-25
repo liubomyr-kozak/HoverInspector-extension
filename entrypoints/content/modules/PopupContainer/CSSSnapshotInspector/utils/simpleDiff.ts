@@ -80,11 +80,7 @@ export function createElementDiff(
   rightNode: DOMTreeNode | null,
   showAllData: boolean = false,
 ): ElementDiffData {
-  console.log("createElementDiff called with:", {
-    leftNode: leftNode ? "exists" : "null",
-    rightNode: rightNode ? "exists" : "null",
-    showAllData,
-  });
+  // Function parameter logging removed - console.log removed\n
 
   const leftData = extractElementData(leftNode);
   const rightData = extractElementData(rightNode);

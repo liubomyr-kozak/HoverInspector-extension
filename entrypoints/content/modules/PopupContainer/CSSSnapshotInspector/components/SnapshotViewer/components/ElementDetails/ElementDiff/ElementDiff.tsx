@@ -115,7 +115,7 @@ export const ElementDiff: React.FC<ElementDiffProps> = ({ diffData, left, right 
     );
   }
 
-  console.log("🚀🚀🚀 ::ElementDiff -> activeDiff", activeDiff);
+  // Debug logging removed - console.log removed\n
 
   return (
     <DiffContainer data-diff-popup>

@@ -821,7 +821,7 @@ export function* executeSteps(
       return yield call(finalizeExecutionLog, ExecutionStatus.SUCCESS);
     }
 
-    console.log(`[SCENARIO EXECUTION] Beginning execution of ${steps.length} steps`);
+    // Beginning execution of steps - console.log removed\n
 
     // Execute each step
     for (let i = 0; i < steps.length; i++) {
@@ -911,7 +911,7 @@ export function* executeSteps(
     // Clear current step index when all steps are completed
     yield put(automationActions.setCurrentStepIndex(-1));
 
-    console.log(`[SCENARIO EXECUTION] All ${steps.length} steps executed successfully`);
+    // All steps executed successfully - console.log removed\n
 
     // All steps executed successfully
     return yield call(finalizeExecutionLog, ExecutionStatus.SUCCESS);

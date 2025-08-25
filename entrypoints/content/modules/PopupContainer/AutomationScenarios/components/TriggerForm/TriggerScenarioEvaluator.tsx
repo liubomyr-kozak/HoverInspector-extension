@@ -7,6 +7,7 @@ import {
   saveTriggerWatcher,
 } from "@entrypoints/content/store/automation/automation.saga.action.ts";
 import { toast } from "react-toastify";
+import { validateDomainPattern } from "../../utils/validationUtils.ts";
 
 export const TriggerScenarioEvaluator = () => {
   const dispatch = useDispatch();
@@ -18,37 +19,21 @@ export const TriggerScenarioEvaluator = () => {
   const executedDomainTriggers = useRef(new Set());
 
   /**
-   * Evaluates a domain trigger condition
+   * Evaluates a domain trigger condition using the same validation logic as TriggerForm
    * @param condition The trigger condition to evaluate
    * @returns True if the condition is met, false otherwise
    */
   const evaluateDomainTrigger = (condition: TriggerConfig["condition"]) => {
     if (!condition.domainPattern) return false;
 
-    const { domainPattern, exactMatch } = condition;
+    const { domainPattern, exactMatch, useRegex } = condition;
 
-    // Визначаємо, що саме передано (повний URL чи тільки hostname)
-    const isFullOrigin = domainPattern.includes("://");
+    // Use the same validation logic as TriggerForm
+    // If validateDomainPattern returns null, the pattern matches (is valid)
+    const validationError = validateDomainPattern(domainPattern, useRegex || false, exactMatch || false);
     
-    const currentValue = isFullOrigin
-      ? window.location.origin // наприклад: "http://localhost:4400"
-      : window.location.hostname; // наприклад: "localhost"
-
-    if (exactMatch) {
-      return currentValue === domainPattern;
-    } else {
-      // Обробка wildcard патернів
-      if (domainPattern.startsWith("*.")) {
-        const baseDomain = domainPattern.slice(2); // видаляємо "*."
-        const currentHost = isFullOrigin ? new URL(currentValue).hostname : currentValue;
-        
-        // Перевіряємо чи поточний домен є базовим або субдоменом
-        return currentHost === baseDomain || currentHost.endsWith("." + baseDomain);
-      } else {
-        // Для звичайних патернів використовуємо includes
-        return currentValue.includes(domainPattern);
-      }
-    }
+    // Return true if validation passes (no error), false if there's an error
+    return validationError === null;
   };
 
   /**

@@ -43,7 +43,7 @@ function createInlineScript(content: string, filename: string, downloadUrl: stri
   script.async = true;
 
   script.onload = () => {
-    console.log("[Extension] External script loaded successfully.");
+    // Script loaded successfully - console.log removed\n
   };
 
   (document.head || document.documentElement).appendChild(script);

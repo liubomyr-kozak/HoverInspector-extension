@@ -159,7 +159,7 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
     }
   };
 
-  console.log("😜😜😜 ::VisibleNote -> position", position);
+  // Position logging removed - console.log removed\n
 
   return (
     <FloatingModal
