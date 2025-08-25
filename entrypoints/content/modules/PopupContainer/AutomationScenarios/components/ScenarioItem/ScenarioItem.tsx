@@ -211,7 +211,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
     if (stepIndex > 0) {
       // Get the current steps from the Redux store
       const steps = [...currentSteps];
-      
+
       // Swap the step with the previous one
       [steps[stepIndex - 1], steps[stepIndex]] = [steps[stepIndex], steps[stepIndex - 1]];
 
@@ -234,7 +234,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
     if (stepIndex < currentSteps.length - 1) {
       // Get the current steps from the Redux store
       const steps = [...currentSteps];
-      
+
       // Swap the step with the next one
       [steps[stepIndex], steps[stepIndex + 1]] = [steps[stepIndex + 1], steps[stepIndex]];
 
@@ -432,7 +432,6 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                       </EditingStepHeader>
                       <StepEditForm
                         step={currentSteps[originalIndex]}
-                        visible={true}
                         onClose={handleCloseStepEditForm}
                         onSave={handleSaveStep}
                         onDelete={handleDeleteStep}
@@ -440,11 +439,11 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                         onMoveDown={isEditingScenario ? handleMoveStepDown : undefined}
                         stepIndex={originalIndex}
                         totalSteps={scenario.data.length}
+                        isSingleItem
                       />
                     </EditingStepItem>
                   );
                 }
-
 
                 // Otherwise, show the normal step view with insert button
                 return (
@@ -503,7 +502,6 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                                 !bg-slate-50 dark:!bg-slate-800"
                                 icon={<PiPlayDuotone size="13px" />}
                                 onClick={(e) => {
-
                                   e.stopPropagation();
 
                                   // Check if scenario is currently paused and executing
@@ -527,7 +525,6 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                                 className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
                                 icon={<StepForwardOutlined />}
                                 onClick={(e) => {
-
                                   e.stopPropagation();
                                   runSingleStep(id, originalIndex);
                                 }}
@@ -540,7 +537,6 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                                 className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
                                 icon={<EditOutlined />}
                                 onClick={(e) => {
-
                                   e.stopPropagation();
                                   handleEditStep(originalIndex);
                                 }}

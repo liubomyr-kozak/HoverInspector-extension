@@ -617,6 +617,45 @@ export function* executeNotificationStep(step: ScenarioStep) {
 }
 
 /**
+ * Executes a wait element visible step
+ */
+export function* executeWaitElementVisibleStep(step: ScenarioStep) {
+  if (!step.xpath) {
+    throw new Error("XPath is required for wait element visible steps");
+  }
+
+  const timeout = step.value ? parseInt(step.value, 10) : 10000; // Default 10 seconds
+  if (isNaN(timeout) || timeout <= 0) {
+    throw new Error(`Invalid timeout value: ${step.value}`);
+  }
+
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const element = getElementByXPath(step.xpath);
+    
+    if (element) {
+      // Check if element is visible
+      const rect = element.getBoundingClientRect();
+      const isVisible = rect.width > 0 && rect.height > 0 && 
+                       element.offsetParent !== null &&
+                       window.getComputedStyle(element).visibility !== 'hidden' &&
+                       window.getComputedStyle(element).display !== 'none';
+      
+      if (isVisible) {
+        // Element is visible, step completed
+        return;
+      }
+    }
+
+    // Wait 100ms before checking again
+    yield delay(100);
+  }
+
+  throw new Error(`Element with XPath ${step.xpath} did not become visible within ${timeout}ms`);
+}
+
+/**
  * Executes a single step
  *
  * This function handles the execution of a single automation step based on its type.
@@ -702,6 +741,9 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
         break;
       case StepType.WAIT:
         yield call(executeWaitStep, step);
+        break;
+      case StepType.WAIT_ELEMENT_VISIBLE:
+        yield call(executeWaitElementVisibleStep, step);
         break;
       case StepType.SELECT:
         yield call(executeSelectStep, step);

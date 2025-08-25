@@ -8,7 +8,12 @@ import * as yup from "yup";
 import { IconPlus } from "@tabler/icons-react";
 import { Scenario, ScenarioStep } from "../types.ts";
 import { EmptyState } from "../styles.ts";
-import { EditingStepItem, EditingStepHeader, EditingStepTitle } from "./ScenarioItem/ScenarioItem.styled";
+import {
+  EditingStepItem,
+  EditingStepHeader,
+  EditingStepTitle,
+  StepInsertContainer,
+} from "./ScenarioItem/ScenarioItem.styled";
 import StepEditForm from "./StepEditForm";
 import { ScenarioPortalFooterButtons, PortalId } from "./ScenarioPortalFooterButtons";
 import RecordingFooter from "./RecordingFooter";
@@ -27,6 +32,7 @@ import {
   clearEditingStateWatcher,
   saveScenarioWatcher,
 } from "../../../../store/automation/automation.saga.action";
+import { PlusOutlined } from "@ant-design/icons";
 
 // Function to generate a default scenario name
 const generateDefaultScenarioName = (): string => {
@@ -62,6 +68,8 @@ const AddScenarioForm: React.FC = () => {
   const currentSteps = useSelector(selectCurrentSteps);
   const activeScenarioId = useSelector(selectActiveScenarioId);
   const isEditingScenario = useSelector(selectIsEditingScenario);
+
+  console.log("😀😀😀 ::AddScenarioForm -> isEditingScenario", isEditingScenario);
   // Local form data state to avoid drilling
   const [scenarioFormData, setScenarioFormData] = useState<{
     title?: string;
@@ -279,6 +287,18 @@ const AddScenarioForm: React.FC = () => {
     }
   };
 
+  // Handler for inserting a new step at a specific position
+  const handleInsertStep = (insertIndex: number) => {
+    console.log("📝 [INSERT STEP] Inserting new step at index:", insertIndex);
+    console.log("📝 [INSERT STEP] Current steps before insert:", currentSteps);
+    console.log("📝 [INSERT STEP] Current steps count:", currentSteps?.length || 0);
+
+    dispatch(automationActions.insertStep(insertIndex));
+    dispatch(persistEditingStateWatcher.getPayload());
+
+    console.log("📝 [INSERT STEP] Step insert action dispatched, persisting to storage");
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       <div>
@@ -371,23 +391,35 @@ const AddScenarioForm: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)}>
             {currentSteps.map((step, index) => {
               return (
-                <EditingStepItem key={`editing-${index}`}>
-                  <EditingStepHeader>
-                    <EditingStepTitle>Edit Step {index + 1}</EditingStepTitle>
-                  </EditingStepHeader>
-                  <StepEditForm
-                    step={currentSteps[index]}
-                    visible={true}
-                    onClose={handleCloseStepEditForm}
-                    onSave={handleSaveStep}
-                    onDelete={handleDeleteStep}
-                    onMoveUp={handleMoveStepUp}
-                    onMoveDown={handleMoveStepDown}
-                    stepIndex={index}
-                    totalSteps={currentSteps.length}
-                    isEditingScenario={isEditingScenario}
-                  />
-                </EditingStepItem>
+                <div key={`editing-${index}`}>
+                  <StepInsertContainer key={`insert-before-${index}`}>
+                    <div
+                      className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 transform -translate-y-3 hover:opacity-100 hover:bg-blue-400 hover:scale-110 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-300 active:opacity-100 transition-all duration-200"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInsertStep(index);
+                      }}
+                    >
+                      <PlusOutlined />
+                    </div>
+                  </StepInsertContainer>
+
+                  <EditingStepItem>
+                    <EditingStepHeader>
+                      <EditingStepTitle>Edit Step {index + 1}</EditingStepTitle>
+                    </EditingStepHeader>
+                    <StepEditForm
+                      step={currentSteps[index]}
+                      onClose={handleCloseStepEditForm}
+                      onSave={handleSaveStep}
+                      onDelete={handleDeleteStep}
+                      onMoveUp={handleMoveStepUp}
+                      onMoveDown={handleMoveStepDown}
+                      stepIndex={index}
+                      totalSteps={currentSteps.length}
+                    />
+                  </EditingStepItem>
+                </div>
               );
             })}
 

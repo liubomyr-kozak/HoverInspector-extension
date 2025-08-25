@@ -39,7 +39,6 @@ const validationSchema = yup.object().shape({
 
 interface StepEditFormProps {
   step: ScenarioStep;
-  visible: boolean;
   onClose: () => void;
   onSave: (updatedStep: ScenarioStep) => void;
   onDelete?: () => void;
@@ -47,7 +46,7 @@ interface StepEditFormProps {
   onMoveDown?: (stepIndex: number) => void;
   stepIndex?: number;
   totalSteps?: number;
-  isEditingScenario: boolean;
+  isSingleItem?: boolean;
 }
 
 /**
@@ -63,7 +62,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   onMoveDown,
   stepIndex = 0,
   totalSteps = 1,
-  isEditingScenario,
+  isSingleItem,
 }) => {
   const functions = useSelector(selectFunctions);
   const storedValues = useSelector(selectStoredValues);
@@ -592,6 +591,75 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
           </div>
         );
 
+      case StepType.WAIT_ELEMENT_VISIBLE:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Element XPath *</label>
+              <Input
+                value={formValues.xpath}
+                onChange={(e) => handleChange("xpath", e.target.value)}
+                placeholder="XPath of the element to wait for"
+                status={errors.xpath ? "error" : undefined}
+                addonAfter={
+                  <Space>
+                    <Tooltip title="Find element in page">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<AimOutlined style={{ color: "#1890ff" }} />}
+                        onClick={() => formValues.xpath && highlightElement(formValues.xpath)}
+                        disabled={!formValues.xpath}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Select element from page">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<SelectOutlined style={{ color: "#52c41a" }} />}
+                        onClick={startElementSelectionMode}
+                        disabled={selectingElement}
+                      />
+                    </Tooltip>
+                  </Space>
+                }
+              />
+              {errors.xpath && (
+                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.xpath.message}</div>
+              )}
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Timeout (ms)</label>
+              <Input
+                type="number"
+                value={formValues.value}
+                onChange={(e) => handleChange("value", e.target.value)}
+                placeholder="10000"
+                min={1000}
+                max={60000}
+                addonAfter={
+                  Object.keys(storedValues).length > 0 ? (
+                    <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
+                      <Button size="small">Insert Variable</Button>
+                    </Dropdown>
+                  ) : null
+                }
+              />
+              {errors.value && (
+                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
+              )}
+              <div className="text-xs text-gray-500 mt-1">
+                Maximum time to wait for element to become visible (1000-60000ms, default: 10000ms)
+              </div>
+              {Object.keys(storedValues).length > 0 && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Tip: You can use stored values with ${"{variableName}"} syntax
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       case StepType.CONFIRMATION:
         return (
           <div>
@@ -744,7 +812,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
             </Button>
           )}
 
-          {!isEditingScenario && (
+          {isSingleItem && (
             <>
               <Button type="primary" onClick={handleFormSubmit}>
                 Save
