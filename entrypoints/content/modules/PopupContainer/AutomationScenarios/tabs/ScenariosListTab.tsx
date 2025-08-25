@@ -1,37 +1,23 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Button, Form, message, Spin } from "antd";
+import React, { useEffect, useMemo } from "react";
+import { Button, Form, Spin } from "antd";
 import { IconPlus, IconRecordMail } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
-import { Scenario, ScenarioStep } from "../types";
+// import { Scenario } from "../types";
 
 import {
   automationActions,
-  ScenarioStatus,
   selectActiveScenarioId,
-  selectCurrentStepIndex,
-  selectCurrentSteps,
-  selectExecuting,
-  selectExecutionStatus,
-  selectFunctions,
   selectIsEditingScenario,
   selectLoading,
-  selectPaused,
   selectRecording,
-  selectRecordingPaused,
   selectScenarios,
-  selectStatus,
 } from "../../../../store/automation/automation.slice";
 
 import {
-  deleteScenarioWatcher,
   loadScenariosWatcher,
-  playScenarioWatcher,
-  saveScenarioWatcher,
   startNewRecordingWatcher,
   stopRecordingWatcher,
-  persistEditingStateWatcher,
-  clearEditingStateWatcher,
 } from "../../../../store/automation/automation.saga.action";
 
 import ScenarioList from "../components/ScenarioList.tsx";
@@ -44,7 +30,6 @@ import {
   HeaderPortalId,
   PortalModalHeader,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
-import RecordingFooter from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/RecordingFooter.tsx";
 import { AutomationFooterContainer } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/styles.ts";
 
 /**
@@ -56,79 +41,16 @@ import { AutomationFooterContainer } from "@entrypoints/content/modules/PopupCon
 const ScenariosListTab: React.FC = () => {
   const dispatch = useDispatch();
   const loading = useSelector(selectLoading);
-  const currentSteps = useSelector(selectCurrentSteps);
   const isEditingScenario = useSelector(selectIsEditingScenario);
   const activeScenarioId = useSelector(selectActiveScenarioId);
   const scenarios = useSelector(selectScenarios);
   const recording = useSelector(selectRecording);
 
-  const functions = useSelector(selectFunctions);
-  const recordingPaused = useSelector(selectRecordingPaused);
-
   const [form] = Form.useForm();
-  
-  // State to track form data from AddScenarioForm
-  const [scenarioFormData, setScenarioFormData] = useState<{
-    title?: string;
-    description?: string;
-    category?: string;
-    tags?: (string | undefined)[];
-  }>({});
 
   useEffect(() => {
     dispatch(loadScenariosWatcher.getPayload());
   }, []);
-
-  useEffect(() => {
-    if (activeScenarioId && scenarios[activeScenarioId]) {
-      form.setFieldsValue({
-        title: scenarios[activeScenarioId].title,
-      });
-    }
-  }, [scenarios, activeScenarioId]);
-
-  // Handler to receive form data changes from AddScenarioForm
-  const handleFormChange = (formData: {
-    title?: string;
-    description?: string;
-    category?: string;
-    tags?: (string | undefined)[];
-  }) => {
-    setScenarioFormData(formData);
-  };
-
-  const saveScenario = (stepsToSave) => {
-    // Validate that required fields are present
-    if (!scenarioFormData.title || scenarioFormData.title.trim() === '') {
-      message.error("Please enter a title for the scenario.");
-      return;
-    }
-
-    const scenarioToSave: Scenario = {
-      title: scenarioFormData.title,
-      description: scenarioFormData.description || '',
-      category: scenarioFormData.category || '',
-      tags: scenarioFormData.tags?.filter(tag => tag !== undefined) as string[] || [],
-      repeat: 1,
-      data: stepsToSave,
-    };
-
-    // Only pass id if it's not null (for existing scenarios)
-    const payload = activeScenarioId
-      ? { id: activeScenarioId, scenario: scenarioToSave }
-      : { scenario: scenarioToSave };
-
-    dispatch(saveScenarioWatcher.getPayload(payload));
-
-    // Note: Don't clear editing state after saving to allow continued editing
-    // clearEditingState() is called in handleCancel when user explicitly cancels editing
-  };
-
-  const handleCancel = () => {
-    dispatch(automationActions.resetScenarioForm());
-    // Clear the editing state from storage when canceling
-    dispatch(clearEditingStateWatcher.getPayload());
-  };
 
   const startRecording = () => {
     if (recording) {
@@ -138,49 +60,7 @@ const ScenariosListTab: React.FC = () => {
     }
   };
 
-  const addStep = () => {
-    dispatch(automationActions.addStep());
-    // Persist the updated steps to storage
-    dispatch(persistEditingStateWatcher.getPayload());
-  };
-
-  const removeStep = (index: number) => {
-    dispatch(automationActions.removeStep(index));
-    // Persist the updated steps to storage
-    dispatch(persistEditingStateWatcher.getPayload());
-  };
-
-  const updateStep = (index: number, field: keyof ScenarioStep, value: string) => {
-    dispatch(automationActions.updateStep({ index, field, value }));
-    // Persist the updated steps to storage
-    dispatch(persistEditingStateWatcher.getPayload());
-  };
-
-  const reorderSteps = (fromIndex: number, toIndex: number) => {
-    dispatch(automationActions.reorderSteps({ fromIndex, toIndex }));
-    // Persist the updated steps to storage
-    dispatch(persistEditingStateWatcher.getPayload());
-  };
-
-  const toggleRecordingPause = () => {
-    dispatch(automationActions.setRecordingPaused(!recordingPaused));
-  };
-
-  const saveRecording = () => {
-    // Switch to editing mode and set up for saving
-    dispatch(automationActions.setStatus(ScenarioStatus.EDITING));
-    dispatch(automationActions.setActiveTab("scenarios")); // Switch to scenarios tab
-
-    // Explicitly persist the editing state to ensure it's available after page navigation
-    dispatch(persistEditingStateWatcher.getPayload());
-
-    saveScenario(currentSteps);
-  };
-
   const isScenarioCreated = useMemo(() => !!Object.values(scenarios).length, [scenarios]);
-
-  // currentSteps is now the single source of truth for all steps
-  const activeScenarioSteps = currentSteps;
 
   if (loading) {
     return (
@@ -245,27 +125,7 @@ const ScenariosListTab: React.FC = () => {
   }
 
   if (isEditingScenario || recording) {
-    return (
-      <>
-        <AddScenarioForm
-          currentSteps={activeScenarioSteps}
-          functions={functions}
-          onAddStep={addStep}
-          onRemoveStep={removeStep}
-          onUpdateStep={updateStep}
-          onReorderSteps={reorderSteps}
-          onFormChange={handleFormChange}
-        />
-        <ScenarioPortalFooterButtons portalId={recording ? PortalId.RECORDING : PortalId.SCENARIOS_TAB}>
-          <RecordingFooter
-            isPaused={recordingPaused}
-            onCancel={handleCancel}
-            onPauseToggle={toggleRecordingPause}
-            onSave={saveRecording}
-          />
-        </ScenarioPortalFooterButtons>
-      </>
-    );
+    return <AddScenarioForm />;
   }
 
   // isEditingScenario

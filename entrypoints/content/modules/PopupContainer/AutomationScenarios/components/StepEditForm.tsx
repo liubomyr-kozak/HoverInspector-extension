@@ -47,6 +47,7 @@ interface StepEditFormProps {
   onMoveDown?: (stepIndex: number) => void;
   stepIndex?: number;
   totalSteps?: number;
+  isEditingScenario: boolean;
 }
 
 /**
@@ -62,6 +63,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   onMoveDown,
   stepIndex = 0,
   totalSteps = 1,
+  isEditingScenario,
 }) => {
   const functions = useSelector(selectFunctions);
   const storedValues = useSelector(selectStoredValues);
@@ -704,13 +706,8 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
 
       <Divider style={{ margin: "12px 0" }} />
 
-      <div className="w-full flex justify-between">
-        <div className="flex gap-2">
-          {onDelete && (
-            <Button type="default" danger icon={<DeleteOutlined />} onClick={onDelete}>
-              Delete
-            </Button>
-          )}
+      <div className="w-full flex justify-end">
+        <Space>
           {onMoveUp && (
             <Tooltip title="Move step up">
               <Button
@@ -741,12 +738,20 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
               />
             </Tooltip>
           )}
-        </div>
-        <Space>
-          <Button type="primary" onClick={handleFormSubmit}>
-            Save
-          </Button>
-          <Button onClick={onClose}>Cancel</Button>
+          {onDelete && (
+            <Button type="default" danger icon={<DeleteOutlined />} onClick={onDelete}>
+              Delete
+            </Button>
+          )}
+
+          {!isEditingScenario && (
+            <>
+              <Button type="primary" onClick={handleFormSubmit}>
+                Save
+              </Button>
+              <Button onClick={onClose}>Cancel</Button>
+            </>
+          )}
         </Space>
       </div>
     </div>

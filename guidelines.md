@@ -4,3 +4,4 @@
 - use tailwindcss for styling
 - ask question if you are not sure about something
 - avoid use props drilling, if check each time maybe you can do refactoring need refactoring
+- documentation and analysis write in Ukrainian language
