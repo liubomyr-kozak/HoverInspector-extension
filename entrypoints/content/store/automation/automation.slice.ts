@@ -221,16 +221,8 @@ const automationSlice = createSlice({
       state.currentSteps = action.payload;
     },
     addStep(state) {
-      console.log('🔥 [REDUX ADD STEP] Before add - current steps:', state.currentSteps);
-      console.log('🔥 [REDUX ADD STEP] Current steps count:', state.currentSteps.length);
-      console.log('🔥 [REDUX ADD STEP] Adding new step with empty type');
-      
       const newStep = { type: "" };
       state.currentSteps.push(newStep);
-      
-      console.log('🔥 [REDUX ADD STEP] After add - current steps:', state.currentSteps);
-      console.log('🔥 [REDUX ADD STEP] New step added:', newStep);
-      console.log('🔥 [REDUX ADD STEP] New steps count:', state.currentSteps.length);
     },
     addCurrentStep(state, action: PayloadAction<ScenarioStep>) {
       state.currentSteps.push(action.payload);
@@ -240,9 +232,6 @@ const automationSlice = createSlice({
     },
     removeStep(state, action: PayloadAction<number>) {
       const index = action.payload;
-      console.log('🔥 [REDUX REMOVE STEP] Remove step action, index:', index);
-      console.log('🔥 [REDUX REMOVE STEP] Before remove - current steps:', state.currentSteps);
-      console.log('🔥 [REDUX REMOVE STEP] Current steps count:', state.currentSteps.length);
       
       // Validate index bounds
       if (index < 0 || index >= state.currentSteps.length) {
@@ -254,19 +243,10 @@ const automationSlice = createSlice({
         return;
       }
       
-      console.log('🔥 [REDUX REMOVE STEP] Step being removed:', state.currentSteps[index]);
-      
-      const removedSteps = state.currentSteps.splice(index, 1);
-      
-      console.log('🔥 [REDUX REMOVE STEP] After remove - current steps:', state.currentSteps);
-      console.log('🔥 [REDUX REMOVE STEP] Removed steps:', removedSteps);
-      console.log('🔥 [REDUX REMOVE STEP] New steps count:', state.currentSteps.length);
+      state.currentSteps.splice(index, 1);
     },
     updateStep(state, action: PayloadAction<{ index: number; field: keyof ScenarioStep; value: string }>) {
       const { index, field, value } = action.payload;
-      console.log('🔥 [REDUX UPDATE STEP] Update step action:', action.payload);
-      console.log('🔥 [REDUX UPDATE STEP] Before update - current steps:', state.currentSteps);
-      console.log('🔥 [REDUX UPDATE STEP] Step being updated (index', index, '):', state.currentSteps[index]);
       
       // Validate index bounds
       if (index < 0 || index >= state.currentSteps.length) {
@@ -278,32 +258,10 @@ const automationSlice = createSlice({
         return;
       }
       
-      // Track type field updates specifically
-      if (field === 'type') {
-        console.log('🔥 [REDUX UPDATE STEP] *** TYPE FIELD UPDATE ***');
-        console.log('🔥 [REDUX UPDATE STEP] Old type:', state.currentSteps[index].type);
-        console.log('🔥 [REDUX UPDATE STEP] New type:', value);
-        console.log('🔥 [REDUX UPDATE STEP] Value validation:', {
-          isUndefined: value === undefined,
-          isEmptyString: value === '',
-          isNull: value === null,
-          typeof: typeof value,
-          stringValue: String(value)
-        });
-      }
-      
-      const oldStep = { ...state.currentSteps[index] };
       state.currentSteps[index] = {
         ...state.currentSteps[index],
         [field]: value,
       };
-      
-      console.log('🔥 [REDUX UPDATE STEP] After update - updated step:', state.currentSteps[index]);
-      console.log('🔥 [REDUX UPDATE STEP] Field change:', {
-        field,
-        oldValue: oldStep[field],
-        newValue: value
-      });
     },
     addAlternativeXPath(state, action: PayloadAction<{ index: number; xpath: string }>) {
       const step = state.currentSteps[action.payload.index];
@@ -317,9 +275,6 @@ const automationSlice = createSlice({
     },
     reorderSteps(state, action: PayloadAction<{ fromIndex: number; toIndex: number }>) {
       const { fromIndex, toIndex } = action.payload;
-      console.log('🔥 [REDUX REORDER STEPS] Reorder action:', action.payload);
-      console.log('🔥 [REDUX REORDER STEPS] Before reorder - current steps:', state.currentSteps);
-      console.log('🔥 [REDUX REORDER STEPS] Current steps count:', state.currentSteps.length);
       
       // Validate indices bounds
       if (fromIndex < 0 || fromIndex >= state.currentSteps.length || toIndex < 0 || toIndex >= state.currentSteps.length) {
@@ -332,16 +287,8 @@ const automationSlice = createSlice({
         return;
       }
       
-      console.log('🔥 [REDUX REORDER STEPS] Step being moved (fromIndex', fromIndex, '):', state.currentSteps[fromIndex]);
-      console.log('🔥 [REDUX REORDER STEPS] Target position (toIndex', toIndex, '):', state.currentSteps[toIndex]);
-      
       const [movedStep] = state.currentSteps.splice(fromIndex, 1);
-      console.log('🔥 [REDUX REORDER STEPS] Extracted step:', movedStep);
-      
       state.currentSteps.splice(toIndex, 0, movedStep);
-      
-      console.log('🔥 [REDUX REORDER STEPS] After reorder - current steps:', state.currentSteps);
-      console.log('🔥 [REDUX REORDER STEPS] Reorder completed successfully');
     },
     setStatus(state, action: PayloadAction<ScenarioStatus>) {
       state.status = action.payload;
@@ -353,6 +300,16 @@ const automationSlice = createSlice({
       state.recordingPaused = action.payload;
     },
     addAlternativeXPathToCurrentStep(state, action: PayloadAction<{ index: number; xpath: string }>) {
+      const step = state.currentSteps[action.payload.index];
+      if (!step.alternativeXpaths) {
+        step.alternativeXpaths = [];
+      }
+      // Only add if it's not already in the array
+      if (!step.alternativeXpaths.includes(action.payload.xpath)) {
+        step.alternativeXpaths.push(action.payload.xpath);
+      }
+    },
+    addAlternativeXPathToRecordedStep(state, action: PayloadAction<{ index: number; xpath: string }>) {
       const step = state.currentSteps[action.payload.index];
       if (!step.alternativeXpaths) {
         step.alternativeXpaths = [];

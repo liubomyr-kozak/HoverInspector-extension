@@ -1,6 +1,7 @@
 import { FunctionComponent, ReactElement, useRef, useEffect } from "react";
 import { ModalProps } from "antd/lib/modal";
 import { ResizableModal } from "./ResizableModal";
+import { ModalOverlayProvider } from "./ModalOverlayContext";
 
 /**
  * FloatingModal props interface
@@ -68,17 +69,19 @@ export const FloatingModal: FunctionComponent<FloatingModalProps> = (props): Rea
   };
 
   return (
-    <ResizableModal
-      isOpen={open}
-      title={title}
-      footer={footer}
-      initialPosition={positionRef.current}
-      initialSize={sizeRef.current}
-      onPositionChange={handlePositionChange}
-      onSizeChange={handleSizeChange}
-      onClose={onCancel}
-    >
-      {children}
-    </ResizableModal>
+    <ModalOverlayProvider>
+      <ResizableModal
+        isOpen={open}
+        title={title}
+        footer={footer}
+        initialPosition={positionRef.current}
+        initialSize={sizeRef.current}
+        onPositionChange={handlePositionChange}
+        onSizeChange={handleSizeChange}
+        onClose={onCancel}
+      >
+        {children}
+      </ResizableModal>
+    </ModalOverlayProvider>
   );
 };

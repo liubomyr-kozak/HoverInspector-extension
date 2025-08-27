@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { Rnd } from "react-rnd";
-import { motion } from "framer-motion";
 import { TbGripVertical } from "react-icons/tb";
 import { IoCloseSharp } from "react-icons/io5";
 import * as React from "react";
@@ -46,99 +45,100 @@ export function ResizableModal({
 
   return (
     <ModalOverlay $zIndex={ZINDEX_MODAL}>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="absolute inset-0"
-      >
-        <Rnd
-          default={{
-            x: initialPosition.x,
-            y: initialPosition.y,
-            width: initialSize.width,
-            height: initialSize.height,
-          }}
-          minWidth={10}
-          minHeight={10}
-          maxHeight={800}
-          // bounds="parent"
-          dragHandleClassName="modal-drag-handle"
-          onDragStart={() => setIsDragging(true)}
-          onDragStop={(e, d) => {
-            setIsDragging(false);
-            if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
+      {/*<motion.div*/}
+      {/*  initial={{ opacity: 0, scale: 0.95 }}*/}
+      {/*  animate={{ opacity: 1, scale: 1 }}*/}
+      {/*  exit={{ opacity: 0, scale: 0.95 }}*/}
+      {/*  className="absolute inset-0"*/}
+      {/*>*/}
+      <Rnd
+        default={{
+          x: initialPosition.x,
+          y: initialPosition.y,
+          width: initialSize.width,
+          height: initialSize.height,
+        }}
+        minWidth={10}
+        minHeight={10}
+        maxHeight={800}
+        // bounds="parent"
+        dragHandleClassName="modal-drag-handle"
+        onDragStart={() => setIsDragging(true)}
+        onDragStop={(e, d) => {
+          setIsDragging(false);
+          if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
+          onPositionChange?.(d.x, d.y);
+        }}
+        onDrag={(e, d) => {
+          if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
+          dragFrame.current = requestAnimationFrame(() => {
             onPositionChange?.(d.x, d.y);
-          }}
-          onDrag={(e, d) => {
-            if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
-            dragFrame.current = requestAnimationFrame(() => {
-              onPositionChange?.(d.x, d.y);
-            });
-          }}
-          onResizeStart={() => setIsResizing(true)}
-          onResize={(e, direction, ref, delta, position) => {
-            if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
-            const width = parseInt(ref.style.width);
-            const height = parseInt(ref.style.height);
-            resizeFrame.current = requestAnimationFrame(() => {
-              onSizeChange?.(width, height);
-              onPositionChange?.(position.x, position.y);
-            });
-          }}
-          onResizeStop={() => {
-            setIsResizing(false);
-            if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
-          }}
-          enableResizing={{
-            top: true,
-            right: true,
-            bottom: true,
-            left: true,
-            topRight: true,
-            bottomRight: true,
-            bottomLeft: true,
-            topLeft: true,
-          }}
-          resizeHandleClasses={{
-            top: "resize-handle resize-handle-top",
-            right: "resize-handle resize-handle-right",
-            bottom: "resize-handle resize-handle-bottom",
-            left: "resize-handle resize-handle-left",
-            topRight: "resize-handle resize-handle-corner resize-handle-top-right",
-            bottomRight: "resize-handle resize-handle-corner resize-handle-bottom-right",
-            bottomLeft: "resize-handle resize-handle-corner resize-handle-bottom-left",
-            topLeft: "resize-handle resize-handle-corner resize-handle-top-left",
-          }}
-          resizeHandleStyles={RESIZE_HANDLE_STYLES}
-          className={`pointer-events-auto bg-white bg-card border border-gray-200 rounded-lg shadow-xl overflow-hidden ${
-            isDragging ? "cursor-grabbing" : ""
-          } ${isResizing ? "resizing" : ""} rnd-container`}
-        >
-          <div className="flex flex-col h-full">
-            {/* Header - Drag Handle */}
-            <div className="modal-drag-handle flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
-              <div className="flex items-center gap-2 w-full">
-                <TbGripVertical className="w-4 h-4 text-muted-foreground" />
-                {title}
-              </div>
-              <button
-                onClick={handleCloseClick}
-                className="modal-drag-handle-close-button h-8 w-8 p-0 hover:bg-accent z-10 relative"
-                style={{ pointerEvents: "auto", cursor: "pointer" }}
-              >
-                <IoCloseSharp size={"20px"} />
-              </button>
+          });
+        }}
+        onResizeStart={() => setIsResizing(true)}
+        onResize={(e, direction, ref, delta, position) => {
+          if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
+          const width = parseInt(ref.style.width);
+          const height = parseInt(ref.style.height);
+          resizeFrame.current = requestAnimationFrame(() => {
+            onSizeChange?.(width, height);
+            onPositionChange?.(position.x, position.y);
+          });
+        }}
+        positionOffset={{ x: 0, y: 0 }}
+        onResizeStop={() => {
+          setIsResizing(false);
+          if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
+        }}
+        enableResizing={{
+          top: true,
+          right: true,
+          bottom: true,
+          left: true,
+          topRight: true,
+          bottomRight: true,
+          bottomLeft: true,
+          topLeft: true,
+        }}
+        resizeHandleClasses={{
+          top: "resize-handle resize-handle-top",
+          right: "resize-handle resize-handle-right",
+          bottom: "resize-handle resize-handle-bottom",
+          left: "resize-handle resize-handle-left",
+          topRight: "resize-handle resize-handle-corner resize-handle-top-right",
+          bottomRight: "resize-handle resize-handle-corner resize-handle-bottom-right",
+          bottomLeft: "resize-handle resize-handle-corner resize-handle-bottom-left",
+          topLeft: "resize-handle resize-handle-corner resize-handle-top-left",
+        }}
+        resizeHandleStyles={RESIZE_HANDLE_STYLES}
+        className={`pointer-events-auto bg-white bg-card border border-gray-200 rounded-lg shadow-xl overflow-hidden ${
+          isDragging ? "cursor-grabbing" : ""
+        } ${isResizing ? "resizing" : ""} rnd-container`}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header - Drag Handle */}
+          <div className="modal-drag-handle flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
+            <div className="flex items-center gap-2 w-full">
+              <TbGripVertical className="w-4 h-4 text-muted-foreground" />
+              {title}
             </div>
-
-            {/* Body */}
-            {children}
-
-            {/* Footer */}
-            {footer && <div className="border-t border-gray-200 bg-white bg-card">{footer}</div>}
+            <button
+              onClick={handleCloseClick}
+              className="modal-drag-handle-close-button h-8 w-8 p-0 hover:bg-accent z-10 relative"
+              style={{ pointerEvents: "auto", cursor: "pointer" }}
+            >
+              <IoCloseSharp size={"20px"} />
+            </button>
           </div>
-        </Rnd>
-      </motion.div>
+
+          {/* Body */}
+          {children}
+
+          {/* Footer */}
+          {footer && <div className="border-t border-gray-200 bg-white bg-card">{footer}</div>}
+        </div>
+      </Rnd>
+      {/*</motion.div>*/}
     </ModalOverlay>
   );
 }

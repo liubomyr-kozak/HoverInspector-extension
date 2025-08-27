@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Button, Divider, Select } from "antd";
 import { useForm, Controller } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
@@ -6,6 +6,7 @@ import { FormInput, FormTextArea } from "@entrypoints/shared/components/FormInpu
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { IconPlus } from "@tabler/icons-react";
+import { useModalOverlayOptional } from "@entrypoints/shared/components/FloatingModal/ModalOverlayContext";
 import { Scenario, ScenarioStep } from "../types.ts";
 import { EmptyState } from "../styles.ts";
 import {
@@ -69,7 +70,9 @@ const AddScenarioForm: React.FC = () => {
   const activeScenarioId = useSelector(selectActiveScenarioId);
   const isEditingScenario = useSelector(selectIsEditingScenario);
 
-  console.log("😀😀😀 ::AddScenarioForm -> isEditingScenario", isEditingScenario);
+  // Get modal context for scrolling
+  const modalContext = useModalOverlayOptional();
+
   // Local form data state to avoid drilling
   const [scenarioFormData, setScenarioFormData] = useState<{
     title?: string;
@@ -112,13 +115,7 @@ const AddScenarioForm: React.FC = () => {
   };
 
   const onAddStep = () => {
-    console.log("📝 [ADD STEP] Adding new step to scenario");
-    console.log("📝 [ADD STEP] Current steps before add:", currentSteps);
-    console.log("📝 [ADD STEP] Current steps count:", currentSteps?.length || 0);
-
     dispatch(automationActions.addStep());
-
-    console.log("📝 [ADD STEP] Step add action dispatched, persisting to storage");
     // Persist the updated steps to storage
     dispatch(persistEditingStateWatcher.getPayload());
   };
@@ -131,19 +128,6 @@ const AddScenarioForm: React.FC = () => {
     category?: string;
     tags?: (string | undefined)[];
   }) => {
-    console.log("📋 [FORM CHANGE] Form data updated:", formData);
-    console.log("📋 [FORM CHANGE] Previous form data:", scenarioFormData);
-    console.log("📋 [FORM CHANGE] Title validation:", {
-      title: formData.title,
-      isEmpty: !formData.title || formData.title.trim() === "",
-      isOnlyWhitespace: formData.title && formData.title.trim() === "",
-    });
-    console.log("📋 [FORM CHANGE] Tags processing:", {
-      originalTags: formData.tags,
-      undefinedCount: formData.tags?.filter((tag) => tag === undefined).length || 0,
-      validTags: formData.tags?.filter((tag) => tag !== undefined) || [],
-    });
-
     setScenarioFormData(formData);
   };
 
@@ -175,7 +159,6 @@ const AddScenarioForm: React.FC = () => {
 
   // Form submission handler
   const onSubmit = (data: any) => {
-    console.log("📋 [FORM SUBMIT] Form submitted with data:", data);
     if (recording) {
       saveRecording();
     }
@@ -197,7 +180,6 @@ const AddScenarioForm: React.FC = () => {
       category: "",
       tags: [],
     };
-    console.log("🔄 [INITIAL FORM VALUES] Sending initial form values to parent:", initialValues);
     setScenarioFormData(initialValues);
   }, [defaultScenarioName]);
 
@@ -206,34 +188,70 @@ const AddScenarioForm: React.FC = () => {
   // State for step editing
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
 
-  // Function to scroll to the bottom of the steps container
-  const scrollToBottom = () => {
-    const hoverInspector = document.querySelector("hover-inspector") as HTMLElement & { shadowRoot: ShadowRoot | null };
-    const container = hoverInspector?.shadowRoot?.querySelector(
-      "html > body .draggable-modal .ant-modal-body",
-    ) as HTMLElement;
+  // Refs for tracking steps container and previous count for auto-scroll
+  const stepsContainerRef = useRef<HTMLDivElement>(null);
+  const previousStepCountRef = useRef<number>(0);
 
-    if (container?.scrollHeight) {
-      // Use smooth scrolling behavior instead of direct scrollTop assignment
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  // Scroll to bottom when steps change (new step added or recording starts)
+  // Effect to scroll to bottom when new steps are added
   useEffect(() => {
-    if (currentSteps.length > 0) {
-      // Use requestAnimationFrame to ensure DOM is updated before scrolling
-      requestAnimationFrame(() => {
-        scrollToBottom();
+    const currentStepCount = currentSteps.length;
+    const previousCount = previousStepCountRef.current;
+    
+    // If we have more steps than before, scroll to bottom
+    if (currentStepCount > previousCount && currentStepCount > 0) {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        if (modalContext) {
+          // Use the context's scroll method
+          modalContext.scrollToBottom();
+        } else if (stepsContainerRef.current) {
+          // Fallback to finding scrollable parent container
+          let scrollContainer = stepsContainerRef.current.closest(
+            '.ant-modal-body, .ant-tabs-content, [class*="modal"], [style*="overflow"]',
+          );
 
-        // And one more time after a longer delay
-        setTimeout(scrollToBottom, 300);
-      });
+          // If no specific scrollable container found, try to find any scrollable parent
+          if (!scrollContainer) {
+            let element = stepsContainerRef.current.parentElement;
+            while (element && element !== document.body) {
+              const style = window.getComputedStyle(element);
+              if (
+                style.overflow === "auto" ||
+                style.overflow === "scroll" ||
+                style.overflowY === "auto" ||
+                style.overflowY === "scroll"
+              ) {
+                scrollContainer = element;
+                break;
+              }
+              element = element.parentElement;
+            }
+          }
+
+          // If still no scrollable container found, try shadow DOM approach as fallback
+          if (!scrollContainer) {
+            const hoverInspector = document.querySelector("hover-inspector") as HTMLElement & {
+              shadowRoot: ShadowRoot | null;
+            };
+            scrollContainer = hoverInspector?.shadowRoot?.querySelector(
+              "html > body .draggable-modal .ant-modal-body",
+            ) as HTMLElement;
+          }
+
+          // Scroll to bottom with smooth behavior
+          if (scrollContainer) {
+            scrollContainer.scrollTo({
+              top: scrollContainer.scrollHeight,
+              behavior: "smooth",
+            });
+          }
+        }
+      }, 100); // Small delay to ensure DOM has rendered
     }
-  }, [currentSteps]);
+
+    // Update the previous count
+    previousStepCountRef.current = currentStepCount;
+  }, [currentSteps.length, modalContext]);
 
   // Handler for closing the step edit form
   const handleCloseStepEditForm = () => {
@@ -289,14 +307,8 @@ const AddScenarioForm: React.FC = () => {
 
   // Handler for inserting a new step at a specific position
   const handleInsertStep = (insertIndex: number) => {
-    console.log("📝 [INSERT STEP] Inserting new step at index:", insertIndex);
-    console.log("📝 [INSERT STEP] Current steps before insert:", currentSteps);
-    console.log("📝 [INSERT STEP] Current steps count:", currentSteps?.length || 0);
-
     dispatch(automationActions.insertStep(insertIndex));
     dispatch(persistEditingStateWatcher.getPayload());
-
-    console.log("📝 [INSERT STEP] Step insert action dispatched, persisting to storage");
   };
 
   return (
@@ -383,6 +395,7 @@ const AddScenarioForm: React.FC = () => {
         <EmptyState style={{ padding: "12px" }}>No steps added yet. Add a step to get started.</EmptyState>
       ) : (
         <div
+          ref={stepsContainerRef}
           style={{
             padding: "4px",
             marginBottom: "16px",

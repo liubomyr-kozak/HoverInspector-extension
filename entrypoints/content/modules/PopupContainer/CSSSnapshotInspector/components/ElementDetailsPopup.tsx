@@ -6,7 +6,7 @@ import { ElementDetails } from "./SnapshotViewer/components/ElementDetails";
 import { ElementDiff } from "./SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiff.tsx";
 import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
-import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";
+import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/ModalOverlayModal";
 
 export const ElementDetailsPopup: React.FC = () => {
   const dispatch = useDispatch();

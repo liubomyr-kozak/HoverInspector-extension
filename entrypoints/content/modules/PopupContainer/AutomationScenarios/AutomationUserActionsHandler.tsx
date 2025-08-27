@@ -102,9 +102,9 @@ const AutomationUserActionsHandler: React.FC = () => {
     feedbackElementRef.current = { element: feedbackElement, timeoutId };
   }, []);
 
-  // Skip if recording is not active or is paused
-  if (!recording || recordingPaused) {
-    // Clear the timers if recording is stopped or paused
+  // Skip if recording is not active
+  if (!recording) {
+    // Clear the timers if recording is stopped
     if (hoverDebounceTimerRef.current) {
       window.clearTimeout(hoverDebounceTimerRef.current);
       hoverDebounceTimerRef.current = null;
@@ -121,18 +121,38 @@ const AutomationUserActionsHandler: React.FC = () => {
       pendingHoverStepRef.current = null;
     }
 
-    // If recording is active but paused, still render the component but don't record actions
-    if (recording && recordingPaused) {
-      return null;
-    }
-
     // If recording is not active, don't render the component
     return null;
+  }
+
+  // If recording is paused, clear timers but keep component mounted to maintain event listeners
+  if (recordingPaused) {
+    // Clear the timers when paused to prevent actions from being processed
+    if (hoverDebounceTimerRef.current) {
+      window.clearTimeout(hoverDebounceTimerRef.current);
+      hoverDebounceTimerRef.current = null;
+    }
+
+    if (inputDebounceTimerRef.current) {
+      window.clearTimeout(inputDebounceTimerRef.current);
+      inputDebounceTimerRef.current = null;
+    }
+
+    // Clear any pending hover step
+    if (pendingHoverStepRef.current) {
+      window.clearTimeout(pendingHoverStepRef.current.timer);
+      pendingHoverStepRef.current = null;
+    }
   }
 
   // Handler for mousemove events (hovering over elements)
   const onHandlerHover = useCallback(
     (e: any) => {
+      // Skip if recording is paused
+      if (recordingPaused) {
+        return;
+      }
+
       // Skip hover highlighting if selection mode is active
       const highlightManager = HighlightOverlayManager.getInstance();
       if (highlightManager.isSelectionActive()) {
@@ -165,6 +185,12 @@ const AutomationUserActionsHandler: React.FC = () => {
 
           // Set a new timer to process the hover after a delay
           hoverDebounceTimerRef.current = window.setTimeout(() => {
+            // Re-check if recording is still active and not paused
+            if (!recording || recordingPaused) {
+              hoverDebounceTimerRef.current = null;
+              return;
+            }
+
             // Update the last hovered xpath
             lastHoveredXpathRef.current = step.xpath!;
 
@@ -176,6 +202,10 @@ const AutomationUserActionsHandler: React.FC = () => {
             } else {
               // Otherwise, store it as pending and wait for a click
               const timer = window.setTimeout(() => {
+                // Re-check if recording is still active and not paused before discarding
+                if (!recording || recordingPaused) {
+                  return;
+                }
                 // If no click happens within the timeout, discard the hover step
                 pendingHoverStepRef.current = null;
               }, HOVER_CLICK_TIMEOUT);
@@ -195,6 +225,11 @@ const AutomationUserActionsHandler: React.FC = () => {
   // Handler for mousedown events (clicking on elements)
   const onHandlerClick = useCallback(
     (e: any) => {
+      // Skip if recording is paused
+      if (recordingPaused) {
+        return;
+      }
+
       const clickedElement = e.target;
 
       // Skip if the element is part of the extension UI
@@ -282,6 +317,11 @@ const AutomationUserActionsHandler: React.FC = () => {
   // Handler for input events (typing in text fields)
   const onHandlerInput = useCallback(
     (e: any) => {
+      // Skip if recording is paused
+      if (recordingPaused) {
+        return;
+      }
+
       // Skip if the element is part of the extension UI
       if (hasAppClass(e.target)) {
         return;
@@ -298,6 +338,12 @@ const AutomationUserActionsHandler: React.FC = () => {
 
           // Set a new timer to record the input after a delay
           inputDebounceTimerRef.current = window.setTimeout(() => {
+            // Re-check if recording is still active and not paused
+            if (!recording || recordingPaused) {
+              inputDebounceTimerRef.current = null;
+              return;
+            }
+
             // Update the last input xpath
             lastInputXpathRef.current = step.xpath!;
             // Dispatch the step to the store
@@ -309,12 +355,17 @@ const AutomationUserActionsHandler: React.FC = () => {
         }
       }
     },
-    [dispatch, INPUT_DEBOUNCE_DELAY],
+    [dispatch, recordingPaused],
   );
 
   // Handler for change events (selecting options from dropdowns)
   const onHandlerChange = useCallback(
     (e: any) => {
+      // Skip if recording is paused
+      if (recordingPaused) {
+        return;
+      }
+
       // Skip if the element is part of the extension UI
       if (hasAppClass(e.target)) {
         return;
@@ -454,7 +505,7 @@ const AutomationUserActionsHandler: React.FC = () => {
         }
       }
     };
-  }, [onHandlerHover, onHandlerClick, onHandlerInput, onHandlerChange, onHandlerMessage]);
+  }, [onHandlerHover, onHandlerClick, onHandlerInput, onHandlerChange, onHandlerMessage, onHandlerPopstate, onHandlerUrlChange]);
 
   return null;
 };

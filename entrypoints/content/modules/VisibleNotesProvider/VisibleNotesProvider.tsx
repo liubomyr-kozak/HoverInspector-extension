@@ -5,6 +5,7 @@ import { Note as NoteType, ColorPalette } from "@entrypoints/shared/types/notes"
 import { getAllNotes, updateNote } from "@entrypoints/background/features/backgroundSlice";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
+import { BodyPortal } from "@entrypoints/shared/components/BodyPortal";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -307,11 +308,14 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
   return (
     <>
       {children}
-      <div className="hover-inspector-visible-note">
-        {visibleNotes.map((note) => (
-          <VisibleNote key={note.id} note={note} colorPalette={DEFAULT_COLORS} highlightOverlay={highlightOverlay} />
-        ))}
-      </div>
+
+      <BodyPortal containerId="hover-inspector-porta-visible-note">
+        <div className="hover-inspector-visible-note">
+          {visibleNotes.map((note) => (
+            <VisibleNote key={note.id} note={note} colorPalette={DEFAULT_COLORS} highlightOverlay={highlightOverlay} />
+          ))}
+        </div>
+      </BodyPortal>
     </>
   );
 };

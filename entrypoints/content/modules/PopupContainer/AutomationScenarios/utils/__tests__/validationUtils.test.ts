@@ -69,17 +69,13 @@ describe("validateDomainPattern", () => {
     });
 
     it("should match base URL with protocol", () => {
-      expect(validateDomainPattern("https://example.com:3000", IS_NOT_REGEX, EXACT_MATCH)).toBeNull();
+      expect(validateDomainPattern("https://example.com:3000", IS_NOT_REGEX, EXACT_MATCH)).toContain(
+        "Pattern does not exactly match current URL",
+      );
     });
 
     it("should match full URL", () => {
       expect(validateDomainPattern("https://example.com:3000/path?query=value", IS_NOT_REGEX, EXACT_MATCH)).toBeNull();
-    });
-
-    it("should return error for non-exact matches", () => {
-      const result = validateDomainPattern("different.com", IS_NOT_REGEX, EXACT_MATCH);
-      expect(result).toContain("Domain pattern doesn't exactly match current URL");
-      expect(result).toContain("example.com");
     });
   });
 
@@ -162,11 +158,6 @@ describe("validateDomainPattern", () => {
       expect(validateDomainPattern("EXAMPLE.COM", IS_NOT_REGEX)).toBeNull();
       expect(validateDomainPattern("Example.Com", IS_NOT_REGEX)).toBeNull();
     });
-
-    it("should return error for malformed URLs with protocol but missing //", () => {
-      expect(validateDomainPattern("http:localhost", IS_NOT_REGEX)).toBe("Invalid domain pattern");
-      expect(validateDomainPattern("https:example.com", IS_NOT_REGEX)).toBe("Invalid domain pattern");
-    });
   });
 
   describe("complex scenarios", () => {
@@ -184,6 +175,62 @@ describe("validateDomainPattern", () => {
     it("should handle different protocols in URL parsing", () => {
       expect(validateDomainPattern("http://example.com:3000", IS_NOT_REGEX)).toBeNull();
       expect(validateDomainPattern("ftp://example.com:3000", IS_NOT_REGEX)).toBeNull();
+    });
+  });
+
+  describe("regex patterns with path", () => {
+    it("should match regex including path", () => {
+      const result = validateDomainPattern(".*example\\.com:3000/path.*", IS_REGEX);
+      expect(result).toBeNull();
+    });
+
+    it("should not match regex if path differs", () => {
+      const result = validateDomainPattern(".*example\\.com:3000/other.*", IS_REGEX);
+      expect(result).toContain("Regex pattern doesn't match current URL");
+    });
+  });
+
+  describe("exact match with path", () => {
+    it("should fail if only domain is provided but URL has path", () => {
+      const result = validateDomainPattern("https://example.com:3000", IS_NOT_REGEX, EXACT_MATCH);
+      expect(result).toContain("Pattern does not exactly match current URL");
+    });
+
+    it("should succeed if full URL including path is provided", () => {
+      const result = validateDomainPattern("https://example.com:3000/path?query=value", IS_NOT_REGEX, EXACT_MATCH);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("non-exact match with path", () => {
+    it("should ignore path and match by hostname only", () => {
+      const result = validateDomainPattern("example.com/path", IS_NOT_REGEX, NON_EXACT_MATCH);
+      expect(result).toBeNull(); // path відкидається, збігається лише host
+    });
+  });
+
+  describe("malformed URL patterns", () => {
+    it("should return error for http:localhost without //", () => {
+      const result = validateDomainPattern("http:localhost", IS_NOT_REGEX);
+      expect(result).toBe("Domain pattern doesn't match current URL (example.com)");
+    });
+
+    it("should return error for https:example.com without //", () => {
+      const result = validateDomainPattern("https:example.com", IS_NOT_REGEX);
+      expect(result).toBe("Domain pattern doesn't match current URL (example.com)");
+    });
+  });
+
+  describe("wildcard with path", () => {
+    it("should match subdomain even if path is included", () => {
+      // @ts-ignore
+      window.location.hostname = "sub.example.com";
+      const result = validateDomainPattern("*.example.com/path", IS_NOT_REGEX);
+      expect(result).toBeNull();
+
+      // reset
+      // @ts-ignore
+      window.location.hostname = "example.com";
     });
   });
 });

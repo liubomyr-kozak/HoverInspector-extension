@@ -14,7 +14,13 @@ interface RecordingFooterProps {
  * Component for displaying the recording footer with pause/resume and save buttons
  */
 const RecordingFooter: React.FC<RecordingFooterProps> = ({ isPaused, onPauseToggle, onSave, onCancel }) => {
+  const handlePauseToggle = () => {
+    console.log(`🎬 [RECORDING] ${isPaused ? 'Resuming' : 'Pausing'} recording session`);
+    onPauseToggle();
+  };
+
   const handleSave = () => {
+    console.log('💾 [SAVE SCENARIO] Saving recording session as scenario');
     onSave();
   };
 
@@ -28,7 +34,7 @@ const RecordingFooter: React.FC<RecordingFooterProps> = ({ isPaused, onPauseTogg
       <div style={{ display: "flex", gap: "8px" }}>
         <Button onClick={onCancel}>Cancel</Button>
         <Button
-          onClick={onPauseToggle}
+          onClick={handlePauseToggle}
           icon={isPaused ? <IconPlayerPlay size={16} /> : <IconPlayerPause size={16} />}
           type={isPaused ? "primary" : "default"}
         >

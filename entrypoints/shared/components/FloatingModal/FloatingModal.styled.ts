@@ -1,7 +1,7 @@
 import styled from "styled-components";
 
 export const ModalOverlay = styled.div<{ $zIndex: number }>`
-  position: fixed;
+  //position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: ${(p) => p.$zIndex};

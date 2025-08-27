@@ -44,28 +44,12 @@ export const useScenarioActions = () => {
    * @param form The form instance to set values on
    */
   const editScenario = (id: string, form?: FormInstance<any>) => {
-    console.log('🔧 [EDIT SCENARIO] Starting edit for scenario ID:', id);
     const scenario = scenarios[id];
-
-    console.log('🔧 [EDIT SCENARIO] Scenario data:', scenario);
-    console.log('🔧 [EDIT SCENARIO] Available scenarios:', Object.keys(scenarios));
 
     if (!scenario) {
       console.error(`Scenario with id ${id} not found`);
       return;
     }
-
-    console.log('🔧 [EDIT SCENARIO] Setting current steps:', scenario.data);
-    console.log('🔧 [EDIT SCENARIO] Steps validation - checking for undefined types:');
-    scenario.data.forEach((step, index) => {
-      console.log(`🔧 [EDIT SCENARIO] Step ${index}:`, {
-        type: step.type,
-        xpath: step.xpath,
-        value: step.value,
-        isTypeUndefined: step.type === undefined,
-        stepObject: step
-      });
-    });
 
     dispatch(automationActions.setCurrentSteps(scenario.data));
     dispatch(automationActions.setActiveScenarioId(id));
@@ -73,12 +57,10 @@ export const useScenarioActions = () => {
 
     // Set execution speed from scenario if available
     if (scenario.executionSpeed !== undefined) {
-      console.log('🔧 [EDIT SCENARIO] Setting execution speed:', scenario.executionSpeed);
       dispatch(automationActions.setExecutionSpeed(scenario.executionSpeed));
     }
 
     // Persist the editing state to storage to ensure it survives page refreshes
-    console.log('🔧 [EDIT SCENARIO] Persisting editing state to storage');
     dispatch(persistEditingStateWatcher.getPayload());
 
     if (form) {
@@ -89,11 +71,8 @@ export const useScenarioActions = () => {
         tags: scenario.tags || [],
         repeat: 1,
       };
-      console.log('🔧 [EDIT SCENARIO] Setting form values:', formValues);
       form.setFieldsValue(formValues);
     }
-
-    console.log('🔧 [EDIT SCENARIO] Edit initialization completed');
   };
 
   /**

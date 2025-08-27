@@ -1,12 +1,13 @@
 import React from "react";
 import { useSelector } from "react-redux";
-import { MinimizedLauncher } from "../MinimizedLauncher/MinimizedLauncher.tsx";
+import { MinimizedLauncher } from "../MinimizedLauncher/MinimizedLauncher";
 import Launcher from "../Launcher/Launcher";
 import { PopupContainer } from "../PopupContainer/PopupContainer";
 import { ElementDetailsPopup } from "../PopupContainer/CSSSnapshotInspector/components/ElementDetailsPopup";
 import { NoteFormPopup } from "../PopupContainer/PageNotes/components/NoteFormPopup";
 import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationUserActionsHandler.tsx";
-import { selectRecording } from "@entrypoints/content/store/automation/automation.slice.ts";
+import { selectRecording } from "@entrypoints/content/store/automation/automation.slice";
+import { BodyPortal } from "@entrypoints/shared/components/BodyPortal";
 
 export const LauncherManager: React.FC = () => {
   const { minimizedFeatures = [] } = useSelector((state: any) => state?.app);
@@ -23,9 +24,12 @@ export const LauncherManager: React.FC = () => {
 
       {/* ElementDetailsPopup rendered at same level as PopupContainer, outside container constraints */}
       <ElementDetailsPopup />
-      
+
       {/* NoteFormPopup rendered at same level as PopupContainer, outside container constraints */}
-      <NoteFormPopup />
+
+      <BodyPortal containerId="hover-inspector-porta-note-form">
+        <NoteFormPopup />
+      </BodyPortal>
     </>
   );
 };
