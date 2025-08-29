@@ -14,7 +14,7 @@ class HoverInspector extends HTMLElement {
     this.setAttribute("data-wxt-shadow-root", "");
     this.style.zIndex = "2147483646";
     this.style.overflow = "visible";
-    this.style.position = "relative";
+    // this.style.position = "relative";
     this.style.width = "0px";
     this.style.height = "0px";
     this.style.display = "block";

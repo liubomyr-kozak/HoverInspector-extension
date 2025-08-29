@@ -7,7 +7,6 @@ import * as yup from "yup";
 import { ScenarioMap, TriggerConfig, TriggerType } from "../types.ts";
 import { validateDomainPattern } from "../utils/validationUtils.ts";
 
-const { Option } = Select;
 const { TextArea } = Input;
 
 // Yup validation schema
@@ -36,7 +35,6 @@ const createValidationSchema = () => {
         then: (schema) => schema.required("Please enter an event name"),
         otherwise: (schema) => schema.notRequired(),
       }),
-      customCondition: yup.string(),
     }),
   });
 };
@@ -116,7 +114,6 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
       useRegex: false,
       elementXPath: undefined,
       eventName: undefined,
-      customCondition: currentCondition.customCondition,
     };
 
     // Keep only the relevant fields based on the trigger type
@@ -155,6 +152,22 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
     if (pattern) {
       const exactMatch = currentCondition.exactMatch || false;
       const error = validateDomainPattern(pattern, checked, exactMatch);
+      setDomainValidationError(error);
+    }
+  };
+
+  // Handler for exact match toggle
+  const handleExactMatchToggle = (checked: boolean) => {
+    const currentCondition = getValues("condition") || {};
+    setValue("condition", {
+      ...currentCondition,
+      exactMatch: checked,
+    });
+
+    // Validate current pattern with new exact match setting
+    const pattern = currentCondition.domainPattern;
+    if (pattern) {
+      const error = validateDomainPattern(pattern, useRegex, checked);
       setDomainValidationError(error);
     }
   };
@@ -332,6 +345,56 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
                 </>
               )}
             />
+            <details style={{ marginTop: "8px" }}>
+              <summary style={{ cursor: "pointer", fontSize: "12px", color: "#8c8c8c", userSelect: "none" }}>
+                💡 Domain Pattern Examples
+              </summary>
+              <div
+                style={{
+                  marginTop: "8px",
+                  padding: "8px",
+                  backgroundColor: "#f9f9f9",
+                  borderRadius: "4px",
+                  fontSize: "12px",
+                }}
+              >
+                <div style={{ marginBottom: "8px" }}>
+                  <strong>Simple Patterns:</strong>
+                  <ul style={{ margin: "4px 0", paddingLeft: "16px" }}>
+                    <li>
+                      <code>example.com</code> - matches example.com and all subdomains
+                    </li>
+                    <li>
+                      <code>localhost:3000</code> - matches localhost on port 3000
+                    </li>
+                    <li>
+                      <code>*.github.com</code> - matches any subdomain of github.com
+                    </li>
+                  </ul>
+                </div>
+                <div style={{ marginBottom: "8px" }}>
+                  <strong>Regex Patterns:</strong>
+                  <ul style={{ margin: "4px 0", paddingLeft: "16px" }}>
+                    <li>
+                      <code>.*\.example\.com.*</code> - matches any subdomain of example.com
+                    </li>
+                    <li>
+                      <code>http://localhost:\d+/.*</code> - matches localhost with any port and path
+                    </li>
+                    <li>
+                      <code>.*#(app|dashboard|admin).*</code> - matches hash routes for app, dashboard, or admin
+                    </li>
+                    <li>
+                      <code>.*/(users|projects)/\d+.*</code> - matches URLs with users or projects followed by numbers
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>Exact Match:</strong> Use the checkbox below to match the complete URL exactly, including path
+                  and query parameters.
+                </div>
+              </div>
+            </details>
             {errors.condition?.domainPattern && (
               <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
                 {errors.condition.domainPattern.message}
@@ -366,7 +429,14 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
               name="condition.exactMatch"
               control={control}
               render={({ field: { value, onChange } }) => (
-                <Checkbox checked={value} onChange={onChange} disabled={useRegex}>
+                <Checkbox
+                  checked={value}
+                  onChange={(e) => {
+                    onChange(e);
+                    handleExactMatchToggle(e.target.checked);
+                  }}
+                  disabled={useRegex}
+                >
                   Exact match {useRegex && "(disabled in regex mode)"}
                 </Checkbox>
               )}
@@ -399,6 +469,70 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
             control={control}
             render={({ field }) => <Input {...field} placeholder="Enter event name (e.g., myCustomEvent)" />}
           />
+          <details style={{ marginTop: "8px" }}>
+            <summary style={{ cursor: "pointer", fontSize: "12px", color: "#8c8c8c", userSelect: "none" }}>
+              💡 Custom Event Examples
+            </summary>
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "8px",
+                backgroundColor: "#f9f9f9",
+                borderRadius: "4px",
+                fontSize: "12px",
+              }}
+            >
+              <div style={{ marginBottom: "8px" }}>
+                <strong>Common Custom Events:</strong>
+                <ul style={{ margin: "4px 0", paddingLeft: "16px" }}>
+                  <li>
+                    <code>userLoggedIn</code> - fires when user authentication completes
+                  </li>
+                  <li>
+                    <code>dataLoaded</code> - fires when async data loading finishes
+                  </li>
+                  <li>
+                    <code>formSubmitted</code> - fires after form submission
+                  </li>
+                  <li>
+                    <code>modalOpened</code> - fires when modal dialog appears
+                  </li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "8px" }}>
+                <strong>Analytics Events:</strong>
+                <ul style={{ margin: "4px 0", paddingLeft: "16px" }}>
+                  <li>
+                    <code>pageViewComplete</code> - fires when page view tracking is done
+                  </li>
+                  <li>
+                    <code>conversionTracked</code> - fires when conversion is recorded
+                  </li>
+                  <li>
+                    <code>experimentActivated</code> - fires when A/B test is activated
+                  </li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "8px" }}>
+                <strong>E-commerce Events:</strong>
+                <ul style={{ margin: "4px 0", paddingLeft: "16px" }}>
+                  <li>
+                    <code>addToCart</code> - fires when item is added to cart
+                  </li>
+                  <li>
+                    <code>checkoutStarted</code> - fires when checkout process begins
+                  </li>
+                  <li>
+                    <code>purchaseCompleted</code> - fires when purchase is finalized
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <strong>How to trigger:</strong> Use <code>window.dispatchEvent(new CustomEvent('eventName'))</code> or
+                popular analytics libraries like Google Analytics, Mixpanel, etc.
+              </div>
+            </div>
+          </details>
           {errors.condition?.eventName && (
             <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>
               {errors.condition.eventName.message}
@@ -406,17 +540,6 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
           )}
         </div>
       )}
-
-      <div style={{ marginBottom: "16px" }}>
-        <label style={{ display: "block", marginBottom: "4px" }}>Additional Condition (JavaScript)</label>
-        <Controller
-          name="condition.customCondition"
-          control={control}
-          render={({ field }) => (
-            <TextArea {...field} placeholder="Enter JavaScript code that returns true or false" rows={4} />
-          )}
-        />
-      </div>
     </form>
   );
 };

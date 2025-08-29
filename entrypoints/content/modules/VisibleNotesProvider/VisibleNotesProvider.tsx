@@ -309,13 +309,13 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
     <>
       {children}
 
-      <BodyPortal containerId="hover-inspector-porta-visible-note">
-        <div className="hover-inspector-visible-note">
-          {visibleNotes.map((note) => (
-            <VisibleNote key={note.id} note={note} colorPalette={DEFAULT_COLORS} highlightOverlay={highlightOverlay} />
-          ))}
-        </div>
-      </BodyPortal>
+      {/*<BodyPortal containerId="hover-inspector-porta-visible-note">*/}
+      <div className="hover-inspector-visible-note">
+        {visibleNotes.map((note) => (
+          <VisibleNote key={note.id} note={note} colorPalette={DEFAULT_COLORS} highlightOverlay={highlightOverlay} />
+        ))}
+      </div>
+      {/*</BodyPortal>*/}
     </>
   );
 };

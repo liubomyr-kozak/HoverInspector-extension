@@ -88,14 +88,13 @@ export default defineContentScript({
 
     const ui = await createShadowRootUi(ctx, {
       name: "hover-inspector", // this is tag
-      position: "overlay",
+      position: "inline",
       zIndex: 2147483646,
-      anchor: "body",
       onMount: (container) => {
         // Don't mount react app directly on <body>
         const wrapper = document.createElement("div");
         container.append(wrapper);
-
+        //
         const root = createRoot(wrapper);
 
         root.render(<ExtensionRoot shadowRoot={ui.shadow} />);

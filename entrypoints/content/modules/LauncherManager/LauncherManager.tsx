@@ -27,9 +27,9 @@ export const LauncherManager: React.FC = () => {
 
       {/* NoteFormPopup rendered at same level as PopupContainer, outside container constraints */}
 
-      <BodyPortal containerId="hover-inspector-porta-note-form">
-        <NoteFormPopup />
-      </BodyPortal>
+      {/*<BodyPortal containerId="hover-inspector-porta-note-form">*/}
+      <NoteFormPopup />
+      {/*</BodyPortal>*/}
     </>
   );
 };

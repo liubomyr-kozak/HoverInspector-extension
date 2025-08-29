@@ -16,36 +16,36 @@ export const MinimizedLauncher: React.FC = () => {
   };
 
   return (
-    <BodyPortal containerId="hover-inspector-porta-minimized-launcher">
-      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
-        <Rnd
-          position={{
-            x: minimizedPosition.x,
-            y: minimizedPosition.y,
-          }}
-          size={{
-            width: "auto",
-            height: "auto",
-          }}
-          onDragStop={handleDragStop}
-          dragHandleClassName="drag-handle"
-          enableResizing={false}
-          bounds="parent"
-          className="pointer-events-auto"
-          style={{
-            display: "flex",
-            borderRadius: "30px",
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            color: "white",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            minWidth: "120px",
-          }}
-        >
-          {minimizedFeatures.map((featureId, index) => (
-            <MinimizedFeature key={`minimized-${featureId}`} featureId={featureId} />
-          ))}
-        </Rnd>
-      </div>
-    </BodyPortal>
+    // <BodyPortal containerId="hover-inspector-porta-minimized-launcher">
+    <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
+      <Rnd
+        position={{
+          x: minimizedPosition.x,
+          y: minimizedPosition.y,
+        }}
+        size={{
+          width: "auto",
+          height: "auto",
+        }}
+        onDragStop={handleDragStop}
+        dragHandleClassName="drag-handle"
+        enableResizing={false}
+        bounds="parent"
+        className="pointer-events-auto"
+        style={{
+          display: "flex",
+          borderRadius: "30px",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "white",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          minWidth: "120px",
+        }}
+      >
+        {minimizedFeatures.map((featureId, index) => (
+          <MinimizedFeature key={`minimized-${featureId}`} featureId={featureId} />
+        ))}
+      </Rnd>
+    </div>
+    // </BodyPortal>
   );
 };
