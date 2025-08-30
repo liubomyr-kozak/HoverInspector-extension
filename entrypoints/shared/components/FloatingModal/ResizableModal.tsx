@@ -17,6 +17,7 @@ interface ResizableModalProps {
   initialSize?: { width: number; height: number };
   onPositionChange?: (x: number, y: number) => void;
   onSizeChange?: (width: number, height: number) => void;
+  position: "fixed" | "absolute";
 }
 
 export function ResizableModal({
@@ -29,6 +30,7 @@ export function ResizableModal({
   onPositionChange,
   onSizeChange,
   onClose,
+  position,
 }: ResizableModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -43,25 +45,24 @@ export function ResizableModal({
 
   if (!isOpen) return null;
 
+  console.log("🚀🚀🚀 ResizableModal::ResizableModal -> initialPosition", initialPosition);
+
   return (
     <ModalOverlay $zIndex={ZINDEX_MODAL}>
-      {/*<motion.div*/}
-      {/*  initial={{ opacity: 0, scale: 0.95 }}*/}
-      {/*  animate={{ opacity: 1, scale: 1 }}*/}
-      {/*  exit={{ opacity: 0, scale: 0.95 }}*/}
-      {/*  className="absolute inset-0"*/}
-      {/*>*/}
       <Rnd
         default={{
-          x: initialPosition.x,
-          y: initialPosition.y,
+          x: initialPosition?.x < 0 ? 0 : initialPosition.x,
+          y: initialPosition?.y < 0 ? 0 : initialPosition.y,
           width: initialSize.width,
           height: initialSize.height,
         }}
+        style={{ position: position }}
         minWidth={10}
         minHeight={10}
         maxHeight={800}
-        // bounds="parent"
+        scale={1}
+        enableUserSelectHack={false}
+        bounds={document.body}
         dragHandleClassName="modal-drag-handle"
         onDragStart={() => setIsDragging(true)}
         onDragStop={(e, d) => {
@@ -138,7 +139,6 @@ export function ResizableModal({
           {footer && <div className="border-t border-gray-200 bg-white bg-card">{footer}</div>}
         </div>
       </Rnd>
-      {/*</motion.div>*/}
     </ModalOverlay>
   );
 }

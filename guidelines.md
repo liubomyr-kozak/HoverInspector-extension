@@ -5,3 +5,4 @@
 - ask question if you are not sure about something
 - avoid use props drilling, if check each time maybe you can do refactoring need refactoring
 - documentation and analysis write in Ukrainian language
+- Obsidian MCP server user in the existing MCP folder 

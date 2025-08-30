@@ -173,6 +173,7 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
       initialHeight={position.height}
       onModalStateChange={handleModalStateChange}
       footer={null}
+      position="absolute"
       style={{
         background: noteColor,
         border: "1px solid rgba(0, 0, 0, 0.1)",
@@ -308,14 +309,11 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
   return (
     <>
       {children}
-
-      {/*<BodyPortal containerId="hover-inspector-porta-visible-note">*/}
       <div className="hover-inspector-visible-note">
         {visibleNotes.map((note) => (
           <VisibleNote key={note.id} note={note} colorPalette={DEFAULT_COLORS} highlightOverlay={highlightOverlay} />
         ))}
       </div>
-      {/*</BodyPortal>*/}
     </>
   );
 };

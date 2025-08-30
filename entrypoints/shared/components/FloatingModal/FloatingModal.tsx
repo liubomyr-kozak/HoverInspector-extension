@@ -14,6 +14,7 @@ export interface FloatingModalProps extends Omit<ModalProps, "open"> {
   initialY?: number;
   footer?: React.ReactNode;
   open?: boolean;
+  position?: "absolute" | "fixed";
   onModalStateChange?: (state: { x: number; y: number; width: number; height: number }) => void;
 }
 
@@ -33,6 +34,7 @@ export const FloatingModal: FunctionComponent<FloatingModalProps> = (props): Rea
     open = false,
     onModalStateChange,
     onCancel,
+    position = "fixed",
     ...restProps
   } = props;
 
@@ -79,6 +81,7 @@ export const FloatingModal: FunctionComponent<FloatingModalProps> = (props): Rea
         onPositionChange={handlePositionChange}
         onSizeChange={handleSizeChange}
         onClose={onCancel}
+        position={position}
       >
         {children}
       </ResizableModal>

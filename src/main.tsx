@@ -24,9 +24,9 @@ class HoverInspector extends HTMLElement {
 
     // Створюємо <html>
     const html = document.createElement("html");
-    html.style.position = "absolute";
-    html.style.top = "0px";
-    html.style.left = "0px";
+    // html.style.position = "absolute";
+    // html.style.top = "0px";
+    // html.style.left = "0px";
 
     // <head>
     const head = document.createElement("head");
