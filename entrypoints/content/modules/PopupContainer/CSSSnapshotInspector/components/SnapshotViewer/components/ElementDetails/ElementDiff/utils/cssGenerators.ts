@@ -49,13 +49,9 @@ export const generateComputedCSS = (diff: CSSDiff | null, selectorName = "Elemen
     rightProperties.push(formatProperty(prop, change.new));
   });
 
-  const leftCSS = leftProperties.length > 0 
-    ? `${selectorName} {\n${leftProperties.join("\n")}\n}` 
-    : "";
-  
-  const rightCSS = rightProperties.length > 0 
-    ? `${selectorName} {\n${rightProperties.join("\n")}\n}` 
-    : "";
+  const leftCSS = leftProperties.length > 0 ? `${selectorName} {\n${leftProperties.join("\n")}\n}` : "";
+
+  const rightCSS = rightProperties.length > 0 ? `${selectorName} {\n${rightProperties.join("\n")}\n}` : "";
 
   return { left: leftCSS, right: rightCSS };
 };
@@ -64,8 +60,8 @@ export const generateComputedCSS = (diff: CSSDiff | null, selectorName = "Elemen
  * Generates CSS blocks for class view from node data
  */
 export const generateClassCSS = (
-  leftNode: NodeWithClassRules | null, 
-  rightNode: NodeWithClassRules | null
+  leftNode: NodeWithClassRules | null,
+  rightNode: NodeWithClassRules | null,
 ): CSSBlocks => {
   const buildClassCSS = (node: NodeWithClassRules | null): string => {
     if (!node?.classRules) return "";

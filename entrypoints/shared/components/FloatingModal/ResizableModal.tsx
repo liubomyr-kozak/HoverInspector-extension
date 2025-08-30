@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Rnd } from "react-rnd";
+// import { Rnd } from "react-rnd";
+import { Rnd } from "../../../shared/components/react-rnd/src";
 import { TbGripVertical } from "react-icons/tb";
 import { IoCloseSharp } from "react-icons/io5";
 import * as React from "react";
@@ -37,6 +38,32 @@ export function ResizableModal({
   // rAF throttling refs
   const dragFrame = useRef<number | null>(null);
   const resizeFrame = useRef<number | null>(null);
+
+  // Validate and constrain initial position within viewport bounds
+  const getValidatedPosition = (pos: { x: number; y: number }, size: { width: number; height: number }) => {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    let validatedX = pos.x;
+    let validatedY = pos.y;
+
+    // Ensure position is not negative
+    validatedX = Math.max(0, validatedX);
+    validatedY = Math.max(0, validatedY);
+
+    // Ensure modal doesn't go out of right boundary
+    if (validatedX + size.width > windowWidth) {
+      validatedX = Math.max(0, windowWidth - size.width);
+    }
+
+    // Ensure modal doesn't go out of bottom boundary
+    if (validatedY + size.height > windowHeight) {
+      validatedY = Math.max(0, windowHeight - size.height);
+    }
+
+    return { x: validatedX, y: validatedY };
+  };
+
   // Close functionality removed since minimize feature is deprecated
   const handleCloseClick = (e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation();
@@ -45,14 +72,15 @@ export function ResizableModal({
 
   if (!isOpen) return null;
 
-  console.log("🚀🚀🚀 ResizableModal::ResizableModal -> initialPosition", initialPosition);
+  // Validate the initial position before using it
+  // const validatedPosition = getValidatedPosition(initialPosition, initialSize);
 
   return (
     <ModalOverlay $zIndex={ZINDEX_MODAL}>
       <Rnd
         default={{
-          x: initialPosition?.x < 0 ? 0 : initialPosition.x,
-          y: initialPosition?.y < 0 ? 0 : initialPosition.y,
+          x: initialPosition.x,
+          y: initialPosition.y,
           width: initialSize.width,
           height: initialSize.height,
         }}
@@ -62,28 +90,24 @@ export function ResizableModal({
         maxHeight={800}
         scale={1}
         enableUserSelectHack={false}
-        bounds={document.body}
         dragHandleClassName="modal-drag-handle"
         onDragStart={() => setIsDragging(true)}
         onDragStop={(e, d) => {
           setIsDragging(false);
           if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
+
           onPositionChange?.(d.x, d.y);
-        }}
-        onDrag={(e, d) => {
-          if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
-          dragFrame.current = requestAnimationFrame(() => {
-            onPositionChange?.(d.x, d.y);
-          });
         }}
         onResizeStart={() => setIsResizing(true)}
         onResize={(e, direction, ref, delta, position) => {
           if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
+
           const width = parseInt(ref.style.width);
           const height = parseInt(ref.style.height);
+
           resizeFrame.current = requestAnimationFrame(() => {
             onSizeChange?.(width, height);
-            onPositionChange?.(position.x, position.y);
+            // onPositionChange?.(position.x, position.y);
           });
         }}
         positionOffset={{ x: 0, y: 0 }}
