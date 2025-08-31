@@ -36,7 +36,42 @@ function mergeTextTokens(tokens: any) {
 
 function parseCssLine(lineValue) {
   const match = /^([\w-]+)\s*:\s*([^;]+)(;?)/.exec(lineValue);
-  if (!match) return [{ type: "text", value: lineValue }];
+  
+  // If no CSS property format match, try to parse as space-separated color values
+  if (!match) {
+    const tokens = [];
+    let lastIndex = 0;
+
+    const COLOR_GRADIENT_REGEX =
+      /(linear-gradient\([^)]+\)|radial-gradient\([^)]+\)|repeating-linear-gradient\([^)]+\)|repeating-radial-gradient\([^)]+\)|#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|\b(?:transparent|currentColor|inherit|initial|unset|[a-z]{3,})\b|color\(.*?\)|lab\(.*?\)|lch\(.*?\)|oklab\(.*?\)|oklch\(.*?\))/g;
+
+    let matchColor;
+    while ((matchColor = COLOR_GRADIENT_REGEX.exec(lineValue)) !== null) {
+      if (matchColor.index > lastIndex) {
+        const text = lineValue.slice(lastIndex, matchColor.index);
+        if (text.trim()) tokens.push({ type: "text", value: text });
+      }
+      const colorValue = matchColor[0];
+      
+      if (isGradientValue(colorValue)) {
+        tokens.push({ type: "gradient", value: colorValue });
+      } else if (isColorValue(colorValue)) {
+        tokens.push({ type: "color", value: colorValue });
+      } else {
+        tokens.push({ type: "text", value: colorValue });
+      }
+
+      lastIndex = matchColor.index + colorValue.length;
+    }
+
+    if (lastIndex < lineValue.length) {
+      const remainingText = lineValue.slice(lastIndex);
+      if (remainingText.trim()) tokens.push({ type: "text", value: remainingText });
+    }
+
+    // If we found any color tokens, return the parsed tokens, otherwise treat as plain text
+    return tokens.length > 0 ? mergeTextTokens(tokens) : [{ type: "text", value: lineValue }];
+  }
 
   const [, property, value, semicolon] = match;
   const tokens = [
