@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
-// import { Rnd } from "react-rnd";
-import { Rnd } from "../../../shared/components/react-rnd/src";
+import { Rnd } from "../ReactRnd";
 import { TbGripVertical } from "react-icons/tb";
 import { IoCloseSharp } from "react-icons/io5";
 import * as React from "react";
