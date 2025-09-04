@@ -154,6 +154,12 @@ export const ShorthandRow: React.FC<{
     else if (top === bottom && right === left) shorthandValue = `${top} ${right}`;
     else if (right === left) shorthandValue = `${top} ${right} ${bottom}`;
     else shorthandValue = `${top} ${right} ${bottom} ${left}`;
+  } else if (shorthand.shorthand === "border-style" || shorthand.shorthand === "border-width" || shorthand.shorthand === "border-color") {
+    const [top, right, bottom, left] = shorthand.individual.map((p) => shorthand.values[p]);
+    if (top === right && right === bottom && bottom === left) shorthandValue = top;
+    else if (top === bottom && right === left) shorthandValue = `${top} ${right}`;
+    else if (right === left) shorthandValue = `${top} ${right} ${bottom}`;
+    else shorthandValue = `${top} ${right} ${bottom} ${left}`;
   } else {
     shorthandValue = shorthand.individual.map((p) => shorthand.values[p]).join(" ");
   }

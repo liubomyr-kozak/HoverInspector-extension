@@ -1,12 +1,12 @@
 import React from "react";
 import { IconEdit, IconTrash, IconPin, IconGripVertical } from "@tabler/icons-react";
 import styled from "styled-components";
-import { Note as NoteType, ColorPalette } from "@entrypoints/shared/types/notes";
+import { Note as NoteType, ColorPalette, NoteViewType } from "@entrypoints/shared/types/notes";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 
 const NoteContainer = styled.div<{ $color?: string; $isSelected: boolean }>`
-  background: ${props => props.$color || '#fef3c7'};
-  border: 2px solid ${props => props.$isSelected ? '#3b82f6' : 'transparent'};
+  background: ${(props) => props.$color || "#fef3c7"};
+  border: 2px solid ${(props) => (props.$isSelected ? "#3b82f6" : "transparent")};
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
@@ -76,7 +76,6 @@ const NoteContent = styled.div`
   word-break: break-word;
 `;
 
-
 const NoteMeta = styled.div`
   display: flex;
   align-items: center;
@@ -110,7 +109,71 @@ const DragHandle = styled.div`
   }
 `;
 
-interface NoteProps {
+const ChipContainer = styled.div<{ $color?: string; $isSelected: boolean }>`
+  background: ${(props) => props.$color || "#fef3c7"};
+  border: 1px solid ${(props) => (props.$isSelected ? "#3b82f6" : "rgba(0, 0, 0, 0.1)")};
+  border-radius: 20px;
+  padding: 6px 12px;
+  margin: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s ease;
+  position: relative;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const ChipContent = styled.span`
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const ChipActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+
+  ${ChipContainer}:hover & {
+    opacity: 1;
+  }
+`;
+
+const ChipActionButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+`;
+
+
+type NoteProps = {
   note: NoteType;
   isSelected: boolean;
   colorPalette: ColorPalette[];
@@ -118,7 +181,8 @@ interface NoteProps {
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   onPin: (id: string) => void;
-}
+  viewType?: NoteViewType;
+};
 
 export const Note: React.FC<NoteProps> = ({
   note,
@@ -128,30 +192,31 @@ export const Note: React.FC<NoteProps> = ({
   onDelete,
   onSelect,
   onPin,
+  viewType = NoteViewType.NOTE,
 }) => {
   const highlightOverlay = useHighlightOverlay();
-  
+
   // Helper function to convert hex to rgba with opacity
   const hexToRgba = (hex: string, opacity: number = 0.85): string => {
     // Remove # if present
-    hex = hex.replace('#', '');
-    
+    hex = hex.replace("#", "");
+
     // Parse r, g, b values
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    
+
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
 
   // Map colorId to actual color value with rgba opacity
-  const hexColor = colorPalette.find(color => color.id === note.colorId)?.value || '#fef3c7';
+  const hexColor = colorPalette.find((color) => color.id === note.colorId)?.value || "#fef3c7";
   const noteColor = hexToRgba(hexColor, 0.85);
 
   // Handle highlighting attached DOM element when note is hovered
   const handleMouseEnter = () => {
     if (note.elementXPath) {
-      highlightOverlay.startHighlight(note.elementXPath, 'note');
+      highlightOverlay.startHighlight(note.elementXPath, "note");
     }
   };
 
@@ -162,16 +227,70 @@ export const Note: React.FC<NoteProps> = ({
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const isPinned = !!note.coordinates || !!note.elementXPath;
 
+  // Chip view rendering
+  if (viewType === NoteViewType.CHIP) {
+    return (
+      <ChipContainer
+        $color={noteColor}
+        $isSelected={isSelected}
+        onClick={() => onSelect(note.id)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        title={`${note.title || "Untitled"}: ${note.content}`}
+      >
+        <ChipContent>
+          {note.title || note.content.substring(0, 30) + (note.content.length > 30 ? "..." : "")}
+        </ChipContent>
+
+        <ChipActions>
+          {isPinned && (
+            <ChipActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                onPin(note.id);
+              }}
+              title="Unpin note"
+              style={{ background: "rgba(59, 130, 246, 0.2)" }}
+            >
+              <IconPin />
+            </ChipActionButton>
+          )}
+          <ChipActionButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(note.id);
+            }}
+            title="Edit note"
+          >
+            <IconEdit />
+          </ChipActionButton>
+          <ChipActionButton
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm("Delete this note?")) {
+                onDelete(note.id);
+              }
+            }}
+            title="Delete note"
+          >
+            <IconTrash />
+          </ChipActionButton>
+        </ChipActions>
+      </ChipContainer>
+    );
+  }
+
+  // Default note view rendering
   return (
     <NoteContainer
       $color={noteColor}
@@ -185,7 +304,7 @@ export const Note: React.FC<NoteProps> = ({
       </DragHandle>
 
       <NoteHeader>
-        <NoteTitle>{note.title || 'Untitled Note'}</NoteTitle>
+        <NoteTitle>{note.title || "Untitled Note"}</NoteTitle>
 
         <NoteActions>
           <ActionButton
@@ -194,9 +313,9 @@ export const Note: React.FC<NoteProps> = ({
               onPin(note.id);
             }}
             title={isPinned ? "Unpin note" : "Pin note to page"}
-            style={{ 
-              background: isPinned ? 'rgba(59, 130, 246, 0.1)' : undefined,
-              color: isPinned ? '#3b82f6' : undefined 
+            style={{
+              background: isPinned ? "rgba(59, 130, 246, 0.1)" : undefined,
+              color: isPinned ? "#3b82f6" : undefined,
             }}
           >
             <IconPin />
@@ -213,7 +332,7 @@ export const Note: React.FC<NoteProps> = ({
           <ActionButton
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm('Delete this note?')) {
+              if (confirm("Delete this note?")) {
                 onDelete(note.id);
               }
             }}
@@ -224,7 +343,7 @@ export const Note: React.FC<NoteProps> = ({
         </NoteActions>
       </NoteHeader>
 
-      <NoteContent>{note.content || 'No content'}</NoteContent>
+      <NoteContent>{note.content || "No content"}</NoteContent>
 
       <NoteMeta>
         <span>{note.domain}</span>

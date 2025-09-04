@@ -1,3 +1,8 @@
+export enum NoteViewType {
+  NOTE = "note",
+  CHIP = "chip"
+}
+
 export interface Note {
   id: string;
   content: string;
@@ -14,6 +19,10 @@ export interface Note {
     x: number;
     y: number;
   }; // For pinned position
+  
+  // Attachment options
+  attachmentType?: "element" | "route" | "domain" | "global"; // Type of attachment
+  routePattern?: string; // For route-specific attachment (e.g., "/user/*", "/product/:id")
   
   // Visual properties
   colorId?: string;
@@ -51,4 +60,6 @@ export interface NoteFormData {
   groupId?: string;
   colorId?: string;
   elementXPath?: string;
+  attachmentType?: "element" | "route" | "domain" | "global";
+  routePattern?: string;
 }

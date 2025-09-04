@@ -197,6 +197,12 @@ export const consolidateShorthands = (
         else if (top === bottom && right === left) shorthandValue = `${top} ${right}`;
         else if (right === left) shorthandValue = `${top} ${right} ${bottom}`;
         else shorthandValue = `${top} ${right} ${bottom} ${left}`;
+      } else if (shorthand === "border-style" || shorthand === "border-width" || shorthand === "border-color") {
+        const [top, right, bottom, left] = individuals.map((prop) => values[prop]);
+        if (top === right && right === bottom && bottom === left) shorthandValue = top;
+        else if (top === bottom && right === left) shorthandValue = `${top} ${right}`;
+        else if (right === left) shorthandValue = `${top} ${right} ${bottom}`;
+        else shorthandValue = `${top} ${right} ${bottom} ${left}`;
       } else {
         shorthandValue = individuals.map((prop) => values[prop]).join(" ");
       }

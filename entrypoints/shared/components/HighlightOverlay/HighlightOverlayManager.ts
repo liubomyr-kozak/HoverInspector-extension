@@ -198,6 +198,26 @@ class HighlightOverlayManager {
     return new Observable<SelectionEvent>((subscriber) => {
       subscriber.next({ type: "started" });
 
+      // Add hover highlighting functionality
+      this.mouseMoveHandler = (e: MouseEvent) => {
+        const target = e.target as Element;
+
+        if (this._preHighlightedElement !== target) {
+          this._preHighlightedElement = target;
+        } else {
+          return;
+        }
+
+        if (!target || target.nodeType !== Node.ELEMENT_NODE || this.isExtensionElement(target)) {
+          this.overlay.style.display = "none";
+          return;
+        }
+
+        this.applyOverlayStyles(target.getBoundingClientRect(), {
+          ...HIGHLIGHT_STYLES.hover,
+        });
+      };
+
       this.clickHandler = (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -217,6 +237,7 @@ class HighlightOverlayManager {
         }
       };
 
+      document.addEventListener("mousemove", this.mouseMoveHandler, true);
       document.addEventListener("click", this.clickHandler, true);
       document.addEventListener("keydown", this.escHandler, true);
 

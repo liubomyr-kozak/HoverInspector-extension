@@ -15,7 +15,7 @@ import {
   updateNoteGroup,
   deleteNoteGroup,
   setSelectedNote,
-} from "@entrypoints/background/features/backgroundSlice";
+} from "@entrypoints/background/features/notesActionsSlice.ts";
 import { openNoteForm } from "@entrypoints/content/store/notes/notes.slice";
 import { onToggleFeatureMinimized } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import {
