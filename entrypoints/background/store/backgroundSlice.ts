@@ -322,7 +322,6 @@ export const actionsContextSlice = chromeActionsSlice({
   saveElementDetailsPanelPosition: async ({ data }) => {
     return await AppStorageService.saveElementDetailsPanelPosition(data);
   },
-
 });
 
 export const {
@@ -367,5 +366,25 @@ export const {
   // Element Details Panel Position Actions
   getElementDetailsPanelPosition,
   saveElementDetailsPanelPosition,
+  // NoteForm Panel Position Actions
+  getNoteFormPanelPosition,
+  saveNoteFormPanelPosition,
   changeMinimizedFeaturesAndActiveIcons,
+  // Notes Management Actions
+  getAllNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+  updateNotesSearchQuery,
+  toggleNotesShowOnlyCurrentDomain,
+  createNoteGroup,
+  updateNoteGroup,
+  deleteNoteGroup,
+  setSelectedNote,
+  // Color Palette Management Actions
+  getColorPalettes,
+  setColorPalettes,
+  createColorPalette,
+  updateColorPalette,
+  deleteColorPalette,
 } = actionsContextSlice;

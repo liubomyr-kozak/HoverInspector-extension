@@ -2,8 +2,8 @@ import ExtensionLoader from "@entrypoints/core/services/ExtensionLoader.ts";
 import { Ext } from "@entrypoints/features/extension/Ext";
 
 import { skipTab } from "./shared/utils.ts";
-import { actionsContextSlice } from "./features/backgroundSlice.ts";
-import { notesActionsSlice } from "@entrypoints/background/features/notesActionsSlice.ts";
+import { actionsContextSlice } from "./store/backgroundSlice.ts";
+import { appBackgroundSlice } from "./store/appBackgroundSlice.ts";
 
 let lastBrowserAction;
 
@@ -16,7 +16,7 @@ export default defineBackground({
     //
 
     actionsContextSlice.initMiddleware();
-    notesActionsSlice.initMiddleware();
+    appBackgroundSlice.initMiddleware();
     ExtensionLoader.init();
 
     browser.action.onClicked.addListener(async (tab) => {

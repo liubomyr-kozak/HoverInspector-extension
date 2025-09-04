@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useSelector } from "react-redux";
 import { Note as NoteType, ColorPalette } from "@entrypoints/shared/types/notes";
-import { getAllNotes, updateNote } from "@entrypoints/background/features/notesActionsSlice.ts";
+import { getAllNotes, updateNote } from "@entrypoints/background/store/notesActionsSlice.ts";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
 import { BodyPortal } from "@entrypoints/shared/components/BodyPortal";

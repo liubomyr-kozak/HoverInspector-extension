@@ -3,8 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore";
 import { closeNoteForm } from "@entrypoints/content/store/notes/notes.slice";
 import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
-import { NoteFormData } from "@entrypoints/shared/types/notes";
-import { createNote, updateNote } from "@entrypoints/background/features/backgroundSlice";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
 import { NoteForm } from "./NoteForm";
 

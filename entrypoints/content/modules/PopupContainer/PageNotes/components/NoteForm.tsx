@@ -11,7 +11,7 @@ import {
   createColorPalette,
   updateColorPalette,
   deleteColorPalette,
-} from "@entrypoints/background/features/notesActionsSlice.ts";
+} from "@entrypoints/background/store/notesActionsSlice.ts";
 import {
   PortalId,
   ScenarioPortalFooterButtons,

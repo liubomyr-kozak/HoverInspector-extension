@@ -75,7 +75,7 @@ export function ResizableModal({
   // const validatedPosition = getValidatedPosition(initialPosition, initialSize);
 
   return (
-    <ModalOverlay $zIndex={ZINDEX_MODAL}>
+    <ModalOverlay>
       <Rnd
         default={{
           x: initialPosition.x,
@@ -83,7 +83,7 @@ export function ResizableModal({
           width: initialSize.width,
           height: initialSize.height,
         }}
-        style={{ position: position }}
+        style={{ position: position, zIndex: ZINDEX_MODAL }}
         minWidth={10}
         minHeight={10}
         maxHeight={800}

@@ -21,10 +21,7 @@ import {
   ELEMENT_DETAILS_LIST_KEY,
   ELEMENT_DETAILS_PANEL_POSITION_KEY,
 } from "@entrypoints/core/constants/elementDetails.ts";
-import {
-  NOTEFORM_PANEL_POSITION_KEY,
-  NOTES_STORAGE_KEY,
-} from "@entrypoints/core/constants/notes.ts";
+import { NOTEFORM_PANEL_POSITION_KEY, NOTES_STORAGE_KEY } from "@entrypoints/core/constants/notes.ts";
 
 class AppStorageService {
   // незалежно від того чи юзер залогінений чи ні,

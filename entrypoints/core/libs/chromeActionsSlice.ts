@@ -1,25 +1,4 @@
-import { isPostProd, isProduction, isDevelopment } from "@entrypoints/shared/helpers.ts";
-
-const requestProcessing = (data, callback, localExecFn) => {
-  if (isPostProd()) {
-    // додав для випадку коли використовується всторому коді, який не має доступу до chrome.runtime
-    if (!chrome?.runtime?.id) return;
-    chrome.runtime.sendMessage(data, callback);
-  }
-
-  if (isProduction() || isPostProd()) {
-    // додав для випадку коли використовується всторому коді, який не має доступу до chrome.runtime
-    if (!chrome?.runtime?.id) return;
-    chrome.runtime.sendMessage(data, callback);
-  }
-
-  if (isDevelopment()) {
-    const result = localExecFn(data);
-    result.then((response) => {
-      callback(response);
-    });
-  }
-};
+import { requestProcessing } from "./requestProcessing.ts";
 
 export const chromeActionsSlice = (config) => {
   const configMiddleware = { ...config };

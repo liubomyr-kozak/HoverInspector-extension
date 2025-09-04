@@ -39,12 +39,12 @@ import {
   // Element Details Panel Position Actions
   getElementDetailsPanelPosition,
   saveElementDetailsPanelPosition,
-} from "@entrypoints/background/features/backgroundSlice.ts";
+} from "@entrypoints/background/store/backgroundSlice.ts";
 import {
   // NoteForm Panel Position Actions
   getNoteFormPanelPosition,
   saveNoteFormPanelPosition,
-} from "@entrypoints/background/features/notesActionsSlice";
+} from "@entrypoints/background/store/notesActionsSlice";
 import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
 
 class ExtensionStorageManager {
