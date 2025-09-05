@@ -2,8 +2,8 @@ import { requestProcessing } from "./requestProcessing.ts";
 
 type LocalExecFn<T = any, R = any> = (
   params: { data: T },
-  ctx: { getState: () => any; setState: (newState: Partial<any>) => Promise<void> },
-) => Promise<R>;
+  ctx: { getState: () => any; setState: (newState: Partial<any>) => void },
+) => Promise<R> | R;
 
 type StorageType = "localStorage" | "sessionStorage";
 
@@ -20,7 +20,7 @@ type SliceDefinition<T extends Record<string, LocalExecFn>> = {
   storage?: StorageType; // localStorage або sessionStorage
 };
 
-const defaultStorageStrategies: Record<StorageType, StorageStrategy> = {
+const chromeStorageStrategies: Record<StorageType, StorageStrategy> = {
   localStorage: {
     get: async (key: string) => {
       const raw = localStorage.getItem(key);
@@ -41,31 +41,32 @@ const defaultStorageStrategies: Record<StorageType, StorageStrategy> = {
   },
 };
 
-export const createChromeSlice = async <T extends Record<string, LocalExecFn>>(config: SliceDefinition<T>) => {
-  const { name = "__global__", initialState, version = 1, actions, storage = "localStorage" } = config;
+export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config: SliceDefinition<T>) => {
+  const { name = "__global__", initialState, version = 1, actions, storage = "chromeLocal" } = config;
+  const storageStrategy = chromeStorageStrategies[storage];
 
-  const storageStrategy = defaultStorageStrategies[storage];
+  // Локальний state завжди синхронний
+  let state = { ...initialState, version };
 
-  // Отримуємо persistedState із storage
-  const persistedState = await storageStrategy.get(name);
-
-  // Ініціалізація state з версіонністю
-  let state: any;
-  if (persistedState?.version === version) {
-    state = { ...initialState, ...persistedState };
-  } else if (persistedState) {
-    const preservedKeys = Object.keys(initialState).filter((key) => key in persistedState);
-    state = { ...initialState };
-    for (const key of preservedKeys) state[key] = persistedState[key];
-    state.version = version;
-  } else {
-    state = { ...initialState, version };
-  }
+  // Асинхронне завантаження persistedState з Chrome storage
+  storageStrategy.get(name).then((persistedState: any) => {
+    if (persistedState) {
+      if (persistedState.version === version) {
+        state = { ...state, ...persistedState };
+      } else {
+        const preservedKeys = Object.keys(initialState).filter((key) => key in persistedState);
+        for (const key of preservedKeys) state[key] = persistedState[key];
+        state.version = version;
+      }
+    }
+  });
 
   const getState = () => state;
-  const setState = async (newState: Partial<typeof state>) => {
+
+  // setState оновлює локальний state синхронно і відправляє асинхронно у storage
+  const setState = (newState: Partial<typeof state>) => {
     state = { ...state, ...newState };
-    await storageStrategy.set(name, state);
+    storageStrategy.set(name, state).catch(console.error);
   };
 
   const bound: any = {};
@@ -73,7 +74,7 @@ export const createChromeSlice = async <T extends Record<string, LocalExecFn>>(c
     const fn = actions[key];
     bound[key] = (data: Parameters<typeof fn>[0]) =>
       new Promise<Awaited<ReturnType<typeof fn>>>((resolve) => {
-        requestProcessing({ action: `${name}/${key}`, data }, resolve, () => fn({ data }, { getState, setState }));
+        requestProcessing({ action: `${name}/${key}`, data }, resolve, () => fn(data, { getState, setState }));
       });
   }
 

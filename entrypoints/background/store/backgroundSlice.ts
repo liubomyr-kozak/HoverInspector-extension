@@ -367,24 +367,5 @@ export const {
   getElementDetailsPanelPosition,
   saveElementDetailsPanelPosition,
   // NoteForm Panel Position Actions
-  getNoteFormPanelPosition,
-  saveNoteFormPanelPosition,
   changeMinimizedFeaturesAndActiveIcons,
-  // Notes Management Actions
-  getAllNotes,
-  createNote,
-  updateNote,
-  deleteNote,
-  updateNotesSearchQuery,
-  toggleNotesShowOnlyCurrentDomain,
-  createNoteGroup,
-  updateNoteGroup,
-  deleteNoteGroup,
-  setSelectedNote,
-  // Color Palette Management Actions
-  getColorPalettes,
-  setColorPalettes,
-  createColorPalette,
-  updateColorPalette,
-  deleteColorPalette,
 } = actionsContextSlice;

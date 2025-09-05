@@ -11,6 +11,7 @@ import {
   createColorPalette,
   updateColorPalette,
   deleteColorPalette,
+  notesActionsSlice,
 } from "@entrypoints/background/store/notesActionsSlice.ts";
 import {
   PortalId,
@@ -98,8 +99,11 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setContent(initialData?.content || "");
     setGroupId(initialData?.groupId);
     setElementXPath(initialData?.elementXPath);
-    setAttachmentType(initialData?.attachmentType || "global");
-    setRoutePattern(initialData?.routePattern || "");
+    const normalizedAttachmentType =
+      initialData?.attachmentType === "domain" ? "route" : initialData?.attachmentType || "global";
+    const normalizedRoutePattern = initialData?.attachmentType === "domain" ? "" : initialData?.routePattern || "";
+    setAttachmentType(normalizedAttachmentType as any);
+    setRoutePattern(normalizedRoutePattern);
 
     const initialColorId = initialData?.colorId || "blue";
     setSelectedColorId(initialColorId);
@@ -190,14 +194,16 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setSubmitError("");
 
     try {
+      const trimmedRoute = routePattern.trim();
+      const normalizedAttachmentType = attachmentType === "route" && !trimmedRoute ? "domain" : attachmentType;
       const formData: NoteFormData = {
         title: title.trim(),
         content: content.trim(),
         groupId,
         colorId: selectedColorId,
         elementXPath,
-        attachmentType,
-        routePattern: routePattern.trim() || undefined,
+        attachmentType: normalizedAttachmentType as any,
+        routePattern: trimmedRoute || undefined,
       };
 
       if (editingNote) {
@@ -208,7 +214,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         });
       } else {
         // Create new note with current domain and URL
-        await createNote({
+        notesActionsSlice.createNote({
           ...formData,
           domain: window.location.hostname,
           url: window.location.href,
@@ -440,117 +446,30 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           <p className="text-xs text-gray-500">Choose how this note will be displayed in the notes list</p>
         </div>
 
-        {/* Element Attachment with improved styling */}
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
-          <div className="space-y-3">
-            {elementXPath ? (
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg">
-                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-800">Successfully attached to page element</p>
-                  <p className="text-xs text-green-600">This note will highlight the connected element when viewed</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleClearElementAttachment}
-                  className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-md bg-white hover:bg-red-50 transition-colors duration-200"
-                >
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleElementSelection}
-                disabled={isSelectingElement}
-                className={`group w-full p-4 rounded-lg border-2 border-dashed text-sm font-medium transition-all duration-200 ${
-                  isSelectingElement
-                    ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300 text-amber-700 cursor-not-allowed"
-                    : "bg-gradient-to-r from-gray-50 to-slate-50 border-gray-300 text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 hover:border-indigo-300 hover:text-indigo-700"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 ${
-                      isSelectingElement ? "bg-amber-100" : "bg-gray-200 group-hover:bg-indigo-100"
-                    }`}
-                  >
-                    {isSelectingElement ? (
-                      <svg
-                        className="w-4 h-4 text-amber-600 animate-pulse"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-4 h-4 group-hover:text-indigo-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                  <span>
-                    {isSelectingElement ? "Click on any element on the page..." : "Connect to a page element"}
-                  </span>
-                </div>
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-gray-500">
-            Connect your note to a specific element on this page to create contextual annotations
-          </p>
-        </div>
-
         {/* Attachment Type Selection */}
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-gray-800">Note Visibility & Attachment</label>
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {[
-                { value: "global", label: "🌐 Global", desc: "Show on all pages" },
-                { value: "domain", label: "🏠 Domain", desc: "Show on this domain only" },
-                { value: "route", label: "🛣️ Route", desc: "Show on specific routes" },
-                { value: "element", label: "🎯 Element", desc: "Attach to page element" },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setAttachmentType(option.value as any)}
-                  className={`p-3 rounded-lg border-2 text-left transition-all duration-200 ${
-                    attachmentType === option.value
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="font-medium text-sm">{option.label}</div>
-                  <div className="text-xs opacity-75 mt-1">{option.desc}</div>
-                </button>
-              ))}
+            <div className="relative">
+              <select
+                id="attachmentType"
+                value={attachmentType}
+                onChange={(e) => setAttachmentType(e.target.value as any)}
+                className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-3 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
+              >
+                <option value="global">🌐 Global — Show on all pages</option>
+                <option value="route">🛣️ Domain/Route — Show on this domain or specific routes</option>
+                <option value="element">🎯 Element — Attach to page element</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
 
             {attachmentType === "route" && (
-              <div className="space-y-2">
+              <div className="space-y-2 pt-3">
                 <label htmlFor="routePattern" className="block text-sm font-medium text-gray-700">
                   Route Pattern
                 </label>
@@ -563,23 +482,65 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                   className="block w-full rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
                 />
                 <p className="text-xs text-gray-500">
-                  Use * for wildcards, :param for parameters (e.g., /user/*, /product/:id)
+                  Leave empty to show on the entire domain. Use * for wildcards, :param for parameters (e.g., /user/*,
+                  /product/:id)
                 </p>
               </div>
             )}
 
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-xs text-blue-700">
-                <strong>Current:</strong>{" "}
-                {attachmentType === "global"
-                  ? "This note will appear on all pages"
-                  : attachmentType === "domain"
-                    ? `This note will only appear on ${window.location.hostname}`
-                    : attachmentType === "route"
-                      ? `This note will appear on routes matching: ${routePattern || "pattern not set"}`
-                      : "This note will be attached to the selected page element"}
-              </p>
-            </div>
+            {attachmentType === "element" && (
+              <div className="space-y-3 pt-3">
+                {/* Route configuration toggle for element attachment */}
+                <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
+                {/* Manual XPath input with action buttons */}
+                <div className="space-y-2">
+                  <label htmlFor="elementXPath" className="block text-xs font-medium text-gray-600">
+                    Element XPath
+                  </label>
+                  <div className="flex items-stretch gap-2">
+                    <input
+                      id="elementXPath"
+                      type="text"
+                      value={elementXPath || ""}
+                      onChange={(e) => setElementXPath(e.target.value || undefined)}
+                      placeholder="XPath of the element to set value for"
+                      className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
+                    />
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        title="Find element in page"
+                        onClick={() => elementXPath && highlightOverlay.startHighlight(elementXPath)}
+                        disabled={!elementXPath}
+                        className="px-2 py-2 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Find
+                      </button>
+                      <button
+                        type="button"
+                        title="Select element from page"
+                        onClick={handleElementSelection}
+                        disabled={isSelectingElement}
+                        className="px-2 py-2 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Select
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="elementRouteToggle"
+                    type="checkbox"
+                    checked={!!routePattern}
+                    onChange={(e) => setRoutePattern(e.target.checked ? window.location.pathname : "")}
+                  />
+                  <label htmlFor="elementRouteToggle" className="text-sm text-gray-700">
+                    Restrict to current route (click to toggle and edit)
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -587,9 +548,9 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-gray-800">Note Color Theme</label>
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="flex flex-wrap gap-3 mb-3">
+            <div className="flex flex-wrap gap-3 ">
               {colorPalettes.map((colorPalette) => (
-                <div key={colorPalette.id} className="relative group">
+                <div key={colorPalette.id} className="relative group w-10 h-10">
                   <button
                     type="button"
                     onClick={() => handleSelectColor(colorPalette.id)}
@@ -652,9 +613,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`Delete "${colorPalette.name}" color?`)) {
-                            handleDeleteColor(colorPalette.id);
-                          }
+                          handleDeleteColor(colorPalette.id);
                         }}
                         className="w-6 h-6 rounded-full bg-white hover:bg-red-50 text-red-500 hover:text-red-600 border border-red-300 hover:border-red-400 shadow-sm hover:shadow-md flex items-center justify-center text-xs transition-all duration-200"
                         aria-label={`Delete ${colorPalette.name}`}
@@ -702,94 +661,59 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                 </button>
               </Popover>
             </div>
-
-            <div className="text-center">
-              <p className="text-xs text-gray-600 mb-1">
-                Selected:{" "}
-                <span
-                  className="font-medium"
-                  style={{ color: colorPalettes.find((c) => c.id === selectedColorId)?.value }}
-                >
-                  {colorPalettes.find((c) => c.id === selectedColorId)?.name}
-                </span>
-              </p>
-              <p className="text-xs text-gray-500">Choose a color to help categorize and identify your note</p>
-            </div>
           </div>
         </div>
       </div>
 
       <ScenarioPortalFooterButtons portalId={PortalId.FUNCTIONS_TAB} containerId="hover-inspector-popup-footer-note">
-        <div className="flex justify-between items-center gap-4 p-6 border-t border-gray-200 bg-gray-50">
-          {/* Helper text */}
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>Press Ctrl+Enter to save quickly</span>
-          </div>
-
+        <div className="flex justify-between items-center gap-4 p-2 border-t border-gray-200 bg-gray-50">
           {/* Action buttons */}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-5 py-2.5 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form={formId}
-              disabled={!content.trim() || isSubmitting}
-              className="group px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:scale-[1.02] disabled:hover:scale-100 disabled:hover:shadow-none flex items-center gap-2 min-w-[120px] justify-center"
-            >
-              {isSubmitting ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Saving...
-                </>
-              ) : editingNote ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  Update Note
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Create Note
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-5 py-2.5 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form={formId}
+            disabled={!content.trim() || isSubmitting}
+            className="group px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:scale-[1.02] disabled:hover:scale-100 disabled:hover:shadow-none flex items-center gap-2 min-w-[120px] justify-center"
+          >
+            {isSubmitting ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Saving...
+              </>
+            ) : editingNote ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Update Note
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Create Note
+              </>
+            )}
+          </button>
         </div>
       </ScenarioPortalFooterButtons>
     </form>

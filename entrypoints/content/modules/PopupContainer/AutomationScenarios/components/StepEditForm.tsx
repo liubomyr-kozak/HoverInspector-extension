@@ -173,8 +173,6 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   // Set up RxJS stream subscription for element selection
   useEffect(() => {
     if (selectingElement) {
-      debugger;
-
       // Subscribe to the stream-based selection mode
       const subscription: Subscription = highlightManager
         .streamSelectionMode()
@@ -194,6 +192,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
           },
           complete: () => {
             setSelectingElement(false);
+            highlightManager.stopMouseMoveHighlight();
           },
         });
 

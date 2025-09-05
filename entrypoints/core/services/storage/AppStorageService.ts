@@ -357,44 +357,6 @@ class AppStorageService {
     await LocalStorage.set(ELEMENT_DETAILS_PANEL_POSITION_KEY, position);
     return { success: true, key: ELEMENT_DETAILS_PANEL_POSITION_KEY };
   };
-
-  /**
-   * Get NoteForm panel position and size
-   * @returns {Promise<Object|null>} The panel position/size object or null if not found
-   */
-  getNoteFormPanelPosition = async () => {
-    return await LocalStorage.get(NOTEFORM_PANEL_POSITION_KEY);
-  };
-
-  /**
-   * Save NoteForm panel position and size
-   * @param {Object} position - Object containing x, y, width, height
-   * @returns {Promise<Object>} Object with success status and key
-   */
-  saveNoteFormPanelPosition = async (position) => {
-    await LocalStorage.set(NOTEFORM_PANEL_POSITION_KEY, position);
-    return { success: true, key: NOTEFORM_PANEL_POSITION_KEY };
-  };
-
-  /**
-   * Get notes data
-   * @returns {Promise<Object|null>} The notes object containing notes, groups, search query, etc. or null if not found
-   */
-  getNotesData = async () => {
-    const notesData = await LocalStorage.get(NOTES_STORAGE_KEY);
-    // Return default structure if no data exists
-    return notesData || { notes: [], groups: [], searchQuery: "", showOnlyCurrentDomain: false };
-  };
-
-  /**
-   * Save notes data
-   * @param {Object} notesData - Object containing notes, groups, searchQuery, showOnlyCurrentDomain, selectedNoteId, etc.
-   * @returns {Promise<Object>} Object with success status and key
-   */
-  setNotesData = async (notesData) => {
-    await LocalStorage.set(NOTES_STORAGE_KEY, notesData);
-    return { success: true, key: NOTES_STORAGE_KEY };
-  };
 }
 
 export default new AppStorageService();

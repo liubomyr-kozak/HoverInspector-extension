@@ -16,20 +16,20 @@ export const notesActionsSlice = createChromeSlice({
   initialState: notesInitialState,
   storage: "localStorage",
   actions: {
-    getNoteFormPanelPosition: async () => {
-      return await AppStorageService.getNoteFormPanelPosition();
+    getNoteFormPanelPosition: async (_, { getState }) => {
+      return await getState().position;
     },
 
-    saveNoteFormPanelPosition: async ({ data }) => {
-      return await AppStorageService.saveNoteFormPanelPosition(data);
+    saveNoteFormPanelPosition: async ({ data }, { getState, setState }) => {
+      return await setState({ position: data });
     },
 
     // Notes Management Actions
     getAllNotes: async (_, { getState }) => {
-      return getState().notes;
+      return getState();
     },
 
-    createNote: async ({ data }, { getState, setState }) => {
+    createNote: async (data: any, { getState, setState }) => {
       debugger;
 
       const notes = await getState().notes;
@@ -44,47 +44,44 @@ export const notesActionsSlice = createChromeSlice({
         isVisible: true,
       };
 
-      notes.notes.push(newNote);
+      notes.push(newNote);
+
       await setState({ notes });
+
       return newNote;
     },
 
-    updateNote: async ({ data: { id, updates } }, { getState, setState }) => {
+    updateNote: async ({ id, updates }, { getState, setState }) => {
       const notes = await getState().notes;
 
-      const noteIndex = notes.notes.findIndex((note) => note.id === id);
+      const noteIndex = notes.findIndex((note) => note.id === id);
       if (noteIndex !== -1) {
-        notes.notes[noteIndex] = {
-          ...notes.notes[noteIndex],
+        notes[noteIndex] = {
+          ...notes[noteIndex],
           ...updates,
           updatedAt: Date.now(),
         };
         await setState({ notes });
-        return notes.notes[noteIndex];
+        return notes[noteIndex];
       }
       return null;
     },
 
     deleteNote: async ({ data: id }, { getState, setState }) => {
-      const notes = await getState().notes;
+      let notes = await getState().notes;
 
-      notes.notes = notes.notes.filter((note) => note.id !== id);
+      notes = notes.filter((note) => note.id !== id);
       await setState({ notes });
+
       return { success: true };
     },
 
     updateNotesSearchQuery: async ({ data: searchQuery }, { getState, setState }) => {
-      const notes = await getState().notes;
-
-      notes.searchQuery = searchQuery;
-      await setState(notes);
+      await setState({ searchQuery });
     },
 
     toggleNotesShowOnlyCurrentDomain: async ({ data: showOnlyCurrentDomain }, { getState, setState }) => {
-      const notes = await getState().notes;
-
-      notes.showOnlyCurrentDomain = showOnlyCurrentDomain;
-      await setState({ notes });
+      await setState({ showOnlyCurrentDomain });
     },
 
     createNoteGroup: async ({ data }, { setState, getState }) => {
@@ -103,7 +100,7 @@ export const notesActionsSlice = createChromeSlice({
       return newGroup;
     },
 
-    updateNoteGroup: async ({ data: { id, updates } }, { getState, setState }) => {
+    updateNoteGroup: async ({ id, updates }: any, { getState, setState }) => {
       const notes = await getState().notes;
 
       const groupIndex = notes.groups.findIndex((group) => group.id === id);
@@ -119,40 +116,39 @@ export const notesActionsSlice = createChromeSlice({
       return null;
     },
 
-    deleteNoteGroup: async ({ data: id }) => {
-      const notes = await AppStorageService.getNotesData();
+    deleteNoteGroup: async ({ data: id }, { getState, setState }) => {
+      const notes = await getState().notes;
 
       // Remove group and unassign notes from this group
       notes.groups = notes.groups.filter((group) => group.id !== id);
       notes.notes = notes.notes.map((note) => (note.groupId === id ? { ...note, groupId: undefined } : note));
 
-      await AppStorageService.setNotesData(notes);
+      await setState({ notes });
       return { success: true };
     },
 
-    setSelectedNote: async ({ data: selectedNoteId }) => {
-      const notes = await AppStorageService.getNotesData();
+    setSelectedNote: async ({ data: selectedNoteId }, { getState, setState }) => {
+      const notes = await getState().notes;
 
       notes.selectedNoteId = selectedNoteId;
-      await AppStorageService.setNotesData(notes);
+      await setState({ notes });
     },
 
     // Color Palette Management Actions
-    getColorPalettes: async () => {
-      const appState = await AppStorageService.getAppState();
-      return appState.colorPalettes || [];
+    getColorPalettes: async (_, { getState, setState }) => {
+      return getState().colorPalettes || [];
     },
 
-    setColorPalettes: async ({ data: colorPalettes }) => {
-      const appState = await AppStorageService.getAppState();
-      await AppStorageService.setAppState({
-        ...appState,
+    setColorPalettes: async ({ data: colorPalettes }, { getState, setState }) => {
+      const state = await getState();
+      await setState({
+        ...state,
         colorPalettes,
       });
     },
 
-    createColorPalette: async ({ data }) => {
-      const appState = await AppStorageService.getAppState();
+    createColorPalette: async ({ data }, { getState, setState }) => {
+      const state = await getState();
 
       const newColorPalette = {
         ...data,
@@ -160,20 +156,20 @@ export const notesActionsSlice = createChromeSlice({
         createdAt: Date.now(),
       };
 
-      const colorPalettes = appState.colorPalettes || [];
+      const colorPalettes = state.colorPalettes || [];
       colorPalettes.push(newColorPalette);
 
-      await AppStorageService.setAppState({
-        ...appState,
+      await setState({
+        ...state,
         colorPalettes,
       });
 
       return newColorPalette;
     },
 
-    updateColorPalette: async ({ data: { id, updates } }) => {
-      const appState = await AppStorageService.getAppState();
-      const colorPalettes = appState.colorPalettes || [];
+    updateColorPalette: async ({ id, updates }: any, { getState, setState }) => {
+      const state = await getState();
+      const colorPalettes = state.colorPalettes || [];
 
       const paletteIndex = colorPalettes.findIndex((palette) => palette.id === id);
       if (paletteIndex !== -1) {
@@ -182,8 +178,8 @@ export const notesActionsSlice = createChromeSlice({
           ...updates,
         };
 
-        await AppStorageService.setAppState({
-          ...appState,
+        await setState({
+          ...state,
           colorPalettes,
         });
 
@@ -192,14 +188,14 @@ export const notesActionsSlice = createChromeSlice({
       return null;
     },
 
-    deleteColorPalette: async ({ data: id }) => {
-      const appState = await AppStorageService.getAppState();
-      const colorPalettes = appState.colorPalettes || [];
+    deleteColorPalette: async ({ data: id }, { getState, setState }) => {
+      const state = await getState();
+      const colorPalettes = state.colorPalettes || [];
 
       const updatedColorPalettes = colorPalettes.filter((palette) => palette.id !== id);
 
-      await AppStorageService.setAppState({
-        ...appState,
+      await setState({
+        ...state,
         colorPalettes: updatedColorPalettes,
       });
 
@@ -207,6 +203,8 @@ export const notesActionsSlice = createChromeSlice({
     },
   },
 });
+
+console.log("😂😂😂 :: -> notesActionsSlice", notesActionsSlice);
 
 // Backward-compatible named exports for existing imports across the codebase
 export const {
@@ -230,4 +228,4 @@ export const {
   createColorPalette,
   updateColorPalette,
   deleteColorPalette,
-} = notesActionsSlice as any;
+} = notesActionsSlice;
