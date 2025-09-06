@@ -1,7 +1,7 @@
 import { requestProcessing } from "./requestProcessing.ts";
 
 type LocalExecFn<T = any, R = any> = (
-  params: { data: T },
+  params: T,
   ctx: { getState: () => any; setState: (newState: Partial<any>) => void },
 ) => Promise<R> | R;
 

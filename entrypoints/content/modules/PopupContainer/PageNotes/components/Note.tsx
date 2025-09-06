@@ -1,177 +1,8 @@
 import React from "react";
-import { IconEdit, IconTrash, IconPin, IconGripVertical } from "@tabler/icons-react";
-import styled from "styled-components";
+import { FiEdit2, FiTrash2, FiMapPin } from "react-icons/fi";
+import { FaGripVertical } from "react-icons/fa6";
 import { Note as NoteType, ColorPalette, NoteViewType } from "@entrypoints/shared/types/notes";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
-
-const NoteContainer = styled.div<{ $color?: string; $isSelected: boolean }>`
-  background: ${(props) => props.$color || "#fef3c7"};
-  border: 2px solid ${(props) => (props.$isSelected ? "#3b82f6" : "transparent")};
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  position: relative;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-
-  &:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-`;
-
-const NoteHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-`;
-
-const NoteTitle = styled.h4`
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-  flex: 1;
-`;
-
-const NoteActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
-
-  ${NoteContainer}:hover & {
-    opacity: 1;
-  }
-`;
-
-const ActionButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.05);
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.1);
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const NoteContent = styled.div`
-  color: #4b5563;
-  font-size: 13px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-`;
-
-const NoteMeta = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-  font-size: 11px;
-  color: #9ca3af;
-`;
-
-const DragHandle = styled.div`
-  position: absolute;
-  left: -8px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: grab;
-  color: #9ca3af;
-  opacity: 0;
-  transition: opacity 0.2s;
-
-  ${NoteContainer}:hover & {
-    opacity: 1;
-  }
-
-  &:active {
-    cursor: grabbing;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-`;
-
-const ChipContainer = styled.div<{ $color?: string; $isSelected: boolean }>`
-  background: ${(props) => props.$color || "#fef3c7"};
-  border: 1px solid ${(props) => (props.$isSelected ? "#3b82f6" : "rgba(0, 0, 0, 0.1)")};
-  border-radius: 20px;
-  padding: 6px 12px;
-  margin: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  color: #374151;
-  transition: all 0.2s ease;
-  position: relative;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
-`;
-
-const ChipContent = styled.span`
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const ChipActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.2s;
-
-  ${ChipContainer}:hover & {
-    opacity: 1;
-  }
-`;
-
-const ChipActionButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.2);
-  }
-
-  svg {
-    width: 10px;
-    height: 10px;
-  }
-`;
-
 
 type NoteProps = {
   note: NoteType;
@@ -180,7 +11,6 @@ type NoteProps = {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
-  onPin: (id: string) => void;
   viewType?: NoteViewType;
 };
 
@@ -191,40 +21,20 @@ export const Note: React.FC<NoteProps> = ({
   onEdit,
   onDelete,
   onSelect,
-  onPin,
   viewType = NoteViewType.NOTE,
 }) => {
   const highlightOverlay = useHighlightOverlay();
 
-  // Helper function to convert hex to rgba with opacity
   const hexToRgba = (hex: string, opacity: number = 0.85): string => {
-    // Remove # if present
     hex = hex.replace("#", "");
-
-    // Parse r, g, b values
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
 
-  // Map colorId to actual color value with rgba opacity
   const hexColor = colorPalette.find((color) => color.id === note.colorId)?.value || "#fef3c7";
   const noteColor = hexToRgba(hexColor, 0.85);
-
-  // Handle highlighting attached DOM element when note is hovered
-  const handleMouseEnter = () => {
-    if (note.elementXPath) {
-      highlightOverlay.startHighlight(note.elementXPath, "note");
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (note.elementXPath) {
-      highlightOverlay.stopHighlight();
-    }
-  };
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -235,46 +45,54 @@ export const Note: React.FC<NoteProps> = ({
     });
   };
 
-  const isPinned = !!note.coordinates || !!note.elementXPath;
+  // Find the current page's matching location from the locations array
+  const currentDomain = window.location.hostname;
+  const currentUrl = window.location.href;
+  const matchingLocation = note.locations?.find(
+    (location) => location.domain === currentDomain || location.url === currentUrl
+  );
+  const currentElementXPath = matchingLocation?.elementXPath || (note as any).elementXPath; // backward compatibility
+  
+  const isPinned = !!matchingLocation?.coordinates || !!currentElementXPath;
 
-  // Chip view rendering
   if (viewType === NoteViewType.CHIP) {
     return (
-      <ChipContainer
-        $color={noteColor}
-        $isSelected={isSelected}
+      <div
+        className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 m-1 cursor-pointer text-xs font-medium text-gray-700 transition-all hover:-translate-y-0.5 hover:shadow`}
+        style={{
+          backgroundColor: noteColor,
+          borderColor: isSelected ? "#3b82f6" : "rgba(0,0,0,0.1)",
+        }}
         onClick={() => onSelect(note.id)}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         title={`${note.title || "Untitled"}: ${note.content}`}
       >
-        <ChipContent>
+        <span className="max-w-[150px] truncate">
           {note.title || note.content.substring(0, 30) + (note.content.length > 30 ? "..." : "")}
-        </ChipContent>
+        </span>
 
-        <ChipActions>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {isPinned && (
-            <ChipActionButton
+            <button
               onClick={(e) => {
                 e.stopPropagation();
-                onPin(note.id);
               }}
               title="Unpin note"
-              style={{ background: "rgba(59, 130, 246, 0.2)" }}
+              className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
             >
-              <IconPin />
-            </ChipActionButton>
+              <FiMapPin className="h-3 w-3" />
+            </button>
           )}
-          <ChipActionButton
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit(note.id);
             }}
             title="Edit note"
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-black/10 text-gray-700 hover:bg-black/20"
           >
-            <IconEdit />
-          </ChipActionButton>
-          <ChipActionButton
+            <FiEdit2 className="h-3 w-3" />
+          </button>
+          <button
             onClick={(e) => {
               e.stopPropagation();
               if (confirm("Delete this note?")) {
@@ -282,54 +100,57 @@ export const Note: React.FC<NoteProps> = ({
               }
             }}
             title="Delete note"
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-black/10 text-gray-700 hover:bg-black/20"
           >
-            <IconTrash />
-          </ChipActionButton>
-        </ChipActions>
-      </ChipContainer>
+            <FiTrash2 className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
     );
   }
 
-  // Default note view rendering
   return (
-    <NoteContainer
-      $color={noteColor}
-      $isSelected={isSelected}
+    <div
+      className="group relative mb-2 rounded-lg border-2 border-transparent p-3 shadow-sm transition-all hover:shadow-md"
+      style={{
+        borderColor: noteColor ?? "transparent",
+      }}
       onClick={() => onSelect(note.id)}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
-      <DragHandle>
-        <IconGripVertical />
-      </DragHandle>
+      <div className="absolute -left-2 top-1/2 -translate-y-1/2 cursor-grab text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing">
+        <FaGripVertical className="h-4 w-4" />
+      </div>
 
-      <NoteHeader>
-        <NoteTitle>{note.title || "Untitled Note"}</NoteTitle>
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="flex-1 m-0 text-sm font-semibold text-gray-700">{note.title || "Untitled Note"}</h4>
 
-        <NoteActions>
-          <ActionButton
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
             onClick={(e) => {
               e.stopPropagation();
-              onPin(note.id);
+              if (currentElementXPath) {
+                highlightOverlay.startHighlight(currentElementXPath);
+              }
+              // highlightOverlay.stopHighlight();
             }}
+            disabled={!currentElementXPath}
             title={isPinned ? "Unpin note" : "Pin note to page"}
-            style={{
-              background: isPinned ? "rgba(59, 130, 246, 0.1)" : undefined,
-              color: isPinned ? "#3b82f6" : undefined,
-            }}
+            className={`inline-flex h-6 w-6 items-center justify-center rounded bg-black/5 hover:bg-black/10 transition
+              ${isPinned ? "bg-blue-50 text-blue-600 ring-1 ring-blue-200" : "text-gray-700"}`}
           >
-            <IconPin />
-          </ActionButton>
-          <ActionButton
+            <FiMapPin className="h-3.5 w-3.5" />
+          </button>
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit(note.id);
             }}
             title="Edit note"
+            className="inline-flex h-6 w-6 items-center justify-center rounded bg-black/5 text-gray-700 hover:bg-black/10 transition"
           >
-            <IconEdit />
-          </ActionButton>
-          <ActionButton
+            <FiEdit2 className="h-3.5 w-3.5" />
+          </button>
+          <button
             onClick={(e) => {
               e.stopPropagation();
               if (confirm("Delete this note?")) {
@@ -337,18 +158,21 @@ export const Note: React.FC<NoteProps> = ({
               }
             }}
             title="Delete note"
+            className="inline-flex h-6 w-6 items-center justify-center rounded bg-black/5 text-gray-700 hover:bg-black/10 transition"
           >
-            <IconTrash />
-          </ActionButton>
-        </NoteActions>
-      </NoteHeader>
+            <FiTrash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
 
-      <NoteContent>{note.content || "No content"}</NoteContent>
+      <div className="whitespace-pre-wrap break-words text-[13px] leading-snug text-gray-600">
+        {note.content || "No content"}
+      </div>
 
-      <NoteMeta>
+      <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">
         <span>{note.domain}</span>
         <span>{formatDate(note.updatedAt)}</span>
-      </NoteMeta>
-    </NoteContainer>
+      </div>
+    </div>
   );
 };

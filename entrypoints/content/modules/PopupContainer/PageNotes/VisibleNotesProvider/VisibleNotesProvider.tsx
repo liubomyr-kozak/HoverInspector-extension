@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useSelector } from "react-redux";
-import { Note as NoteType, ColorPalette } from "@entrypoints/shared/types/notes";
+import { Note as NoteType, ColorPalette } from "@entrypoints/shared/types/notes.ts";
 import { getAllNotes, updateNote } from "@entrypoints/background/store/notesActionsSlice.ts";
-import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
-import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
-import { BodyPortal } from "@entrypoints/shared/components/BodyPortal";
+import { getVisibleNotesForPage, findMatchingLocation } from "@entrypoints/background/services/notes.ts";
+import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
+import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.tsx";
+import { BodyPortal } from "@entrypoints/shared/components/BodyPortal.tsx";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -83,27 +84,45 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
 
   // Calculate initial position for xpath-attached notes or use saved coordinates
   useEffect(() => {
-    if (note.coordinates) {
-      // Use saved coordinates with default size if not provided
+    // Use centralized function to find matching location
+    const currentDomain = window.location.hostname;
+    const currentUrl = window.location.href;
+
+    const matchingLocation = findMatchingLocation(note, currentDomain, currentUrl);
+
+    if (matchingLocation?.coordinates) {
+      // Use saved coordinates from matching location with default size if not provided
       setPosition({
-        x: note.coordinates.x,
-        y: note.coordinates.y,
+        x: matchingLocation.coordinates.x,
+        y: matchingLocation.coordinates.y,
         width: 250,
         height: 150,
       });
-    } else if (note.elementXPath) {
-      try {
-        const element = highlightOverlay.getElementByXPath(note.elementXPath);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          setPosition({
-            x: rect.left + window.scrollX,
-            y: rect.top + window.scrollY - 10, // Offset slightly above the element
-            width: 250,
-            height: 150,
-          });
-        } else {
-          // Element not found, use fallback position
+    } else {
+      const elementXPath = matchingLocation?.elementXPath || (note as any).elementXPath; // backward compatibility
+
+      if (elementXPath) {
+        try {
+          const element = highlightOverlay.getElementByXPath(elementXPath);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            setPosition({
+              x: rect.left + window.scrollX,
+              y: rect.top + window.scrollY - 10, // Offset slightly above the element
+              width: 250,
+              height: 150,
+            });
+          } else {
+            // Element not found, use fallback position
+            setPosition({
+              x: 100,
+              y: 100,
+              width: 250,
+              height: 150,
+            });
+          }
+        } catch (error) {
+          console.error("Failed to position note by xpath:", error);
           setPosition({
             x: 100,
             y: 100,
@@ -111,8 +130,8 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
             height: 150,
           });
         }
-      } catch (error) {
-        console.error("Failed to position note by xpath:", error);
+      } else {
+        // No elementXPath found, use default position
         setPosition({
           x: 100,
           y: 100,
@@ -121,24 +140,41 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
         });
       }
     }
-  }, [note.elementXPath, note.coordinates, highlightOverlay]);
+  }, [note.locations, highlightOverlay]);
 
   // Handle position changes and save to storage
   const handleModalStateChange = async (newState: { x: number; y: number; width: number; height: number }) => {
     setPosition(newState);
 
     try {
-      // Update note coordinates in storage
-      await updateNote({
-        data: {
+      // Use centralized function to find matching location
+      const currentDomain = window.location.hostname;
+      const currentUrl = window.location.href;
+
+      const matchingLocation = findMatchingLocation(note, currentDomain, currentUrl);
+
+      if (matchingLocation) {
+        // Update coordinates in the matching location
+        const updatedLocations = note.locations?.map((loc) => {
+          if (loc === matchingLocation) {
+            return { 
+              ...loc, 
+              coordinates: { x: newState.x, y: newState.y },
+              elementXPath: undefined // Clear elementXPath to avoid conflicts with manual positioning
+            };
+          }
+          return loc;
+        });
+
+        await updateNote({
           id: note.id,
           updates: {
-            coordinates: { x: newState.x, y: newState.y },
-            // Clear elementXPath when manually positioning to avoid conflicts
-            elementXPath: undefined,
+            locations: updatedLocations,
           },
-        },
-      });
+        });
+      } else {
+        console.warn("No matching location found to save coordinates");
+      }
     } catch (error) {
       console.error("Failed to save note position:", error);
     }
@@ -148,11 +184,9 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
     try {
       // Hide the note by setting isVisible to false
       await updateNote({
-        data: {
-          id: note.id,
-          updates: {
-            isVisible: false,
-          },
+        id: note.id,
+        updates: {
+          isVisible: false,
         },
       });
     } catch (error) {
@@ -162,10 +196,12 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
 
   // Position logging removed - console.log removed\n
 
+  console.log("🌟🌟🌟 ::VisibleNote -> position", position);
   return (
     <FloatingModal
       open={true}
-      title={note.title || "Note"}
+      title={null}
+      // title={note.title || "Note"}
       onCancel={handleClose}
       initialX={position.x}
       initialY={position.y}
@@ -182,11 +218,9 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
       }}
     >
       <div style={{ background: noteColor, minHeight: "100px", height: "100%" }}>
-        {note.title && <NoteTitle>{note.title}</NoteTitle>}
+        {note.title && <NoteTitle className="modal-drag-handle">{note.title}</NoteTitle>}
         <NoteContentText>{note.content || "No content"}</NoteContentText>
-        <NoteMeta>
-          {note.domain} • {formatDate(note.updatedAt)}
-        </NoteMeta>
+        <NoteMeta>{formatDate(note.updatedAt)}</NoteMeta>
       </div>
     </FloatingModal>
   );
@@ -204,28 +238,8 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
         const currentDomain = window.location.hostname;
         const currentUrl = window.location.href;
 
-        // Filter notes that are visible and match current domain/URL or group
-        const visible = notesData.notes.filter((note: NoteType) => {
-          // Note must be visible and have positioning data
-          if (!note.isVisible || (!note.coordinates && !note.elementXPath)) {
-            return false;
-          }
-
-          // Check if note matches current page route/URL
-          const matchesRoute = note.domain === currentDomain || note.url === currentUrl;
-
-          // Check if note belongs to a group that should be visible on this page
-          let matchesGroup = false;
-          if (note.groupId) {
-            const group = notesData.groups.find((g) => g.id === note.groupId);
-            if (group) {
-              // Groups can be visible across domains/routes (implement group visibility logic here if needed)
-              matchesGroup = true;
-            }
-          }
-
-          return matchesRoute || matchesGroup;
-        });
+        // Use centralized function to filter visible notes for current page
+        const visible = getVisibleNotesForPage(notesData.notes, currentDomain, currentUrl, notesData.groups);
 
         setVisibleNotes(visible);
       } catch (error) {
@@ -273,28 +287,8 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
           const currentDomain = window.location.hostname;
           const currentUrl = window.location.href;
 
-          // Filter notes that are visible and match current domain/URL or group
-          const visible = notesData.notes.filter((note: NoteType) => {
-            // Note must be visible and have positioning data
-            if (!note.isVisible || (!note.coordinates && !note.elementXPath)) {
-              return false;
-            }
-
-            // Check if note matches current page route/URL
-            const matchesRoute = note.domain === currentDomain || note.url === currentUrl;
-
-            // Check if note belongs to a group that should be visible on this page
-            let matchesGroup = false;
-            if (note.groupId) {
-              const group = notesData.groups.find((g) => g.id === note.groupId);
-              if (group) {
-                // Groups can be visible across domains/routes (implement group visibility logic here if needed)
-                matchesGroup = true;
-              }
-            }
-
-            return matchesRoute || matchesGroup;
-          });
+          // Use centralized function to filter visible notes for current page
+          const visible = getVisibleNotesForPage(notesData.notes, currentDomain, currentUrl, notesData.groups);
 
           setVisibleNotes(visible);
         } catch (error) {

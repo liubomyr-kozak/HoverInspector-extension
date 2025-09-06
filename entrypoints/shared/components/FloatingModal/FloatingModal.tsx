@@ -48,6 +48,8 @@ export const FloatingModal: FunctionComponent<FloatingModalProps> = (props): Rea
     sizeRef.current = { width: initialWidth, height: initialHeight };
   }, [initialX, initialY, initialWidth, initialHeight]);
 
+  console.log("😀😀😀 ::FloatingModal -> positionRef", positionRef);
+
   // Handle position changes
   const handlePositionChange = (x: number, y: number) => {
     positionRef.current = { x, y };

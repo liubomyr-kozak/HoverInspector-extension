@@ -341,7 +341,7 @@ class ExtensionStorageManager {
    * @returns {Promise<Object>} Object with success status and key
    */
   async saveNoteFormPanelPosition(position) {
-    return await saveNoteFormPanelPosition({ data: position });
+    return await saveNoteFormPanelPosition(position);
   }
 }
 

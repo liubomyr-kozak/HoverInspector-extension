@@ -233,7 +233,6 @@ interface NotesListProps {
   onEditNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onSelectNote: (id: string) => void;
-  onPinNote: (id: string) => void;
   onUpdateSearchQuery: (query: string) => void;
   onToggleShowOnlyCurrentDomain: (show: boolean) => void;
   onToggleGroup: (groupId: string) => void;
@@ -245,7 +244,6 @@ export const NotesList: React.FC<NotesListProps> = ({
   onEditNote,
   onDeleteNote,
   onSelectNote,
-  onPinNote,
   onUpdateSearchQuery,
   onToggleShowOnlyCurrentDomain,
   onToggleGroup,
@@ -388,7 +386,6 @@ export const NotesList: React.FC<NotesListProps> = ({
                       onEdit={onEditNote}
                       onDelete={onDeleteNote}
                       onSelect={onSelectNote}
-                      onPin={onPinNote}
                     />
                   ))}
                 </GroupContent>
@@ -407,7 +404,6 @@ export const NotesList: React.FC<NotesListProps> = ({
                     onEdit={onEditNote}
                     onDelete={onDeleteNote}
                     onSelect={onSelectNote}
-                    onPin={onPinNote}
                   />
                 ))}
               </div>

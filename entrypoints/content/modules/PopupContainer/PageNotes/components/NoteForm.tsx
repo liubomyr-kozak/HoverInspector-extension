@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
-import { Popover } from "antd";
+import { Popover, Select } from "antd";
 import { NotesState, NoteFormData, ColorPalette, NoteViewType } from "@entrypoints/shared/types/notes";
 import {
   getAllNotes,
@@ -21,6 +21,21 @@ import { closeNoteForm, triggerRefresh } from "@entrypoints/content/store/notes/
 import { useDispatch } from "react-redux";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { useDebouncedCallback } from "@entrypoints/shared/utils/useDebouncedCallback.ts";
+import {
+  FiChevronDown,
+  FiFileText,
+  FiTag,
+  FiGlobe,
+  FiMap,
+  FiTarget,
+  FiEdit2,
+  FiSave,
+  FiX,
+  FiPlus,
+  FiTrash2,
+  FiCode,
+  FiType,
+} from "react-icons/fi";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -57,10 +72,18 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [groupId, setGroupId] = useState<string | undefined>();
   const [selectedColorId, setSelectedColorId] = useState<string>("blue");
   const [elementXPath, setElementXPath] = useState<string | undefined>();
-  const [attachmentType, setAttachmentType] = useState<"element" | "route" | "domain" | "global">("global");
+  const [attachmentType, setAttachmentType] = useState<"element" | "route" | "domain" | "global">("route");
   const [routePattern, setRoutePattern] = useState<string>("");
   const [isSelectingElement, setIsSelectingElement] = useState(false);
   const [viewType, setViewType] = useState<NoteViewType>(NoteViewType.NOTE);
+  // Multi-location support
+  const [addToExistingNote, setAddToExistingNote] = useState<boolean>(false);
+  const [existingNoteId, setExistingNoteId] = useState<string | undefined>();
+  // New UI states
+  const [elementPaths, setElementPaths] = useState<string[]>([]);
+  const [isEditingRoute, setIsEditingRoute] = useState(false);
+  const [routeInputMode, setRouteInputMode] = useState<"string" | "regex">("string");
+  const [routeInputValue, setRouteInputValue] = useState<string>("");
   const dispatch = useDispatch();
   const highlightOverlay = useHighlightOverlay();
 
@@ -104,6 +127,10 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     const normalizedRoutePattern = initialData?.attachmentType === "domain" ? "" : initialData?.routePattern || "";
     setAttachmentType(normalizedAttachmentType as any);
     setRoutePattern(normalizedRoutePattern);
+
+    // Initialize buffers for new UI
+    setRouteInputValue(normalizedRoutePattern);
+    setElementPaths(initialData?.elementXPath ? [initialData.elementXPath] : []);
 
     const initialColorId = initialData?.colorId || "blue";
     setSelectedColorId(initialColorId);
@@ -154,15 +181,20 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         if (event.type === "selected") {
           // Generate XPath for the selected element
           const xpath = highlightOverlay.generateXPath(event.element);
-          setElementXPath(xpath);
+          // Add to list and keep legacy field for first path
+          setElementPaths((prev) => [...prev, xpath]);
+          setElementXPath((prev) => prev || xpath);
+
           setIsSelectingElement(false);
           subscription.unsubscribe();
+          highlightOverlay.stopMouseMoveHighlight();
         }
       },
       error: (err) => {
         console.error("Element selection failed:", err);
         setIsSelectingElement(false);
         subscription.unsubscribe();
+        highlightOverlay.stopMouseMoveHighlight();
       },
     });
 
@@ -175,9 +207,30 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     }, 10000);
   }, [isSelectingElement, highlightOverlay]);
 
-  const handleClearElementAttachment = useCallback(() => {
-    setElementXPath(undefined);
-  }, []);
+  // Helpers for selectors list
+  const handleAddSelectorInput = () => setElementPaths((prev) => [...prev, ""]);
+  const handleRemoveSelector = (index: number) => setElementPaths((prev) => prev.filter((_, i) => i !== index));
+
+  // Scope toggle helpers
+  const toggleToPageOnly = () => {
+    setAttachmentType("route");
+    if (!routePattern) setRoutePattern(window.location.pathname);
+  };
+  const toggleToGlobal = () => setAttachmentType("global");
+
+  // Route edit helpers
+  const startEditRoute = () => {
+    setIsEditingRoute(true);
+    setRouteInputValue(routePattern);
+  };
+  const cancelEditRoute = () => {
+    setIsEditingRoute(false);
+    setRouteInputValue(routePattern);
+  };
+  const saveRouteEdit = () => {
+    setRoutePattern(routeInputValue || "");
+    setIsEditingRoute(false);
+  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>("");
@@ -196,14 +249,20 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     try {
       const trimmedRoute = routePattern.trim();
       const normalizedAttachmentType = attachmentType === "route" && !trimmedRoute ? "domain" : attachmentType;
+
+      // Use first selector for backward compatibility
+      const firstXPath = elementPaths.find((p) => p && p.trim());
+
       const formData: NoteFormData = {
         title: title.trim(),
         content: content.trim(),
         groupId,
         colorId: selectedColorId,
-        elementXPath,
+        elementXPath: firstXPath || undefined,
         attachmentType: normalizedAttachmentType as any,
         routePattern: trimmedRoute || undefined,
+        addToExistingNote,
+        existingNoteId,
       };
 
       if (editingNote) {
@@ -414,35 +473,113 @@ export const NoteForm: React.FC<NoteFormProps> = ({
               ))}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <FiChevronDown className="w-4 h-4 text-gray-400" />
             </div>
           </div>
           <p className="text-xs text-gray-500">Group your notes by topic or project for better organization</p>
         </div>
+
+        {/* Multi-location Note Selection */}
+        {!editingNote && (
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-800">Note Location</label>
+            <div className="space-y-3">
+              <div className="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="createNew"
+                  name="noteMode"
+                  checked={!addToExistingNote}
+                  onChange={() => {
+                    setAddToExistingNote(false);
+                    setExistingNoteId(undefined);
+                  }}
+                  className="mt-1 w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <div className="flex-1">
+                  <label htmlFor="createNew" className="text-sm font-medium text-gray-900 cursor-pointer">
+                    Create new note
+                  </label>
+                  <p className="text-xs text-gray-500">Create a brand new note for this page</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="addToExisting"
+                  name="noteMode"
+                  checked={addToExistingNote}
+                  onChange={() => setAddToExistingNote(true)}
+                  className="mt-1 w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <div className="flex-1">
+                  <label htmlFor="addToExisting" className="text-sm font-medium text-gray-900 cursor-pointer">
+                    Add to existing note
+                  </label>
+                  <p className="text-xs text-gray-500">Add this page location to an existing note</p>
+
+                  {addToExistingNote && (
+                    <div className="mt-2">
+                      <select
+                        value={existingNoteId || ""}
+                        onChange={(e) => setExistingNoteId(e.target.value || undefined)}
+                        className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
+                        required={addToExistingNote}
+                      >
+                        <option value="">Select an existing note...</option>
+                        {notesData.notes
+                          .filter((note) => note.content && note.content.trim())
+                          .map((note) => (
+                            <option key={note.id} value={note.id}>
+                              {note.title
+                                ? `${note.title} - ${note.content.substring(0, 50)}...`
+                                : note.content.substring(0, 70) + (note.content.length > 70 ? "..." : "")}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* View Type Selection with improved styling */}
         <div className="space-y-2">
           <label htmlFor="viewType" className="block text-sm font-semibold text-gray-800">
             Display Type
           </label>
-          <div className="relative">
-            <select
-              id="viewType"
-              value={viewType}
-              onChange={(e) => setViewType(e.target.value as NoteViewType)}
-              className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-3 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
-            >
-              <option value={NoteViewType.NOTE}>📝 Note View (detailed card)</option>
-              <option value={NoteViewType.CHIP}>🏷️ Chip View (compact badge)</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
+          <Select
+            id="viewType"
+            size="large"
+            className="w-full"
+            value={viewType}
+            onChange={(v) => setViewType(v as NoteViewType)}
+            // @ts-ignore
+            getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
+            options={[
+              {
+                value: NoteViewType.NOTE,
+                label: (
+                  <span className="flex items-center gap-2">
+                    <FiFileText className="text-gray-600" />
+                    <span>Note View (detailed card)</span>
+                  </span>
+                ),
+              },
+              {
+                value: NoteViewType.CHIP,
+                label: (
+                  <span className="flex items-center gap-2">
+                    <FiTag className="text-gray-600" />
+                    <span>Chip View (compact badge)</span>
+                  </span>
+                ),
+              },
+            ]}
+          />
           <p className="text-xs text-gray-500">Choose how this note will be displayed in the notes list</p>
         </div>
 
@@ -450,84 +587,202 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-gray-800">Note Visibility & Attachment</label>
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="relative">
-              <select
-                id="attachmentType"
-                value={attachmentType}
-                onChange={(e) => setAttachmentType(e.target.value as any)}
-                className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-3 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
-              >
-                <option value="global">🌐 Global — Show on all pages</option>
-                <option value="route">🛣️ Domain/Route — Show on this domain or specific routes</option>
-                <option value="element">🎯 Element — Attach to page element</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+            {/* Scope toggle */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-gray-700">Scope</span>
+              <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
+                <button
+                  type="button"
+                  onClick={toggleToPageOnly}
+                  className={`px-3 py-1.5 text-sm flex items-center gap-1 ${attachmentType !== "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                  title="Apply to this page (domain/route)"
+                >
+                  <FiMap /> This page only
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleToGlobal}
+                  className={`px-3 py-1.5 text-sm flex items-center gap-1 border-l border-gray-300 ${attachmentType === "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                  title="Apply across all pages"
+                >
+                  <FiGlobe /> Global view
+                </button>
               </div>
             </div>
 
+            {/* Keep the existing select for compatibility */}
+            <Select
+              id="attachmentType"
+              size="large"
+              className="w-full"
+              value={attachmentType}
+              onChange={(v) => setAttachmentType(v as any)}
+              // @ts-ignore
+              getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
+              options={[
+                {
+                  value: "global",
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <FiGlobe className="text-gray-600" />
+                      <span>Global — Show on all pages</span>
+                    </span>
+                  ),
+                },
+                {
+                  value: "route",
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <FiMap className="text-gray-600" />
+                      <span>Domain/Route — Show on this domain or specific routes</span>
+                    </span>
+                  ),
+                },
+                {
+                  value: "element",
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <FiTarget className="text-gray-600" />
+                      <span>Element — Attach to page element</span>
+                    </span>
+                  ),
+                },
+              ]}
+            />
+
+            {/* Route default view with edit */}
             {attachmentType === "route" && (
               <div className="space-y-2 pt-3">
-                <label htmlFor="routePattern" className="block text-sm font-medium text-gray-700">
-                  Route Pattern
-                </label>
-                <input
-                  id="routePattern"
-                  type="text"
-                  value={routePattern}
-                  onChange={(e) => setRoutePattern(e.target.value)}
-                  placeholder="/user/*, /product/:id, /dashboard/settings"
-                  className="block w-full rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
-                />
-                <p className="text-xs text-gray-500">
-                  Leave empty to show on the entire domain. Use * for wildcards, :param for parameters (e.g., /user/*,
-                  /product/:id)
-                </p>
+                <div className="text-sm text-gray-700">
+                  <div>
+                    <span className="font-medium">Domain:</span> {window.location.hostname}
+                  </div>
+
+                  {!isEditingRoute ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="font-medium">Route:</span>
+                      <span className="px-2 py-0.5 bg-white border rounded text-gray-700">
+                        {routePattern || "(entire domain)"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={startEditRoute}
+                        className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+                        title="Edit route"
+                      >
+                        <FiEdit2 />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 mt-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={routeInputValue}
+                          onChange={(e) => setRouteInputValue(e.target.value)}
+                          placeholder={
+                            routeInputMode === "regex"
+                              ? "^/users/\\d+$"
+                              : "/users/*, /product/:id, leave empty for entire domain"
+                          }
+                          className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
+                        />
+                        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
+                          <button
+                            type="button"
+                            onClick={() => setRouteInputMode("string")}
+                            className={`px-2 py-1 text-xs flex items-center gap-1 ${routeInputMode === "string" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                            title="String mode"
+                          >
+                            <FiType /> String
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRouteInputMode("regex")}
+                            className={`px-2 py-1 text-xs flex items-center gap-1 border-l border-gray-300 ${routeInputMode === "regex" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                            title="RegExp mode"
+                          >
+                            <FiCode /> RegExp
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={saveRouteEdit}
+                          className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                          title="Save"
+                        >
+                          <FiSave /> Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEditRoute}
+                          className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                          title="Cancel"
+                        >
+                          <FiX /> Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
+            {/* Element attachment with multiple selectors */}
             {attachmentType === "element" && (
               <div className="space-y-3 pt-3">
-                {/* Route configuration toggle for element attachment */}
-                <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
-                {/* Manual XPath input with action buttons */}
-                <div className="space-y-2">
-                  <label htmlFor="elementXPath" className="block text-xs font-medium text-gray-600">
-                    Element XPath
-                  </label>
-                  <div className="flex items-stretch gap-2">
-                    <input
-                      id="elementXPath"
-                      type="text"
-                      value={elementXPath || ""}
-                      onChange={(e) => setElementXPath(e.target.value || undefined)}
-                      placeholder="XPath of the element to set value for"
-                      className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
-                    />
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        title="Find element in page"
-                        onClick={() => elementXPath && highlightOverlay.startHighlight(elementXPath)}
-                        disabled={!elementXPath}
-                        className="px-2 py-2 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Find
-                      </button>
-                      <button
-                        type="button"
-                        title="Select element from page"
-                        onClick={handleElementSelection}
-                        disabled={isSelectingElement}
-                        className="px-2 py-2 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Select
-                      </button>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      title="Select element from page"
+                      onClick={handleElementSelection}
+                      disabled={isSelectingElement}
+                      className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <FiTarget /> Select
+                    </button>
+                    <button
+                      type="button"
+                      title="Add empty selector"
+                      onClick={handleAddSelectorInput}
+                      className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                    >
+                      <FiPlus /> Add
+                    </button>
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  {elementPaths.length === 0 && (
+                    <p className="text-xs text-gray-500">No selectors yet. Use Select or Add to create one.</p>
+                  )}
+                  {elementPaths.map((path, idx) => (
+                    <div key={idx} className="flex items-stretch gap-2">
+                      <input
+                        type="text"
+                        value={path}
+                        onChange={(e) =>
+                          setElementPaths((prev) => prev.map((p, i) => (i === idx ? e.target.value : p)))
+                        }
+                        placeholder="XPath or selector for the element"
+                        className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
+                      />
+                      <button
+                        type="button"
+                        title="Remove selector"
+                        onClick={() => handleRemoveSelector(idx)}
+                        className="px-2 py-2 text-xs rounded-md border border-red-300 bg-white text-red-500 hover:bg-red-50"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="flex items-center gap-2">
                   <input
                     id="elementRouteToggle"

@@ -10,7 +10,7 @@ import { ModalOverlay } from "./FloatingModal.styled";
 interface ResizableModalProps {
   isOpen: boolean;
   onClose?: () => void;
-  title: string | React.ReactNode;
+  title?: string | React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
   initialPosition?: { x: number; y: number };
@@ -22,7 +22,7 @@ interface ResizableModalProps {
 
 export function ResizableModal({
   isOpen,
-  title,
+  title = <></>,
   children,
   footer,
   initialPosition = { x: 100, y: 100 },
@@ -73,6 +73,8 @@ export function ResizableModal({
 
   // Validate the initial position before using it
   // const validatedPosition = getValidatedPosition(initialPosition, initialSize);
+
+  console.log("🌟🌟🌟 ResizableModal::ResizableModal -> initialPosition", initialPosition);
 
   return (
     <ModalOverlay>
@@ -139,21 +141,24 @@ export function ResizableModal({
           isDragging ? "cursor-grabbing" : ""
         } ${isResizing ? "resizing" : ""} rnd-container`}
       >
-        <div className="flex flex-col h-full">
+        <div className={"flex flex-col h-full"}>
+          {/*<div className={"flex flex-col h-full" + (!title ? " modal-drag-handle" : "")}>*/}
           {/* Header - Drag Handle */}
-          <div className="modal-drag-handle flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
-            <div className="flex items-center gap-2 w-full">
-              <TbGripVertical className="w-4 h-4 text-muted-foreground" />
-              {title}
+          {title && (
+            <div className="modal-drag-handle flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
+              <div className="flex items-center gap-2 w-full">
+                <TbGripVertical className="w-4 h-4 text-muted-foreground" />
+                {title}
+              </div>
+              <button
+                onClick={handleCloseClick}
+                className="modal-drag-handle-close-button h-8 w-8 p-0 hover:bg-accent z-10 relative"
+                style={{ pointerEvents: "auto", cursor: "pointer" }}
+              >
+                <IoCloseSharp size={"20px"} />
+              </button>
             </div>
-            <button
-              onClick={handleCloseClick}
-              className="modal-drag-handle-close-button h-8 w-8 p-0 hover:bg-accent z-10 relative"
-              style={{ pointerEvents: "auto", cursor: "pointer" }}
-            >
-              <IoCloseSharp size={"20px"} />
-            </button>
-          </div>
+          )}
 
           {/* Body */}
           {children}

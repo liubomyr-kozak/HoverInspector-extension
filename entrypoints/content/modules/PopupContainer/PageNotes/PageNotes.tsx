@@ -27,6 +27,7 @@ import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupC
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { PAGE_NOTES } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { TbWindowMinimize } from "react-icons/tb";
+import { FiGlobe, FiMap, FiTarget, FiX } from "react-icons/fi";
 
 const Container = styled.div`
   display: flex;
@@ -74,8 +75,28 @@ export const PageNotes: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Note Visibility & Attachment state
+  const [selectedAttachmentType, setSelectedAttachmentType] = useState<"global" | "route" | "element" | null>(null);
+  const [showVisibilitySection, setShowVisibilitySection] = useState(false);
+
   const handleToggleFeatureMinimized = (featureKey: string) => {
     dispatch(onToggleFeatureMinimized.getPayload({ featureKey }));
+  };
+
+  // Note Visibility & Attachment handlers
+  const handleAttachmentTypeClick = (type: "global" | "route" | "element") => {
+    if (selectedAttachmentType === type) {
+      setSelectedAttachmentType(null);
+      setShowVisibilitySection(false);
+    } else {
+      setSelectedAttachmentType(type);
+      setShowVisibilitySection(true);
+    }
+  };
+
+  const handleCloseVisibilitySection = () => {
+    setSelectedAttachmentType(null);
+    setShowVisibilitySection(false);
   };
 
   const loadNotesData = useCallback(async () => {
@@ -121,7 +142,8 @@ export const PageNotes: React.FC = () => {
   const handleUpdateNote = useCallback(async (noteId: string, updates: Partial<Note>) => {
     try {
       const updatedNote = await updateNote({
-        data: { id: noteId, updates },
+        id: noteId,
+        updates,
       });
 
       if (updatedNote) {
@@ -137,7 +159,7 @@ export const PageNotes: React.FC = () => {
 
   const handleDeleteNote = useCallback(async (noteId: string) => {
     try {
-      await deleteNote({ data: noteId });
+      await deleteNote(noteId);
 
       setNotesState((prev) => ({
         ...prev,
@@ -151,7 +173,7 @@ export const PageNotes: React.FC = () => {
 
   const handleSelectNote = useCallback(async (noteId: string) => {
     try {
-      await setSelectedNote({ data: noteId });
+      await setSelectedNote(noteId);
 
       setNotesState((prev) => ({
         ...prev,
@@ -162,64 +184,9 @@ export const PageNotes: React.FC = () => {
     }
   }, []);
 
-  const handlePinNote = useCallback(
-    async (noteId: string) => {
-      const note = notesState.notes.find((n) => n.id === noteId);
-      if (!note) return;
-
-      try {
-        if (note.elementXPath || note.coordinates) {
-          // Unpin note
-          await handleUpdateNote(noteId, {
-            elementXPath: undefined,
-            coordinates: undefined,
-          });
-        } else {
-          // Pin note - start element selection mode
-          const subscription = highlightOverlay.streamSelectionMode().subscribe({
-            next: (event) => {
-              if (event.type === "selected") {
-                // Generate XPath for the selected element
-                const xpath = highlightOverlay.generateXPath(event.element);
-
-                // Update note with element XPath
-                handleUpdateNote(noteId, {
-                  elementXPath: xpath,
-                  coordinates: undefined, // Clear coordinates if set
-                });
-
-                subscription.unsubscribe();
-              }
-            },
-            error: (err) => {
-              console.error("Element selection failed:", err);
-              subscription.unsubscribe();
-            },
-          });
-
-          // Fallback: if user doesn't select an element, pin to center after 10 seconds
-          setTimeout(() => {
-            if (!subscription.closed) {
-              const coordinates = {
-                x: window.innerWidth / 2,
-                y: window.innerHeight / 2,
-              };
-
-              handleUpdateNote(noteId, { coordinates });
-              subscription.unsubscribe();
-            }
-          }, 10000);
-        }
-      } catch (err) {
-        console.error("Failed to pin/unpin note:", err);
-      }
-    },
-    [notesState.notes, handleUpdateNote, highlightOverlay],
-  );
-
   const handleUpdateSearchQuery = useCallback(async (query: string) => {
     try {
-      await updateNotesSearchQuery({ data: query });
+      await updateNotesSearchQuery(query);
 
       setNotesState((prev) => ({
         ...prev,
@@ -232,7 +199,7 @@ export const PageNotes: React.FC = () => {
 
   const handleToggleShowOnlyCurrentDomain = useCallback(async (show: boolean) => {
     try {
-      await toggleNotesShowOnlyCurrentDomain({ data: show });
+      await toggleNotesShowOnlyCurrentDomain(show);
 
       setNotesState((prev) => ({
         ...prev,
@@ -368,6 +335,43 @@ export const PageNotes: React.FC = () => {
           <FeatureIcon icon={PAGE_NOTES.icon} />
           {PAGE_NOTES.title}
           <PortalModalHeaderButtons>
+            {/* Note Visibility & Attachment buttons */}
+            <div className="flex items-center gap-1 mr-2">
+              <button
+                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
+                  selectedAttachmentType === "global"
+                    ? "bg-blue-100 text-blue-600"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                }`}
+                onClick={() => handleAttachmentTypeClick("global")}
+                title="Global - Show on all pages"
+              >
+                <FiGlobe className="w-4 h-4" />
+              </button>
+              <button
+                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
+                  selectedAttachmentType === "route"
+                    ? "bg-blue-100 text-blue-600"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                }`}
+                onClick={() => handleAttachmentTypeClick("route")}
+                title="Route - Show on specific routes"
+              >
+                <FiMap className="w-4 h-4" />
+              </button>
+              <button
+                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
+                  selectedAttachmentType === "element"
+                    ? "bg-blue-100 text-blue-600"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                }`}
+                onClick={() => handleAttachmentTypeClick("element")}
+                title="Element - Attach to page element"
+              >
+                <FiTarget className="w-4 h-4" />
+              </button>
+            </div>
+
             <div
               className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
               onClick={() => {
@@ -381,13 +385,49 @@ export const PageNotes: React.FC = () => {
         </FeatureTitle>
       </PortalModalHeader>
 
+      {/* Note Visibility & Attachment Section */}
+      {showVisibilitySection && (
+        <div className="bg-blue-50 border-b border-blue-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+              {selectedAttachmentType === "global" && (
+                <>
+                  <FiGlobe className="w-4 h-4" /> Global Visibility
+                </>
+              )}
+              {selectedAttachmentType === "route" && (
+                <>
+                  <FiMap className="w-4 h-4" /> Route Visibility
+                </>
+              )}
+              {selectedAttachmentType === "element" && (
+                <>
+                  <FiTarget className="w-4 h-4" /> Element Attachment
+                </>
+              )}
+            </h3>
+            <button
+              onClick={handleCloseVisibilitySection}
+              className="p-1 rounded-md hover:bg-blue-200 text-blue-600 transition-colors duration-200"
+              title="Close visibility section"
+            >
+              <FiX className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="text-sm text-blue-700">
+            {selectedAttachmentType === "global" && "Notes will be visible on all pages across all domains."}
+            {selectedAttachmentType === "route" && "Notes will be visible on specific routes or domains only."}
+            {selectedAttachmentType === "element" && "Notes will be attached to specific page elements."}
+          </div>
+        </div>
+      )}
+
       <NotesList
         notesState={notesState}
         onCreateNote={handleCreateNote}
         onEditNote={handleEditNote}
         onDeleteNote={handleDeleteNote}
         onSelectNote={handleSelectNote}
-        onPinNote={handlePinNote}
         onUpdateSearchQuery={handleUpdateSearchQuery}
         onToggleShowOnlyCurrentDomain={handleToggleShowOnlyCurrentDomain}
         onToggleGroup={handleToggleGroup}

@@ -1,13 +1,30 @@
-import AppStorageService from "@entrypoints/core/services/storage/AppStorageService.ts";
 import { createChromeSlice } from "@entrypoints/core/libs/createChromeSlice.ts";
+import {
+  Note,
+  NoteLocation,
+  NotesState,
+  NoteFormData,
+  NoteGroup,
+  ColorPalette,
+} from "@entrypoints/shared/types/notes.ts";
+import {
+  createNewNote,
+  addLocationToNote,
+  updateNoteData,
+  ensureNoteHasLocations,
+  createNewNoteGroup,
+  updateNoteGroupData,
+  removeNotesFromGroup,
+  createNewColorPalette,
+} from "@entrypoints/background/services/notes.ts";
 
-const notesInitialState = {
+const notesInitialState: NotesState & { version: number } = {
   version: 1, // версія slice
   notes: [],
   groups: [],
   searchQuery: "",
   showOnlyCurrentDomain: false,
-  selectedNoteId: null,
+  selectedNoteId: undefined,
 };
 
 export const notesActionsSlice = createChromeSlice({
@@ -20,7 +37,7 @@ export const notesActionsSlice = createChromeSlice({
       return await getState().position;
     },
 
-    saveNoteFormPanelPosition: async ({ data }, { getState, setState }) => {
+    saveNoteFormPanelPosition: async (data, { getState, setState }) => {
       return await setState({ position: data });
     },
 
@@ -29,21 +46,29 @@ export const notesActionsSlice = createChromeSlice({
       return getState();
     },
 
-    createNote: async (data: any, { getState, setState }) => {
+    createNote: async (data: NoteFormData & { domain: string; url: string }, { getState, setState }) => {
       debugger;
 
-      const notes = await getState().notes;
+      const state = await getState();
+      const notes = state.notes;
 
-      const newNote = {
-        ...data,
-        id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        domain: data.domain || "",
-        url: data.url || "",
-        isVisible: true,
-      };
+      // Check if this is adding to an existing note
+      if (data.addToExistingNote && data.existingNoteId) {
+        const existingNoteIndex = notes.findIndex((note) => note.id === data.existingNoteId);
+        if (existingNoteIndex !== -1) {
+          const existingNote = notes[existingNoteIndex];
 
+          // Use centralized function to add location to existing note
+          const updatedNote = addLocationToNote(existingNote, data);
+          notes[existingNoteIndex] = updatedNote;
+
+          await setState({ notes });
+          return updatedNote;
+        }
+      }
+
+      // Use centralized function to create new note
+      const newNote = createNewNote(data);
       notes.push(newNote);
 
       await setState({ notes });
@@ -51,23 +76,29 @@ export const notesActionsSlice = createChromeSlice({
       return newNote;
     },
 
-    updateNote: async ({ id, updates }, { getState, setState }) => {
+    updateNote: async (
+      { id, updates }: { id: string; updates: Partial<Note> & { addNewLocation?: boolean } },
+      { getState, setState },
+    ) => {
+      debugger;
+
       const notes = await getState().notes;
 
       const noteIndex = notes.findIndex((note) => note.id === id);
       if (noteIndex !== -1) {
-        notes[noteIndex] = {
-          ...notes[noteIndex],
-          ...updates,
-          updatedAt: Date.now(),
-        };
+        const existingNote = notes[noteIndex];
+
+        // Use centralized function to update note data
+        const updatedNote = updateNoteData(existingNote, updates);
+        notes[noteIndex] = updatedNote;
+
         await setState({ notes });
-        return notes[noteIndex];
+        return updatedNote;
       }
       return null;
     },
 
-    deleteNote: async ({ data: id }, { getState, setState }) => {
+    deleteNote: async (id, { getState, setState }) => {
       let notes = await getState().notes;
 
       notes = notes.filter((note) => note.id !== id);
@@ -76,58 +107,57 @@ export const notesActionsSlice = createChromeSlice({
       return { success: true };
     },
 
-    updateNotesSearchQuery: async ({ data: searchQuery }, { getState, setState }) => {
+    updateNotesSearchQuery: async (searchQuery, { getState, setState }) => {
       await setState({ searchQuery });
     },
 
-    toggleNotesShowOnlyCurrentDomain: async ({ data: showOnlyCurrentDomain }, { getState, setState }) => {
+    toggleNotesShowOnlyCurrentDomain: async (showOnlyCurrentDomain, { getState, setState }) => {
       await setState({ showOnlyCurrentDomain });
     },
 
     createNoteGroup: async ({ data }, { setState, getState }) => {
-      const notes = await getState().notes;
+      const state = await getState();
 
-      const newGroup = {
-        ...data,
-        id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        isExpanded: true,
-      };
+      // Use centralized function to create new group
+      const newGroup = createNewNoteGroup(data);
 
-      notes.groups.push(newGroup);
-      await setState({ notes });
+      state.groups.push(newGroup);
+      await setState({ groups: state.groups });
       return newGroup;
     },
 
-    updateNoteGroup: async ({ id, updates }: any, { getState, setState }) => {
-      const notes = await getState().notes;
+    updateNoteGroup: async ({ id, updates }: { id: string; updates: Partial<NoteGroup> }, { getState, setState }) => {
+      const state = await getState();
 
-      const groupIndex = notes.groups.findIndex((group) => group.id === id);
+      const groupIndex = state.groups.findIndex((group) => group.id === id);
       if (groupIndex !== -1) {
-        notes.groups[groupIndex] = {
-          ...notes.groups[groupIndex],
-          ...updates,
-          updatedAt: Date.now(),
-        };
-        await setState({ notes });
-        return notes.groups[groupIndex];
+        const existingGroup = state.groups[groupIndex];
+
+        // Use centralized function to update group data
+        const updatedGroup = updateNoteGroupData(existingGroup, updates);
+        state.groups[groupIndex] = updatedGroup;
+
+        await setState({ groups: state.groups });
+        return updatedGroup;
       }
       return null;
     },
 
-    deleteNoteGroup: async ({ data: id }, { getState, setState }) => {
-      const notes = await getState().notes;
+    deleteNoteGroup: async (id, { getState, setState }) => {
+      const state = await getState();
 
-      // Remove group and unassign notes from this group
-      notes.groups = notes.groups.filter((group) => group.id !== id);
-      notes.notes = notes.notes.map((note) => (note.groupId === id ? { ...note, groupId: undefined } : note));
+      // Remove group and use centralized function to unassign notes from this group
+      const updatedGroups = state.groups.filter((group) => group.id !== id);
+      const updatedNotes = removeNotesFromGroup(state.notes, id);
 
-      await setState({ notes });
+      await setState({
+        groups: updatedGroups,
+        notes: updatedNotes,
+      });
       return { success: true };
     },
 
-    setSelectedNote: async ({ data: selectedNoteId }, { getState, setState }) => {
+    setSelectedNote: async (selectedNoteId, { getState, setState }) => {
       const notes = await getState().notes;
 
       notes.selectedNoteId = selectedNoteId;
@@ -150,11 +180,8 @@ export const notesActionsSlice = createChromeSlice({
     createColorPalette: async ({ data }, { getState, setState }) => {
       const state = await getState();
 
-      const newColorPalette = {
-        ...data,
-        id: data.id || `color_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        createdAt: Date.now(),
-      };
+      // Use centralized function to create new color palette
+      const newColorPalette = createNewColorPalette(data);
 
       const colorPalettes = state.colorPalettes || [];
       colorPalettes.push(newColorPalette);
@@ -167,7 +194,10 @@ export const notesActionsSlice = createChromeSlice({
       return newColorPalette;
     },
 
-    updateColorPalette: async ({ id, updates }: any, { getState, setState }) => {
+    updateColorPalette: async (
+      { id, updates }: { id: string; updates: Partial<ColorPalette> },
+      { getState, setState },
+    ) => {
       const state = await getState();
       const colorPalettes = state.colorPalettes || [];
 

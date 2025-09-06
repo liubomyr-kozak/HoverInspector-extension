@@ -138,18 +138,29 @@ class HighlightOverlayManager {
     // Clear existing timer
     this.clearHighlightTimer();
 
-    this.applyOverlayStyles(el.getBoundingClientRect(), {
-      ...HIGHLIGHT_STYLES[variant],
-      ...customStyles,
+    // Scroll element into view (centered)
+    try {
+      el.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+    } catch {
+      // Fallback for older browsers
+      (el as any).scrollIntoView && (el as any).scrollIntoView();
+    }
+
+    // Apply styles on next frame to account for scroll layout changes
+    requestAnimationFrame(() => {
+      this.applyOverlayStyles(el.getBoundingClientRect(), {
+        ...HIGHLIGHT_STYLES[variant],
+        ...customStyles,
+      });
+
+      // Add blink animation
+      this.overlay.classList.add("highlight-overlay-blink");
+
+      // Set up 2-second auto-stop timer
+      this.highlightTimer = setTimeout(() => {
+        this.stopHighlight();
+      }, 2000);
     });
-
-    // Add blink animation
-    this.overlay.classList.add("highlight-overlay-blink");
-
-    // Set up 2-second auto-stop timer
-    this.highlightTimer = setTimeout(() => {
-      this.stopHighlight();
-    }, 2000);
   }
 
   public stopHighlight() {

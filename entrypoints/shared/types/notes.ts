@@ -1,6 +1,20 @@
 export enum NoteViewType {
   NOTE = "note",
-  CHIP = "chip"
+  CHIP = "chip",
+}
+
+export interface NoteLocation {
+  attachmentType: "element" | "route" | "domain" | "global";
+  domain: string;
+  elementXPath?: string;
+  routePattern?: string;
+  url: string;
+
+  // Position data (coordinates are separate as they're not location-specific)
+  coordinates?: {
+    x: number;
+    y: number;
+  };
 }
 
 export interface Note {
@@ -9,21 +23,11 @@ export interface Note {
   title: string;
   createdAt: number;
   updatedAt: number;
-  domain: string;
-  url: string;
   groupId?: string;
-  
-  // Positioning data
-  elementXPath?: string; // For DOM element attachment
-  coordinates?: {
-    x: number;
-    y: number;
-  }; // For pinned position
-  
-  // Attachment options
-  attachmentType?: "element" | "route" | "domain" | "global"; // Type of attachment
-  routePattern?: string; // For route-specific attachment (e.g., "/user/*", "/product/:id")
-  
+
+  // Multi-location support - array of location objects
+  locations: NoteLocation[];
+
   // Visual properties
   colorId?: string;
   isVisible: boolean;
@@ -62,4 +66,7 @@ export interface NoteFormData {
   elementXPath?: string;
   attachmentType?: "element" | "route" | "domain" | "global";
   routePattern?: string;
+  // For adding to existing notes
+  addToExistingNote?: boolean;
+  existingNoteId?: string;
 }
