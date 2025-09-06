@@ -40,11 +40,6 @@ import {
   getElementDetailsPanelPosition,
   saveElementDetailsPanelPosition,
 } from "@entrypoints/background/store/backgroundSlice.ts";
-import {
-  // NoteForm Panel Position Actions
-  getNoteFormPanelPosition,
-  saveNoteFormPanelPosition,
-} from "@entrypoints/background/store/notesActionsSlice";
 import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
 
 class ExtensionStorageManager {
@@ -325,23 +320,6 @@ class ExtensionStorageManager {
    */
   async saveElementDetailsPanelPosition(position) {
     return await saveElementDetailsPanelPosition({ data: position });
-  }
-
-  /**
-   * Get NoteForm panel position and size
-   * @returns {Promise<Object|null>} The panel position/size object or null if not found
-   */
-  async getNoteFormPanelPosition() {
-    return await getNoteFormPanelPosition();
-  }
-
-  /**
-   * Save NoteForm panel position and size
-   * @param {Object} position - Object containing x, y, width, height
-   * @returns {Promise<Object>} Object with success status and key
-   */
-  async saveNoteFormPanelPosition(position) {
-    return await saveNoteFormPanelPosition(position);
   }
 }
 

@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
 import { Popover, Select } from "antd";
-import { NotesState, NoteFormData, ColorPalette, NoteViewType } from "@entrypoints/shared/types/notes";
+import {
+  NotesState,
+  NoteFormData,
+  ColorPalette,
+  NoteViewType,
+  ExtendedNoteFormData,
+  AttachmentType,
+  RouteInputMode,
+} from "@entrypoints/shared/types/notes";
 import {
   getAllNotes,
   createNote,
@@ -72,7 +80,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [groupId, setGroupId] = useState<string | undefined>();
   const [selectedColorId, setSelectedColorId] = useState<string>("blue");
   const [elementXPath, setElementXPath] = useState<string | undefined>();
-  const [attachmentType, setAttachmentType] = useState<"element" | "route" | "domain" | "global">("route");
+  const [attachmentType, setAttachmentType] = useState<AttachmentType>("route");
   const [routePattern, setRoutePattern] = useState<string>("");
   const [isSelectingElement, setIsSelectingElement] = useState(false);
   const [viewType, setViewType] = useState<NoteViewType>(NoteViewType.NOTE);
@@ -82,7 +90,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   // New UI states
   const [elementPaths, setElementPaths] = useState<string[]>([]);
   const [isEditingRoute, setIsEditingRoute] = useState(false);
-  const [routeInputMode, setRouteInputMode] = useState<"string" | "regex">("string");
+  const [routeInputMode, setRouteInputMode] = useState<RouteInputMode>("string");
   const [routeInputValue, setRouteInputValue] = useState<string>("");
   const dispatch = useDispatch();
   const highlightOverlay = useHighlightOverlay();
@@ -253,16 +261,19 @@ export const NoteForm: React.FC<NoteFormProps> = ({
       // Use first selector for backward compatibility
       const firstXPath = elementPaths.find((p) => p && p.trim());
 
-      const formData: NoteFormData = {
+      const formData: ExtendedNoteFormData = {
         title: title.trim(),
         content: content.trim(),
         groupId,
         colorId: selectedColorId,
         elementXPath: firstXPath || undefined,
-        attachmentType: normalizedAttachmentType as any,
+        elementPaths,
+        attachmentType: normalizedAttachmentType,
         routePattern: trimmedRoute || undefined,
         addToExistingNote,
         existingNoteId,
+        viewType,
+        routeInputMode,
       };
 
       if (editingNote) {

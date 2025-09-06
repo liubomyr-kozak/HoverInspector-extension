@@ -3,6 +3,13 @@ export enum NoteViewType {
   CHIP = "chip",
 }
 
+export interface NoteLocationCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface NoteLocation {
   attachmentType: "element" | "route" | "domain" | "global";
   domain: string;
@@ -11,10 +18,7 @@ export interface NoteLocation {
   url: string;
 
   // Position data (coordinates are separate as they're not location-specific)
-  coordinates?: {
-    x: number;
-    y: number;
-  };
+  coordinates?: NoteLocationCoordinates;
 }
 
 export interface Note {
@@ -69,4 +73,64 @@ export interface NoteFormData {
   // For adding to existing notes
   addToExistingNote?: boolean;
   existingNoteId?: string;
+}
+
+// Extended attachment type union
+export type AttachmentType = "element" | "route" | "domain" | "global";
+
+// Route input mode for editing
+export type RouteInputMode = "string" | "regex";
+
+// Extended form data with multi-location and element paths support
+export interface ExtendedNoteFormData extends Omit<NoteFormData, "attachmentType"> {
+  attachmentType: AttachmentType;
+  routePattern?: string;
+  elementXPath?: string; // backward compatibility - first selector
+  elementPaths?: string[]; // new multi-selector support
+  addToExistingNote?: boolean;
+  existingNoteId?: string;
+  viewType?: NoteViewType;
+  routeInputMode?: RouteInputMode; // for route editing
+}
+
+// Action payload types
+export interface CreateNotePayload extends ExtendedNoteFormData {
+  domain: string;
+  url: string;
+}
+
+export interface UpdateNotePayload {
+  id: string;
+  updates: Partial<Note> & { addNewLocation?: boolean };
+}
+
+export interface CreateNoteGroupPayload {
+  data: {
+    name: string;
+    color: string;
+  };
+}
+
+export interface UpdateNoteGroupPayload {
+  id: string;
+  updates: Partial<NoteGroup>;
+}
+
+export interface CreateColorPalettePayload {
+  data: ColorPalette;
+}
+
+export interface UpdateColorPalettePayload {
+  data: {
+    id: string;
+    updates: Partial<ColorPalette>;
+  };
+}
+
+export interface DeleteColorPalettePayload {
+  data: string; // colorId
+}
+
+export interface SetColorPalettesPayload {
+  data: ColorPalette[];
 }

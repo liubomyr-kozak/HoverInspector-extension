@@ -12,6 +12,11 @@ import { NoteForm } from "./NoteForm";
 import NoteFormPopupStyles from "./NoteFormPopup.css?inline";
 import { ButtonsContainer } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";
+import { NoteLocation, NoteLocationCoordinates } from "@entrypoints/shared/types/notes.ts";
+import {
+  getNoteFormPanelPosition,
+  saveNoteFormPanelPosition,
+} from "@entrypoints/background/store/notesActionsSlice.ts";
 
 export const NoteFormPopup: React.FC = () => {
   const dispatch = useDispatch();
@@ -37,7 +42,7 @@ export const NoteFormPopup: React.FC = () => {
     const loadPosition = async () => {
       try {
         // Use ExtensionStorageManager for NoteForm panel persistence
-        const savedPosition = await ExtensionStorageManager.getNoteFormPanelPosition();
+        const savedPosition = await getNoteFormPanelPosition();
         if (savedPosition) {
           if (
             savedPosition &&
@@ -60,10 +65,10 @@ export const NoteFormPopup: React.FC = () => {
   }, []);
 
   // Handle position/size changes
-  const handleModalStateChange = async (newState: { x: number; y: number; width: number; height: number }) => {
+  const handleModalStateChange = async (newState: NoteLocationCoordinates) => {
     setPanelPosition(newState);
     try {
-      await ExtensionStorageManager.saveNoteFormPanelPosition(newState);
+      await saveNoteFormPanelPosition(newState);
     } catch (error) {
       console.error("Failed to save NoteForm panel position:", error);
     }
