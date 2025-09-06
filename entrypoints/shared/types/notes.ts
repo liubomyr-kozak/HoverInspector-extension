@@ -10,9 +10,19 @@ export interface NoteLocationCoordinates {
   height: number;
 }
 
+// Extended attachment type enum
+export enum AttachmentTypeEnum {
+  GLOBAL = "global",
+  ROUTE = "route",
+  DOMAIN = "domain",
+}
+
+// Update the existing AttachmentType to use the enum
+export type AttachmentType = AttachmentTypeEnum;
+
 export interface NoteLocation {
-  attachmentType: "element" | "route" | "domain" | "global";
-  domain: string;
+  attachmentType: AttachmentType;
+  domain: string; // I will use this on attachmentType "domain" and "global"
   elementXPath?: string;
   routePattern?: string;
   url: string;
@@ -28,6 +38,7 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
   groupId?: string;
+  viewType?: NoteViewType;
 
   // Multi-location support - array of location objects
   locations: NoteLocation[];
@@ -35,21 +46,6 @@ export interface Note {
   // Visual properties
   colorId?: string;
   isVisible: boolean;
-
-  // Form-specific properties (for creating/editing notes)
-  elementXPath?: string;
-  attachmentType?: "element" | "route" | "domain" | "global";
-  routePattern?: string;
-  viewType?: NoteViewType;
-
-  // For adding to existing notes
-  addToExistingNote?: boolean;
-  existingNoteId?: string;
-
-  // Extended properties
-  elementPaths?: string[];
-  domain?: string;
-  url?: string;
 }
 
 export interface NoteGroup {
@@ -77,21 +73,12 @@ export interface ColorPalette {
   createdAt: number;
 }
 
-// Extended attachment type enum
-export enum AttachmentTypeEnum {
-  GLOBAL = "global",
-  ROUTE = "route",
-}
-
-// Update the existing AttachmentType to use the enum
-export type AttachmentType = AttachmentTypeEnum;
-
 // Action payload types
 export interface CreateNotePayload extends Partial<Note> {
   content: string; // Required for creation
   title: string; // Required for creation
   domain: string;
-  url: string;
+  locations: NoteLocation[];
 }
 
 export interface UpdateNotePayload {

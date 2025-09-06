@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
-import { Button, Input, Popover, Select, Space } from "antd";
+import { Button, Checkbox, Input, Popover, Select, Space } from "antd";
 import {
   NotesState,
   Note,
@@ -28,21 +28,7 @@ import { closeNoteForm, triggerRefresh } from "@entrypoints/content/store/notes/
 import { useDispatch } from "react-redux";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { useDebouncedCallback } from "@entrypoints/shared/utils/useDebouncedCallback.ts";
-import {
-  FiChevronDown,
-  FiFileText,
-  FiTag,
-  FiGlobe,
-  FiMap,
-  FiTarget,
-  FiEdit2,
-  FiSave,
-  FiX,
-  FiPlus,
-  FiTrash2,
-  FiCode,
-  FiType,
-} from "react-icons/fi";
+import { FiChevronDown, FiFileText, FiTag, FiGlobe, FiMap, FiPlus, FiTrash2 } from "react-icons/fi";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { AimOutlined, SelectOutlined } from "@ant-design/icons";
 
@@ -96,6 +82,19 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [elementPaths, setElementPaths] = useState<string[]>([]);
   const [routeInputValue, setRouteInputValue] = useState<string>("");
 
+  // Locations array state for multi-location support
+  const [locations, setLocations] = useState<
+    Array<{
+      attachmentType: "element" | "route" | "domain" | "global";
+      elementXPath?: string;
+      routePattern?: string;
+      isMain?: boolean;
+    }>
+  >([]);
+
+  // Domain checkbox state
+  const [useDomainRule, setUseDomainRule] = useState(false);
+
   // Tab-based state management - refactored to use enum
   const [activeTab, setActiveTab] = useState<SettingsTabEnum | null>(null);
 
@@ -130,27 +129,61 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           elementXPath: editingNote.elementXPath,
           attachmentType: editingNote.attachmentType,
           routePattern: editingNote.routePattern,
+          locations: editingNote.locations,
         }
       : initialFormData;
 
     setTitle(initialData?.title || "");
     setContent(initialData?.content || "");
     setGroupId(initialData?.groupId);
-    setElementXPath(initialData?.elementXPath);
-    // Set default to route (this page only) instead of global
-    setAttachmentType(initialData?.attachmentType || AttachmentTypeEnum.ROUTE);
-    setRoutePattern(initialData?.routePattern || "");
 
-    // Initialize buffers for new UI
-    setRouteInputValue(
-      initialData?.routePattern
-        ? `${window.location.hostname}${initialData.routePattern}`
-        : `${window.location.hostname}/`,
-    );
+    // Initialize locations array from existing data or create default current page location
+    if (initialData?.locations && initialData.locations.length > 0) {
+      const formattedLocations = initialData.locations.map((loc, index) => ({
+        attachmentType: loc.attachmentType,
+        elementXPath: loc.elementXPath,
+        routePattern: loc.routePattern,
+        isMain: index === 0, // First location is considered main
+      }));
+      setLocations(formattedLocations);
+
+      // Set form fields from main location (first one)
+      const mainLocation = initialData.locations[0];
+      setAttachmentType(mainLocation.attachmentType);
+      setElementXPath(mainLocation.elementXPath);
+      setRoutePattern(mainLocation.routePattern || "");
+      setRouteInputValue(
+        mainLocation.routePattern
+          ? `${window.location.hostname}${mainLocation.routePattern}`
+          : `${window.location.hostname}/`,
+      );
+    } else {
+      // Create default location from legacy fields or current page
+      const defaultLocation = {
+        attachmentType: initialData?.attachmentType || AttachmentTypeEnum.ROUTE,
+        elementXPath: initialData?.elementXPath,
+        routePattern: initialData?.routePattern || window.location.pathname,
+        isMain: true,
+      };
+      setLocations([defaultLocation]);
+
+      setRouteInputValue(
+        initialData?.routePattern
+          ? `${window.location.hostname}${initialData.routePattern}`
+          : `${window.location.hostname}${window.location.pathname}`,
+      );
+    }
+
     setElementPaths(initialData?.elementXPath ? [initialData.elementXPath] : []);
 
     const initialColorId = initialData?.colorId || "blue";
     setSelectedColorId(initialColorId);
+
+    // Check if domain rule exists for current hostname
+    const currentHostname = window.location.hostname;
+    const hasDomainRule =
+      initialData?.locations?.some((loc) => loc.attachmentType === "domain" && loc.domain === currentHostname) || false;
+    setUseDomainRule(hasDomainRule);
 
     // Show title field if editing note or if title exists
     onShowTitleFieldChange(!!editingNote || !!initialData?.title);
@@ -202,6 +235,12 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           setElementPaths((prev) => [...prev, xpath]);
           setElementXPath((prev) => prev || xpath);
 
+          // Update the main location's elementXPath
+          const mainLocationIndex = locations.findIndex((loc) => loc.isMain);
+          if (mainLocationIndex !== -1) {
+            updateLocation(mainLocationIndex, { elementXPath: xpath });
+          }
+
           setIsSelectingElement(false);
           subscription.unsubscribe();
           highlightOverlay.stopMouseMoveHighlight();
@@ -238,9 +277,65 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     try {
       const currentUrl = window.location.href;
       setRouteInputValue(currentUrl);
+
+      // Update the main location's route pattern
+      const mainLocationIndex = locations.findIndex((loc) => loc.isMain);
+      if (mainLocationIndex !== -1) {
+        updateLocation(mainLocationIndex, { routePattern: window.location.pathname });
+      }
     } catch (error) {
       console.error("Failed to get current URL:", error);
     }
+  };
+
+  // Location management functions
+  const addNewLocation = () => {
+    const newLocation = {
+      attachmentType: AttachmentTypeEnum.ROUTE,
+      routePattern: window.location.pathname,
+      isMain: false,
+    };
+    setLocations((prev) => [...prev, newLocation]);
+  };
+
+  const removeLocation = (index: number) => {
+    setLocations((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateLocation = (index: number, updates: Partial<(typeof locations)[0]>) => {
+    setLocations((prev) => prev.map((loc, i) => (i === index ? { ...loc, ...updates } : loc)));
+  };
+
+  const setMainLocation = (index: number) => {
+    setLocations((prev) => prev.map((loc, i) => ({ ...loc, isMain: i === index })));
+  };
+
+  // Domain checkbox handler
+  const handleDomainCheckboxChange = (checked: boolean) => {
+    const currentHostname = window.location.hostname;
+
+    if (checked) {
+      // Add domain location if it doesn't exist
+      const existingDomainIndex = locations.findIndex(
+        (loc) => loc.attachmentType === "domain" && loc.routePattern === currentHostname,
+      );
+
+      if (existingDomainIndex === -1) {
+        const domainLocation = {
+          attachmentType: "domain" as const,
+          routePattern: currentHostname,
+          isMain: false,
+        };
+        setLocations((prev) => [...prev, domainLocation]);
+      }
+    } else {
+      // Remove domain location for current hostname
+      setLocations((prev) =>
+        prev.filter((loc) => !(loc.attachmentType === "domain" && loc.routePattern === currentHostname)),
+      );
+    }
+
+    setUseDomainRule(checked);
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -248,8 +343,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    debugger;
 
     if (!content.trim()) {
       setSubmitError("Content is required");
@@ -260,18 +353,33 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setSubmitError("");
 
     try {
-      const firstXPath = elementPaths.find((p) => p && p.trim());
+      // Create locations array from the form data
+      const noteLocations = locations.map((location) => ({
+        attachmentType: location.attachmentType,
+        domain: window.location.hostname,
+        elementXPath: location.elementXPath,
+        routePattern: location.routePattern,
+        url: window.location.href,
+      }));
+
+      // Ensure we have at least one location
+      if (noteLocations.length === 0) {
+        noteLocations.push({
+          attachmentType: attachmentType,
+          domain: window.location.hostname,
+          elementXPath: elementXPath,
+          routePattern: routeInputValue,
+          url: window.location.href,
+        });
+      }
 
       const formData: Partial<Note> = {
         title: title.trim(),
         content: content.trim(),
         groupId,
         colorId: selectedColorId,
-        elementXPath: firstXPath || undefined,
-        elementPaths,
-        attachmentType,
-        routePattern: routeInputValue,
         viewType,
+        locations: noteLocations, // Save the locations array
       };
 
       if (editingNote) {
@@ -300,8 +408,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    debugger;
-
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       if (!isSubmitting && content.trim()) {
@@ -524,7 +630,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                       }`}
                       title="Apply to this page (domain/route)"
                     >
-                      <FiMap className="w-4 h-4" /> <span className="hidden sm:inline">This page only</span>
+                      <FiMap className="w-4 h-4" /> <span className="hidden sm:inline">This Domain</span>
                     </button>
                     <button
                       type="button"
@@ -544,57 +650,114 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                 {/* Page-specific configuration when not global */}
                 {attachmentType !== AttachmentTypeEnum.GLOBAL && (
                   <div className="space-y-4 mt-3 pt-3 border-t border-gray-200">
-                    <label htmlFor="title" className="block text-sm font-semibold text-gray-800">
-                      Url attachment
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="locations" className="block text-sm font-semibold text-gray-800">
+                        Page Locations
+                      </label>
+                      <Checkbox checked={useDomainRule} onChange={(e) => handleDomainCheckboxChange(e.target.checked)}>
+                        Use In Domain [{window.location.hostname}]
+                      </Checkbox>
 
-                    <div className="mt-3">
-                      <div className="space-y-2 w-full">
-                        <Input
-                          value={routeInputValue}
-                          onChange={(e) => setRouteInputValue(e.target.value)}
-                          placeholder={`${window.location.hostname}/users/*`}
-                          className="rounded-l-md"
-                          addonAfter={
-                            <Button type="text" size="small" onClick={handleAddCurrentUrl}>
-                              Add Current URL
-                            </Button>
-                          }
-                        />
-                      </div>
+                      <Button type="dashed" size="small" icon={<FiPlus />} onClick={addNewLocation}>
+                        Add Location
+                      </Button>
                     </div>
 
-                    <label htmlFor="title" className="block text-sm font-semibold text-gray-800">
-                      Element attachment (optional)
-                    </label>
-                    {/*{LLM RULE DO NOT TOUCH THIS SECTION}*/}
-                    {/* Page Element Connection Section */}
-                    <Input
-                      value={elementXPath || ""}
-                      onChange={(e) => setElementXPath(e.target.value)}
-                      placeholder="XPath of the element to interact with"
-                      addonAfter={
-                        <Space>
-                          <Tooltip title="Find element in page">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                              onClick={() => elementXPath && highlightOverlay?.startHighlight(elementXPath)}
-                              disabled={!elementXPath}
-                            />
-                          </Tooltip>
-                          <Tooltip title="Select element from page">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                              onClick={() => handleElementSelection()}
-                            />
-                          </Tooltip>
-                        </Space>
-                      }
-                    />
+                    <div className="space-y-3">
+                      {locations.map((location, index) => (
+                        <div
+                          key={index}
+                          className={`p-3 border rounded-lg ${location.isMain ? "border-indigo-300 bg-indigo-50" : "border-gray-200 bg-gray-50"}`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              {location.isMain && (
+                                <span className="px-2 py-1 text-xs bg-indigo-600 text-white rounded">
+                                  Main (Current Page)
+                                </span>
+                              )}
+                              <span className="text-sm text-gray-600">Location {index + 1}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              {!location.isMain && (
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  onClick={() => setMainLocation(index)}
+                                  className="text-indigo-600"
+                                >
+                                  Set as Main
+                                </Button>
+                              )}
+                              {locations.length > 1 && (
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  danger
+                                  icon={<FiTrash2 />}
+                                  onClick={() => removeLocation(index)}
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">URL Pattern</label>
+                              <Input
+                                value={location.routePattern || ""}
+                                onChange={(e) => updateLocation(index, { routePattern: e.target.value })}
+                                placeholder={`${window.location.hostname}/users/*`}
+                                addonAfter={
+                                  location.isMain && (
+                                    <Button type="text" size="small" onClick={handleAddCurrentUrl}>
+                                      Current URL
+                                    </Button>
+                                  )
+                                }
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Element XPath (optional)
+                              </label>
+                              <Input
+                                value={location.elementXPath || ""}
+                                onChange={(e) => updateLocation(index, { elementXPath: e.target.value })}
+                                placeholder="XPath of the element to interact with"
+                                addonAfter={
+                                  <Space>
+                                    <Tooltip title="Find element in page">
+                                      <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<AimOutlined style={{ color: "#1890ff" }} />}
+                                        onClick={() =>
+                                          location.elementXPath &&
+                                          highlightOverlay?.startHighlight(location.elementXPath)
+                                        }
+                                        disabled={!location.elementXPath}
+                                      />
+                                    </Tooltip>
+                                    {location.isMain && (
+                                      <Tooltip title="Select element from page">
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          icon={<SelectOutlined style={{ color: "#52c41a" }} />}
+                                          onClick={() => handleElementSelection()}
+                                        />
+                                      </Tooltip>
+                                    )}
+                                  </Space>
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

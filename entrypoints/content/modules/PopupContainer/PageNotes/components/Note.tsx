@@ -49,10 +49,10 @@ export const Note: React.FC<NoteProps> = ({
   const currentDomain = window.location.hostname;
   const currentUrl = window.location.href;
   const matchingLocation = note.locations?.find(
-    (location) => location.domain === currentDomain || location.url === currentUrl
+    (location) => location.domain === currentDomain || location.url === currentUrl,
   );
   const currentElementXPath = matchingLocation?.elementXPath || (note as any).elementXPath; // backward compatibility
-  
+
   const isPinned = !!matchingLocation?.coordinates || !!currentElementXPath;
 
   if (viewType === NoteViewType.CHIP) {
@@ -95,9 +95,7 @@ export const Note: React.FC<NoteProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm("Delete this note?")) {
-                onDelete(note.id);
-              }
+              onDelete(note.id);
             }}
             title="Delete note"
             className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-black/10 text-gray-700 hover:bg-black/20"
@@ -153,9 +151,7 @@ export const Note: React.FC<NoteProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm("Delete this note?")) {
-                onDelete(note.id);
-              }
+              onDelete(note.id);
             }}
             title="Delete note"
             className="inline-flex h-6 w-6 items-center justify-center rounded bg-black/5 text-gray-700 hover:bg-black/10 transition"

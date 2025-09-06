@@ -1,26 +1,6 @@
 import { Note, NoteLocation, NotesState, NoteGroup, ColorPalette } from "@entrypoints/shared/types/notes.ts";
 
 /**
- * Centralized notes business logic functions
- * This file contains all the core logic for notes management that was previously duplicated in notesActionsSlice
- */
-
-/**
- * Creates a new location object from form data and current page context
- */
-export function createNoteLocation(
-  data: Partial<Note> & { domain: string; url: string }
-): NoteLocation {
-  return {
-    attachmentType: data.attachmentType || "global",
-    domain: data.domain || "",
-    elementXPath: data.elementXPath,
-    routePattern: data.routePattern,
-    url: data.url || "",
-  };
-}
-
-/**
  * Migrates legacy note format to new locations array structure
  */
 export function migrateLegacyNoteToLocations(note: any): NoteLocation[] {
@@ -29,7 +9,7 @@ export function migrateLegacyNoteToLocations(note: any): NoteLocation[] {
   }
 
   const locations: NoteLocation[] = [];
-  
+
   // Migrate existing data if it exists in old format
   if (note.domain || note.url) {
     const migratedLocation: NoteLocation = {
@@ -62,16 +42,13 @@ export function ensureNoteHasLocations(note: Note): Note {
  * Creates a new note with proper structure
  */
 export function createNewNote(
-  formData: Partial<Note> & { domain: string; url: string; content: string; title: string }
+  formData: Partial<Note> & { content: string; title: string; locations: NoteLocation[] },
 ): Note {
-  const newLocation = createNoteLocation(formData);
-  
   return {
     ...formData,
     id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    locations: [newLocation],
     isVisible: true,
   };
 }
@@ -79,16 +56,11 @@ export function createNewNote(
 /**
  * Adds a new location to an existing note
  */
-export function addLocationToNote(
-  note: Note, 
-  newLocationData: Partial<Note> & { domain: string; url: string }
-): Note {
+export function addLocationToNote(note: Note, newLocationData: Partial<Note> & { domain: string; url: string }): Note {
   const ensuredNote = ensureNoteHasLocations(note);
-  const newLocation = createNoteLocation(newLocationData);
-  
+
   return {
     ...ensuredNote,
-    locations: [...ensuredNote.locations, newLocation],
     updatedAt: Date.now(),
   };
 }
@@ -96,12 +68,9 @@ export function addLocationToNote(
 /**
  * Updates a note with new data while preserving locations array
  */
-export function updateNoteData(
-  note: Note, 
-  updates: Partial<Note> & { addNewLocation?: boolean }
-): Note {
+export function updateNoteData(note: Note, updates: Partial<Note> & { addNewLocation?: boolean }): Note {
   const ensuredNote = ensureNoteHasLocations(note);
-  
+
   if (updates.addNewLocation) {
     // Add new location to existing note
     const newLocation: NoteLocation = {
@@ -143,10 +112,7 @@ export function createNewNoteGroup(data: { name: string; color: string }): NoteG
 /**
  * Updates a note group
  */
-export function updateNoteGroupData(
-  group: NoteGroup, 
-  updates: Partial<NoteGroup>
-): NoteGroup {
+export function updateNoteGroupData(group: NoteGroup, updates: Partial<NoteGroup>): NoteGroup {
   return {
     ...group,
     ...updates,
@@ -171,16 +137,10 @@ export function createNewColorPalette(data: Partial<ColorPalette>): ColorPalette
 /**
  * Finds matching location for current page context
  */
-export function findMatchingLocation(
-  note: Note,
-  currentDomain: string,
-  currentUrl: string
-): NoteLocation | undefined {
+export function findMatchingLocation(note: Note, currentDomain: string, currentUrl: string): NoteLocation | undefined {
   const ensuredNote = ensureNoteHasLocations(note);
-  
-  return ensuredNote.locations.find(
-    (location) => location.domain === currentDomain || location.url === currentUrl
-  );
+
+  return ensuredNote.locations.find((location) => location.domain === currentDomain || location.url === currentUrl);
 }
 
 /**
@@ -190,12 +150,11 @@ export function shouldNoteBeVisibleOnPage(
   note: Note,
   currentDomain: string,
   currentUrl: string,
-  groups: NoteGroup[] = []
+  groups: NoteGroup[] = [],
 ): boolean {
   // Note must be visible and have positioning data
   const hasPositioning =
-    (note.locations && note.locations.some((loc) => loc.coordinates || loc.elementXPath)) ||
-    (note as any).elementXPath; // backward compatibility
+    (note.locations && note.locations.some((loc) => loc.coordinates || loc.elementXPath)) || (note as any).elementXPath; // backward compatibility
 
   if (!note.isVisible || !hasPositioning) {
     return false;
@@ -206,9 +165,7 @@ export function shouldNoteBeVisibleOnPage(
 
   if (note.locations && note.locations.length > 0) {
     // Use new locations array
-    matchesRoute = note.locations.some(
-      (location) => location.domain === currentDomain || location.url === currentUrl
-    );
+    matchesRoute = note.locations.some((location) => location.domain === currentDomain || location.url === currentUrl);
   } else {
     // Backward compatibility: check legacy single values
     matchesRoute = (note as any).domain === currentDomain || (note as any).url === currentUrl;
@@ -234,18 +191,14 @@ export function getVisibleNotesForPage(
   notes: Note[],
   currentDomain: string,
   currentUrl: string,
-  groups: NoteGroup[] = []
+  groups: NoteGroup[] = [],
 ): Note[] {
-  return notes.filter((note) =>
-    shouldNoteBeVisibleOnPage(note, currentDomain, currentUrl, groups)
-  );
+  return notes.filter((note) => shouldNoteBeVisibleOnPage(note, currentDomain, currentUrl, groups));
 }
 
 /**
  * Removes notes from a group when the group is deleted
  */
 export function removeNotesFromGroup(notes: Note[], groupId: string): Note[] {
-  return notes.map((note) =>
-    note.groupId === groupId ? { ...note, groupId: undefined } : note
-  );
+  return notes.map((note) => (note.groupId === groupId ? { ...note, groupId: undefined } : note));
 }

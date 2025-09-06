@@ -58,27 +58,9 @@ export const notesActionsSlice = createChromeSlice({
     },
 
     createNote: async (data: CreateNotePayload, { getState, setState }): Promise<Note> => {
-      debugger;
-
       const state = await getState();
       const notes = state.notes;
 
-      // Check if this is adding to an existing note
-      if (data.addToExistingNote && data.existingNoteId) {
-        const existingNoteIndex = notes.findIndex((note) => note.id === data.existingNoteId);
-        if (existingNoteIndex !== -1) {
-          const existingNote = notes[existingNoteIndex];
-
-          // Use centralized function to add location to existing note
-          const updatedNote = addLocationToNote(existingNote, data);
-          notes[existingNoteIndex] = updatedNote;
-
-          setState({ notes });
-          return updatedNote;
-        }
-      }
-
-      // Use centralized function to create new note
       const newNote = createNewNote(data);
       notes.push(newNote);
 
