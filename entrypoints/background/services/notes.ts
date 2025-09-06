@@ -1,4 +1,4 @@
-import { Note, NoteLocation, NotesState, NoteFormData, NoteGroup, ColorPalette } from "@entrypoints/shared/types/notes.ts";
+import { Note, NoteLocation, NotesState, NoteGroup, ColorPalette } from "@entrypoints/shared/types/notes.ts";
 
 /**
  * Centralized notes business logic functions
@@ -9,7 +9,7 @@ import { Note, NoteLocation, NotesState, NoteFormData, NoteGroup, ColorPalette }
  * Creates a new location object from form data and current page context
  */
 export function createNoteLocation(
-  data: NoteFormData & { domain: string; url: string }
+  data: Partial<Note> & { domain: string; url: string }
 ): NoteLocation {
   return {
     attachmentType: data.attachmentType || "global",
@@ -62,7 +62,7 @@ export function ensureNoteHasLocations(note: Note): Note {
  * Creates a new note with proper structure
  */
 export function createNewNote(
-  formData: NoteFormData & { domain: string; url: string }
+  formData: Partial<Note> & { domain: string; url: string; content: string; title: string }
 ): Note {
   const newLocation = createNoteLocation(formData);
   
@@ -81,7 +81,7 @@ export function createNewNote(
  */
 export function addLocationToNote(
   note: Note, 
-  newLocationData: NoteFormData & { domain: string; url: string }
+  newLocationData: Partial<Note> & { domain: string; url: string }
 ): Note {
   const ensuredNote = ensureNoteHasLocations(note);
   const newLocation = createNoteLocation(newLocationData);

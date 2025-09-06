@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import { NotesList } from "./components/NotesList";
-import { Note, NoteGroup, NotesState, NoteFormData } from "@entrypoints/shared/types/notes";
+import { Note, NoteGroup, NotesState } from "@entrypoints/shared/types/notes";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import {
   getAllNotes,

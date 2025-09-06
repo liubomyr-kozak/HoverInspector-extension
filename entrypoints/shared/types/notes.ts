@@ -35,6 +35,21 @@ export interface Note {
   // Visual properties
   colorId?: string;
   isVisible: boolean;
+
+  // Form-specific properties (for creating/editing notes)
+  elementXPath?: string;
+  attachmentType?: "element" | "route" | "domain" | "global";
+  routePattern?: string;
+  viewType?: NoteViewType;
+
+  // For adding to existing notes
+  addToExistingNote?: boolean;
+  existingNoteId?: string;
+
+  // Extended properties
+  elementPaths?: string[];
+  domain?: string;
+  url?: string;
 }
 
 export interface NoteGroup {
@@ -62,19 +77,6 @@ export interface ColorPalette {
   createdAt: number;
 }
 
-export interface NoteFormData {
-  title: string;
-  content: string;
-  groupId?: string;
-  colorId?: string;
-  elementXPath?: string;
-  attachmentType?: "element" | "route" | "domain" | "global";
-  routePattern?: string;
-  // For adding to existing notes
-  addToExistingNote?: boolean;
-  existingNoteId?: string;
-}
-
 // Extended attachment type enum
 export enum AttachmentTypeEnum {
   GLOBAL = "global",
@@ -84,21 +86,10 @@ export enum AttachmentTypeEnum {
 // Update the existing AttachmentType to use the enum
 export type AttachmentType = AttachmentTypeEnum;
 
-// Route input mode for editing
-export type RouteInputMode = "string" | "regex";
-
-// Extended form data with multi-location and element paths support
-export interface ExtendedNoteFormData extends Omit<NoteFormData, "attachmentType"> {
-  attachmentType: AttachmentType;
-  routePattern?: string;
-  elementXPath?: string; // backward compatibility - first selector
-  elementPaths?: string[]; // new multi-selector support
-  viewType?: NoteViewType;
-  routeInputMode?: RouteInputMode; // for route editing
-}
-
 // Action payload types
-export interface CreateNotePayload extends ExtendedNoteFormData {
+export interface CreateNotePayload extends Partial<Note> {
+  content: string; // Required for creation
+  title: string; // Required for creation
   domain: string;
   url: string;
 }

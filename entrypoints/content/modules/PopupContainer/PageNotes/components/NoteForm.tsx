@@ -3,13 +3,11 @@ import { HexColorPicker } from "react-colorful";
 import { Button, Input, Popover, Select, Space } from "antd";
 import {
   NotesState,
-  NoteFormData,
+  Note,
   ColorPalette,
   NoteViewType,
-  ExtendedNoteFormData,
   AttachmentType,
   AttachmentTypeEnum,
-  RouteInputMode,
 } from "@entrypoints/shared/types/notes";
 import {
   getAllNotes,
@@ -62,7 +60,7 @@ const DEFAULT_COLORS: ColorPalette[] = [
 
 interface NoteFormProps {
   editingNote?: any;
-  initialFormData?: NoteFormData;
+  initialFormData?: Partial<Note>;
   formId: string;
   onCancel: () => void;
   showTitleField: boolean;
@@ -264,7 +262,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     try {
       const firstXPath = elementPaths.find((p) => p && p.trim());
 
-      const formData: ExtendedNoteFormData = {
+      const formData: Partial<Note> = {
         title: title.trim(),
         content: content.trim(),
         groupId,

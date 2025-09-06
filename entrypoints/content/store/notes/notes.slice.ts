@@ -1,10 +1,10 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { NoteFormData, Note } from "@entrypoints/shared/types/notes";
+import { Note } from "@entrypoints/shared/types/notes";
 
 export interface NotesState {
   isFormOpen: boolean;
   editingNote?: Note | null;
-  initialFormData?: Partial<NoteFormData>;
+  initialFormData?: Partial<Note>;
   refreshTrigger: number; // Timestamp to trigger data refresh
 }
 
@@ -19,7 +19,7 @@ const notesSlice = createSlice({
   name: "notes",
   initialState,
   reducers: {
-    openNoteForm: (state, action: PayloadAction<{ editingNote?: Note | null; initialData?: Partial<NoteFormData> }>) => {
+    openNoteForm: (state, action: PayloadAction<{ editingNote?: Note | null; initialData?: Partial<Note> }>) => {
       state.isFormOpen = true;
       state.editingNote = action.payload.editingNote || null;
       state.initialFormData = action.payload.initialData;
