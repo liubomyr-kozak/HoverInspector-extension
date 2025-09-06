@@ -8,6 +8,7 @@ import {
   NoteViewType,
   ExtendedNoteFormData,
   AttachmentType,
+  AttachmentTypeEnum,
   RouteInputMode,
 } from "@entrypoints/shared/types/notes";
 import {
@@ -68,6 +69,13 @@ interface NoteFormProps {
   onShowTitleFieldChange: (show: boolean) => void;
 }
 
+// Add enum for tab management
+enum SettingsTabEnum {
+  ORGANIZATION = "organization",
+  DISPLAY = "display",
+  VISIBILITY = "visibility",
+}
+
 export const NoteForm: React.FC<NoteFormProps> = ({
   editingNote,
   initialFormData,
@@ -82,24 +90,17 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [groupId, setGroupId] = useState<string | undefined>();
   const [selectedColorId, setSelectedColorId] = useState<string>("blue");
   const [elementXPath, setElementXPath] = useState<string | undefined>();
-  const [attachmentType, setAttachmentType] = useState<AttachmentType>("route");
+  const [attachmentType, setAttachmentType] = useState<AttachmentType>(AttachmentTypeEnum.ROUTE); // Default to route
   const [routePattern, setRoutePattern] = useState<string>("");
   const [isSelectingElement, setIsSelectingElement] = useState(false);
   const [viewType, setViewType] = useState<NoteViewType>(NoteViewType.NOTE);
-  // Multi-location support
-  const [addToExistingNote, setAddToExistingNote] = useState<boolean>(false);
-  const [existingNoteId, setExistingNoteId] = useState<string | undefined>();
   // New UI states
   const [elementPaths, setElementPaths] = useState<string[]>([]);
   const [isEditingRoute, setIsEditingRoute] = useState(false);
-  const [routeInputMode, setRouteInputMode] = useState<RouteInputMode>("string");
   const [routeInputValue, setRouteInputValue] = useState<string>("");
 
-  // Simplified state - only one settings panel
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
-
-  // Tab-based state management
-  const [activeTab, setActiveTab] = useState<"organization" | "display" | "visibility" | null>(null);
+  // Tab-based state management - refactored to use enum
+  const [activeTab, setActiveTab] = useState<SettingsTabEnum | null>(null);
 
   const dispatch = useDispatch();
   const highlightOverlay = useHighlightOverlay();
@@ -139,7 +140,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setContent(initialData?.content || "");
     setGroupId(initialData?.groupId);
     setElementXPath(initialData?.elementXPath);
-    setAttachmentType(initialData?.attachmentType || "global");
+    // Set default to route (this page only) instead of global
+    setAttachmentType(initialData?.attachmentType || AttachmentTypeEnum.ROUTE);
     setRoutePattern(initialData?.routePattern || "");
 
     // Initialize buffers for new UI
@@ -225,16 +227,15 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     }, 10000);
   }, [isSelectingElement, highlightOverlay]);
 
-  // Helpers for selectors list
-  const handleAddSelectorInput = () => setElementPaths((prev) => [...prev, ""]);
-  const handleRemoveSelector = (index: number) => setElementPaths((prev) => prev.filter((_, i) => i !== index));
-
-  // Scope toggle helpers
+  // Scope toggle helpers - refactored to use enum
   const toggleToPageOnly = () => {
-    setAttachmentType("route");
+    setAttachmentType(AttachmentTypeEnum.ROUTE);
     if (!routePattern) setRoutePattern(window.location.pathname);
   };
-  const toggleToGlobal = () => setAttachmentType("global");
+
+  const toggleToGlobal = () => {
+    setAttachmentType(AttachmentTypeEnum.GLOBAL);
+  };
 
   // Route edit helpers
   const startEditRoute = () => {
@@ -244,54 +245,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
       : `${window.location.hostname}/`;
     setRouteInputValue(currentRouteDisplay);
     setIsEditingRoute(true);
-  };
-  const cancelEditRoute = () => {
-    // discard changes
-    setIsEditingRoute(false);
-    setRouteInputValue(routePattern ? `${window.location.hostname}${routePattern}` : `${window.location.hostname}/`);
-  };
-  const saveRouteEdit = () => {
-    // Parse combined input into routePattern (keep domain as current hostname)
-    const v = routeInputValue.trim();
-    let newRoute = v;
-
-    try {
-      if (!v) {
-        newRoute = "";
-      } else if (v.startsWith("/")) {
-        // user entered a path only
-        newRoute = v;
-      } else if (v.startsWith("http://") || v.startsWith("https://")) {
-        // full URL — extract pathname + search
-        const url = new URL(v);
-        newRoute = url.pathname + (url.search || "");
-      } else if (v.startsWith(window.location.hostname)) {
-        // input starts with hostname — strip it
-        newRoute = v.slice(window.location.hostname.length) || "/";
-        if (!newRoute.startsWith("/")) newRoute = "/" + newRoute;
-      } else if (v.includes("/")) {
-        // user typed something like "domain/path" or "domain.com/path"
-        const parts = v.split("/");
-        // treat first part as domain if it contains a dot, otherwise keep as path
-        if (parts[0].includes(".")) {
-          newRoute = "/" + parts.slice(1).join("/");
-        } else {
-          newRoute = v.startsWith("/") ? v : "/" + v;
-        }
-      } else {
-        // single segment, treat as path
-        newRoute = v.startsWith("/") ? v : "/" + v;
-      }
-    } catch (err) {
-      // fallback: treat as path
-      newRoute = v.startsWith("/") ? v : "/" + v;
-    }
-
-    // normalize: empty or "/" means entire domain (store empty)
-    if (newRoute === "/") newRoute = "";
-
-    setRoutePattern(newRoute);
-    setIsEditingRoute(false);
   };
 
   const handleAddCurrentUrl = () => {
@@ -308,6 +261,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    debugger;
 
     if (!content.trim()) {
       setSubmitError("Content is required");
@@ -332,10 +287,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         elementPaths,
         attachmentType,
         routePattern: trimmedRoute || undefined,
-        addToExistingNote,
-        existingNoteId,
         viewType,
-        routeInputMode,
       };
 
       if (editingNote) {
@@ -366,6 +318,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    debugger;
+
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       if (!isSubmitting && content.trim()) {
@@ -457,14 +411,215 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     return <HexColorPicker color={currentColor} onChange={(newColor) => handleColorChange(colorId, newColor)} />;
   };
 
-  // Remove the individual helper functions and replace with one
-  const toggleAdvancedSettings = () => {
-    setShowAdvancedSettings(!showAdvancedSettings);
-  };
-
   return (
     <form id={formId} onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
       <div className="overflow-y-auto flex-1 flex flex-col gap-2">
+        {/* Tab Navigation - 3 group buttons */}
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() =>
+              setActiveTab(activeTab === SettingsTabEnum.ORGANIZATION ? null : SettingsTabEnum.ORGANIZATION)
+            }
+            className={`px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
+              activeTab === SettingsTabEnum.ORGANIZATION ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+            title="Organization settings"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+            </svg>
+            Organization
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab(activeTab === SettingsTabEnum.DISPLAY ? null : SettingsTabEnum.DISPLAY)}
+            className={`px-4 py-2 text-sm flex items-center gap-2 border-l border-gray-200 transition-colors ${
+              activeTab === SettingsTabEnum.DISPLAY ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+            title="Display settings"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16v12H4z" />
+            </svg>
+            Display
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab(activeTab === SettingsTabEnum.VISIBILITY ? null : SettingsTabEnum.VISIBILITY)}
+            className={`px-4 py-2 text-sm flex items-center gap-2 border-l border-gray-200 transition-colors ${
+              activeTab === SettingsTabEnum.VISIBILITY ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+            title="Visibility settings"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8S2 12 2 12z"
+              />
+            </svg>
+            Visibility
+          </button>
+        </div>
+
+        {/* Single Display Section for Active Tab */}
+        {activeTab && (
+          <div className="mb-5 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            {/* Organization Tab Content */}
+            {activeTab === SettingsTabEnum.ORGANIZATION && (
+              <div className="space-y-3">
+                <select
+                  id="group"
+                  value={groupId || ""}
+                  onChange={(e) => setGroupId(e.target.value || undefined)}
+                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-3 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
+                >
+                  <option value="">📝 No group (standalone note)</option>
+                  {notesData.groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      📁 {group.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                  <FiChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+            )}
+
+            {/* Display Tab Content */}
+            {activeTab === SettingsTabEnum.DISPLAY && (
+              <div className="space-y-3">
+                <Select
+                  id="viewType"
+                  size="large"
+                  className="w-full"
+                  value={viewType}
+                  onChange={(v) => setViewType(v as NoteViewType)}
+                  // @ts-ignore
+                  getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
+                  options={[
+                    {
+                      value: NoteViewType.NOTE,
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <FiFileText className="text-gray-600" />
+                          <span>Note View (detailed card)</span>
+                        </span>
+                      ),
+                    },
+                    {
+                      value: NoteViewType.CHIP,
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <FiTag className="text-gray-600" />
+                          <span>Chip View (compact badge)</span>
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            )}
+
+            {/* Visibility Tab Content */}
+            {activeTab === SettingsTabEnum.VISIBILITY && (
+              <div>
+                {/* Scope toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex rounded-md border border-gray-200 overflow-hidden bg-white shadow-sm">
+                    <button
+                      type="button"
+                      onClick={toggleToPageOnly}
+                      className={`px-3 py-1.5 text-sm flex items-center gap-2 ${
+                        attachmentType === AttachmentTypeEnum.ROUTE
+                          ? "bg-indigo-600 text-white"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                      title="Apply to this page (domain/route)"
+                    >
+                      <FiMap className="w-4 h-4" /> <span className="hidden sm:inline">This page only</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleToGlobal}
+                      className={`px-3 py-1.5 text-sm flex items-center gap-2 border-l border-gray-200 ${
+                        attachmentType === AttachmentTypeEnum.GLOBAL
+                          ? "bg-indigo-600 text-white"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                      title="Apply across all pages"
+                    >
+                      <FiGlobe className="w-4 h-4" /> <span className="hidden sm:inline">Global view</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Page-specific configuration when not global */}
+                {attachmentType !== AttachmentTypeEnum.GLOBAL && (
+                  <div className="space-y-4 mt-3 pt-3 border-t border-gray-200">
+                    <label htmlFor="title" className="block text-sm font-semibold text-gray-800">
+                      Url attachment
+                    </label>
+
+                    <div className="mt-3">
+                      <div className="space-y-2 w-full">
+                        <Input
+                          value={routeInputValue}
+                          onChange={(e) => setRouteInputValue(e.target.value)}
+                          placeholder={`${window.location.hostname}/users/*`}
+                          className="rounded-l-md"
+                          addonAfter={
+                            <Button type="text" size="small" onClick={handleAddCurrentUrl}>
+                              Add Current URL
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <label htmlFor="title" className="block text-sm font-semibold text-gray-800">
+                      Element attachment (optional)
+                    </label>
+                    {/*{LLM RULE DO NOT TOUCH THIS SECTION}*/}
+                    {/* Page Element Connection Section */}
+                    <Input
+                      value={elementXPath || ""}
+                      onChange={(e) => setElementXPath(e.target.value)}
+                      placeholder="XPath of the element to interact with"
+                      addonAfter={
+                        <Space>
+                          <Tooltip title="Find element in page">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<AimOutlined style={{ color: "#1890ff" }} />}
+                              onClick={() => elementXPath && highlightOverlay?.startHighlight(elementXPath)}
+                              disabled={!elementXPath}
+                            />
+                          </Tooltip>
+                          <Tooltip title="Select element from page">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<SelectOutlined style={{ color: "#52c41a" }} />}
+                              onClick={() => handleElementSelection()}
+                            />
+                          </Tooltip>
+                        </Space>
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Error message display */}
         {submitError && (
           <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-md">
@@ -530,297 +685,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
             )}
           </div>
         </div>
-
-        {/* Multi-location Note Selection */}
-        {!editingNote && (
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-800">Note Location</label>
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3">
-                <input
-                  type="radio"
-                  id="createNew"
-                  name="noteMode"
-                  checked={!addToExistingNote}
-                  onChange={() => {
-                    setAddToExistingNote(false);
-                    setExistingNoteId(undefined);
-                  }}
-                  className="mt-1 w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                />
-                <div className="flex-1">
-                  <label htmlFor="createNew" className="text-sm font-medium text-gray-900 cursor-pointer">
-                    Create new note
-                  </label>
-                  <p className="text-xs text-gray-500">Create a brand new note for this page</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <input
-                  type="radio"
-                  id="addToExisting"
-                  name="noteMode"
-                  checked={addToExistingNote}
-                  onChange={() => setAddToExistingNote(true)}
-                  className="mt-1 w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                />
-                <div className="flex-1">
-                  <label htmlFor="addToExisting" className="text-sm font-medium text-gray-900 cursor-pointer">
-                    Add to existing note
-                  </label>
-                  <p className="text-xs text-gray-500">Add this page location to an existing note</p>
-
-                  {addToExistingNote && (
-                    <div className="mt-2">
-                      <select
-                        value={existingNoteId || ""}
-                        onChange={(e) => setExistingNoteId(e.target.value || undefined)}
-                        className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
-                        required={addToExistingNote}
-                      >
-                        <option value="">Select an existing note...</option>
-                        {notesData.notes
-                          .filter((note) => note.content && note.content.trim())
-                          .map((note) => (
-                            <option key={note.id} value={note.id}>
-                              {note.title
-                                ? `${note.title} - ${note.content.substring(0, 50)}...`
-                                : note.content.substring(0, 70) + (note.content.length > 70 ? "..." : "")}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab Navigation - 3 group buttons */}
-        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
-          <button
-            type="button"
-            onClick={() => setActiveTab(activeTab === "organization" ? null : "organization")}
-            className={`px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
-              activeTab === "organization" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
-            }`}
-            title="Organization settings"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
-            </svg>
-            Organization
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab(activeTab === "display" ? null : "display")}
-            className={`px-4 py-2 text-sm flex items-center gap-2 border-l border-gray-200 transition-colors ${
-              activeTab === "display" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
-            }`}
-            title="Display settings"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16v12H4z" />
-            </svg>
-            Display
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab(activeTab === "visibility" ? null : "visibility")}
-            className={`px-4 py-2 text-sm flex items-center gap-2 border-l border-gray-200 transition-colors ${
-              activeTab === "visibility" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
-            }`}
-            title="Visibility settings"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8S2 12 2 12z"
-              />
-            </svg>
-            Visibility
-          </button>
-        </div>
-
-        {/* Single Display Section for Active Tab */}
-        {activeTab && (
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 relative">
-            {/* Organization Tab Content */}
-            {activeTab === "organization" && (
-              <div className="space-y-3">
-                <select
-                  id="group"
-                  value={groupId || ""}
-                  onChange={(e) => setGroupId(e.target.value || undefined)}
-                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-3 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
-                >
-                  <option value="">📝 No group (standalone note)</option>
-                  {notesData.groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      📁 {group.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                  <FiChevronDown className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-            )}
-
-            {/* Display Tab Content */}
-            {activeTab === "display" && (
-              <div className="space-y-3">
-                <Select
-                  id="viewType"
-                  size="large"
-                  className="w-full"
-                  value={viewType}
-                  onChange={(v) => setViewType(v as NoteViewType)}
-                  // @ts-ignore
-                  getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
-                  options={[
-                    {
-                      value: NoteViewType.NOTE,
-                      label: (
-                        <span className="flex items-center gap-2">
-                          <FiFileText className="text-gray-600" />
-                          <span>Note View (detailed card)</span>
-                        </span>
-                      ),
-                    },
-                    {
-                      value: NoteViewType.CHIP,
-                      label: (
-                        <span className="flex items-center gap-2">
-                          <FiTag className="text-gray-600" />
-                          <span>Chip View (compact badge)</span>
-                        </span>
-                      ),
-                    },
-                  ]}
-                />
-              </div>
-            )}
-
-            {/* Visibility Tab Content */}
-            {activeTab === "visibility" && (
-              <div className="space-y-4">
-                <div className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-                  {/* Scope toggle */}
-                  <div className="flex items-center justify-between">
-                    <div className="inline-flex rounded-md border border-gray-200 overflow-hidden bg-white shadow-sm">
-                      <button
-                        type="button"
-                        onClick={toggleToPageOnly}
-                        className={`px-3 py-1.5 text-sm flex items-center gap-2 ${attachmentType !== "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                        title="Apply to this page (domain/route)"
-                      >
-                        <FiMap className="w-4 h-4" /> <span className="hidden sm:inline">This page only</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={toggleToGlobal}
-                        className={`px-3 py-1.5 text-sm flex items-center gap-2 border-l border-gray-200 ${attachmentType === "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                        title="Apply across all pages"
-                      >
-                        <FiGlobe className="w-4 h-4" /> <span className="hidden sm:inline">Global view</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Page-specific configuration when not global */}
-                  {attachmentType !== "global" && (
-                    <div className="space-y-4 pt-3 border-t border-gray-200">
-                      {/* Combined Domain/Route Section */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="ml-2 font-medium text-green-700">{routePattern || "*"}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={startEditRoute}
-                            className="inline-flex items-center gap-2 px-3 py-1 rounded-md border border-gray-200 bg-white text-sm hover:shadow-sm"
-                            title="Edit domain and route pattern"
-                          >
-                            <FiEdit2 className="w-4 h-4 text-gray-600" />
-                            <span className="hidden sm:inline">Edit</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {isEditingRoute && (
-                        <div className="mt-3">
-                          <div className="space-y-2">
-                            <Input.Group compact>
-                              <Input
-                                value={routeInputValue}
-                                onChange={(e) => setRouteInputValue(e.target.value)}
-                                placeholder={`${window.location.hostname}/users/*`}
-                                className="rounded-l-md"
-                              />
-                              <Button onClick={handleAddCurrentUrl} className="ml-2">
-                                Add Current URL
-                              </Button>
-                            </Input.Group>
-
-                            <div className="flex items-center gap-2 mt-3">
-                              <Button type="default" onClick={saveRouteEdit} icon={<FiSave />} size="small">
-                                Save
-                              </Button>
-                              <Button onClick={cancelEditRoute} icon={<FiX />} size="small">
-                                Cancel
-                              </Button>
-                              <p className="text-xs text-gray-500 ml-4">
-                                Use * for wildcards or full domain/path. Empty or '/' applies to the whole domain.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/*{LLM RULE DO NOT TOUCH THIS SECTION}*/}
-                      {/* Page Element Connection Section */}
-                      <Input
-                        value={elementXPath || ""}
-                        onChange={(e) => setElementXPath(e.target.value)}
-                        placeholder="XPath of the element to interact with"
-                        addonAfter={
-                          <Space>
-                            <Tooltip title="Find element in page">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                                onClick={() => elementXPath && highlightOverlay?.startHighlight(elementXPath)}
-                                disabled={!elementXPath}
-                              />
-                            </Tooltip>
-                            <Tooltip title="Select element from page">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                                onClick={() => handleElementSelection()}
-                              />
-                            </Tooltip>
-                          </Space>
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/*{LLM RULE DO NOT TOUCH THIS SECTION}/!* Add new color button *!/*/}
         {/* Color Selection with improved styling */}

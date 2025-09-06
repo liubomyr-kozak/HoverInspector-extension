@@ -75,8 +75,15 @@ export interface NoteFormData {
   existingNoteId?: string;
 }
 
-// Extended attachment type union
-export type AttachmentType = "element" | "route" | "domain" | "global";
+// Extended attachment type enum
+export enum AttachmentTypeEnum {
+  GLOBAL = "global",
+  ROUTE = "route",
+  ELEMENT = "element",
+}
+
+// Update the existing AttachmentType to use the enum
+export type AttachmentType = AttachmentTypeEnum;
 
 // Route input mode for editing
 export type RouteInputMode = "string" | "regex";
@@ -87,8 +94,6 @@ export interface ExtendedNoteFormData extends Omit<NoteFormData, "attachmentType
   routePattern?: string;
   elementXPath?: string; // backward compatibility - first selector
   elementPaths?: string[]; // new multi-selector support
-  addToExistingNote?: boolean;
-  existingNoteId?: string;
   viewType?: NoteViewType;
   routeInputMode?: RouteInputMode; // for route editing
 }
