@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
-import { Popover, Select } from "antd";
+import { Button, Input, Popover, Select, Space } from "antd";
 import {
   NotesState,
   NoteFormData,
@@ -44,6 +44,8 @@ import {
   FiCode,
   FiType,
 } from "react-icons/fi";
+import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
+import { AimOutlined, SelectOutlined } from "@ant-design/icons";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -92,6 +94,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [routeInputMode, setRouteInputMode] = useState<RouteInputMode>("string");
   const [routeInputValue, setRouteInputValue] = useState<string>("");
+  const [showPageElementConnection, setShowPageElementConnection] = useState<boolean>(true);
   const dispatch = useDispatch();
   const highlightOverlay = useHighlightOverlay();
 
@@ -228,15 +231,59 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   // Route edit helpers
   const startEditRoute = () => {
+    // open combined domain+route editor
+    const currentRouteDisplay = routePattern
+      ? `${window.location.hostname}${routePattern}`
+      : `${window.location.hostname}/`;
+    setRouteInputValue(currentRouteDisplay);
     setIsEditingRoute(true);
-    setRouteInputValue(routePattern);
   };
   const cancelEditRoute = () => {
+    // discard changes
     setIsEditingRoute(false);
-    setRouteInputValue(routePattern);
+    setRouteInputValue(routePattern ? `${window.location.hostname}${routePattern}` : `${window.location.hostname}/`);
   };
   const saveRouteEdit = () => {
-    setRoutePattern(routeInputValue || "");
+    // Parse combined input into routePattern (keep domain as current hostname)
+    const v = routeInputValue.trim();
+    let newRoute = v;
+
+    try {
+      if (!v) {
+        newRoute = "";
+      } else if (v.startsWith("/")) {
+        // user entered a path only
+        newRoute = v;
+      } else if (v.startsWith("http://") || v.startsWith("https://")) {
+        // full URL — extract pathname + search
+        const url = new URL(v);
+        newRoute = url.pathname + (url.search || "");
+      } else if (v.startsWith(window.location.hostname)) {
+        // input starts with hostname — strip it
+        newRoute = v.slice(window.location.hostname.length) || "/";
+        if (!newRoute.startsWith("/")) newRoute = "/" + newRoute;
+      } else if (v.includes("/")) {
+        // user typed something like "domain/path" or "domain.com/path"
+        const parts = v.split("/");
+        // treat first part as domain if it contains a dot, otherwise keep as path
+        if (parts[0].includes(".")) {
+          newRoute = "/" + parts.slice(1).join("/");
+        } else {
+          newRoute = v.startsWith("/") ? v : "/" + v;
+        }
+      } else {
+        // single segment, treat as path
+        newRoute = v.startsWith("/") ? v : "/" + v;
+      }
+    } catch (err) {
+      // fallback: treat as path
+      newRoute = v.startsWith("/") ? v : "/" + v;
+    }
+
+    // normalize: empty or "/" means entire domain (store empty)
+    if (newRoute === "/") newRoute = "";
+
+    setRoutePattern(newRoute);
     setIsEditingRoute(false);
   };
 
@@ -621,189 +668,191 @@ export const NoteForm: React.FC<NoteFormProps> = ({
               </div>
             </div>
 
-            {/* Keep the existing select for compatibility */}
-            <Select
-              id="attachmentType"
-              size="large"
-              className="w-full"
-              value={attachmentType}
-              onChange={(v) => setAttachmentType(v as any)}
-              // @ts-ignore
-              getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
-              options={[
-                {
-                  value: "global",
-                  label: (
-                    <span className="flex items-center gap-2">
-                      <FiGlobe className="text-gray-600" />
-                      <span>Global — Show on all pages</span>
-                    </span>
-                  ),
-                },
-                {
-                  value: "route",
-                  label: (
-                    <span className="flex items-center gap-2">
-                      <FiMap className="text-gray-600" />
-                      <span>Domain/Route — Show on this domain or specific routes</span>
-                    </span>
-                  ),
-                },
-                {
-                  value: "element",
-                  label: (
-                    <span className="flex items-center gap-2">
-                      <FiTarget className="text-gray-600" />
-                      <span>Element — Attach to page element</span>
-                    </span>
-                  ),
-                },
-              ]}
-            />
-
-            {/* Route default view with edit */}
-            {attachmentType === "route" && (
-              <div className="space-y-2 pt-3">
-                <div className="text-sm text-gray-700">
-                  <div>
-                    <span className="font-medium">Domain:</span> {window.location.hostname}
-                  </div>
+            {/* Page-specific configuration when not global */}
+            {attachmentType !== "global" && (
+              <div className="space-y-3 pt-3 border-t border-gray-200">
+                {/* Combined Domain/Route Section */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-800">Domain & Route Pattern</label>
 
                   {!isEditingRoute ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="font-medium">Route:</span>
-                      <span className="px-2 py-0.5 bg-white border rounded text-gray-700">
-                        {routePattern || "(entire domain)"}
-                      </span>
+                    <div className="flex items-center gap-2 p-3 bg-white border rounded-lg">
+                      <div className="flex-1 text-sm text-gray-700">
+                        <span className="font-medium text-blue-600">{window.location.hostname}</span>
+                        <span className="text-gray-400 mx-1">/</span>
+                        <span className="font-medium text-green-600">{routePattern || "*"}</span>
+                      </div>
                       <button
                         type="button"
                         onClick={startEditRoute}
-                        className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50"
-                        title="Edit route"
+                        className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                        title="Edit domain and route pattern"
                       >
-                        <FiEdit2 />
+                        <FiEdit2 className="w-3 h-3" />
+                        Edit
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-2 mt-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={routeInputValue}
-                          onChange={(e) => setRouteInputValue(e.target.value)}
-                          placeholder={
-                            routeInputMode === "regex"
-                              ? "^/users/\\d+$"
-                              : "/users/*, /product/:id, leave empty for entire domain"
-                          }
-                          className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
-                        />
-                        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
+                    <div className="space-y-2 p-3 bg-white border rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Domain:</span>
+                        <span className="text-blue-600">{window.location.hostname}</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-600 min-w-[50px]">Domain/Route:</span>
+                          <input
+                            type="text"
+                            value={routeInputValue}
+                            onChange={(e) => setRouteInputValue(e.target.value)}
+                            placeholder={
+                              routeInputMode === "regex"
+                                ? `${window.location.hostname}^/users/\\d+$`
+                                : `${window.location.hostname}/users/*, ${window.location.hostname}/product/:id`
+                            }
+                            className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
+                          />
+                          <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
+                            <button
+                              type="button"
+                              onClick={() => setRouteInputMode("string")}
+                              className={`px-2 py-1 text-xs flex items-center gap-1 ${routeInputMode === "string" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                              title="String mode"
+                            >
+                              <FiType /> String
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRouteInputMode("regex")}
+                              className={`px-2 py-1 text-xs flex items-center gap-1 border-l border-gray-300 ${routeInputMode === "regex" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                              title="RegExp mode"
+                            >
+                              <FiCode /> RegExp
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setRouteInputMode("string")}
-                            className={`px-2 py-1 text-xs flex items-center gap-1 ${routeInputMode === "string" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                            title="String mode"
+                            onClick={saveRouteEdit}
+                            className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                            title="Save"
                           >
-                            <FiType /> String
+                            <FiSave /> Save
                           </button>
                           <button
                             type="button"
-                            onClick={() => setRouteInputMode("regex")}
-                            className={`px-2 py-1 text-xs flex items-center gap-1 border-l border-gray-300 ${routeInputMode === "regex" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                            title="RegExp mode"
+                            onClick={cancelEditRoute}
+                            className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                            title="Cancel"
                           >
-                            <FiCode /> RegExp
+                            <FiX /> Cancel
                           </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={saveRouteEdit}
-                          className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                          title="Save"
-                        >
-                          <FiSave /> Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditRoute}
-                          className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                          title="Cancel"
-                        >
-                          <FiX /> Cancel
-                        </button>
+
+                      <div className="text-xs text-gray-500 mt-2">
+                        {routeInputMode === "string"
+                          ? "Use full domain+path (e.g., example.com/user/*) or a path (e.g., /user/*). Leave empty or use '/' for entire domain."
+                          : "Enter a valid regular expression pattern. You may include domain or path. Example: example.com^/users/\\d+$ or ^/users/\\d+$"}
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
 
-            {/* Element attachment with multiple selectors */}
-            {attachmentType === "element" && (
-              <div className="space-y-3 pt-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
+                {/* Page Element Connection Section */}
+                <div className="space-y-3 pt-3 border-t border-gray-200">
+                  <Input
+                    value={elementXPath || ""}
+                    onChange={(e) => setElementXPath(e.target.value)}
+                    placeholder="XPath of the element to interact with"
+                    addonAfter={
+                      <Space>
+                        <Tooltip title="Find element in page">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<AimOutlined style={{ color: "#1890ff" }} />}
+                            onClick={() => elementXPath && highlightOverlay?.highlightElement(elementXPath)}
+                            disabled={!elementXPath}
+                          />
+                        </Tooltip>
+                        <Tooltip title="Select element from page">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<SelectOutlined style={{ color: "#52c41a" }} />}
+                            onClick={() => setIsSelectingElement(true)}
+                            disabled={isSelectingElement}
+                          />
+                        </Tooltip>
+                      </Space>
+                    }
+                  />
                   <div className="flex items-center gap-2">
+                    <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
                     <button
                       type="button"
-                      title="Select element from page"
-                      onClick={handleElementSelection}
-                      disabled={isSelectingElement}
-                      className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
+                      title={
+                        showPageElementConnection ? "Hide page element connection" : "Show page element connection"
+                      }
+                      onClick={() => setShowPageElementConnection(!showPageElementConnection)}
+                      className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
                     >
-                      <FiTarget /> Select
-                    </button>
-                    <button
-                      type="button"
-                      title="Add empty selector"
-                      onClick={handleAddSelectorInput}
-                      className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                    >
-                      <FiPlus /> Add
+                      <FiTarget /> {showPageElementConnection ? "Hide" : "Show"}
                     </button>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  {elementPaths.length === 0 && (
-                    <p className="text-xs text-gray-500">No selectors yet. Use Select or Add to create one.</p>
-                  )}
-                  {elementPaths.map((path, idx) => (
-                    <div key={idx} className="flex items-stretch gap-2">
-                      <input
-                        type="text"
-                        value={path}
-                        onChange={(e) =>
-                          setElementPaths((prev) => prev.map((p, i) => (i === idx ? e.target.value : p)))
-                        }
-                        placeholder="XPath or selector for the element"
-                        className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
-                      />
+                  {showPageElementConnection && (
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        title="Remove selector"
-                        onClick={() => handleRemoveSelector(idx)}
-                        className="px-2 py-2 text-xs rounded-md border border-red-300 bg-white text-red-500 hover:bg-red-50"
+                        title="Select element from page"
+                        onClick={() => setIsSelectingElement(true)}
+                        disabled={isSelectingElement}
+                        className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
                       >
-                        <FiTrash2 />
+                        <FiTarget /> Select
+                      </button>
+                      <button
+                        type="button"
+                        title="Add empty selector"
+                        onClick={() => setElementPaths([...elementPaths, ""])}
+                        className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                      >
+                        <FiPlus /> Add
                       </button>
                     </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    id="elementRouteToggle"
-                    type="checkbox"
-                    checked={!!routePattern}
-                    onChange={(e) => setRoutePattern(e.target.checked ? window.location.pathname : "")}
-                  />
-                  <label htmlFor="elementRouteToggle" className="text-sm text-gray-700">
-                    Restrict to current route (click to toggle and edit)
-                  </label>
+                  )}
+                  {showPageElementConnection && (
+                    <div className="space-y-2">
+                      {elementPaths.length === 0 && (
+                        <p className="text-xs text-gray-500">No selectors yet. Use Select or Add to create one.</p>
+                      )}
+                      {elementPaths.map((path, idx) => (
+                        <div key={idx} className="flex items-stretch gap-2">
+                          <input
+                            type="text"
+                            value={path}
+                            onChange={(e) =>
+                              setElementPaths((prev) => prev.map((p, i) => (i === idx ? e.target.value : p)))
+                            }
+                            placeholder="XPath or selector for the element"
+                            className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
+                          />
+                          <button
+                            type="button"
+                            title="Remove selector"
+                            onClick={() => setElementPaths((prev) => prev.filter((_, i) => i !== idx))}
+                            className="px-2 py-2 text-xs rounded-md border border-red-300 bg-white text-red-500 hover:bg-red-50"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -985,3 +1034,54 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     </form>
   );
 };
+//           <button
+//             type="button"
+//             onClick={onCancel}
+//             className="px-5 py-2.5 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-sm"
+//           >
+//             Cancel
+//           </button>
+//           <button
+//             type="submit"
+//             form={formId}
+//             disabled={!content.trim() || isSubmitting}
+//             className="group px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:scale-[1.02] disabled:hover:scale-100 disabled:hover:shadow-none flex items-center gap-2 min-w-[120px] justify-center"
+//           >
+//             {isSubmitting ? (
+//               <>
+//                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+//                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+//                   <path
+//                     className="opacity-75"
+//                     fill="currentColor"
+//                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+//                   ></path>
+//                 </svg>
+//                 Saving...
+//               </>
+//             ) : editingNote ? (
+//               <>
+//                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                   <path
+//                     strokeLinecap="round"
+//                     strokeLinejoin="round"
+//                     strokeWidth={2}
+//                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+//                   />
+//                 </svg>
+//                 Update Note
+//               </>
+//             ) : (
+//               <>
+//                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+//                 </svg>
+//                 Create Note
+//               </>
+//             )}
+//           </button>
+//         </div>
+//       </ScenarioPortalFooterButtons>
+//     </form>
+//   );
+// };
