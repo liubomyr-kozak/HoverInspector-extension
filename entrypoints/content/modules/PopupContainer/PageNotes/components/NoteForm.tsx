@@ -96,7 +96,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [viewType, setViewType] = useState<NoteViewType>(NoteViewType.NOTE);
   // New UI states
   const [elementPaths, setElementPaths] = useState<string[]>([]);
-  const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [routeInputValue, setRouteInputValue] = useState<string>("");
 
   // Tab-based state management - refactored to use enum
@@ -200,7 +199,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
       next: (event) => {
         if (event.type === "selected") {
           // Generate XPath for the selected element
-          const xpath = highlightOverlay.generateXPath(event.element);
+          const xpath = highlightOverlay.generateXPath(event.element as Element);
           // Add to list and keep legacy field for first path
           setElementPaths((prev) => [...prev, xpath]);
           setElementXPath((prev) => prev || xpath);
@@ -237,16 +236,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setAttachmentType(AttachmentTypeEnum.GLOBAL);
   };
 
-  // Route edit helpers
-  const startEditRoute = () => {
-    // open combined domain+route editor
-    const currentRouteDisplay = routePattern
-      ? `${window.location.hostname}${routePattern}`
-      : `${window.location.hostname}/`;
-    setRouteInputValue(currentRouteDisplay);
-    setIsEditingRoute(true);
-  };
-
   const handleAddCurrentUrl = () => {
     try {
       const currentUrl = window.location.href;
@@ -273,9 +262,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setSubmitError("");
 
     try {
-      const trimmedRoute = routePattern.trim();
-
-      // Use first selector for backward compatibility
       const firstXPath = elementPaths.find((p) => p && p.trim());
 
       const formData: ExtendedNoteFormData = {
@@ -286,7 +272,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         elementXPath: firstXPath || undefined,
         elementPaths,
         attachmentType,
-        routePattern: trimmedRoute || undefined,
+        routePattern: routeInputValue,
         viewType,
       };
 
@@ -300,8 +286,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         // Create new note with current domain and URL
         notesActionsSlice.createNote({
           ...formData,
-          domain: window.location.hostname,
-          url: window.location.href,
         });
       }
 

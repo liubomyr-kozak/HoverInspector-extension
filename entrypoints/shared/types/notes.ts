@@ -79,7 +79,6 @@ export interface NoteFormData {
 export enum AttachmentTypeEnum {
   GLOBAL = "global",
   ROUTE = "route",
-  ELEMENT = "element",
 }
 
 // Update the existing AttachmentType to use the enum

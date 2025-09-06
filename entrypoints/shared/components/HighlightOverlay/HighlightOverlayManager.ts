@@ -8,7 +8,7 @@ export const HIGHLIGHT_STYLES = {
     backgroundColor: "rgba(255,0,0,0.1)",
   },
   hover: {
-    border: "2px solid #3b82f6", 
+    border: "2px solid #3b82f6",
     backgroundColor: "rgba(59,130,246,0.1)",
   },
   note: {
@@ -49,7 +49,7 @@ class HighlightOverlayManager {
       boxSizing: "border-box",
     });
     document.body.appendChild(this.overlay);
-    
+
     // Add CSS keyframes for blink animation
     this.injectBlinkAnimationStyles();
   }
@@ -72,7 +72,7 @@ class HighlightOverlayManager {
     });
   }
 
-  private generateXPath(el: Element): string {
+  generateXPath(el: Element): string {
     if (el.id) return `//*[@id="${el.id}"]`;
     const segments: string[] = [];
     let current: Element | null = el;
@@ -130,7 +130,11 @@ class HighlightOverlayManager {
     document.head.appendChild(style);
   }
 
-  public startHighlight(xpath: string, variant: HighlightStyleVariant = 'selection', customStyles?: Partial<CSSStyleDeclaration>) {
+  public startHighlight(
+    xpath: string,
+    variant: HighlightStyleVariant = "selection",
+    customStyles?: Partial<CSSStyleDeclaration>,
+  ) {
     const el = this.getElementByXPath(xpath);
 
     if (!el) return this.stopHighlight();
@@ -140,7 +144,7 @@ class HighlightOverlayManager {
 
     // Scroll element into view (centered)
     try {
-      el.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+      el.scrollIntoView({ behavior: "auto", block: "center", inline: "center" });
     } catch {
       // Fallback for older browsers
       (el as any).scrollIntoView && (el as any).scrollIntoView();
@@ -171,7 +175,10 @@ class HighlightOverlayManager {
 
   private _preHighlightedElement: Element | null = null;
 
-  public startMouseMoveHighlight(variant: HighlightStyleVariant = 'hover', customStyles?: Partial<CSSStyleDeclaration>) {
+  public startMouseMoveHighlight(
+    variant: HighlightStyleVariant = "hover",
+    customStyles?: Partial<CSSStyleDeclaration>,
+  ) {
     this.mouseMoveHandler = (e: MouseEvent) => {
       const target = e.target as Element;
 
