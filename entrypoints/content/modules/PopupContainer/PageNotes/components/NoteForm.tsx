@@ -46,7 +46,6 @@ import {
 } from "react-icons/fi";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { AimOutlined, SelectOutlined } from "@ant-design/icons";
-import { IconRegex, IconWorldWww } from "@tabler/icons-react";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -85,6 +84,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [elementXPath, setElementXPath] = useState<string | undefined>();
   const [attachmentType, setAttachmentType] = useState<AttachmentType>("route");
   const [routePattern, setRoutePattern] = useState<string>("");
+  const [isSelectingElement, setIsSelectingElement] = useState(false);
   const [viewType, setViewType] = useState<NoteViewType>(NoteViewType.NOTE);
   // Multi-location support
   const [addToExistingNote, setAddToExistingNote] = useState<boolean>(false);
@@ -95,9 +95,11 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [routeInputMode, setRouteInputMode] = useState<RouteInputMode>("string");
   const [routeInputValue, setRouteInputValue] = useState<string>("");
 
-  // State for regex mode and domain validation (from TriggerForm)
-  const [useRegex, setUseRegex] = useState<boolean>(false);
-  const [domainValidationError, setDomainValidationError] = useState<string | null>(null);
+  // Simplified state - only one settings panel
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
+
+  // Tab-based state management
+  const [activeTab, setActiveTab] = useState<"organization" | "display" | "visibility" | null>(null);
 
   const dispatch = useDispatch();
   const highlightOverlay = useHighlightOverlay();
@@ -137,14 +139,15 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setContent(initialData?.content || "");
     setGroupId(initialData?.groupId);
     setElementXPath(initialData?.elementXPath);
-    const normalizedAttachmentType =
-      initialData?.attachmentType === "domain" ? "route" : initialData?.attachmentType || "global";
-    const normalizedRoutePattern = initialData?.attachmentType === "domain" ? "" : initialData?.routePattern || "";
-    setAttachmentType(normalizedAttachmentType as any);
-    setRoutePattern(normalizedRoutePattern);
+    setAttachmentType(initialData?.attachmentType || "global");
+    setRoutePattern(initialData?.routePattern || "");
 
     // Initialize buffers for new UI
-    setRouteInputValue(normalizedRoutePattern);
+    setRouteInputValue(
+      initialData?.routePattern
+        ? `${window.location.hostname}${initialData.routePattern}`
+        : `${window.location.hostname}/`,
+    );
     setElementPaths(initialData?.elementXPath ? [initialData.elementXPath] : []);
 
     const initialColorId = initialData?.colorId || "blue";
@@ -183,6 +186,14 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   }, []);
 
   const handleElementSelection = useCallback(() => {
+    if (isSelectingElement) {
+      // Cancel selection
+      setIsSelectingElement(false);
+      highlightOverlay.stopSelectionMode();
+      return;
+    }
+
+    setIsSelectingElement(true);
     const subscription = highlightOverlay.streamSelectionMode().subscribe({
       next: (event) => {
         if (event.type === "selected") {
@@ -192,12 +203,14 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           setElementPaths((prev) => [...prev, xpath]);
           setElementXPath((prev) => prev || xpath);
 
+          setIsSelectingElement(false);
           subscription.unsubscribe();
           highlightOverlay.stopMouseMoveHighlight();
         }
       },
       error: (err) => {
         console.error("Element selection failed:", err);
+        setIsSelectingElement(false);
         subscription.unsubscribe();
         highlightOverlay.stopMouseMoveHighlight();
       },
@@ -206,11 +219,17 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     // Auto-cancel after 10 seconds
     setTimeout(() => {
       if (!subscription.closed) {
+        setIsSelectingElement(false);
         subscription.unsubscribe();
       }
     }, 10000);
-  }, [highlightOverlay]);
+  }, [isSelectingElement, highlightOverlay]);
 
+  // Helpers for selectors list
+  const handleAddSelectorInput = () => setElementPaths((prev) => [...prev, ""]);
+  const handleRemoveSelector = (index: number) => setElementPaths((prev) => prev.filter((_, i) => i !== index));
+
+  // Scope toggle helpers
   const toggleToPageOnly = () => {
     setAttachmentType("route");
     if (!routePattern) setRoutePattern(window.location.pathname);
@@ -275,22 +294,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setIsEditingRoute(false);
   };
 
-  // Handler functions from TriggerForm
-  const handleRegexToggle = (checked: boolean) => {
-    setUseRegex(checked);
-    // Validate current pattern with new regex setting
-    const pattern = routeInputValue;
-    if (pattern) {
-      // Simple validation - you can enhance this
-      setDomainValidationError(null);
-    }
-  };
-
-  const handleDomainPatternChange = (value: string) => {
-    // Simple validation - you can enhance this based on TriggerForm logic
-    setDomainValidationError(null);
-  };
-
   const handleAddCurrentUrl = () => {
     try {
       const currentUrl = window.location.href;
@@ -316,7 +319,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
     try {
       const trimmedRoute = routePattern.trim();
-      const normalizedAttachmentType = attachmentType === "route" && !trimmedRoute ? "domain" : attachmentType;
 
       // Use first selector for backward compatibility
       const firstXPath = elementPaths.find((p) => p && p.trim());
@@ -328,7 +330,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         colorId: selectedColorId,
         elementXPath: firstXPath || undefined,
         elementPaths,
-        attachmentType: normalizedAttachmentType,
+        attachmentType,
         routePattern: trimmedRoute || undefined,
         addToExistingNote,
         existingNoteId,
@@ -455,13 +457,15 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     return <HexColorPicker color={currentColor} onChange={(newColor) => handleColorChange(colorId, newColor)} />;
   };
 
+  // Remove the individual helper functions and replace with one
+  const toggleAdvancedSettings = () => {
+    setShowAdvancedSettings(!showAdvancedSettings);
+  };
+
   return (
     <form id={formId} onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
       <div className="overflow-y-auto flex-1 flex flex-col gap-2">
         {/* Error message display */}
-
-        {/*NOTE SETTINGS controll button*/}
-
         {submitError && (
           <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-md">
             <div className="flex items-center">
@@ -525,32 +529,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Group Selection with improved styling */}
-        <div className="space-y-2">
-          <label htmlFor="group" className="block text-sm font-semibold text-gray-800">
-            Organization
-          </label>
-          <div className="relative">
-            <select
-              id="group"
-              value={groupId || ""}
-              onChange={(e) => setGroupId(e.target.value || undefined)}
-              className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-3 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
-            >
-              <option value="">📝 No group (standalone note)</option>
-              {notesData.groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  📁 {group.name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-              <FiChevronDown className="w-4 h-4 text-gray-400" />
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">Group your notes by topic or project for better organization</p>
         </div>
 
         {/* Multi-location Note Selection */}
@@ -620,201 +598,231 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           </div>
         )}
 
-        {/* View Type Selection with improved styling */}
-        <div className="space-y-2">
-          <label htmlFor="viewType" className="block text-sm font-semibold text-gray-800">
-            Display Type
-          </label>
-          <Select
-            id="viewType"
-            size="large"
-            className="w-full"
-            value={viewType}
-            onChange={(v) => setViewType(v as NoteViewType)}
-            // @ts-ignore
-            getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
-            options={[
-              {
-                value: NoteViewType.NOTE,
-                label: (
-                  <span className="flex items-center gap-2">
-                    <FiFileText className="text-gray-600" />
-                    <span>Note View (detailed card)</span>
-                  </span>
-                ),
-              },
-              {
-                value: NoteViewType.CHIP,
-                label: (
-                  <span className="flex items-center gap-2">
-                    <FiTag className="text-gray-600" />
-                    <span>Chip View (compact badge)</span>
-                  </span>
-                ),
-              },
-            ]}
-          />
-          <p className="text-xs text-gray-500">Choose how this note will be displayed in the notes list</p>
+        {/* Tab Navigation - 3 group buttons */}
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => setActiveTab(activeTab === "organization" ? null : "organization")}
+            className={`px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
+              activeTab === "organization" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+            title="Organization settings"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+            </svg>
+            Organization
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab(activeTab === "display" ? null : "display")}
+            className={`px-4 py-2 text-sm flex items-center gap-2 border-l border-gray-200 transition-colors ${
+              activeTab === "display" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+            title="Display settings"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16v12H4z" />
+            </svg>
+            Display
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab(activeTab === "visibility" ? null : "visibility")}
+            className={`px-4 py-2 text-sm flex items-center gap-2 border-l border-gray-200 transition-colors ${
+              activeTab === "visibility" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+            title="Visibility settings"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8S2 12 2 12z"
+              />
+            </svg>
+            Visibility
+          </button>
         </div>
 
-        {/* Attachment Type Selection */}
-        <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-800">Note Visibility & Attachment</label>
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            {/* Scope toggle */}
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-700">Scope</span>
-              <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
-                <button
-                  type="button"
-                  onClick={toggleToPageOnly}
-                  className={`px-3 py-1.5 text-sm flex items-center gap-1 ${attachmentType !== "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                  title="Apply to this page (domain/route)"
+        {/* Single Display Section for Active Tab */}
+        {activeTab && (
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 relative">
+            {/* Organization Tab Content */}
+            {activeTab === "organization" && (
+              <div className="space-y-3">
+                <select
+                  id="group"
+                  value={groupId || ""}
+                  onChange={(e) => setGroupId(e.target.value || undefined)}
+                  className="block w-full rounded-lg border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-3 text-sm bg-white transition-all duration-200 hover:border-gray-300 appearance-none cursor-pointer"
                 >
-                  <FiMap /> This page only
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleToGlobal}
-                  className={`px-3 py-1.5 text-sm flex items-center gap-1 border-l border-gray-300 ${attachmentType === "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                  title="Apply across all pages"
-                >
-                  <FiGlobe /> Global view
-                </button>
+                  <option value="">📝 No group (standalone note)</option>
+                  {notesData.groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      📁 {group.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                  <FiChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Page-specific configuration when not global */}
-            {attachmentType !== "global" && (
-              <div className="space-y-3 pt-3 border-t border-gray-200">
-                {/* Combined Domain/Route Section */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-800">Domain & Route Pattern</label>
+            {/* Display Tab Content */}
+            {activeTab === "display" && (
+              <div className="space-y-3">
+                <Select
+                  id="viewType"
+                  size="large"
+                  className="w-full"
+                  value={viewType}
+                  onChange={(v) => setViewType(v as NoteViewType)}
+                  // @ts-ignore
+                  getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
+                  options={[
+                    {
+                      value: NoteViewType.NOTE,
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <FiFileText className="text-gray-600" />
+                          <span>Note View (detailed card)</span>
+                        </span>
+                      ),
+                    },
+                    {
+                      value: NoteViewType.CHIP,
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <FiTag className="text-gray-600" />
+                          <span>Chip View (compact badge)</span>
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            )}
 
-                  {!isEditingRoute ? (
-                    <div className="flex items-center gap-2 p-3 bg-white border rounded-lg">
-                      <div className="flex-1 text-sm text-gray-700">
-                        <span className="font-medium text-blue-600">{window.location.hostname}</span>
-                        <span className="text-gray-400 mx-1">/</span>
-                        <span className="font-medium text-green-600">{routePattern || "*"}</span>
-                      </div>
+            {/* Visibility Tab Content */}
+            {activeTab === "visibility" && (
+              <div className="space-y-4">
+                <div className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
+                  {/* Scope toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex rounded-md border border-gray-200 overflow-hidden bg-white shadow-sm">
                       <button
                         type="button"
-                        onClick={startEditRoute}
-                        className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                        title="Edit domain and route pattern"
+                        onClick={toggleToPageOnly}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-2 ${attachmentType !== "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                        title="Apply to this page (domain/route)"
                       >
-                        <FiEdit2 className="w-3 h-3" />
-                        Edit
+                        <FiMap className="w-4 h-4" /> <span className="hidden sm:inline">This page only</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleToGlobal}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-2 border-l border-gray-200 ${attachmentType === "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                        title="Apply across all pages"
+                      >
+                        <FiGlobe className="w-4 h-4" /> <span className="hidden sm:inline">Global view</span>
                       </button>
                     </div>
-                  ) : (
-                    <div className="space-y-2 p-3 bg-white border rounded-lg">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                        <span className="font-medium">Domain:</span>
-                        <span className="text-blue-600">{window.location.hostname}</span>
-                      </div>
+                  </div>
 
-                      <div className="space-y-2">
-                        <Input.Group compact>
-                          <Input
-                            value={routeInputValue}
-                            onChange={(e) => {
-                              setRouteInputValue(e.target.value);
-                              handleDomainPatternChange(e.target.value);
-                            }}
-                            placeholder={
-                              useRegex
-                                ? "Enter regex pattern (e.g., .*\\.example\\.com)"
-                                : "Enter domain pattern (e.g., example.com)"
-                            }
-                            style={{ width: "calc(100% - 200px)" }}
-                          />
-                          <Tooltip title={useRegex ? "Toggle to simple pattern" : "Toggle to regex pattern"}>
-                            <Button
-                              type={useRegex ? "primary" : "default"}
-                              icon={<IconRegex size={16} />}
-                              onClick={() => handleRegexToggle(!useRegex)}
-                              style={{ width: "60px" }}
-                            >
-                              {useRegex ? ".*" : "abc"}
-                            </Button>
-                          </Tooltip>
-                          <Button
-                            type="default"
-                            icon={<IconWorldWww size={16} />}
-                            onClick={handleAddCurrentUrl}
-                            style={{ width: "140px" }}
-                            title="Add current URL domain"
-                          >
-                            Add Current URL
-                          </Button>
-                        </Input.Group>
+                  {/* Page-specific configuration when not global */}
+                  {attachmentType !== "global" && (
+                    <div className="space-y-4 pt-3 border-t border-gray-200">
+                      {/* Combined Domain/Route Section */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="ml-2 font-medium text-green-700">{routePattern || "*"}</span>
+                        </div>
 
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={saveRouteEdit}
-                            className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                            title="Save"
+                            onClick={startEditRoute}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-md border border-gray-200 bg-white text-sm hover:shadow-sm"
+                            title="Edit domain and route pattern"
                           >
-                            <FiSave /> Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEditRoute}
-                            className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                            title="Cancel"
-                          >
-                            <FiX /> Cancel
+                            <FiEdit2 className="w-4 h-4 text-gray-600" />
+                            <span className="hidden sm:inline">Edit</span>
                           </button>
                         </div>
                       </div>
 
-                      <div className="text-xs text-gray-500 mt-2">
-                        {routeInputMode === "string"
-                          ? "Use full domain+path (e.g., example.com/user/*) or a path (e.g., /user/*). Leave empty or use '/' for entire domain."
-                          : "Enter a valid regular expression pattern. You may include domain or path. Example: example.com^/users/\\d+$ or ^/users/\\d+$"}
-                      </div>
+                      {isEditingRoute && (
+                        <div className="mt-3">
+                          <div className="space-y-2">
+                            <Input.Group compact>
+                              <Input
+                                value={routeInputValue}
+                                onChange={(e) => setRouteInputValue(e.target.value)}
+                                placeholder={`${window.location.hostname}/users/*`}
+                                className="rounded-l-md"
+                              />
+                              <Button onClick={handleAddCurrentUrl} className="ml-2">
+                                Add Current URL
+                              </Button>
+                            </Input.Group>
+
+                            <div className="flex items-center gap-2 mt-3">
+                              <Button type="default" onClick={saveRouteEdit} icon={<FiSave />} size="small">
+                                Save
+                              </Button>
+                              <Button onClick={cancelEditRoute} icon={<FiX />} size="small">
+                                Cancel
+                              </Button>
+                              <p className="text-xs text-gray-500 ml-4">
+                                Use * for wildcards or full domain/path. Empty or '/' applies to the whole domain.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/*{LLM RULE DO NOT TOUCH THIS SECTION}*/}
+                      {/* Page Element Connection Section */}
+                      <Input
+                        value={elementXPath || ""}
+                        onChange={(e) => setElementXPath(e.target.value)}
+                        placeholder="XPath of the element to interact with"
+                        addonAfter={
+                          <Space>
+                            <Tooltip title="Find element in page">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<AimOutlined style={{ color: "#1890ff" }} />}
+                                onClick={() => elementXPath && highlightOverlay?.startHighlight(elementXPath)}
+                                disabled={!elementXPath}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Select element from page">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<SelectOutlined style={{ color: "#52c41a" }} />}
+                                onClick={() => handleElementSelection()}
+                              />
+                            </Tooltip>
+                          </Space>
+                        }
+                      />
                     </div>
                   )}
-                </div>
-
-                {/* Page Element Connection Section */}
-                <div className="space-y-3 pt-3 border-t border-gray-200">
-                  <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
-                  <Input
-                    value={elementXPath || ""}
-                    onChange={(e) => setElementXPath(e.target.value)}
-                    placeholder="XPath of the element to interact with"
-                    addonAfter={
-                      <Space>
-                        <Tooltip title="Find element in page">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                            onClick={() => elementXPath && highlightOverlay?.startHighlight(elementXPath)}
-                            disabled={!elementXPath}
-                          />
-                        </Tooltip>
-                        <Tooltip title="Select element from page">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                            onClick={() => handleElementSelection()}
-                          />
-                        </Tooltip>
-                      </Space>
-                    }
-                  />
                 </div>
               </div>
             )}
           </div>
-        </div>
+        )}
 
+        {/*{LLM RULE DO NOT TOUCH THIS SECTION}/!* Add new color button *!/*/}
         {/* Color Selection with improved styling */}
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-gray-800">Note Color Theme</label>
@@ -904,7 +912,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                 </div>
               ))}
 
-              {/* Add new color button */}
+              {/*{LLM RULE DO NOT TOUCH THIS SECTION}/!* Add new color button *!/*/}
               <Popover
                 content={createColorPickerContent("new")}
                 trigger="click"
@@ -935,6 +943,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/*{LLM RULE DO NOT TOUCH THIS SECTION}/!* Add new color button *!/*/}
 
       <ScenarioPortalFooterButtons portalId={PortalId.FUNCTIONS_TAB} containerId="hover-inspector-popup-footer-note">
         <div className="flex justify-between items-center gap-4 p-2 border-t border-gray-200 bg-gray-50">
