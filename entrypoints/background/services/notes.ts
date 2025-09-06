@@ -1,44 +1,6 @@
 import { Note, NoteLocation, NotesState, NoteGroup, ColorPalette } from "@entrypoints/shared/types/notes.ts";
 
 /**
- * Migrates legacy note format to new locations array structure
- */
-export function migrateLegacyNoteToLocations(note: any): NoteLocation[] {
-  if (note.locations && Array.isArray(note.locations)) {
-    return note.locations;
-  }
-
-  const locations: NoteLocation[] = [];
-
-  // Migrate existing data if it exists in old format
-  if (note.domain || note.url) {
-    const migratedLocation: NoteLocation = {
-      attachmentType: note.attachmentType || "global",
-      domain: note.domain || "",
-      elementXPath: note.elementXPath,
-      routePattern: note.routePattern,
-      url: note.url || "",
-    };
-    locations.push(migratedLocation);
-  }
-
-  return locations;
-}
-
-/**
- * Ensures a note has a proper locations array with backward compatibility
- */
-export function ensureNoteHasLocations(note: Note): Note {
-  if (!note.locations) {
-    return {
-      ...note,
-      locations: migrateLegacyNoteToLocations(note),
-    };
-  }
-  return note;
-}
-
-/**
  * Creates a new note with proper structure
  */
 export function createNewNote(
@@ -54,46 +16,14 @@ export function createNewNote(
 }
 
 /**
- * Adds a new location to an existing note
- */
-export function addLocationToNote(note: Note, newLocationData: Partial<Note> & { domain: string; url: string }): Note {
-  const ensuredNote = ensureNoteHasLocations(note);
-
-  return {
-    ...ensuredNote,
-    updatedAt: Date.now(),
-  };
-}
-
-/**
  * Updates a note with new data while preserving locations array
  */
-export function updateNoteData(note: Note, updates: Partial<Note> & { addNewLocation?: boolean }): Note {
-  const ensuredNote = ensureNoteHasLocations(note);
-
-  if (updates.addNewLocation) {
-    // Add new location to existing note
-    const newLocation: NoteLocation = {
-      attachmentType: (updates as any).attachmentType || "global",
-      domain: (updates as any).domain || "",
-      elementXPath: (updates as any).elementXPath,
-      routePattern: (updates as any).routePattern,
-      url: (updates as any).url || "",
-    };
-    return {
-      ...ensuredNote,
-      locations: [...ensuredNote.locations, newLocation],
-      updatedAt: Date.now(),
-    };
-  } else {
-    // Regular update - merge updates normally, preserving locations array
-    return {
-      ...ensuredNote,
-      ...updates,
-      locations: updates.locations || ensuredNote.locations,
-      updatedAt: Date.now(),
-    };
-  }
+export function updateNoteData(note: Note, updates: Partial<Note> & { locations?: boolean }): Note {
+  return {
+    ...note,
+    ...updates,
+    updatedAt: Date.now(),
+  };
 }
 
 /**
@@ -138,9 +68,7 @@ export function createNewColorPalette(data: Partial<ColorPalette>): ColorPalette
  * Finds matching location for current page context
  */
 export function findMatchingLocation(note: Note, currentDomain: string, currentUrl: string): NoteLocation | undefined {
-  const ensuredNote = ensureNoteHasLocations(note);
-
-  return ensuredNote.locations.find((location) => location.domain === currentDomain || location.url === currentUrl);
+  return note.locations.find((location) => location.domain === currentDomain || location.url === currentUrl);
 }
 
 /**
@@ -164,8 +92,43 @@ export function shouldNoteBeVisibleOnPage(
   let matchesRoute = false;
 
   if (note.locations && note.locations.length > 0) {
-    // Use new locations array
-    matchesRoute = note.locations.some((location) => location.domain === currentDomain || location.url === currentUrl);
+    // Use new locations array with attachment type-specific logic
+    matchesRoute = note.locations.some((location) => {
+      switch (location.attachmentType) {
+        case "global":
+          // Global notes are visible on all pages
+          return true;
+
+        case "domain":
+          // Domain notes are visible on pages matching the domain
+          return location.domain === currentDomain;
+
+        case "route":
+          // Route notes are visible on pages matching the route pattern
+          // First check if domain matches (route attachments are domain-specific)
+          if (location.domain !== currentDomain) {
+            return false;
+          }
+
+          if (location.routePattern) {
+            const currentPath = new URL(currentUrl).pathname;
+            // Simple pattern matching - exact match or wildcard support
+            if (location.routePattern.includes("*")) {
+              const pattern = location.routePattern.replace(/\*/g, ".*");
+              const regex = new RegExp("^" + pattern + "$");
+              return regex.test(currentPath) || regex.test(currentUrl);
+            } else {
+              // Exact match for route pattern
+              return currentPath === location.routePattern || currentUrl.includes(location.routePattern);
+            }
+          }
+          return false;
+
+        default:
+          // Fallback to legacy behavior for unknown attachment types
+          return location.domain === currentDomain || location.url === currentUrl;
+      }
+    });
   } else {
     // Backward compatibility: check legacy single values
     matchesRoute = (note as any).domain === currentDomain || (note as any).url === currentUrl;

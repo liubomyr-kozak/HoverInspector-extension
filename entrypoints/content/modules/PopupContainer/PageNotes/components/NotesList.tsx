@@ -234,7 +234,6 @@ interface NotesListProps {
   onDeleteNote: (id: string) => void;
   onSelectNote: (id: string) => void;
   onUpdateSearchQuery: (query: string) => void;
-  onToggleShowOnlyCurrentDomain: (show: boolean) => void;
   onToggleGroup: (groupId: string) => void;
 }
 
@@ -245,18 +244,11 @@ export const NotesList: React.FC<NotesListProps> = ({
   onDeleteNote,
   onSelectNote,
   onUpdateSearchQuery,
-  onToggleShowOnlyCurrentDomain,
   onToggleGroup,
 }) => {
-  const currentDomain = window.location.hostname;
 
   const filteredNotes = useMemo(() => {
     let notes = notesState.notes;
-
-    // Filter by domain if enabled
-    if (notesState.showOnlyCurrentDomain) {
-      notes = notes.filter((note) => note.domain === currentDomain);
-    }
 
     // Filter by search query
     if (notesState.searchQuery.trim()) {
@@ -264,13 +256,12 @@ export const NotesList: React.FC<NotesListProps> = ({
       notes = notes.filter(
         (note) =>
           note.title.toLowerCase().includes(query) ||
-          note.content.toLowerCase().includes(query) ||
-          note.domain.toLowerCase().includes(query),
+          note.content.toLowerCase().includes(query),
       );
     }
 
     return notes;
-  }, [notesState.notes, notesState.showOnlyCurrentDomain, notesState.searchQuery, currentDomain]);
+  }, [notesState.notes, notesState.searchQuery]);
 
   const groupedNotes = useMemo(() => {
     const grouped: { group: NoteGroup | null; notes: NoteType[] }[] = [];
@@ -334,14 +325,6 @@ export const NotesList: React.FC<NotesListProps> = ({
         </SearchContainer>
 
         <FilterControls>
-          <FilterToggle
-            $active={notesState.showOnlyCurrentDomain}
-            onClick={() => onToggleShowOnlyCurrentDomain(!notesState.showOnlyCurrentDomain)}
-          >
-            {notesState.showOnlyCurrentDomain ? <IconEye /> : <IconEyeOff />}
-            Current domain
-          </FilterToggle>
-
           <AddNoteButton onClick={onCreateNote}>
             <IconPlus />
             Add Note

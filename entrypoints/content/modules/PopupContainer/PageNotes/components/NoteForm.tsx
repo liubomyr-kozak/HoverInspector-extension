@@ -110,7 +110,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     notes: [],
     groups: [],
     searchQuery: "",
-    showOnlyCurrentDomain: false,
     selectedNoteId: undefined,
   });
 

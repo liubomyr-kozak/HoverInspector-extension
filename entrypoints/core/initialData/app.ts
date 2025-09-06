@@ -37,7 +37,6 @@ export const appSettingsInitial = {
     notes: [],
     groups: [],
     searchQuery: "",
-    showOnlyCurrentDomain: false,
     selectedNoteId: undefined,
   } as NotesState, // Store page notes
   version: "1.0.14",

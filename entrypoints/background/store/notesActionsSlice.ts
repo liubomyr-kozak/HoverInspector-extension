@@ -18,9 +18,7 @@ import {
 } from "@entrypoints/shared/types/notes";
 import {
   createNewNote,
-  addLocationToNote,
   updateNoteData,
-  ensureNoteHasLocations,
   createNewNoteGroup,
   updateNoteGroupData,
   removeNotesFromGroup,
@@ -32,7 +30,6 @@ const notesInitialState: NotesState & { version: number } = {
   notes: [],
   groups: [],
   searchQuery: "",
-  showOnlyCurrentDomain: false,
   selectedNoteId: undefined,
 };
 
@@ -99,10 +96,6 @@ export const notesActionsSlice = createChromeSlice({
 
     updateNotesSearchQuery: async (searchQuery: string, { getState, setState }): Promise<void> => {
       setState({ searchQuery });
-    },
-
-    toggleNotesShowOnlyCurrentDomain: async (showOnlyCurrentDomain: boolean, { getState, setState }): Promise<void> => {
-      setState({ showOnlyCurrentDomain });
     },
 
     createNoteGroup: async (payload: CreateNoteGroupPayload, { setState, getState }): Promise<NoteGroup> => {
@@ -243,7 +236,6 @@ export const {
   updateNote,
   deleteNote,
   updateNotesSearchQuery,
-  toggleNotesShowOnlyCurrentDomain,
   // Groups
   createNoteGroup,
   updateNoteGroup,

@@ -61,7 +61,6 @@ export interface NotesState {
   notes: Note[];
   groups: NoteGroup[];
   searchQuery: string;
-  showOnlyCurrentDomain: boolean;
   selectedNoteId?: string;
 }
 

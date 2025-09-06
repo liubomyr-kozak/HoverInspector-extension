@@ -18,6 +18,7 @@ interface ResizableModalProps {
   onPositionChange?: (x: number, y: number) => void;
   onSizeChange?: (width: number, height: number) => void;
   position: "fixed" | "absolute";
+  viewSourceType?: string;
 }
 
 export function ResizableModal({
@@ -31,6 +32,7 @@ export function ResizableModal({
   onSizeChange,
   onClose,
   position,
+  viewSourceType,
 }: ResizableModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -74,7 +76,9 @@ export function ResizableModal({
   // Validate the initial position before using it
   // const validatedPosition = getValidatedPosition(initialPosition, initialSize);
 
-  console.log("🌟🌟🌟 ResizableModal::ResizableModal -> initialPosition", initialPosition);
+  if (viewSourceType === "note") {
+    console.log("🌟🌟🌟 ResizableModal::ResizableModal -> initialPosition", initialPosition);
+  }
 
   return (
     <ModalOverlay>

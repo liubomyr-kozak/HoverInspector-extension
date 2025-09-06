@@ -10,7 +10,6 @@ import {
   updateNote,
   deleteNote,
   updateNotesSearchQuery,
-  toggleNotesShowOnlyCurrentDomain,
   createNoteGroup,
   updateNoteGroup,
   deleteNoteGroup,
@@ -68,7 +67,6 @@ export const PageNotes: React.FC = () => {
     notes: [],
     groups: [],
     searchQuery: "",
-    showOnlyCurrentDomain: false,
     selectedNoteId: undefined,
   });
 
@@ -197,18 +195,6 @@ export const PageNotes: React.FC = () => {
     }
   }, []);
 
-  const handleToggleShowOnlyCurrentDomain = useCallback(async (show: boolean) => {
-    try {
-      await toggleNotesShowOnlyCurrentDomain(show);
-
-      setNotesState((prev) => ({
-        ...prev,
-        showOnlyCurrentDomain: show,
-      }));
-    } catch (err) {
-      console.error("Failed to toggle domain filter:", err);
-    }
-  }, []);
 
   const handleToggleGroup = useCallback(
     async (groupId: string) => {
@@ -429,7 +415,6 @@ export const PageNotes: React.FC = () => {
         onDeleteNote={handleDeleteNote}
         onSelectNote={handleSelectNote}
         onUpdateSearchQuery={handleUpdateSearchQuery}
-        onToggleShowOnlyCurrentDomain={handleToggleShowOnlyCurrentDomain}
         onToggleGroup={handleToggleGroup}
       />
     </div>

@@ -157,14 +157,16 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
         // Update coordinates in the matching location
         const updatedLocations = note.locations?.map((loc) => {
           if (loc === matchingLocation) {
-            return { 
-              ...loc, 
+            return {
+              ...loc,
               coordinates: { x: newState.x, y: newState.y },
-              elementXPath: undefined // Clear elementXPath to avoid conflicts with manual positioning
+              elementXPath: undefined, // Clear elementXPath to avoid conflicts with manual positioning
             };
           }
           return loc;
         });
+
+        debugger;
 
         await updateNote({
           id: note.id,
@@ -210,6 +212,7 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
       onModalStateChange={handleModalStateChange}
       footer={null}
       position="absolute"
+      viewSourceType="note"
       style={{
         background: noteColor,
         border: "1px solid rgba(0, 0, 0, 0.1)",
@@ -217,8 +220,8 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
       }}
     >
-      <div style={{ background: noteColor, minHeight: "100px", height: "100%" }}>
-        {note.title && <NoteTitle className="modal-drag-handle">{note.title}</NoteTitle>}
+      <div className="modal-drag-handle" style={{ background: noteColor, minHeight: "100px", height: "100%" }}>
+        {note.title && <NoteTitle>{note.title}</NoteTitle>}
         <NoteContentText>{note.content || "No content"}</NoteContentText>
         <NoteMeta>{formatDate(note.updatedAt)}</NoteMeta>
       </div>
@@ -237,6 +240,8 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
         const notesData = await getAllNotes();
         const currentDomain = window.location.hostname;
         const currentUrl = window.location.href;
+
+        debugger;
 
         // Use centralized function to filter visible notes for current page
         const visible = getVisibleNotesForPage(notesData.notes, currentDomain, currentUrl, notesData.groups);
@@ -299,6 +304,8 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
       loadVisibleNotes();
     }
   }, [refreshTrigger]);
+
+  console.log("😂😂😂 ::VisibleNotesProvider -> visibleNotes", visibleNotes);
 
   return (
     <>
