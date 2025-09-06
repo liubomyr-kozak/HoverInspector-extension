@@ -31,6 +31,8 @@ import { useDebouncedCallback } from "@entrypoints/shared/utils/useDebouncedCall
 import { FiChevronDown, FiFileText, FiTag, FiGlobe, FiMap, FiPlus, FiTrash2 } from "react-icons/fi";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { AimOutlined, SelectOutlined } from "@ant-design/icons";
+import { BsRegex } from "react-icons/bs";
+import { TbWorldWww } from "react-icons/tb";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -272,16 +274,12 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setAttachmentType(AttachmentTypeEnum.GLOBAL);
   };
 
-  const handleAddCurrentUrl = () => {
+  const handleAddCurrentUrl = (index) => {
     try {
       const currentUrl = window.location.href;
       setRouteInputValue(currentUrl);
 
-      // Update the main location's route pattern
-      const mainLocationIndex = locations.findIndex((loc) => loc.isMain);
-      if (mainLocationIndex !== -1) {
-        updateLocation(mainLocationIndex, { routePattern: window.location.pathname });
-      }
+      updateLocation(index, { routePattern: window.location.pathname });
     } catch (error) {
       console.error("Failed to get current URL:", error);
     }
@@ -707,12 +705,28 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                                 value={location.routePattern || ""}
                                 onChange={(e) => updateLocation(index, { routePattern: e.target.value })}
                                 placeholder={`${window.location.hostname}/users/*`}
+                                addonBefore={
+                                  <Select
+                                    defaultValue="url"
+                                    // @ts-ignore
+                                    getPopupContainer={() =>
+                                      (
+                                        document.querySelector("hover-inspector")!.shadowRoot as HTMLElement
+                                      )?.querySelector("html > body")
+                                    }
+                                  >
+                                    <Option value="url">
+                                      <TbWorldWww />
+                                    </Option>
+                                    <Option value="regex">
+                                      <BsRegex />
+                                    </Option>
+                                  </Select>
+                                }
                                 addonAfter={
-                                  location.isMain && (
-                                    <Button type="text" size="small" onClick={handleAddCurrentUrl}>
-                                      Current URL
-                                    </Button>
-                                  )
+                                  <Button type="text" size="small" onClick={() => handleAddCurrentUrl(index)}>
+                                    Current URL
+                                  </Button>
                                 }
                               />
                             </div>

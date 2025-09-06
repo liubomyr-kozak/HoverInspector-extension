@@ -50,12 +50,7 @@ interface VisibleNoteProps {
 }
 
 const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlightOverlay }) => {
-  const [position, setPosition] = useState<{ x: number; y: number; width: number; height: number }>({
-    x: 100,
-    y: 100,
-    width: 250,
-    height: 150,
-  });
+  const [position, setPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Helper function to convert hex to rgba with opacity
   const hexToRgba = (hex: string, opacity: number = 0.85): string => {
@@ -84,61 +79,58 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
 
   // Calculate initial position for xpath-attached notes or use saved coordinates
   useEffect(() => {
-    // Use centralized function to find matching location
     const currentDomain = window.location.hostname;
     const currentUrl = window.location.href;
 
+    // централізовано шукаємо location
     const matchingLocation = findMatchingLocation(note, currentDomain, currentUrl);
 
-    if (matchingLocation?.coordinates) {
-      // Use saved coordinates from matching location with default size if not provided
-      setPosition({
-        x: matchingLocation.coordinates.x,
-        y: matchingLocation.coordinates.y,
-        width: 250,
-        height: 150,
-      });
-    } else {
-      const elementXPath = matchingLocation?.elementXPath || (note as any).elementXPath; // backward compatibility
+    // функція для fallback позиції
+    const getFallbackPosition = () => ({
+      x: 100,
+      y: 100,
+      width: 250,
+      height: 150,
+    });
 
-      if (elementXPath) {
-        try {
-          const element = highlightOverlay.getElementByXPath(elementXPath);
-          if (element) {
-            const rect = element.getBoundingClientRect();
-            setPosition({
-              x: rect.left + window.scrollX,
-              y: rect.top + window.scrollY - 10, // Offset slightly above the element
-              width: 250,
-              height: 150,
-            });
-          } else {
-            // Element not found, use fallback position
-            setPosition({
-              x: 100,
-              y: 100,
-              width: 250,
-              height: 150,
-            });
-          }
-        } catch (error) {
-          console.error("Failed to position note by xpath:", error);
-          setPosition({
-            x: 100,
-            y: 100,
-            width: 250,
-            height: 150,
-          });
-        }
-      } else {
-        // No elementXPath found, use default position
-        setPosition({
-          x: 100,
-          y: 100,
+    // функція для позиції з координат
+    const getCoordinatesPosition = (coords: any) => {
+      const width = coords?.width >= 50 ? coords.width : 250;
+      const height = coords?.height >= 50 ? coords.height : 150;
+      return {
+        x: coords.x,
+        y: coords.y,
+        width,
+        height,
+      };
+    };
+
+    // функція для позиції по XPath
+    const getXPathPosition = (xpath: string) => {
+      try {
+        const element = highlightOverlay.getElementByXPath(xpath);
+        if (!element) return getFallbackPosition();
+
+        const rect = element.getBoundingClientRect();
+        return {
+          x: rect.left + window.scrollX,
+          y: rect.top + window.scrollY - 10, // невеликий офсет
           width: 250,
           height: 150,
-        });
+        };
+      } catch (error) {
+        console.error("Failed to position note by xpath:", error);
+        return getFallbackPosition();
       }
+    };
+
+    // головна логіка визначення позиції
+    if (matchingLocation?.coordinates) {
+      setPosition(getCoordinatesPosition(matchingLocation.coordinates));
+    } else {
+      const elementXPath = matchingLocation?.elementXPath || (note as any).elementXPath;
+
+      setPosition(elementXPath ? getXPathPosition(elementXPath) : getFallbackPosition());
     }
   }, [note.locations, highlightOverlay]);
 
@@ -165,8 +157,6 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
           }
           return loc;
         });
-
-        debugger;
 
         await updateNote({
           id: note.id,
@@ -197,6 +187,8 @@ const VisibleNote: React.FC<VisibleNoteProps> = ({ note, colorPalette, highlight
   };
 
   // Position logging removed - console.log removed\n
+
+  if (!position) return null;
 
   console.log("🌟🌟🌟 ::VisibleNote -> position", position);
   return (
@@ -241,12 +233,10 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
         const currentDomain = window.location.hostname;
         const currentUrl = window.location.href;
 
-        debugger;
-
         // Use centralized function to filter visible notes for current page
-        const visible = getVisibleNotesForPage(notesData.notes, currentDomain, currentUrl, notesData.groups);
+        const visibleNotes = getVisibleNotesForPage(notesData.notes, currentDomain, currentUrl, notesData.groups);
 
-        setVisibleNotes(visible);
+        setVisibleNotes(visibleNotes);
       } catch (error) {
         console.error("Failed to load visible notes:", error);
       }
@@ -292,10 +282,11 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
           const currentDomain = window.location.hostname;
           const currentUrl = window.location.href;
 
+          // refreshTrigger
           // Use centralized function to filter visible notes for current page
-          const visible = getVisibleNotesForPage(notesData.notes, currentDomain, currentUrl, notesData.groups);
+          const visibleNotes = getVisibleNotesForPage(notesData.notes, currentDomain, currentUrl, notesData.groups);
 
-          setVisibleNotes(visible);
+          setVisibleNotes(visibleNotes);
         } catch (error) {
           console.error("Failed to load visible notes:", error);
         }
@@ -304,8 +295,6 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
       loadVisibleNotes();
     }
   }, [refreshTrigger]);
-
-  console.log("😂😂😂 ::VisibleNotesProvider -> visibleNotes", visibleNotes);
 
   return (
     <>

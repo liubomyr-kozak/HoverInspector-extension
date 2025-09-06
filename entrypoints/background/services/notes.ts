@@ -65,10 +65,93 @@ export function createNewColorPalette(data: Partial<ColorPalette>): ColorPalette
 }
 
 /**
- * Finds matching location for current page context
+ * Finds matching location for current page context with smart priority-based selection
+ * Priority: Route (exact) > Route (pattern) > Domain (exact URL) > Domain > Global
  */
 export function findMatchingLocation(note: Note, currentDomain: string, currentUrl: string): NoteLocation | undefined {
-  return note.locations.find((location) => location.domain === currentDomain || location.url === currentUrl);
+  const currentPath = new URL(currentUrl).pathname;
+  const matchingLocations: Array<{ location: NoteLocation; priority: number; exactness: number }> = [];
+
+  for (const location of note.locations) {
+    let isMatch = false;
+    let priority = 0;
+    let exactness = 0;
+
+    switch (location.attachmentType) {
+      case "route":
+        // Route notes are domain-specific
+        if (location.domain === currentDomain) {
+          if (location.routePattern) {
+            if (location.routePattern.includes("*")) {
+              // Pattern matching
+              const pattern = location.routePattern.replace(/\*/g, ".*");
+              const regex = new RegExp("^" + pattern + "$");
+              if (regex.test(currentPath) || regex.test(currentUrl)) {
+                isMatch = true;
+                priority = 80; // High priority but lower than exact route match
+                exactness = location.routePattern.length; // Longer patterns are more specific
+              }
+            } else {
+              // Exact route match
+              if (currentPath === location.routePattern || currentUrl.includes(location.routePattern)) {
+                isMatch = true;
+                priority = 100; // Highest priority for exact route match
+                exactness = location.routePattern.length;
+              }
+            }
+          }
+        }
+        break;
+
+      case "domain":
+        if (location.domain === currentDomain) {
+          isMatch = true;
+          if (location.url && location.url === currentUrl) {
+            // Exact URL match within domain
+            priority = 70;
+            exactness = location.url.length;
+          } else {
+            // Domain-wide match
+            priority = 50;
+            exactness = location.domain.length;
+          }
+        }
+        break;
+
+      case "global":
+        isMatch = true;
+        priority = 10; // Lowest priority for global notes
+        exactness = 0;
+        break;
+
+      default:
+        // Fallback to legacy behavior for unknown attachment types
+        if (location.domain === currentDomain || location.url === currentUrl) {
+          isMatch = true;
+          priority = location.url === currentUrl ? 60 : 40;
+          exactness = location.url === currentUrl ? (location.url?.length || 0) : (location.domain?.length || 0);
+        }
+        break;
+    }
+
+    if (isMatch) {
+      matchingLocations.push({ location, priority, exactness });
+    }
+  }
+
+  if (matchingLocations.length === 0) {
+    return undefined;
+  }
+
+  // Sort by priority (descending), then by exactness (descending) for deterministic selection
+  matchingLocations.sort((a, b) => {
+    if (a.priority !== b.priority) {
+      return b.priority - a.priority;
+    }
+    return b.exactness - a.exactness;
+  });
+
+  return matchingLocations[0].location;
 }
 
 /**
@@ -80,11 +163,7 @@ export function shouldNoteBeVisibleOnPage(
   currentUrl: string,
   groups: NoteGroup[] = [],
 ): boolean {
-  // Note must be visible and have positioning data
-  const hasPositioning =
-    (note.locations && note.locations.some((loc) => loc.coordinates || loc.elementXPath)) || (note as any).elementXPath; // backward compatibility
-
-  if (!note.isVisible || !hasPositioning) {
+  if (!note.isVisible) {
     return false;
   }
 
