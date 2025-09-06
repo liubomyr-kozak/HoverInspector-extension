@@ -185,18 +185,17 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
   // Handler for adding current URL to domain pattern
   const handleAddCurrentUrl = () => {
     try {
-      const currentUrl = new URL(window.location.href);
-      const domain = currentUrl.hostname;
+      const currentUrl = window.location.href;
 
       const currentCondition = getValues("condition") || {};
       setValue("condition", {
         ...currentCondition,
-        domainPattern: domain,
+        domainPattern: currentUrl,
       });
 
       // Validate the new pattern
       const exactMatch = currentCondition.exactMatch || false;
-      const error = validateDomainPattern(domain, useRegex, exactMatch);
+      const error = validateDomainPattern(currentUrl, useRegex, exactMatch);
       setDomainValidationError(error);
     } catch (error) {
       console.error("Failed to get current URL:", error);

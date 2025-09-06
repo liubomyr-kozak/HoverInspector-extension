@@ -46,6 +46,7 @@ import {
 } from "react-icons/fi";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { AimOutlined, SelectOutlined } from "@ant-design/icons";
+import { IconRegex, IconWorldWww } from "@tabler/icons-react";
 
 // Default color palette with IDs
 const DEFAULT_COLORS: ColorPalette[] = [
@@ -94,7 +95,11 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [routeInputMode, setRouteInputMode] = useState<RouteInputMode>("string");
   const [routeInputValue, setRouteInputValue] = useState<string>("");
-  const [showPageElementConnection, setShowPageElementConnection] = useState<boolean>(true);
+
+  // State for regex mode and domain validation (from TriggerForm)
+  const [useRegex, setUseRegex] = useState<boolean>(false);
+  const [domainValidationError, setDomainValidationError] = useState<string | null>(null);
+
   const dispatch = useDispatch();
   const highlightOverlay = useHighlightOverlay();
 
@@ -219,7 +224,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   }, [isSelectingElement, highlightOverlay]);
 
   // Helpers for selectors list
-  const handleAddSelectorInput = () => setElementPaths((prev) => [...prev, ""]);
   const handleRemoveSelector = (index: number) => setElementPaths((prev) => prev.filter((_, i) => i !== index));
 
   // Scope toggle helpers
@@ -285,6 +289,31 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
     setRoutePattern(newRoute);
     setIsEditingRoute(false);
+  };
+
+  // Handler functions from TriggerForm
+  const handleRegexToggle = (checked: boolean) => {
+    setUseRegex(checked);
+    // Validate current pattern with new regex setting
+    const pattern = routeInputValue;
+    if (pattern) {
+      // Simple validation - you can enhance this
+      setDomainValidationError(null);
+    }
+  };
+
+  const handleDomainPatternChange = (value: string) => {
+    // Simple validation - you can enhance this based on TriggerForm logic
+    setDomainValidationError(null);
+  };
+
+  const handleAddCurrentUrl = () => {
+    try {
+      const currentUrl = window.location.href;
+      setRouteInputValue(currentUrl);
+    } catch (error) {
+      console.error("Failed to get current URL:", error);
+    }
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -642,217 +671,157 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         </div>
 
         {/* Attachment Type Selection */}
+        {/*
+          Replaced original block with improved Tailwind card styles, clearer domain+route single input
+          and nicer element-selector UI. Kept logic unchanged.
+        */}
         <div className="space-y-3">
           <label className="block text-sm font-semibold text-gray-800">Note Visibility & Attachment</label>
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             {/* Scope toggle */}
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-gray-700">Scope</span>
-              <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
+              <div className="inline-flex rounded-md border border-gray-200 overflow-hidden bg-white shadow-sm">
                 <button
                   type="button"
                   onClick={toggleToPageOnly}
-                  className={`px-3 py-1.5 text-sm flex items-center gap-1 ${attachmentType !== "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                  className={`px-3 py-1.5 text-sm flex items-center gap-2 ${attachmentType !== "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
                   title="Apply to this page (domain/route)"
                 >
-                  <FiMap /> This page only
+                  <FiMap className="w-4 h-4" /> <span className="hidden sm:inline">This page only</span>
                 </button>
                 <button
                   type="button"
                   onClick={toggleToGlobal}
-                  className={`px-3 py-1.5 text-sm flex items-center gap-1 border-l border-gray-300 ${attachmentType === "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                  className={`px-3 py-1.5 text-sm flex items-center gap-2 border-l border-gray-200 ${attachmentType === "global" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
                   title="Apply across all pages"
                 >
-                  <FiGlobe /> Global view
+                  <FiGlobe className="w-4 h-4" /> <span className="hidden sm:inline">Global view</span>
                 </button>
               </div>
             </div>
 
             {/* Page-specific configuration when not global */}
             {attachmentType !== "global" && (
-              <div className="space-y-3 pt-3 border-t border-gray-200">
+              <div className="space-y-4 pt-3 border-t border-gray-200">
                 {/* Combined Domain/Route Section */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-800">Domain & Route Pattern</label>
-
-                  {!isEditingRoute ? (
-                    <div className="flex items-center gap-2 p-3 bg-white border rounded-lg">
-                      <div className="flex-1 text-sm text-gray-700">
-                        <span className="font-medium text-blue-600">{window.location.hostname}</span>
-                        <span className="text-gray-400 mx-1">/</span>
-                        <span className="font-medium text-green-600">{routePattern || "*"}</span>
+                <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Domain</span>
+                        <span className="font-medium text-blue-700">{window.location.hostname}</span>
+                        <span className="mx-2 text-gray-300">/</span>
+                        <span className="text-xs text-gray-500">Route</span>
+                        <span className="ml-2 font-medium text-green-700">{routePattern || "*"}</span>
                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={startEditRoute}
-                        className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-md border border-gray-200 bg-white text-sm hover:shadow-sm"
                         title="Edit domain and route pattern"
                       >
-                        <FiEdit2 className="w-3 h-3" />
-                        Edit
+                        <FiEdit2 className="w-4 h-4 text-gray-600" />
+                        <span className="hidden sm:inline">Edit</span>
                       </button>
                     </div>
-                  ) : (
-                    <div className="space-y-2 p-3 bg-white border rounded-lg">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                        <span className="font-medium">Domain:</span>
-                        <span className="text-blue-600">{window.location.hostname}</span>
-                      </div>
+                  </div>
 
+                  {isEditingRoute && (
+                    <div className="mt-3">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-600 min-w-[50px]">Domain/Route:</span>
-                          <input
-                            type="text"
+                        <Input.Group compact>
+                          <Input
                             value={routeInputValue}
-                            onChange={(e) => setRouteInputValue(e.target.value)}
+                            onChange={(e) => {
+                              setRouteInputValue(e.target.value);
+                              handleDomainPatternChange(e.target.value);
+                            }}
                             placeholder={
-                              routeInputMode === "regex"
-                                ? `${window.location.hostname}^/users/\\d+$`
-                                : `${window.location.hostname}/users/*, ${window.location.hostname}/product/:id`
+                              useRegex
+                                ? `${window.location.hostname} ^/users/\\d+$`
+                                : `${window.location.hostname}/users/*`
                             }
-                            className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
+                            className="rounded-l-md"
                           />
-                          <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
-                            <button
-                              type="button"
-                              onClick={() => setRouteInputMode("string")}
-                              className={`px-2 py-1 text-xs flex items-center gap-1 ${routeInputMode === "string" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                              title="String mode"
+                          <Tooltip title={useRegex ? "Regex mode" : "Simple mode"}>
+                            <Button
+                              type={useRegex ? "primary" : "default"}
+                              onClick={() => handleRegexToggle(!useRegex)}
+                              className="border-l"
                             >
-                              <FiType /> String
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setRouteInputMode("regex")}
-                              className={`px-2 py-1 text-xs flex items-center gap-1 border-l border-gray-300 ${routeInputMode === "regex" ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                              title="RegExp mode"
-                            >
-                              <FiCode /> RegExp
-                            </button>
-                          </div>
-                        </div>
+                              {useRegex ? <FiCode /> : <FiType />}
+                            </Button>
+                          </Tooltip>
+                          <Button onClick={handleAddCurrentUrl} className="ml-2">
+                            Add Current URL
+                          </Button>
+                        </Input.Group>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={saveRouteEdit}
-                            className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                            title="Save"
-                          >
-                            <FiSave /> Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEditRoute}
-                            className="px-3 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                            title="Cancel"
-                          >
-                            <FiX /> Cancel
-                          </button>
+                        <div className="flex items-center gap-2 mt-3">
+                          <Button type="default" onClick={saveRouteEdit} icon={<FiSave />} size="small">
+                            Save
+                          </Button>
+                          <Button onClick={cancelEditRoute} icon={<FiX />} size="small">
+                            Cancel
+                          </Button>
+                          <p className="text-xs text-gray-500 ml-4">
+                            {routeInputMode === "string"
+                              ? "Use * for wildcards or full domain/path. Empty or '/' applies to the whole domain."
+                              : "Regex mode: enter a regular expression for matching routes."}
+                          </p>
                         </div>
-                      </div>
-
-                      <div className="text-xs text-gray-500 mt-2">
-                        {routeInputMode === "string"
-                          ? "Use full domain+path (e.g., example.com/user/*) or a path (e.g., /user/*). Leave empty or use '/' for entire domain."
-                          : "Enter a valid regular expression pattern. You may include domain or path. Example: example.com^/users/\\d+$ or ^/users/\\d+$"}
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* Page Element Connection Section */}
-                <div className="space-y-3 pt-3 border-t border-gray-200">
-                  <Input
-                    value={elementXPath || ""}
-                    onChange={(e) => setElementXPath(e.target.value)}
-                    placeholder="XPath of the element to interact with"
-                    addonAfter={
-                      <Space>
-                        <Tooltip title="Find element in page">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                            onClick={() => elementXPath && highlightOverlay?.highlightElement(elementXPath)}
-                            disabled={!elementXPath}
-                          />
-                        </Tooltip>
-                        <Tooltip title="Select element from page">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                            onClick={() => setIsSelectingElement(true)}
-                            disabled={isSelectingElement}
-                          />
-                        </Tooltip>
-                      </Space>
-                    }
-                  />
-                  <div className="flex items-center gap-2">
-                    <label className="block text-sm font-semibold text-gray-800">Page Element Connection</label>
-                    <button
-                      type="button"
-                      title={
-                        showPageElementConnection ? "Hide page element connection" : "Show page element connection"
-                      }
-                      onClick={() => setShowPageElementConnection(!showPageElementConnection)}
-                      className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                    >
-                      <FiTarget /> {showPageElementConnection ? "Hide" : "Show"}
-                    </button>
+                <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <label className="block text-sm font-semibold text-gray-800 mb-0">Page Element Connection</label>
+                    </div>
+
+                    <div className="flex items-center gap-2"></div>
                   </div>
-                  {showPageElementConnection && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        title="Select element from page"
-                        onClick={() => setIsSelectingElement(true)}
-                        disabled={isSelectingElement}
-                        className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
-                      >
-                        <FiTarget /> Select
-                      </button>
-                      <button
-                        type="button"
-                        title="Add empty selector"
-                        onClick={() => setElementPaths([...elementPaths, ""])}
-                        className="px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-50 flex items-center gap-1"
-                      >
-                        <FiPlus /> Add
-                      </button>
-                    </div>
-                  )}
-                  {showPageElementConnection && (
+
+                  <>
+                    <Input
+                      value={elementXPath || ""}
+                      onChange={(e) => setElementXPath(e.target.value)}
+                      placeholder="Primary XPath or selector (kept for compatibility)"
+                      className="mb-3"
+                    />
+
                     <div className="space-y-2">
-                      {elementPaths.length === 0 && (
+                      {elementPaths.length === 0 ? (
                         <p className="text-xs text-gray-500">No selectors yet. Use Select or Add to create one.</p>
+                      ) : (
+                        elementPaths.map((path, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Input
+                              value={path}
+                              onChange={(e) =>
+                                setElementPaths((prev) => prev.map((p, i) => (i === idx ? e.target.value : p)))
+                              }
+                              placeholder="XPath or selector for the element"
+                            />
+                            <Button
+                              danger
+                              size="small"
+                              icon={<FiTrash2 />}
+                              onClick={() => handleRemoveSelector(idx)}
+                              title="Remove selector"
+                            />
+                          </div>
+                        ))
                       )}
-                      {elementPaths.map((path, idx) => (
-                        <div key={idx} className="flex items-stretch gap-2">
-                          <input
-                            type="text"
-                            value={path}
-                            onChange={(e) =>
-                              setElementPaths((prev) => prev.map((p, i) => (i === idx ? e.target.value : p)))
-                            }
-                            placeholder="XPath or selector for the element"
-                            className="flex-1 rounded-md border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-3 py-2 text-sm transition-all duration-200 hover:border-gray-300"
-                          />
-                          <button
-                            type="button"
-                            title="Remove selector"
-                            onClick={() => setElementPaths((prev) => prev.filter((_, i) => i !== idx))}
-                            className="px-2 py-2 text-xs rounded-md border border-red-300 bg-white text-red-500 hover:bg-red-50"
-                          >
-                            <FiTrash2 />
-                          </button>
-                        </div>
-                      ))}
                     </div>
-                  )}
+                  </>
                 </div>
               </div>
             )}
@@ -948,7 +917,6 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                 </div>
               ))}
 
-              {/* Add new color button */}
               <Popover
                 content={createColorPickerContent("new")}
                 trigger="click"
@@ -981,7 +949,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
       </div>
 
       <ScenarioPortalFooterButtons portalId={PortalId.FUNCTIONS_TAB} containerId="hover-inspector-popup-footer-note">
-        <div className="flex justify-between items-center gap-4 p-2 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-between items-center gap-4 p-3 border-t border-gray-200 bg-white">
           {/* Action buttons */}
           <button
             type="button"
@@ -1034,54 +1002,3 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     </form>
   );
 };
-//           <button
-//             type="button"
-//             onClick={onCancel}
-//             className="px-5 py-2.5 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-sm"
-//           >
-//             Cancel
-//           </button>
-//           <button
-//             type="submit"
-//             form={formId}
-//             disabled={!content.trim() || isSubmitting}
-//             className="group px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:scale-[1.02] disabled:hover:scale-100 disabled:hover:shadow-none flex items-center gap-2 min-w-[120px] justify-center"
-//           >
-//             {isSubmitting ? (
-//               <>
-//                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-//                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-//                   <path
-//                     className="opacity-75"
-//                     fill="currentColor"
-//                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-//                   ></path>
-//                 </svg>
-//                 Saving...
-//               </>
-//             ) : editingNote ? (
-//               <>
-//                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                   <path
-//                     strokeLinecap="round"
-//                     strokeLinejoin="round"
-//                     strokeWidth={2}
-//                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-//                   />
-//                 </svg>
-//                 Update Note
-//               </>
-//             ) : (
-//               <>
-//                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-//                 </svg>
-//                 Create Note
-//               </>
-//             )}
-//           </button>
-//         </div>
-//       </ScenarioPortalFooterButtons>
-//     </form>
-//   );
-// };

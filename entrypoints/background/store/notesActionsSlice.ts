@@ -191,7 +191,7 @@ export const notesActionsSlice = createChromeSlice({
       const state = await getState();
 
       // Use centralized function to create new color palette
-      const newColorPalette = createNewColorPalette(data);
+      const newColorPalette = createNewColorPalette(payload);
 
       const colorPalettes = state.colorPalettes || [];
       colorPalettes.push(newColorPalette);

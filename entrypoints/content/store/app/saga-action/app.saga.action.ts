@@ -19,6 +19,9 @@ import {
   userEventHoverConfirm,
   userEventSelectConfirm,
 } from "@entrypoints/content/store/app/app.slice.ts";
+import { closeNoteForm } from "@entrypoints/content/store/notes/notes.slice";
+import { closeElementCompare } from "@entrypoints/content/store/elementCompare/elementCompare.slice";
+import { closeElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 
 const freezeSelect = new FreezeSelect();
 
@@ -247,6 +250,11 @@ export const onToggleFeatureMinimized = sagaEnhancer(function* onToggleFeatureMi
 });
 
 export const onClearAllActiveIcons = sagaEnhancer(function* onClearAllActiveIconsFn(action) {
+  // Close all child popups when the main feature popup is closed
+  yield put(closeNoteForm());
+  yield put(closeElementCompare());
+  yield put(closeElementDetails());
+
   // After the clearAllActiveIcons action is dispatched, we need to persist the changes
   // Wait for the state to update with the cleared activeIcons (empty array)
   const state = yield select();
