@@ -55,63 +55,12 @@ export const Note: React.FC<NoteProps> = ({
 
   const isPinned = !!matchingLocation?.coordinates || !!currentElementXPath;
 
-  if (viewType === NoteViewType.CHIP) {
-    return (
-      <div
-        className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 m-1 cursor-pointer text-xs font-medium text-gray-700 transition-all hover:-translate-y-0.5 hover:shadow`}
-        style={{
-          backgroundColor: noteColor,
-          borderColor: isSelected ? "#3b82f6" : "rgba(0,0,0,0.1)",
-        }}
-        onClick={() => onSelect(note.id)}
-        title={`${note.title || "Untitled"}: ${note.content}`}
-      >
-        <span className="max-w-[150px] truncate">
-          {note.title || note.content.substring(0, 30) + (note.content.length > 30 ? "..." : "")}
-        </span>
-
-        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          {isPinned && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-              title="Unpin note"
-              className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
-            >
-              <FiMapPin className="h-3 w-3" />
-            </button>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(note.id);
-            }}
-            title="Edit note"
-            className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-black/10 text-gray-700 hover:bg-black/20"
-          >
-            <FiEdit2 className="h-3 w-3" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(note.id);
-            }}
-            title="Delete note"
-            className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-black/10 text-gray-700 hover:bg-black/20"
-          >
-            <FiTrash2 className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className="group relative mb-2 rounded-lg border-2 border-transparent p-3 shadow-sm transition-all hover:shadow-md"
       style={{
         borderColor: noteColor ?? "transparent",
+        borderWidth: "4px",
       }}
       onClick={() => onSelect(note.id)}
     >
@@ -120,7 +69,7 @@ export const Note: React.FC<NoteProps> = ({
       </div>
 
       <div className="mb-2 flex items-center justify-between">
-        <h4 className="flex-1 m-0 text-sm font-semibold text-gray-700">{note.title || "Untitled Note"}</h4>
+        <h4 className="flex-1 m-0 text-sm font-semibold text-gray-700">{note.title || ""}</h4>
 
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <button

@@ -67,7 +67,6 @@ const VisibleNoteView = ({ note, noteColorPalettes }) => {
     <div className="modal-drag-handle" style={{ background: noteColor, minHeight: "100px", height: "100%" }}>
       {note.title && <NoteTitle>{note.title}</NoteTitle>}
       <NoteContentText>{note.content || "No content"}</NoteContentText>
-      <NoteMeta>{formatDate(note.updatedAt)}</NoteMeta>
     </div>
   );
 };

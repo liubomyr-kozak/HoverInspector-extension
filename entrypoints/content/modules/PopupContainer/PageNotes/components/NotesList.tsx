@@ -246,17 +246,18 @@ export const NotesList: React.FC<NotesListProps> = ({
   onUpdateSearchQuery,
   onToggleGroup,
 }) => {
+  const [noteColorPalettes, setNoteColorPalettes] = useState<any>([]);
 
   const filteredNotes = useMemo(() => {
     let notes = notesState.notes;
+
+    setNoteColorPalettes(notesState.colorPalettes || DEFAULT_COLORS);
 
     // Filter by search query
     if (notesState.searchQuery.trim()) {
       const query = notesState.searchQuery.toLowerCase();
       notes = notes.filter(
-        (note) =>
-          note.title.toLowerCase().includes(query) ||
-          note.content.toLowerCase().includes(query),
+        (note) => note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query),
       );
     }
 
@@ -365,7 +366,7 @@ export const NotesList: React.FC<NotesListProps> = ({
                       key={note.id}
                       note={note}
                       isSelected={note.id === notesState.selectedNoteId}
-                      colorPalette={DEFAULT_COLORS}
+                      colorPalette={noteColorPalettes}
                       onEdit={onEditNote}
                       onDelete={onDeleteNote}
                       onSelect={onSelectNote}
@@ -383,7 +384,7 @@ export const NotesList: React.FC<NotesListProps> = ({
                     key={note.id}
                     note={note}
                     isSelected={note.id === notesState.selectedNoteId}
-                    colorPalette={DEFAULT_COLORS}
+                    colorPalette={noteColorPalettes}
                     onEdit={onEditNote}
                     onDelete={onDeleteNote}
                     onSelect={onSelectNote}
