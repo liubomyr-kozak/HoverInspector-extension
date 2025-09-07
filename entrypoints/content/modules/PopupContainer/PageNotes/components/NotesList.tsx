@@ -8,6 +8,8 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconFolder,
+  IconDownload,
+  IconUpload,
 } from "@tabler/icons-react";
 import styled from "styled-components";
 import { Note as NoteComponent } from "./Note";
@@ -153,6 +155,58 @@ const AddNoteButton = styled.button`
   }
 `;
 
+const ImportButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(139, 92, 246, 0.2);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const ExportButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(245, 158, 11, 0.2);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
 const Content = styled.div``;
 
 const GroupContainer = styled.div`
@@ -235,6 +289,8 @@ interface NotesListProps {
   onSelectNote: (id: string) => void;
   onUpdateSearchQuery: (query: string) => void;
   onToggleGroup: (groupId: string) => void;
+  onImportNotes: () => void;
+  onExportNotes: () => void;
 }
 
 export const NotesList: React.FC<NotesListProps> = ({
@@ -245,6 +301,8 @@ export const NotesList: React.FC<NotesListProps> = ({
   onSelectNote,
   onUpdateSearchQuery,
   onToggleGroup,
+  onImportNotes,
+  onExportNotes,
 }) => {
   const [noteColorPalettes, setNoteColorPalettes] = useState<any>([]);
 
@@ -326,6 +384,16 @@ export const NotesList: React.FC<NotesListProps> = ({
         </SearchContainer>
 
         <FilterControls>
+          <ButtonGroup>
+            <ImportButton onClick={onImportNotes}>
+              <IconUpload />
+              Import
+            </ImportButton>
+            <ExportButton onClick={onExportNotes}>
+              <IconDownload />
+              Export
+            </ExportButton>
+          </ButtonGroup>
           <AddNoteButton onClick={onCreateNote}>
             <IconPlus />
             Add Note

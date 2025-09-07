@@ -360,6 +360,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         elementXPath: location.elementXPath,
         routePattern: location.routePattern,
         url: window.location.href,
+        patternType: location.patternType || "url", // Add pattern type for filtering
       }));
 
       // Ensure we have at least one location
@@ -370,6 +371,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           elementXPath: elementXPath,
           routePattern: routeInputValue,
           url: window.location.href,
+          patternType: "url",
         });
       }
 

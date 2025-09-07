@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import { NotesList } from "./components/NotesList";
@@ -27,6 +27,7 @@ import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { PAGE_NOTES } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { TbWindowMinimize } from "react-icons/tb";
 import { FiGlobe, FiMap, FiTarget, FiX } from "react-icons/fi";
+import { AttachmentTypeEnum } from "@entrypoints/shared/types/notes";
 
 const Container = styled.div`
   display: flex;
@@ -195,7 +196,6 @@ export const PageNotes: React.FC = () => {
     }
   }, []);
 
-
   const handleToggleGroup = useCallback(
     async (groupId: string) => {
       const group = notesState.groups.find((g) => g.id === groupId);
@@ -239,6 +239,119 @@ export const PageNotes: React.FC = () => {
       throw err;
     }
   }, []);
+
+  // Add helper function to check if note should be visible on current page
+  const isNoteVisibleOnCurrentPage = (note: Note): boolean => {
+    const currentUrl = window.location.href;
+    const currentHostname = window.location.hostname;
+    const currentPathname = window.location.pathname;
+
+    // If note has locations array, use new filtering logic
+    if (note.locations && note.locations.length > 0) {
+      return note.locations.some((location) => {
+        // Global attachment - always visible
+        if (location.attachmentType === AttachmentTypeEnum.GLOBAL) {
+          return true;
+        }
+
+        // Domain attachment - visible on same domain
+        if (location.attachmentType === "domain") {
+          return location.domain === currentHostname || location.routePattern === currentHostname;
+        }
+
+        // Route attachment - check route pattern
+        if (location.attachmentType === AttachmentTypeEnum.ROUTE) {
+          if (!location.routePattern) return false;
+
+          if (location.patternType === "regex") {
+            try {
+              const regex = new RegExp(location.routePattern);
+              return regex.test(currentPathname) || regex.test(currentUrl);
+            } catch (e) {
+              console.warn("Invalid regex pattern:", location.routePattern);
+              return false;
+            }
+          } else {
+            // URL pattern matching
+            const pattern = location.routePattern;
+
+            // Simple wildcard matching
+            if (pattern.includes("*")) {
+              const regexPattern = pattern.replace(/\*/g, ".*");
+              try {
+                const regex = new RegExp(`^${regexPattern}$`);
+                return regex.test(currentPathname);
+              } catch (e) {
+                return false;
+              }
+            }
+
+            // Exact match or starts with match
+            return currentPathname === pattern || currentPathname.startsWith(pattern);
+          }
+        }
+
+        // Element attachment - check if element exists on page
+        if (location.attachmentType === "element" && location.elementXPath) {
+          try {
+            const result = document.evaluate(
+              location.elementXPath,
+              document,
+              null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null,
+            );
+            return result.singleNodeValue !== null;
+          } catch (e) {
+            console.warn("Invalid XPath:", location.elementXPath);
+            return false;
+          }
+        }
+
+        return false;
+      });
+    }
+
+    // Legacy fallback - support old note structure
+    if (note.attachmentType === AttachmentTypeEnum.GLOBAL) {
+      return true;
+    }
+
+    if (note.attachmentType === AttachmentTypeEnum.ROUTE) {
+      if (!note.routePattern) return false;
+      return currentPathname === note.routePattern || currentPathname.startsWith(note.routePattern);
+    }
+
+    if (note.elementXPath) {
+      try {
+        const result = document.evaluate(note.elementXPath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+        return result.singleNodeValue !== null;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Default to showing note if no specific rules
+    return true;
+  };
+
+  // Update the notes filtering logic in your component
+  const filteredNotes = useMemo(() => {
+    if (!notesState.notes) return [];
+
+    return notesState.notes.filter((note) => {
+      // Apply search filter
+      const matchesSearch =
+        !notesState.searchQuery ||
+        note.title?.toLowerCase().includes(notesState.searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(notesState.searchQuery.toLowerCase());
+
+      // Apply visibility filter
+      const isVisible = isNoteVisibleOnCurrentPage(note);
+
+      return matchesSearch && isVisible;
+    });
+  }, [notesState.notes, notesState.searchQuery]);
 
   if (!isActive) {
     return null;
