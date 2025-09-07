@@ -91,6 +91,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
       elementXPath?: string;
       routePattern?: string;
       isMain?: boolean;
+      patternType?: "url" | "regex";
     }>
   >([]);
 
@@ -291,6 +292,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
       attachmentType: AttachmentTypeEnum.ROUTE,
       routePattern: window.location.pathname,
       isMain: false,
+      patternType: "url" as const,
     };
     setLocations((prev) => [...prev, newLocation]);
   };
@@ -322,6 +324,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           attachmentType: "domain" as const,
           routePattern: currentHostname,
           isMain: false,
+          patternType: "url" as const,
         };
         setLocations((prev) => [...prev, domainLocation]);
       }
@@ -704,10 +707,17 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                               <Input
                                 value={location.routePattern || ""}
                                 onChange={(e) => updateLocation(index, { routePattern: e.target.value })}
-                                placeholder={`${window.location.hostname}/users/*`}
+                                placeholder={
+                                  location.patternType === "regex"
+                                    ? "^/users/[0-9]+$"
+                                    : `${window.location.hostname}/users/*`
+                                }
                                 addonBefore={
                                   <Select
-                                    defaultValue="url"
+                                    value={location.patternType || "url"}
+                                    onChange={(value: "url" | "regex") => 
+                                      updateLocation(index, { patternType: value })
+                                    }
                                     // @ts-ignore
                                     getPopupContainer={() =>
                                       (

@@ -62,6 +62,14 @@ export interface NotesState {
   groups: NoteGroup[];
   searchQuery: string;
   selectedNoteId?: string;
+  colorPalettes: {
+    id: string;
+    name: string;
+    value: string;
+    isDefault: boolean;
+    createdAt: number;
+    data: ColorPalette;
+  }[];
 }
 
 export interface ColorPalette {
