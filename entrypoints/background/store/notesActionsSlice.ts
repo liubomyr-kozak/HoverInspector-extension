@@ -51,6 +51,7 @@ export const notesActionsSlice = createChromeSlice({
 
     // Notes Management Actions
     getAllNotes: async (_: void, { getState }): Promise<NotesState> => {
+      debugger;
       return getState();
     },
 
@@ -58,6 +59,7 @@ export const notesActionsSlice = createChromeSlice({
       const state = await getState();
       const notes = state.notes;
 
+      debugger;
       const newNote = createNewNote(data);
       notes.push(newNote);
 
@@ -70,6 +72,7 @@ export const notesActionsSlice = createChromeSlice({
       const { id, updates } = payload;
 
       const notes = await getState().notes;
+      debugger;
 
       const noteIndex = notes.findIndex((note) => note.id === id);
       if (noteIndex !== -1) {
@@ -87,6 +90,7 @@ export const notesActionsSlice = createChromeSlice({
 
     deleteNote: async (id: string, { getState, setState }): Promise<{ success: boolean }> => {
       let notes = await getState().notes;
+      debugger;
 
       notes = notes.filter((note) => note.id !== id);
       setState({ notes });
@@ -101,8 +105,10 @@ export const notesActionsSlice = createChromeSlice({
     createNoteGroup: async (payload: CreateNoteGroupPayload, { setState, getState }): Promise<NoteGroup> => {
       const state = await getState();
 
+      debugger;
+
       // Use centralized function to create new group
-      const newGroup = createNewNoteGroup(data);
+      const newGroup = createNewNoteGroup(payload);
 
       state.groups.push(newGroup);
       setState({ groups: state.groups });
@@ -111,6 +117,7 @@ export const notesActionsSlice = createChromeSlice({
 
     updateNoteGroup: async (payload: UpdateNoteGroupPayload, { getState, setState }): Promise<NoteGroup | null> => {
       const state = await getState();
+      const { id, updates } = payload;
 
       const groupIndex = state.groups.findIndex((group) => group.id === id);
       if (groupIndex !== -1) {
@@ -205,7 +212,7 @@ export const notesActionsSlice = createChromeSlice({
     },
 
     deleteColorPalette: async (
-      payload: DeleteColorPalettePayload,
+      id: DeleteColorPalettePayload,
       { getState, setState },
     ): Promise<{ success: boolean }> => {
       const state = await getState();

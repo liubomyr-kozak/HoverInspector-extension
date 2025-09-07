@@ -1,4 +1,5 @@
 import { requestProcessing } from "./requestProcessing.ts";
+import LocalStorage from "@entrypoints/core/services/storage/LocalStorage.ts";
 
 type LocalExecFn<T = any, R = any> = (
   params: T,
@@ -23,11 +24,11 @@ type SliceDefinition<T extends Record<string, LocalExecFn>> = {
 const chromeStorageStrategies: Record<StorageType, StorageStrategy> = {
   localStorage: {
     get: async (key: string) => {
-      const raw = localStorage.getItem(key);
+      const raw = await LocalStorage.get(key);
       return raw ? JSON.parse(raw) : null;
     },
     set: async (key: string, data: any) => {
-      localStorage.setItem(key, JSON.stringify(data));
+      LocalStorage.set(key, JSON.stringify(data));
     },
   },
   sessionStorage: {
@@ -41,6 +42,7 @@ const chromeStorageStrategies: Record<StorageType, StorageStrategy> = {
   },
 };
 
+console.log("😎😎😎 :: -> createChromeSlice");
 export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config: SliceDefinition<T>) => {
   const { name = "__global__", initialState, version = 1, actions, storage = "chromeLocal" } = config;
   const storageStrategy = chromeStorageStrategies[storage];
@@ -70,25 +72,30 @@ export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config:
   };
 
   const bound: any = {};
+  const methods = { getState, setState };
+
   for (const key in actions) {
     const fn = actions[key];
     bound[key] = (data: Parameters<typeof fn>[0]) =>
       new Promise<Awaited<ReturnType<typeof fn>>>((resolve) => {
-        requestProcessing({ action: `${name}/${key}`, data }, resolve, () => fn(data, { getState, setState }));
+        const debugCb = () => fn(data, methods);
+
+        requestProcessing({ action: `${name}/${key}`, data }, resolve, debugCb);
       });
   }
 
   return {
     name,
-    getState,
-    setState,
     actions,
+    methods,
     ...bound,
   } as {
     name: string;
-    getState: () => typeof state;
-    setState: (newState: Partial<typeof state>) => Promise<void>;
     actions: T;
+    methods: {
+      getState: () => typeof state;
+      setState: (newState: Partial<typeof state>) => void;
+    };
   } & {
     [K in keyof T]: (data: Parameters<T[K]>[0]) => Promise<Awaited<ReturnType<T[K]>>>;
   };
@@ -107,7 +114,8 @@ export const combineChromeSlices = <T extends Record<string, ReturnType<typeof c
         const slice = Object.values(slices).find((s) => s.name === sliceName);
         if (slice && slice.actions[actionName]) {
           const fn = slice.actions[actionName] as LocalExecFn;
-          fn(request.data).then((res) => sendResponse(res));
+
+          fn(request.data, slice.methods).then((res) => sendResponse(res));
           return true;
         }
         return false;

@@ -199,8 +199,6 @@ export const VisibleNoteContainer: React.FC<VisibleNoteProps> = ({ note, highlig
 
   if (!position) return null;
 
-  console.log("🌟🌟🌟 ::VisibleNote -> note", note);
-
   return (
     <FloatingModal
       open={true}

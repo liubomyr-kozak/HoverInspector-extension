@@ -1,6 +1,12 @@
 import { isDevelopment, isPostProd, isProduction } from "@entrypoints/shared/helpers.ts";
 
-export const requestProcessing = (data, callback, localExecFn) => {
+type RequestProcessing = (
+  data: { action: string; data: any },
+  callback: (res: any) => void,
+  localExecFn?: (params: any) => Promise<any>,
+) => void;
+
+export const requestProcessing: RequestProcessing = (data, callback, localExecFn) => {
   if (isPostProd()) {
     // додав для випадку коли використовується всторому коді, який не має доступу до chrome.runtime
     if (!chrome?.runtime?.id) return;
@@ -14,6 +20,7 @@ export const requestProcessing = (data, callback, localExecFn) => {
   }
 
   if (isDevelopment()) {
+    // @ts-ignore
     const result = localExecFn(data);
     result.then((response) => {
       callback(response);

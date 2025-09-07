@@ -193,6 +193,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   const loadNotesData = useCallback(async () => {
     try {
+      debugger;
       const data = await getAllNotes();
       setNotesData(data);
     } catch (err) {
@@ -717,9 +718,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                                 addonBefore={
                                   <Select
                                     value={location.patternType || "url"}
-                                    onChange={(value: "url" | "regex") => 
-                                      updateLocation(index, { patternType: value })
-                                    }
+                                    onChange={(value: "url" | "regex") => updateLocation(index, { patternType: value })}
                                     // @ts-ignore
                                     getPopupContainer={() =>
                                       (

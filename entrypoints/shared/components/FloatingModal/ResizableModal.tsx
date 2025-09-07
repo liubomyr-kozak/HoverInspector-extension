@@ -76,10 +76,6 @@ export function ResizableModal({
   // Validate the initial position before using it
   // const validatedPosition = getValidatedPosition(initialPosition, initialSize);
 
-  if (viewSourceType === "note") {
-    console.log("🌟🌟🌟 ResizableModal::ResizableModal -> initialPosition", initialPosition);
-  }
-
   return (
     <ModalOverlay>
       <Rnd

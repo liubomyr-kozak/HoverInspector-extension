@@ -27,6 +27,7 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
   useEffect(() => {
     const loadVisibleNotes = async () => {
       try {
+        debugger;
         const notesData = await getAllNotes();
         const currentDomain = window.location.hostname;
         const currentUrl = window.location.href;
@@ -78,6 +79,7 @@ export const VisibleNotesProvider: React.FC<{ children?: React.ReactNode }> = ({
     if (refreshTrigger > 0) {
       const loadVisibleNotes = async () => {
         try {
+          debugger;
           const notesData = await getAllNotes();
           const currentDomain = window.location.hostname;
           const currentUrl = window.location.href;

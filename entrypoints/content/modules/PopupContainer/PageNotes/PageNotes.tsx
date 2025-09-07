@@ -102,6 +102,7 @@ export const PageNotes: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      debugger;
       const data = await getAllNotes();
       setNotesState(data);
     } catch (err) {
