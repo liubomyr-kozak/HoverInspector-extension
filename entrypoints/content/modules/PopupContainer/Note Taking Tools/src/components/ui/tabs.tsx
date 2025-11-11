@@ -1,63 +1,117 @@
 "use client";
 
 import * as React from "react";
-import * as TabsPrimitive from "@radix-ui/react-tabs@1.1.3";
-
+import { Tabs as AntTabs } from "antd";
 import { cn } from "./utils";
 
-function Tabs({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Root>) {
+type TabsRootProps = {
+  className?: string;
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (key: string) => void;
+  destroyInactiveTabPane?: boolean;
+  children?: React.ReactNode;
+};
+
+type TabsTriggerProps = {
+  className?: string;
+  value: string;
+  children?: React.ReactNode;
+};
+
+type TabsContentProps = {
+  className?: string;
+  value: string;
+  children?: React.ReactNode;
+};
+
+function isElementOf(
+  node: any,
+  comp: React.JSXElementConstructor<any>,
+): node is React.ReactElement {
+  return React.isValidElement(node) && node.type === comp;
+}
+
+function flattenChildren(children: React.ReactNode): React.ReactElement[] {
+  const out: React.ReactElement[] = [];
+  React.Children.forEach(children as any, (child) => {
+    if (!child) return;
+    if (Array.isArray(child)) {
+      out.push(...flattenChildren(child));
+    } else if (React.isValidElement(child)) {
+      out.push(child);
+      if (child.props && child.props.children) {
+        out.push(...flattenChildren(child.props.children));
+      }
+    }
+  });
+  return out;
+}
+
+function Tabs({ className, value, defaultValue, onValueChange, destroyInactiveTabPane, children }: TabsRootProps) {
+  // Collect triggers and contents by value
+  const all = React.useMemo(() => flattenChildren(children), [children]);
+
+  const triggers = new Map<string, React.ReactNode>();
+  const contents = new Map<string, React.ReactNode>();
+
+  for (const el of all) {
+    if (isElementOf(el, TabsTrigger)) {
+      const v = (el.props as TabsTriggerProps).value;
+      if (v) triggers.set(v, el.props.children);
+    } else if (isElementOf(el, TabsContent)) {
+      const v = (el.props as TabsContentProps).value;
+      if (v) contents.set(v, el.props.children);
+    }
+  }
+
+  const items = Array.from(triggers.entries()).map(([key, label]) => ({
+    key,
+    label: <span data-slot="tabs-trigger-label">{label}</span>,
+    children: <div data-slot="tabs-content">{contents.get(key) ?? null}</div>,
+  }));
+
+  // Fallback first key when neither value nor defaultValue provided
+  const firstKey = items[0]?.key;
+
   return (
-    <TabsPrimitive.Root
-      data-slot="tabs"
+    <AntTabs
       className={cn("flex flex-col gap-2", className)}
-      {...props}
+      activeKey={value}
+      defaultActiveKey={defaultValue ?? firstKey}
+      onChange={(k) => onValueChange?.(k)}
+      destroyInactiveTabPane={destroyInactiveTabPane}
+      items={items}
     />
   );
 }
 
-function TabsList({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.List>) {
+function TabsList({ className, ...props }: { className?: string; children?: React.ReactNode }) {
+  // Structural container only
   return (
-    <TabsPrimitive.List
-      data-slot="tabs-list"
-      className={cn(
-        "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-xl p-[3px] flex",
-        className,
-      )}
-      {...props}
-    />
+    <div data-slot="tabs-list" className={cn("inline-flex items-center gap-2", className)} {...props} />
   );
 }
 
-function TabsTrigger({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+function TabsTrigger({ className, ...props }: TabsTriggerProps) {
+  // Marker node for Tabs to build AntD items; hidden in DOM
   return (
-    <TabsPrimitive.Trigger
+    <span
       data-slot="tabs-trigger"
-      className={cn(
-        "data-[state=active]:bg-card dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      data-value={props.value}
+      className={cn("hidden", className)}
       {...props}
     />
   );
 }
 
-function TabsContent({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Content>) {
+function TabsContent({ className, ...props }: TabsContentProps) {
+  // Marker node for Tabs to attach content; hidden in DOM (AntD renders actual pane)
   return (
-    <TabsPrimitive.Content
-      data-slot="tabs-content"
-      className={cn("flex-1 outline-none", className)}
+    <div
+      data-slot="tabs-content-marker"
+      data-value={props.value}
+      className={cn("hidden", className)}
       {...props}
     />
   );

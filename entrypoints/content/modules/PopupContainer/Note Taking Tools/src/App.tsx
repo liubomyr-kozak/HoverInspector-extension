@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { NoteEditor } from './components/NoteEditor';
 import { FloatingActionButton } from './components/FloatingActionButton';
-import { useNotes } from './hooks/useNotes';
+import { useReduxNotes as useNotes } from './hooks/useReduxNotes';
 import { Toaster } from './components/ui/sonner';
 
 export default function App() {

@@ -1,65 +1,120 @@
 "use client";
 
 import * as React from "react";
-import * as AccordionPrimitive from "@radix-ui/react-accordion@1.2.3";
-import { ChevronDownIcon } from "lucide-react@0.487.0";
-
+import { Collapse } from "antd";
 import { cn } from "./utils";
 
-function Accordion({
-  ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Root>) {
-  return <AccordionPrimitive.Root data-slot="accordion" {...props} />;
+type AccordionRootProps = {
+  className?: string;
+  type?: "single" | "multiple";
+  value?: string | string[];
+  defaultValue?: string | string[];
+  onValueChange?: (v: string | string[]) => void;
+  children?: React.ReactNode;
+};
+
+type AccordionItemProps = {
+  className?: string;
+  value: string;
+  children?: React.ReactNode;
+};
+
+type AccordionTriggerProps = {
+  className?: string;
+  children?: React.ReactNode;
+};
+
+type AccordionContentProps = {
+  className?: string;
+  children?: React.ReactNode;
+};
+
+function isElementOf(
+  node: any,
+  comp: React.JSXElementConstructor<any>,
+): node is React.ReactElement {
+  return React.isValidElement(node) && node.type === comp;
 }
 
-function AccordionItem({
-  className,
-  ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Item>) {
+function Accordion({ className, type = "single", value, defaultValue, onValueChange, children }: AccordionRootProps) {
+  // Extract items from structure: AccordionItem -> (Trigger + Content)
+  const items = React.useMemo(() => {
+    const out: { key: string; label: React.ReactNode; children: React.ReactNode }[] = [];
+
+    React.Children.forEach(children, (child) => {
+      if (!React.isValidElement(child)) return;
+      if (!isElementOf(child, AccordionItem)) return;
+
+      const itemKey = (child.props as AccordionItemProps).value;
+      let label: React.ReactNode = null;
+      let body: React.ReactNode = null;
+
+      React.Children.forEach(child.props.children, (nested) => {
+        if (!React.isValidElement(nested)) return;
+        if (isElementOf(nested, AccordionTrigger)) {
+          label = nested.props.children;
+        } else if (isElementOf(nested, AccordionContent)) {
+          body = nested.props.children;
+        }
+      });
+
+      if (itemKey) {
+        out.push({
+          key: itemKey,
+          label: <div data-slot="accordion-trigger">{label}</div>,
+          children: <div data-slot="accordion-content">{body}</div>,
+        });
+      }
+    });
+
+    return out;
+  }, [children]);
+
+  const accordion = type === "single";
+  const activeKey = value as any;
+  const defaultActiveKey = defaultValue as any;
+
   return (
-    <AccordionPrimitive.Item
-      data-slot="accordion-item"
-      className={cn("border-b last:border-b-0", className)}
-      {...props}
+    <Collapse
+      className={cn(className)}
+      accordion={accordion}
+      activeKey={activeKey}
+      defaultActiveKey={defaultActiveKey}
+      onChange={(k) => {
+        // AntD returns string | string[]
+        if (accordion) {
+          onValueChange?.(k as string);
+        } else {
+          onValueChange?.(Array.isArray(k) ? k : [k as string]);
+        }
+      }}
+      items={items}
     />
   );
 }
 
-function AccordionTrigger({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
+function AccordionItem({ className, value, children }: AccordionItemProps) {
+  // Marker container for structure; hidden to avoid duplicate rendering
   return (
-    <AccordionPrimitive.Header className="flex">
-      <AccordionPrimitive.Trigger
-        data-slot="accordion-trigger"
-        className={cn(
-          "focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200" />
-      </AccordionPrimitive.Trigger>
-    </AccordionPrimitive.Header>
+    <div data-slot="accordion-item" data-value={value} className={cn("hidden", className)}>
+      {children}
+    </div>
   );
 }
 
-function AccordionContent({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Content>) {
+function AccordionTrigger({ className, children }: AccordionTriggerProps) {
   return (
-    <AccordionPrimitive.Content
-      data-slot="accordion-content"
-      className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden text-sm"
-      {...props}
-    >
-      <div className={cn("pt-0 pb-4", className)}>{children}</div>
-    </AccordionPrimitive.Content>
+    <div data-slot="accordion-trigger-marker" className={cn("hidden", className)}>
+      {children}
+    </div>
+  );
+}
+
+function AccordionContent({ className, children }: AccordionContentProps) {
+  return (
+    <div data-slot="accordion-content-marker" className={cn("hidden", className)}>
+      {children}
+    </div>
   );
 }
 

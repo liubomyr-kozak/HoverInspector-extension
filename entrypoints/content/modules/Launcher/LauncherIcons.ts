@@ -8,6 +8,7 @@ import {
   IconCode,
   IconBrush,
   IconNotes,
+  IconNotebook,
 } from "@tabler/icons-react";
 
 export const INSPECTOR = {
@@ -74,7 +75,15 @@ export const PAGE_NOTES = {
   multipleView: false,
 };
 
-const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION, CSS_SNAPSHOT, PAGE_NOTES];
+export const NOTE_TAKING_TOOLS = {
+  id: "noteTakingTools",
+  title: "Note Taking Tools",
+  icon: IconNotebook,
+  activatable: true,
+  multipleView: false,
+};
+
+const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION, CSS_SNAPSHOT, PAGE_NOTES, NOTE_TAKING_TOOLS];
 
 export const POPUP_SUPPORT_TOOLS = [
   INSPECTOR.id,
@@ -85,6 +94,7 @@ export const POPUP_SUPPORT_TOOLS = [
   AUTOMATION.id,
   CSS_SNAPSHOT.id,
   PAGE_NOTES.id,
+  NOTE_TAKING_TOOLS.id,
 ];
 
 export const ICON_ITEMS = ICON_ITEMS_INITIAL.filter((item) => item.activatable);

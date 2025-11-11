@@ -18,6 +18,7 @@ import {
   INSPECTOR,
   PICKER,
   PAGE_NOTES,
+  NOTE_TAKING_TOOLS,
   POPUP_SUPPORT_TOOLS,
   RULER,
 } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
@@ -27,6 +28,7 @@ import AnalyzePageUI from "@entrypoints/content/modules/PopupContainer/AnalyzePa
 import { AutomationScenarios } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationScenarios.tsx";
 import { CSSSnapshotInspector } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/CSSSnapshotInspector.tsx";
 import { PageNotes } from "@entrypoints/content/modules/PopupContainer/PageNotes/PageNotes.tsx";
+import { NoteTakingToolsIntegration } from "@entrypoints/content/modules/PopupContainer/NoteTakingToolsIntegration.tsx";
 import { HighlightOverlayProvider } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
 import {
   BecomeASponsor,
@@ -73,6 +75,7 @@ const COMPONENT_MAP: Record<string, JSX.Element> = {
   [AUTOMATION.id]: <AutomationScenarios />,
   [CSS_SNAPSHOT.id]: <CSSSnapshotInspector />,
   [PAGE_NOTES.id]: <PageNotes />,
+  [NOTE_TAKING_TOOLS.id]: <NoteTakingToolsIntegration />,
 };
 
 export function PopupContainer() {
