@@ -4,6 +4,8 @@ import { Ext } from "@entrypoints/features/extension/Ext";
 import { skipTab } from "./shared/utils.ts";
 import { actionsContextSlice } from "./store/backgroundSlice.ts";
 import { appBackgroundSlice } from "./store/appBackgroundSlice.ts";
+import { handleAutomationTabPort, registerAutomationTabListeners } from "./automationTabs.ts";
+import { AUTOMATION_TAB_PORT } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/executionSession.ts";
 
 let lastBrowserAction;
 
@@ -43,11 +45,14 @@ export default defineBackground({
 
     browser.runtime.onConnect.addListener((port) => {
       if (!port.sender?.tab?.id) return;
+      // Tab id request from a playing scenario, not the extension instance port
+      if (port.name === AUTOMATION_TAB_PORT) return;
 
       Ext.session.initializePort(port);
     });
 
     chrome.runtime.onConnect.addListener(function (port) {
+      if (handleAutomationTabPort(port)) return;
       // tabs[port.sender.tab.id].initialize(port);
       Ext.session.initializePort(port);
     });
@@ -57,6 +62,8 @@ export default defineBackground({
         Ext.session.deactivate(tabId);
       }
     });
+
+    registerAutomationTabListeners();
 
     const debounceMap: Record<number, NodeJS.Timeout> = {};
 

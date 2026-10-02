@@ -15,6 +15,7 @@ import {
   loadScenariosWatcher,
   loadSchedulesWatcher,
   loadTriggersWatcher,
+  resumeExecutionWatcher,
 } from "@entrypoints/content/store/automation/automation.saga.action";
 import { ElementInspector } from "@entrypoints/content/modules/ElementInspector";
 import { INSPECTOR, POPUP_SUPPORT_TOOLS, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons";
@@ -40,6 +41,8 @@ export const App = ({ shadowRoot }) => {
     dispatch(loadScenariosWatcher.getPayload());
     dispatch(loadSchedulesWatcher.getPayload());
     dispatch(loadTriggersWatcher.getPayload());
+    // Continue a scenario that was playing when this page was loaded (navigation, new tab)
+    dispatch(resumeExecutionWatcher.getPayload());
   }, [dispatch]);
 
   // Inject react-toastify CSS into shadow DOM

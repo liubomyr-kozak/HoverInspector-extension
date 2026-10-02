@@ -14,7 +14,10 @@ import {
   selectRecording,
   selectRecordingPaused,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
-import { persistEditingStateWatcher } from "@entrypoints/content/store/automation/automation.saga.action";
+import {
+  persistEditingStateWatcher,
+  syncRecordingStateWatcher,
+} from "@entrypoints/content/store/automation/automation.saga.action";
 import { generateXPaths } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils.ts";
 import HighlightOverlayManager from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayManager";
 import { ScenarioStep } from "./types";
@@ -297,6 +300,17 @@ const AutomationUserActionsHandler: React.FC = () => {
     window.addEventListener("hashchange", recordUrlChangeIfAny);
     window.addEventListener("beforeunload", flushPendingInput);
 
+    // The same recording may continue in another tab (e.g. a link opened in a new tab):
+    // save what was typed here before leaving, and take the steps recorded there when coming back
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushPendingInput();
+      } else {
+        dispatch(syncRecordingStateWatcher.getPayload());
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     // Override history methods to detect programmatic (SPA) navigation
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
@@ -320,6 +334,7 @@ const AutomationUserActionsHandler: React.FC = () => {
       window.removeEventListener("popstate", recordUrlChangeIfAny);
       window.removeEventListener("hashchange", recordUrlChangeIfAny);
       window.removeEventListener("beforeunload", flushPendingInput);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
 
       history.pushState = originalPushState;
       history.replaceState = originalReplaceState;
