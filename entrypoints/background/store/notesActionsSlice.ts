@@ -72,7 +72,6 @@ export const notesActionsSlice = createChromeSlice({
       const { id, updates } = payload;
 
       const notes = await getState().notes;
-      debugger;
 
       const noteIndex = notes.findIndex((note) => note.id === id);
       if (noteIndex !== -1) {

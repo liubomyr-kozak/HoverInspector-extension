@@ -19,7 +19,6 @@ import {
 import { ElementInspector } from "@entrypoints/content/modules/ElementInspector";
 import { INSPECTOR, POPUP_SUPPORT_TOOLS, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons";
 import { ViewportRuler } from "@entrypoints/content/modules/PopupContainer/ViewportRuler";
-import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationUserActionsHandler.tsx";
 import NotificationManager from "@entrypoints/content/modules/NotificationManager/NotificationManager.tsx";
 import { TriggerScenarioEvaluator } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/TriggerForm/TriggerScenarioEvaluator.tsx";
 import { ScheduleMonitor } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScheduleMonitor.tsx";
