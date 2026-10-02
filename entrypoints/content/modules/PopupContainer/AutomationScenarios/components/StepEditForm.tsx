@@ -41,6 +41,7 @@ interface StepEditFormProps {
   step: ScenarioStep;
   onClose: () => void;
   onSave: (updatedStep: ScenarioStep) => void;
+  onChange?: (updatedStep: ScenarioStep) => void;
   onDelete?: () => void;
   onMoveUp?: (stepIndex: number) => void;
   onMoveDown?: (stepIndex: number) => void;
@@ -57,6 +58,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   step = {} as ScenarioStep,
   onClose,
   onSave,
+  onChange,
   onDelete,
   onMoveUp,
   onMoveDown,
@@ -204,22 +206,29 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   }, [selectingElement, highlightManager, handleElementSelected]);
 
   // Local state for the form
-  const [formValues, setFormValues] = useState<ScenarioStep>({
-    type: step?.type || "",
-    xpath: step?.xpath || "",
-    value: step?.value || "",
-    alternativeXpaths: step?.alternativeXpaths || [],
+  // Keeps every field of the step (enableNavigation, delay, xpathAutoUpdated...), not only the edited ones
+  const toFormValues = (source: ScenarioStep): ScenarioStep => ({
+    ...source,
+    type: source?.type || StepType.NOT_SET,
+    xpath: source?.xpath || "",
+    value: source?.value || "",
+    alternativeXpaths: source?.alternativeXpaths || [],
   });
+
+  const [formValues, setFormValues] = useState<ScenarioStep>(() => toFormValues(step));
 
   // Update local state when the step prop changes
   useEffect(() => {
-    setFormValues({
-      type: step?.type || "",
-      xpath: step?.xpath || "",
-      value: step?.value || "",
-      alternativeXpaths: step?.alternativeXpaths || [],
-    });
+    setFormValues(toFormValues(step));
   }, [step]);
+
+  // Live mode: report every user edit to the parent (used where the form has no own Save button)
+  useEffect(() => {
+    if (!onChange) return;
+    if (JSON.stringify(formValues) !== JSON.stringify(toFormValues(step))) {
+      onChange(formValues);
+    }
+  }, [formValues]);
 
   // Cleanup element selection on component unmount
   useEffect(() => {
@@ -231,7 +240,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   }, [selectingElement, highlightManager]);
 
   // Handle form field changes
-  const handleChange = (field: keyof ScenarioStep, value: string) => {
+  const handleChange = (field: keyof ScenarioStep, value: string | boolean) => {
     setFormValues((prev) => ({
       ...prev,
       [field]: value,

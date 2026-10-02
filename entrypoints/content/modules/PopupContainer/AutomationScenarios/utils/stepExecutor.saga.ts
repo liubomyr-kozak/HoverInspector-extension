@@ -205,15 +205,54 @@ export function* addLogEntry(entry: ExecutionLogEntry) {
 }
 
 /**
- * Gets an element by XPath
+ * Gets an element by XPath, falling back to the step's alternative XPaths
  */
-function getElementByXPath(xpath: string): Element | null {
-  try {
-    return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
-      .singleNodeValue as Element;
-  } catch (error) {
-    console.error(`Error evaluating XPath: ${xpath}`, error);
-    return null;
+function getElementByXPath(xpath: string, alternativeXpaths: string[] = []): Element | null {
+  for (const candidate of [xpath, ...alternativeXpaths]) {
+    if (!candidate) continue;
+    try {
+      const element = document.evaluate(candidate, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
+        .singleNodeValue as Element | null;
+      if (element) return element;
+    } catch (error) {
+      console.error(`Error evaluating XPath: ${candidate}`, error);
+    }
+  }
+  return null;
+}
+
+// How long element-based steps wait for their target to appear (pages often render asynchronously)
+const ELEMENT_LOOKUP_TIMEOUT = 5000;
+const ELEMENT_LOOKUP_INTERVAL = 100;
+
+/**
+ * Finds the element of a step, retrying until it appears or the lookup times out
+ */
+function* findStepElement(step: ScenarioStep, stepLabel: string) {
+  if (!step.xpath) {
+    throw new Error(`XPath is required for ${stepLabel} steps`);
+  }
+  const startTime = Date.now();
+  while (true) {
+    const element = getElementByXPath(step.xpath, step.alternativeXpaths);
+    if (element) return element;
+    if (Date.now() - startTime >= ELEMENT_LOOKUP_TIMEOUT) {
+      throw new Error(`Element not found with XPath: ${step.xpath}`);
+    }
+    yield delay(ELEMENT_LOOKUP_INTERVAL);
+  }
+}
+
+/**
+ * Sets a form control value in a way that frameworks tracking the value (React, Vue...) notice
+ */
+function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) {
+  const prototype = Object.getPrototypeOf(element);
+  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+  if (setter) {
+    setter.call(element, value);
+  } else {
+    element.value = value;
   }
 }
 
@@ -256,49 +295,38 @@ export function getStepDescription(step: ScenarioStep): string {
  * Executes a click step
  */
 export function* executeClickStep(step: ScenarioStep) {
-  if (!step.xpath) {
-    throw new Error("XPath is required for click steps");
-  }
+  const element: Element = yield call(findStepElement, step, "click");
 
-  const element = getElementByXPath(step.xpath);
-  if (!element) {
-    throw new Error(`Element not found with XPath: ${step.xpath}`);
-  }
+  (element as HTMLElement).scrollIntoView?.({ block: "center", inline: "nearest" });
 
-  // Trigger a click event on the element
-  (element as HTMLElement)?.click?.();
+  // Dispatch the full pointer sequence: many UI libraries react to mousedown/pointerdown, not just click
+  const eventInit = { bubbles: true, cancelable: true, view: window, button: 0 };
+  element.dispatchEvent(new PointerEvent("pointerdown", eventInit));
+  element.dispatchEvent(new MouseEvent("mousedown", eventInit));
+  element.dispatchEvent(new PointerEvent("pointerup", eventInit));
+  element.dispatchEvent(new MouseEvent("mouseup", eventInit));
+  (element as HTMLElement).click?.();
 }
 
 /**
  * Executes a hover step
  */
 export function* executeHoverStep(step: ScenarioStep) {
-  if (!step.xpath) {
-    throw new Error("XPath is required for hover steps");
-  }
+  const element: Element = yield call(findStepElement, step, "hover");
 
-  const element = getElementByXPath(step.xpath);
-  if (!element) {
-    throw new Error(`Element not found with XPath: ${step.xpath}`);
-  }
-
-  // Trigger mouseover and mouseenter events on the element
+  // Trigger the pointer/mouse enter events on the element
+  element.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+  element.dispatchEvent(new PointerEvent("pointerenter", { bubbles: false }));
   element.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-  element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+  element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false }));
+  element.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
 }
 
 /**
  * Executes an input step
  */
 export function* executeInputStep(step: ScenarioStep) {
-  if (!step.xpath) {
-    throw new Error("XPath is required for input steps");
-  }
-
-  const element = getElementByXPath(step.xpath);
-  if (!element) {
-    throw new Error(`Element not found with XPath: ${step.xpath}`);
-  }
+  const element: Element = yield call(findStepElement, step, "input");
 
   if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) {
     throw new Error(`Element with XPath ${step.xpath} is not an input or textarea element`);
@@ -307,11 +335,8 @@ export function* executeInputStep(step: ScenarioStep) {
   // Focus the element
   element.focus();
 
-  // Clear the current value
-  element.value = "";
-
-  // Set the new value
-  element.value = step.value || "";
+  // Set the new value through the native setter so framework-controlled inputs pick it up
+  setNativeValue(element, step.value || "");
 
   // Trigger input and change events
   element.dispatchEvent(new Event("input", { bubbles: true }));
@@ -322,26 +347,19 @@ export function* executeInputStep(step: ScenarioStep) {
  * Executes a value step
  */
 export function* executeValueStep(step: ScenarioStep) {
-  if (!step.xpath) {
-    throw new Error("XPath is required for value steps");
-  }
-
-  const element = getElementByXPath(step.xpath);
-  if (!element) {
-    throw new Error(`Element not found with XPath: ${step.xpath}`);
-  }
+  const element: Element = yield call(findStepElement, step, "value");
 
   // Set the value based on the element type
   if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
     // For input and textarea elements, set the value property
-    element.value = step.value || "";
+    setNativeValue(element, step.value || "");
 
     // Trigger input and change events
     element.dispatchEvent(new Event("input", { bubbles: true }));
     element.dispatchEvent(new Event("change", { bubbles: true }));
   } else if (element instanceof HTMLSelectElement) {
     // For select elements, set the value property
-    element.value = step.value || "";
+    setNativeValue(element, step.value || "");
 
     // Trigger change event
     element.dispatchEvent(new Event("change", { bubbles: true }));
@@ -498,23 +516,17 @@ export function* executeWaitStep(step: ScenarioStep) {
  * Executes a select step
  */
 export function* executeSelectStep(step: ScenarioStep) {
-  if (!step.xpath) {
-    throw new Error("XPath is required for select steps");
-  }
-
-  const element = getElementByXPath(step.xpath);
-  if (!element) {
-    throw new Error(`Element not found with XPath: ${step.xpath}`);
-  }
+  const element: Element = yield call(findStepElement, step, "select");
 
   if (!(element instanceof HTMLSelectElement)) {
     throw new Error(`Element with XPath ${step.xpath} is not a select element`);
   }
 
   // Set the value
-  element.value = step.value || "";
+  setNativeValue(element, step.value || "");
 
-  // Trigger change event
+  // Trigger input and change events
+  element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
@@ -604,7 +616,7 @@ export function* executeConfirmationStep(step: ScenarioStep) {
  */
 export function* executeNotificationStep(step: ScenarioStep) {
   const message = step.value || "Notification";
-  const autoCloseTime = step.delay || 3000; // Use step delay if provided, otherwise default to 3 seconds
+  const autoCloseTime = Number(step.delay) || 3000; // Use step delay if provided, otherwise default to 3 seconds
 
   try {
     // Use the notification dialog helper
@@ -632,8 +644,8 @@ export function* executeWaitElementVisibleStep(step: ScenarioStep) {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
-    const element = getElementByXPath(step.xpath);
-    
+    const element = getElementByXPath(step.xpath, step.alternativeXpaths) as HTMLElement | null;
+
     if (element) {
       // Check if element is visible
       const rect = element.getBoundingClientRect();

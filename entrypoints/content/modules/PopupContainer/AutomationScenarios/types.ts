@@ -10,6 +10,7 @@ export interface ScenarioStep {
   value?: string;
   xpathAutoUpdated?: boolean; // Flag to indicate if xpath was automatically updated for better uniqueness
   enableNavigation?: boolean; // Controls whether navigation steps should be executed during playback (only applies to navigate steps)
+  delay?: number | string; // Auto close time for notification steps (ms)
 }
 
 /**

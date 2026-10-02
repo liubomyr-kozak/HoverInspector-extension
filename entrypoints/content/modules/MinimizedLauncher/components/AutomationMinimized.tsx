@@ -6,15 +6,13 @@ import {
   startNewRecordingWatcher,
   stopRecordingWatcher,
   saveScenarioWatcher,
-  persistEditingStateWatcher,
 } from "@entrypoints/content/store/automation/automation.saga.action.ts";
 import {
   selectRecording,
   selectActiveScenarioId,
   selectCurrentSteps,
-  automationActions,
-  ScenarioStatus,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
+import { generateScenarioTitle } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/recordingUtils.ts";
 import { useScenarioActions } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/hooks/useScenarioActions.ts";
 import { FeatureContainer, MainButton, QuickAction, RecordingIndicator } from "../MinimizedLauncher.styled.ts";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
@@ -35,32 +33,29 @@ export const AutomationMinimized: React.FC<AutomationMinimizedProps> = ({ featur
   const startRecording = () => dispatch(startNewRecordingWatcher.getPayload());
 
   const saveAndStopRecording = () => {
-    if (activeScenarioId && currentSteps.length > 0) {
-      // Create a scenario object with the recorded steps
-
-      const scenarioToSave = {
-        ...scenarios[activeScenarioId],
-        data: currentSteps,
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Save the scenario with the recorded steps
-      dispatch(
-        saveScenarioWatcher.getPayload({
-          id: activeScenarioId,
-          scenario: scenarioToSave,
-        }),
-      );
+    // Only the initial "navigate" step means nothing was recorded
+    if (currentSteps.length <= 1) {
+      dispatch(stopRecordingWatcher.getPayload());
+      return;
     }
 
-    // Stop the recording
-    dispatch(stopRecordingWatcher.getPayload());
+    const existing = activeScenarioId ? scenarios[activeScenarioId] : undefined;
+    const scenarioToSave = {
+      repeat: 1,
+      description: "",
+      tags: [],
+      category: "",
+      ...existing,
+      title: existing?.title || generateScenarioTitle(),
+      data: currentSteps,
+    };
 
-    // Switch to editing mode and set up for saving
-    dispatch(automationActions.setStatus(ScenarioStatus.EDITING));
-
-    // Explicitly persist the editing state to ensure it's available after page navigation
-    dispatch(persistEditingStateWatcher.getPayload());
+    // saveScenarioWatcher persists the scenario, resets the recording state and clears the stored session
+    dispatch(
+      saveScenarioWatcher.getPayload(
+        activeScenarioId ? { id: activeScenarioId, scenario: scenarioToSave } : { scenario: scenarioToSave },
+      ),
+    );
   };
 
   const scenariosList = Object.keys(scenarios);

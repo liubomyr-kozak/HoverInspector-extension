@@ -1,8 +1,42 @@
 /**
  * Utility functions for recording automation scenarios
  */
-import { ScenarioStep } from "../types";
-import { generateXPath, generateXPaths, validateAndImproveXPaths } from "./xpathUtils";
+import { ScenarioStep, StepType } from "../types";
+import { generateXPaths, validateAndImproveXPaths } from "./xpathUtils";
+
+// Input types that are driven by clicks rather than typing
+const NON_TEXT_INPUT_TYPES = ["checkbox", "radio", "button", "submit", "reset", "file", "image", "color", "range"];
+
+// Selector for elements that represent a meaningful click target
+const ACTIONABLE_SELECTOR =
+  'a, button, input, textarea, select, option, label, summary, [role="button"], [role="link"], [role="checkbox"], ' +
+  '[role="menuitem"], [role="tab"], [role="radio"], [role="switch"], [role="option"], [onclick], [contenteditable="true"]';
+
+/**
+ * Returns true for elements the user types into (text inputs and textareas).
+ */
+export function isTextEntryElement(element: Element | null): boolean {
+  if (!element) return false;
+  if (element.tagName === "TEXTAREA") return true;
+  if (element.tagName !== "INPUT") return false;
+  const type = (element.getAttribute("type") || "text").toLowerCase();
+  return !NON_TEXT_INPUT_TYPES.includes(type);
+}
+
+/**
+ * Resolves the element that should be recorded for a click. Clicks usually land on an inner
+ * <span>, <svg> or <path> of a button/link; recording that inner node produces fragile locators,
+ * so we walk up to the closest actionable ancestor when there is one.
+ */
+export function getActionableTarget(element: Element | null): Element | null {
+  if (!element) return null;
+  const actionable = element.closest?.(ACTIONABLE_SELECTOR);
+  if (actionable && actionable !== document.body) return actionable;
+  // SVG internals are never useful targets
+  const svgRoot = element.closest?.("svg");
+  if (svgRoot && svgRoot.parentElement) return svgRoot.parentElement;
+  return element;
+}
 
 /**
  * Creates a step object for a user action with XPath validation and auto-correction
@@ -15,7 +49,7 @@ import { generateXPath, generateXPaths, validateAndImproveXPaths } from "./xpath
  * @returns A ScenarioStep object with validated XPath and auto-update flag
  */
 function createStepObject(
-  type: string, 
+  type: ScenarioStep["type"],
   element: Element,
   xpath: string, 
   alternativeXpaths: string[] = [],
@@ -45,10 +79,11 @@ function createStepObject(
  * @returns A ScenarioStep object or null if the element is invalid
  */
 export function recordClick(element: Element): ScenarioStep | null {
+  element = getActionableTarget(element) as Element;
   if (!element) return null;
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("click", element, primaryXPath, alternativeXpaths);
+  return createStepObject(StepType.CLICK, element, primaryXPath, alternativeXpaths);
 }
 
 /**
@@ -59,10 +94,10 @@ export function recordClick(element: Element): ScenarioStep | null {
  * @returns A ScenarioStep object or null if the element is invalid
  */
 export function recordInput(element: Element, value: string): ScenarioStep | null {
-  if (!element) return null;
+  if (!element || !isTextEntryElement(element)) return null;
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("input", element, primaryXPath, alternativeXpaths, value);
+  return createStepObject(StepType.INPUT, element, primaryXPath, alternativeXpaths, value);
 }
 
 /**
@@ -76,7 +111,7 @@ export function recordSelect(element: Element, value: string): ScenarioStep | nu
   if (!element) return null;
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("select", element, primaryXPath, alternativeXpaths, value);
+  return createStepObject(StepType.SELECT, element, primaryXPath, alternativeXpaths, value);
 }
 
 /**
@@ -131,6 +166,7 @@ function isActionableElement(element: Element): boolean {
  * @returns A ScenarioStep object or null if the element is invalid or not actionable
  */
 export function recordHover(element: Element): ScenarioStep | null {
+  element = getActionableTarget(element) as Element;
   if (!element) return null;
   
   // Only record hover for actionable elements
@@ -139,7 +175,7 @@ export function recordHover(element: Element): ScenarioStep | null {
   }
 
   const { primaryXPath, alternativeXpaths } = generateXPaths(element);
-  return createStepObject("hover", element, primaryXPath, alternativeXpaths);
+  return createStepObject(StepType.HOVER, element, primaryXPath, alternativeXpaths);
 }
 
 /**
@@ -150,7 +186,18 @@ export function recordHover(element: Element): ScenarioStep | null {
  */
 export function recordUrlNavigation(url: string): ScenarioStep {
   return {
-    type: "navigate",
+    type: StepType.NAVIGATE,
     value: url,
   };
+}
+
+/**
+ * Builds a readable default title for a recorded scenario, e.g. "Checkout · shop.example.com · Oct 2, 21:15"
+ */
+export function generateScenarioTitle(date: Date = new Date()): string {
+  const pageTitle = (document.title || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const host = window.location.hostname;
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const day = date.toLocaleDateString([], { month: "short", day: "numeric" });
+  return [pageTitle, host, `${day}, ${time}`].filter(Boolean).join(" · ");
 }
