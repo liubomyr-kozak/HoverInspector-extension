@@ -441,6 +441,11 @@ export function* executeRedirectStep(step: ScenarioStep) {
     throw new Error("URL is required for redirect steps");
   }
 
+  // Already there (e.g. playback continued on the page the redirect led to)
+  if (isCurrentUrl(step.value)) {
+    return;
+  }
+
   // Navigate to the URL
   window.location.href = step.value;
 
@@ -448,6 +453,17 @@ export function* executeRedirectStep(step: ScenarioStep) {
   yield new Promise((resolve) => {
     window.addEventListener("load", resolve, { once: true });
   });
+}
+
+/**
+ * True when the URL points to the page that is already open
+ */
+export function isCurrentUrl(url: string): boolean {
+  try {
+    return new URL(url, window.location.href).href === window.location.href;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -469,7 +485,10 @@ export function* executeNavigateStep(step: ScenarioStep) {
     return;
   }
 
-  // Executing navigation - console.log removed\n
+  // Already on that page: navigating again would only reload it
+  if (isCurrentUrl(step.value)) {
+    return;
+  }
 
   // Navigate to the URL
   window.location.href = step.value;
@@ -841,6 +860,8 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
  * @param onStepComplete Optional callback saga that is called after each step is completed
  * @param functions Optional functions map for use in executeFunctionStep
  * @param speed Optional execution speed multiplier (higher values = faster execution)
+ * @param beforeStep Optional saga called before each step; returning true halts the execution with the
+ *                   PENDING status (the playback continues elsewhere, e.g. on the next page or in a new tab)
  * @returns The execution log when all steps have been executed
  */
 export function* executeSteps(
@@ -848,6 +869,7 @@ export function* executeSteps(
   onStepComplete?: (index: number, logEntry?: ExecutionLogEntry) => Generator,
   functions?: FunctionMap,
   speed: number = 1,
+  beforeStep?: (index: number, step: ScenarioStep) => Generator<any, boolean | void, any>,
 ) {
   // Starting scenario execution - console.log removed\n
 
@@ -902,6 +924,13 @@ export function* executeSteps(
       const shouldStop = yield select(getShouldStop);
       if (shouldStop) {
         return yield call(finalizeExecutionLog, ExecutionStatus.CANCELLED);
+      }
+
+      if (beforeStep) {
+        const halt = yield call(beforeStep, i, steps[i]);
+        if (halt) {
+          return yield call(finalizeExecutionLog, ExecutionStatus.PENDING);
+        }
       }
 
       try {

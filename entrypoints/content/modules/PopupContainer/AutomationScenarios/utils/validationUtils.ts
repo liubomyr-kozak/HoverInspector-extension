@@ -1,24 +1,37 @@
 /**
  * Domain validation utilities for automation scenarios
  */
+import { TriggerConfig, TriggerType } from "../types";
 
 /**
  * Validates domain patterns for automation scenario triggers
  * @param pattern - The domain pattern to validate
  * @param isRegex - Whether the pattern should be treated as a regular expression
  * @param exactMatch - Whether to perform exact matching (default: false)
+ * @param url - The URL to check (default: the current page)
  * @returns Error message if validation fails, null if valid
  */
 export const validateDomainPattern = (
   pattern: string,
   isRegex: boolean,
   exactMatch: boolean = false,
+  url?: string,
 ): string | null => {
   if (!pattern) return null;
 
-  const currentUrl = window.location.href;
-  const currentHostname = window.location.hostname;
-  const currentPort = window.location.port;
+  let location: { href: string; hostname: string; port: string };
+  if (url === undefined) {
+    location = window.location;
+  } else {
+    try {
+      location = new URL(url);
+    } catch {
+      return `Invalid URL (${url})`;
+    }
+  }
+  const currentUrl = location.href;
+  const currentHostname = location.hostname;
+  const currentPort = location.port;
 
   if (isRegex) {
     try {
@@ -34,7 +47,6 @@ export const validateDomainPattern = (
 
   if (exactMatch) {
     const hostnameWithPort = currentPort ? `${currentHostname}:${currentPort}` : currentHostname;
-    const baseUrl = `${window.location.protocol}//${hostnameWithPort}`;
 
     const exactMatches = pattern === currentHostname || pattern === hostnameWithPort || pattern === currentUrl;
 
@@ -81,3 +93,21 @@ export const validateDomainPattern = (
 
   return null;
 };
+
+/**
+ * Whether an enabled domain trigger matches the URL
+ */
+export function matchesDomainTrigger(triggers: (TriggerConfig | null)[], url: string): boolean {
+  return triggers.some(
+    (trigger) =>
+      !!trigger?.enabled &&
+      trigger.type === TriggerType.DOMAIN &&
+      !!trigger.condition?.domainPattern &&
+      validateDomainPattern(
+        trigger.condition.domainPattern,
+        !!trigger.condition.useRegex,
+        !!trigger.condition.exactMatch,
+        url,
+      ) === null,
+  );
+}

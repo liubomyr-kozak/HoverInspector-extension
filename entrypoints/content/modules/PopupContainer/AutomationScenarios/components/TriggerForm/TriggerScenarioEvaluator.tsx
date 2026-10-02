@@ -1,22 +1,64 @@
 import { useEffect, useState, useRef } from "react";
 import { TriggerConfig, TriggerType } from "../../types";
 import { useDispatch, useSelector } from "react-redux";
-import { selectTriggers, selectScenarios } from "@entrypoints/content/store/automation/automation.slice.ts";
+import {
+  selectTriggers,
+  selectScenarios,
+  selectExecuting,
+  selectStatus,
+  ScenarioStatus,
+} from "@entrypoints/content/store/automation/automation.slice.ts";
 import {
   playScenarioWatcher,
   saveTriggerWatcher,
 } from "@entrypoints/content/store/automation/automation.saga.action.ts";
 import { toast } from "react-toastify";
 import { validateDomainPattern } from "../../utils/validationUtils.ts";
+import { EXECUTION_SESSION_MAX_AGE, loadExecutionSession } from "../../utils/executionSession.ts";
+
+// Domain triggers run once per tab and site: the scenario they start usually navigates on the same site,
+// and starting it again on every page it opens would loop forever
+const DOMAIN_TRIGGER_RAN_KEY = (triggerId: string) => `hi_trigger_ran_${triggerId}`;
+
+const hasDomainTriggerRun = (triggerId: string) => {
+  try {
+    return sessionStorage.getItem(DOMAIN_TRIGGER_RAN_KEY(triggerId)) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const markDomainTriggerRun = (triggerId: string) => {
+  try {
+    sessionStorage.setItem(DOMAIN_TRIGGER_RAN_KEY(triggerId), "1");
+  } catch {
+    // ignore
+  }
+};
 
 export const TriggerScenarioEvaluator = () => {
   const dispatch = useDispatch();
   const triggers = useSelector(selectTriggers);
   const scenarios = useSelector(selectScenarios);
+  const executing = useSelector(selectExecuting);
+  const status = useSelector(selectStatus);
   const [evaluationInterval] = useState(2000); // Check triggers every 2 seconds
 
-  // Track domain triggers that have already been executed to prevent duplicates
-  const executedDomainTriggers = useRef(new Set());
+  // Page load triggers run once per page load
+  const executedPageLoadTriggers = useRef(new Set<string>());
+
+  // Don't start scenarios while one is playing or while recording / editing
+  const busyRef = useRef(false);
+  busyRef.current = executing || (!!status && status !== ScenarioStatus.IDLE);
+
+  // Pages loaded by a playing scenario (it continues here, or just finished here) don't fire triggers.
+  // Null until checked.
+  const loadedByPlaybackRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    loadExecutionSession().then((session) => {
+      loadedByPlaybackRef.current = !!session && Date.now() - session.updatedAt <= EXECUTION_SESSION_MAX_AGE;
+    });
+  }, []);
 
   /**
    * Evaluates a domain trigger condition using the same validation logic as TriggerForm
@@ -88,12 +130,12 @@ export const TriggerScenarioEvaluator = () => {
     // Skip disabled triggers
     if (!trigger.enabled) return false;
 
-    // For domain triggers, check if already executed for this domain to run only once
-    if (trigger.type === TriggerType.DOMAIN) {
-      const domainKey = `${triggerId}_${window.location.hostname}`;
-      if (executedDomainTriggers.current.has(domainKey)) {
-        return false; // Already executed for this domain
-      }
+    // Domain triggers run once per tab and site, page load triggers once per page
+    if (trigger.type === TriggerType.DOMAIN && hasDomainTriggerRun(triggerId)) {
+      return false;
+    }
+    if (trigger.type === TriggerType.PAGE_LOAD && executedPageLoadTriggers.current.has(triggerId)) {
+      return false;
     }
 
     // Check if the trigger was recently triggered (within the last 5 seconds)
@@ -152,10 +194,12 @@ export const TriggerScenarioEvaluator = () => {
       draggable: true,
     });
 
-    // For domain triggers, mark as executed to prevent duplicates
+    // Mark as executed to prevent duplicates
     if (trigger.type === TriggerType.DOMAIN) {
-      const domainKey = `${triggerId}_${window.location.hostname}`;
-      executedDomainTriggers.current.add(domainKey);
+      markDomainTriggerRun(triggerId);
+    }
+    if (trigger.type === TriggerType.PAGE_LOAD) {
+      executedPageLoadTriggers.current.add(triggerId);
     }
 
     // Execute the associated scenario
@@ -176,6 +220,9 @@ export const TriggerScenarioEvaluator = () => {
     const checkTriggers = () => {
       // Skip if there are no triggers
       if (!triggers || Object.keys(triggers).length === 0) return;
+
+      // Wait until we know whether a playing scenario loaded this page, and don't interrupt anything
+      if (loadedByPlaybackRef.current !== false || busyRef.current) return;
 
       // Check each trigger
       Object.entries(triggers).forEach(([triggerId, trigger]) => {

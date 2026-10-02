@@ -10,6 +10,7 @@ import { PauseResumeButton, NextStepButton, StopButton, PlayButton } from "../..
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { ExecutionStatus } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types.ts";
 import { useScenarioActions } from "../../hooks/useScenarioActions";
+import { clearExecutionSession } from "../../utils/executionSession.ts";
 
 interface ExecutionControlsProps {
   currentStepIndex: number;
@@ -109,6 +110,8 @@ const ExecutionControls: React.FC<ExecutionControlsProps> = ({ currentStepIndex,
         <Tooltip title="Stop Execution">
           <StopButton
             onClick={() => {
+              // Don't continue the scenario on the next page load
+              clearExecutionSession();
 
               // First signal to stop execution, then reset state
               dispatch(automationActions.setShouldStop(true));
