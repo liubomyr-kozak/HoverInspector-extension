@@ -32,6 +32,7 @@ const HOVER_DEBOUNCE_DELAY = 300; // Time the pointer must rest on an element fo
 const INPUT_DEBOUNCE_DELAY = 500;
 const HOVER_CLICK_TIMEOUT = 3000; // Time window in which a hover can be attached to a following click
 const HOVER_HISTORY_SIZE = 3;
+const HOVER_WIDGET_DEPTH = 4; // How far up the hovered element and the clicked one may share an ancestor
 
 type HoverEntry = { element: Element; time: number };
 type PendingInput = { element: Element; timer: number };
@@ -80,6 +81,7 @@ const AutomationUserActionsHandler: React.FC = () => {
   const lastHoveredElementRef = useRef<Element | null>(null);
   const hoverDebounceTimerRef = useRef<number | null>(null);
   const hoverHistoryRef = useRef<HoverEntry[]>([]);
+  const clickedElementsRef = useRef<WeakSet<Element>>(new WeakSet());
   const isHoverStepSelectedRef = useRef<boolean>(false);
   const pendingInputRef = useRef<PendingInput | null>(null);
   const alternativeXPathStepIndexRef = useRef<number | null>(null);
@@ -177,8 +179,19 @@ const AutomationUserActionsHandler: React.FC = () => {
       }, HOVER_DEBOUNCE_DELAY);
     };
 
-    // A hover is only worth replaying when it revealed the clicked element (dropdowns, tooltips, menus),
-    // i.e. the pointer rested on a different, unrelated element shortly before the click.
+    // A hover is only worth replaying when it revealed the clicked element (dropdowns, tooltips, menus):
+    // the pointer rested on a different element shortly before the click, that element was not clicked
+    // itself, and both live in the same small widget (a close common ancestor that is not <body>).
+    const isSameWidget = (hovered: Element, clicked: Element) => {
+      let ancestor = hovered.parentElement;
+      for (let depth = 0; ancestor && depth < HOVER_WIDGET_DEPTH; depth++) {
+        if (ancestor === document.body || ancestor === document.documentElement) return false;
+        if (ancestor.contains(clicked)) return true;
+        ancestor = ancestor.parentElement;
+      }
+      return false;
+    };
+
     const takeHoverBeforeClick = (clicked: Element): ScenarioStep | null => {
       const now = Date.now();
       const entry = hoverHistoryRef.current.find(
@@ -187,8 +200,10 @@ const AutomationUserActionsHandler: React.FC = () => {
           element !== clicked &&
           !element.contains(clicked) &&
           !clicked.contains(element) &&
+          !clickedElementsRef.current.has(element) &&
           element.isConnected &&
-          !isTextEntryElement(element),
+          !isTextEntryElement(element) &&
+          isSameWidget(element, clicked),
       );
       hoverHistoryRef.current = [];
       return entry ? recordHover(entry.element) : null;
@@ -226,6 +241,7 @@ const AutomationUserActionsHandler: React.FC = () => {
 
       addStep(takeHoverBeforeClick(target));
       addStep(recordClick(target));
+      clickedElementsRef.current.add(target);
     };
 
     const onInput = (e: Event) => {
