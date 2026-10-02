@@ -154,11 +154,8 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
       const steps = [...currentSteps];
 
       // Create a new step with the provided values
-      const newStep: ScenarioStep = {
-        type: updatedStep.type,
-        ...(updatedStep.xpath !== undefined && { xpath: updatedStep.xpath }),
-        ...(updatedStep.value !== undefined && { value: updatedStep.value }),
-      };
+      // Keep all step fields (alternative XPaths, enableNavigation, delay...)
+      const newStep: ScenarioStep = { ...updatedStep };
 
       // Replace the empty step at the editing index with the new step
       steps[editingStepIndex] = newStep;

@@ -12,6 +12,7 @@ import {
   ScenarioStep,
   ScheduleConfig,
   ScheduleMap,
+  StepType,
   TriggerConfig,
   TriggerMap,
 } from "../../modules/PopupContainer/AutomationScenarios/types";
@@ -221,14 +222,23 @@ const automationSlice = createSlice({
       state.currentSteps = action.payload;
     },
     addStep(state) {
-      const newStep = { type: "" };
+      const newStep: ScenarioStep = { type: StepType.NOT_SET };
       state.currentSteps.push(newStep);
     },
     addCurrentStep(state, action: PayloadAction<ScenarioStep>) {
       state.currentSteps.push(action.payload);
     },
+    // Records typing: consecutive input steps into the same field are merged into one step
+    upsertInputStep(state, action: PayloadAction<ScenarioStep>) {
+      const lastStep = state.currentSteps[state.currentSteps.length - 1];
+      if (lastStep && lastStep.type === StepType.INPUT && lastStep.xpath === action.payload.xpath) {
+        lastStep.value = action.payload.value;
+        return;
+      }
+      state.currentSteps.push(action.payload);
+    },
     insertStep(state, action: PayloadAction<number>) {
-      state.currentSteps.splice(action.payload, 0, { type: "" });
+      state.currentSteps.splice(action.payload, 0, { type: StepType.NOT_SET });
     },
     removeStep(state, action: PayloadAction<number>) {
       const index = action.payload;
@@ -262,6 +272,11 @@ const automationSlice = createSlice({
         ...state.currentSteps[index],
         [field]: value,
       };
+    },
+    replaceStep(state, action: PayloadAction<{ index: number; step: ScenarioStep }>) {
+      const { index, step } = action.payload;
+      if (index < 0 || index >= state.currentSteps.length) return;
+      state.currentSteps[index] = step;
     },
     addAlternativeXPath(state, action: PayloadAction<{ index: number; xpath: string }>) {
       const step = state.currentSteps[action.payload.index];

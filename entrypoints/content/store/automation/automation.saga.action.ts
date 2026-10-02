@@ -437,45 +437,16 @@ export const deleteMultipleExecutionHistoryWatcher = sagaEnhancer(
 );
 
 // Create New Recording
+// The scenario itself is created only when the user saves the recording (see saveScenarioWatcher),
+// so cancelling or stopping a recording no longer leaves empty "Recording ..." scenarios behind.
 export const startNewRecordingWatcher = sagaEnhancer(function* startNewRecordingFn() {
   try {
-    // Generate a unique ID for the new recording
-    const newId = yield call(generateUniqueId);
-    const scenarioId = `sc_${newId}`;
+    yield put(automationActions.setActiveScenarioId(null));
+    yield put(automationActions.setRecordingPaused(false));
 
-    // Create a timestamp for the title
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const dateString = now.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-    const title = `Recording ${dateString} ${timeString}`;
-
-    // Create an empty scenario
-    const newScenario: Scenario = {
-      title,
-      description: "",
-      data: [],
-      repeat: 1,
-      tags: [],
-      category: "recording",
-      executionSpeed: 1, // Default to medium speed (1x)
-    };
-
-    // Save to storage
-    yield call(saveScenarioToLocalStorage, scenarioId, newScenario);
-    yield call(saveScenarioToLocalStorage, scenarioId, newScenario);
-
-    // Update Redux store
-    yield put(automationActions.addScenario({ id: scenarioId, scenario: newScenario }));
-
-    // Clear any previously recorded steps
-    yield put(automationActions.setCurrentSteps([]));
-
-    // Add initial URL navigation step
-    const initialUrl = window.location.href;
-    const initialUrlStep = recordUrlNavigation(initialUrl);
-    yield put(automationActions.addCurrentStep(initialUrlStep));
-
-    yield put(automationActions.setActiveScenarioId(scenarioId));
+    // Start with the current page so the scenario can be replayed from the right place
+    const initialUrlStep = recordUrlNavigation(window.location.href);
+    yield put(automationActions.setCurrentSteps([initialUrlStep]));
 
     // Set status to recording
     yield put(automationActions.setStatus(ScenarioStatus.RECORDING));

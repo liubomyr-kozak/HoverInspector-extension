@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button, Divider, Select } from "antd";
 import { useForm, Controller } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
@@ -26,7 +26,6 @@ import {
   selectCurrentSteps,
   selectActiveScenarioId,
   selectScenarios,
-  selectIsEditingScenario,
 } from "../../../../store/automation/automation.slice";
 import {
   persistEditingStateWatcher,
@@ -34,18 +33,11 @@ import {
   saveScenarioWatcher,
 } from "../../../../store/automation/automation.saga.action";
 import { PlusOutlined } from "@ant-design/icons";
-
-// Function to generate a default scenario name
-const generateDefaultScenarioName = (): string => {
-  const now = new Date();
-  const timeString = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const dateString = now.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-  return `New Scenario ${dateString} ${timeString}`;
-};
+import { generateScenarioTitle } from "../utils/recordingUtils";
 
 // Yup validation schema
 const validationSchema = yup.object().shape({
-  title: yup.string().required("Please enter a title for the scenario"),
+  title: yup.string().trim().required("Please enter a title for the scenario"),
   description: yup.string(),
   category: yup.string(),
   tags: yup.array().of(yup.string()),
@@ -61,6 +53,20 @@ const categoryOptions = [
   { value: "other", label: "Other" },
 ];
 
+type ScenarioFormValues = {
+  title: string;
+  description?: string;
+  category?: string;
+  tags?: (string | undefined)[];
+};
+
+const getFormValues = (scenario?: Scenario): ScenarioFormValues => ({
+  title: scenario?.title || generateScenarioTitle(),
+  description: scenario?.description || "",
+  category: scenario?.category || undefined,
+  tags: scenario?.tags || [],
+});
+
 const AddScenarioForm: React.FC = () => {
   const dispatch = useDispatch();
   // Selectors replacing props
@@ -68,67 +74,70 @@ const AddScenarioForm: React.FC = () => {
   const recordingPaused = useSelector(selectRecordingPaused);
   const currentSteps = useSelector(selectCurrentSteps);
   const activeScenarioId = useSelector(selectActiveScenarioId);
-  const isEditingScenario = useSelector(selectIsEditingScenario);
+  const scenarios = useSelector(selectScenarios);
+  const existingScenario = activeScenarioId ? scenarios[activeScenarioId] : undefined;
 
   // Get modal context for scrolling
   const modalContext = useModalOverlayOptional();
 
-  // Local form data state to avoid drilling
-  const [scenarioFormData, setScenarioFormData] = useState<{
-    title?: string;
-    description?: string;
-    category?: string;
-    tags?: (string | undefined)[];
-  }>({});
+  // State for tracking details section visibility
+  const [showDetails, setShowDetails] = useState<boolean>(false);
 
-  // Recording logic functions moved from ScenariosListTab
+  // Initialize React Hook Form with the edited scenario's metadata (or a fresh default title)
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ScenarioFormValues>({
+    resolver: yupResolver(validationSchema) as any,
+    defaultValues: getFormValues(existingScenario),
+    mode: "onChange",
+  });
+
+  // The edited scenario can arrive after mount (e.g. editing state restored after a page reload)
+  const loadedScenarioIdRef = useRef<string | null>(existingScenario ? activeScenarioId : null);
+  useEffect(() => {
+    if (existingScenario && loadedScenarioIdRef.current !== activeScenarioId) {
+      loadedScenarioIdRef.current = activeScenarioId;
+      reset(getFormValues(existingScenario));
+    }
+  }, [activeScenarioId, existingScenario, reset]);
+
   const toggleRecordingPause = () => {
     dispatch(automationActions.setRecordingPaused(!recordingPaused));
   };
 
-  const saveRecording = () => {
-    // Switch to editing mode and persist state
-    dispatch(automationActions.setStatus(ScenarioStatus.EDITING));
+  const persistSteps = () => {
     dispatch(persistEditingStateWatcher.getPayload());
-
-    // Validate required fields
-    if (!scenarioFormData.title || scenarioFormData.title.trim() === "") {
-      console.error("[SAVE SCENARIO] Validation failed - empty title");
-      return;
-    }
-
-    const processedTags = (scenarioFormData.tags?.filter((tag) => tag !== undefined) as string[]) || [];
-    const scenarioToSave: Scenario = {
-      title: scenarioFormData.title,
-      description: scenarioFormData.description || "",
-      category: scenarioFormData.category || "",
-      tags: processedTags,
-      repeat: 1,
-      data: currentSteps,
-    };
-
-    const payload = activeScenarioId
-      ? { id: activeScenarioId, scenario: scenarioToSave }
-      : { scenario: scenarioToSave };
-
-    dispatch(saveScenarioWatcher.getPayload(payload));
   };
+
+  // Saves the scenario. Keeps fields this form does not edit (folder, speed, repeat...) of an existing scenario.
+  const saveScenario = handleSubmit(
+    (formData) => {
+      const processedTags = (formData.tags || []).filter((tag): tag is string => !!tag);
+      const scenarioToSave: Scenario = {
+        repeat: 1,
+        ...existingScenario,
+        title: formData.title.trim(),
+        description: formData.description || "",
+        category: formData.category || "",
+        tags: processedTags,
+        data: currentSteps,
+      };
+
+      const payload = activeScenarioId
+        ? { id: activeScenarioId, scenario: scenarioToSave }
+        : { scenario: scenarioToSave };
+
+      dispatch(saveScenarioWatcher.getPayload(payload));
+    },
+    () => setShowDetails(true),
+  );
 
   const onAddStep = () => {
     dispatch(automationActions.addStep());
-    // Persist the updated steps to storage
-    dispatch(persistEditingStateWatcher.getPayload());
-  };
-
-  // Local handler to update persisted form data
-  // Note: keep inline to avoid effect dependency churn
-  const handleFormDataChange = (formData: {
-    title?: string;
-    description?: string;
-    category?: string;
-    tags?: (string | undefined)[];
-  }) => {
-    setScenarioFormData(formData);
+    persistSteps();
   };
 
   const handleCancel = () => {
@@ -137,56 +146,6 @@ const AddScenarioForm: React.FC = () => {
     dispatch(clearEditingStateWatcher.getPayload());
   };
 
-  // Generate default scenario name once to avoid timestamp inconsistencies
-  const defaultScenarioName = useMemo(() => generateDefaultScenarioName(), []);
-
-  // Initialize React Hook Form
-  const {
-    control,
-    watch,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(validationSchema),
-    defaultValues: {
-      title: defaultScenarioName,
-      description: "",
-      category: "",
-      tags: [],
-    },
-    mode: "onChange",
-  });
-
-  // Form submission handler
-  const onSubmit = (data: any) => {
-    if (recording) {
-      saveRecording();
-    }
-  };
-
-  // Watch form changes and persist in local component state
-  useEffect(() => {
-    const subscription = watch((value, { name, type }) => {
-      handleFormDataChange(value);
-    });
-    return () => subscription.unsubscribe();
-  }, [watch]);
-
-  // Initialize local form data on mount
-  useEffect(() => {
-    const initialValues = {
-      title: defaultScenarioName,
-      description: "",
-      category: "",
-      tags: [],
-    };
-    setScenarioFormData(initialValues);
-  }, [defaultScenarioName]);
-
-  // State for tracking details section visibility
-  const [showDetails, setShowDetails] = useState<boolean>(false);
-  // State for step editing
-  const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
 
   // Refs for tracking steps container and previous count for auto-scroll
   const stepsContainerRef = useRef<HTMLDivElement>(null);
@@ -253,47 +212,22 @@ const AddScenarioForm: React.FC = () => {
     previousStepCountRef.current = currentStepCount;
   }, [currentSteps.length, modalContext]);
 
-  // Handler for closing the step edit form
-  const handleCloseStepEditForm = () => {
-    setEditingStepIndex(null);
+  // Step edits are applied live: the inline step forms have no own Save button
+  const handleStepChange = (stepIndex: number, updatedStep: ScenarioStep) => {
+    dispatch(automationActions.replaceStep({ index: stepIndex, step: updatedStep }));
+    persistSteps();
   };
 
-  // Handler for saving a step from StepEditForm
-  const handleSaveStep = (updatedStep: ScenarioStep) => {
-    if (editingStepIndex !== null) {
-      // Update the step using the existing onUpdateStep callback
-      const stepKeys = Object.keys(updatedStep) as (keyof ScenarioStep)[];
-      stepKeys.forEach((key) => {
-        const value = updatedStep[key];
-        if (value !== undefined && value !== currentSteps[editingStepIndex][key]) {
-          // Convert value to string as expected by onUpdateStep
-          const stringValue = typeof value === "boolean" ? String(value) : (value as string);
-          dispatch(automationActions.updateStep({ index: editingStepIndex, field: key, value: stringValue }));
-          dispatch(persistEditingStateWatcher.getPayload());
-        }
-      });
-
-      // Close the step edit form
-      handleCloseStepEditForm();
-    }
-  };
-
-  // Handler for deleting a step from StepEditForm
-  const handleDeleteStep = () => {
-    if (editingStepIndex !== null) {
-      dispatch(automationActions.removeStep(editingStepIndex));
-      dispatch(persistEditingStateWatcher.getPayload());
-
-      // Close the step edit form
-      handleCloseStepEditForm();
-    }
+  const handleDeleteStep = (stepIndex: number) => {
+    dispatch(automationActions.removeStep(stepIndex));
+    persistSteps();
   };
 
   // Handler for moving a step up
   const handleMoveStepUp = (stepIndex: number) => {
     if (stepIndex > 0) {
       dispatch(automationActions.reorderSteps({ fromIndex: stepIndex, toIndex: stepIndex - 1 }));
-      dispatch(persistEditingStateWatcher.getPayload());
+      persistSteps();
     }
   };
 
@@ -301,14 +235,14 @@ const AddScenarioForm: React.FC = () => {
   const handleMoveStepDown = (stepIndex: number) => {
     if (stepIndex < currentSteps.length - 1) {
       dispatch(automationActions.reorderSteps({ fromIndex: stepIndex, toIndex: stepIndex + 1 }));
-      dispatch(persistEditingStateWatcher.getPayload());
+      persistSteps();
     }
   };
 
   // Handler for inserting a new step at a specific position
   const handleInsertStep = (insertIndex: number) => {
     dispatch(automationActions.insertStep(insertIndex));
-    dispatch(persistEditingStateWatcher.getPayload());
+    persistSteps();
   };
 
   return (
@@ -401,52 +335,52 @@ const AddScenarioForm: React.FC = () => {
             marginBottom: "16px",
           }}
         >
-          <form onSubmit={handleSubmit(onSubmit)}>
-            {currentSteps.map((step, index) => {
-              return (
-                <div key={`editing-${index}`}>
-                  <StepInsertContainer key={`insert-before-${index}`}>
-                    <div
-                      className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 transform -translate-y-3 hover:opacity-100 hover:bg-blue-400 hover:scale-110 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-300 active:opacity-100 transition-all duration-200"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleInsertStep(index);
-                      }}
-                    >
-                      <PlusOutlined />
-                    </div>
-                  </StepInsertContainer>
+          {currentSteps.map((step, index) => {
+            return (
+              <div key={`editing-${index}`}>
+                <StepInsertContainer key={`insert-before-${index}`}>
+                  <div
+                    className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 transform -translate-y-3 hover:opacity-100 hover:bg-blue-400 hover:scale-110 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-300 active:opacity-100 transition-all duration-200"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleInsertStep(index);
+                    }}
+                  >
+                    <PlusOutlined />
+                  </div>
+                </StepInsertContainer>
 
-                  <EditingStepItem>
-                    <EditingStepHeader>
-                      <EditingStepTitle>Edit Step {index + 1}</EditingStepTitle>
-                    </EditingStepHeader>
-                    <StepEditForm
-                      step={currentSteps[index]}
-                      onClose={handleCloseStepEditForm}
-                      onSave={handleSaveStep}
-                      onDelete={handleDeleteStep}
-                      onMoveUp={handleMoveStepUp}
-                      onMoveDown={handleMoveStepDown}
-                      stepIndex={index}
-                      totalSteps={currentSteps.length}
-                    />
-                  </EditingStepItem>
-                </div>
-              );
-            })}
-
-            <ScenarioPortalFooterButtons portalId={recording ? PortalId.RECORDING : PortalId.SCENARIOS_TAB}>
-              <RecordingFooter
-                isPaused={recordingPaused}
-                onCancel={handleCancel}
-                onPauseToggle={toggleRecordingPause}
-                onSave={saveRecording}
-              />
-            </ScenarioPortalFooterButtons>
-          </form>
+                <EditingStepItem>
+                  <EditingStepHeader>
+                    <EditingStepTitle>Edit Step {index + 1}</EditingStepTitle>
+                  </EditingStepHeader>
+                  <StepEditForm
+                    step={step}
+                    onClose={() => undefined}
+                    onSave={(updatedStep) => handleStepChange(index, updatedStep)}
+                    onChange={(updatedStep) => handleStepChange(index, updatedStep)}
+                    onDelete={() => handleDeleteStep(index)}
+                    onMoveUp={handleMoveStepUp}
+                    onMoveDown={handleMoveStepDown}
+                    stepIndex={index}
+                    totalSteps={currentSteps.length}
+                  />
+                </EditingStepItem>
+              </div>
+            );
+          })}
         </div>
       )}
+
+      <ScenarioPortalFooterButtons portalId={recording ? PortalId.RECORDING : PortalId.SCENARIOS_TAB}>
+        <RecordingFooter
+          isRecording={recording}
+          isPaused={recordingPaused}
+          onCancel={handleCancel}
+          onPauseToggle={toggleRecordingPause}
+          onSave={saveScenario}
+        />
+      </ScenarioPortalFooterButtons>
 
       <Button type="dashed" onClick={onAddStep} block icon={<IconPlus size={16} />} style={{ marginTop: "16px" }}>
         Add Step

@@ -1,6 +1,8 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  getActionableTarget,
+  isTextEntryElement,
   recordClick,
   recordHover,
   recordInput,
@@ -13,499 +15,310 @@ import {
   selectRecordingPaused,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
 import { persistEditingStateWatcher } from "@entrypoints/content/store/automation/automation.saga.action";
-import {
-  generateXPath,
-  generateXPaths,
-} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils.ts";
+import { generateXPaths } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils.ts";
 import HighlightOverlayManager from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayManager";
+import { ScenarioStep } from "./types";
 
 // Helper function to check if an element is part of the extension UI
 function hasAppClass(node: any) {
   return (
-    (typeof node.className === "string" && node.className.includes("hover-inspector")) ||
-    node.localName === "hover-inspector"
+    !!node &&
+    ((typeof node.className === "string" && node.className.includes("hover-inspector")) ||
+      node.localName === "hover-inspector")
   );
 }
 
-const HOVER_DEBOUNCE_DELAY = 300;
+const HOVER_DEBOUNCE_DELAY = 300; // Time the pointer must rest on an element for the hover to count
 const INPUT_DEBOUNCE_DELAY = 500;
-const HOVER_CLICK_TIMEOUT = 2000; // Time window to wait for a click after hover
+const HOVER_CLICK_TIMEOUT = 3000; // Time window in which a hover can be attached to a following click
+const HOVER_HISTORY_SIZE = 3;
+
+type HoverEntry = { element: Element; time: number };
+type PendingInput = { element: Element; timer: number };
+type Feedback = { element: HTMLElement; timeoutId: number };
+
+function showFeedback(text: string, color: string, duration: number): Feedback {
+  const feedbackElement = document.createElement("div");
+  feedbackElement.textContent = text;
+  Object.assign(feedbackElement.style, {
+    position: "fixed",
+    top: "20px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    backgroundColor: color,
+    color: "white",
+    padding: "8px 16px",
+    borderRadius: "4px",
+    zIndex: "2147483647",
+  });
+  document.body.appendChild(feedbackElement);
+  const timeoutId = window.setTimeout(() => feedbackElement.remove(), duration);
+  return { element: feedbackElement, timeoutId };
+}
 
 /**
  * AutomationUserActionsHandler Component
  *
- * This component handles user events specifically for the automation recording functionality.
- * It attaches event listeners to the window for various user events (mousemove, mousedown, input, change)
- * and records these actions when recording is active.
+ * Listens to user events on the page while recording and turns them into scenario steps:
+ * - clicks are recorded on the closest actionable element (button, link, input...)
+ * - typing is merged into a single "input" step per field
+ * - a hover is recorded only when the pointer rested on another element (e.g. a menu trigger)
+ *   right before a click, so plain mouse movement does not pollute the scenario
+ * - select changes and SPA navigations are recorded as their own steps
  */
 const AutomationUserActionsHandler: React.FC = () => {
   const dispatch = useDispatch();
   const recording = useSelector(selectRecording);
   const recordingPaused = useSelector(selectRecordingPaused);
-  // Ref to track the last hovered element's xpath to prevent duplicate hover steps
-  const lastHoveredXpathRef = useRef<string | null>(null);
-  // Ref to track the debounce timer for hover events
+
+  // Latest values for the native event listeners (they are attached once per recording session)
+  const recordingRef = useRef(recording);
+  const pausedRef = useRef(recordingPaused);
+  recordingRef.current = recording;
+  pausedRef.current = recordingPaused;
+
+  const lastHoveredElementRef = useRef<Element | null>(null);
   const hoverDebounceTimerRef = useRef<number | null>(null);
-  // Ref to track pending hover steps (waiting for click confirmation)
-  const pendingHoverStepRef = useRef<{ step: any; timer: number } | null>(null);
-  // Ref to track if a hover step was explicitly selected
+  const hoverHistoryRef = useRef<HoverEntry[]>([]);
   const isHoverStepSelectedRef = useRef<boolean>(false);
-
-  // Ref to track the last input element's xpath and value
-  const lastInputXpathRef = useRef<string | null>(null);
-  // Ref to track the debounce timer for input events
-  const inputDebounceTimerRef = useRef<number | null>(null);
-  // Debounce delay in milliseconds for input events
-
-  // State for alternative XPath selection
-  const [alternativeXPathMode, setAlternativeXPathMode] = useState(false);
-  const [alternativeXPathStepIndex, setAlternativeXPathStepIndex] = useState<number | null>(null);
-
-  // Ref to store feedback element and timeout ID
-  const feedbackElementRef = useRef<{ element: HTMLElement; timeoutId: number } | null>(null);
-  
-  // Ref to track current URL for navigation detection
+  const pendingInputRef = useRef<PendingInput | null>(null);
+  const alternativeXPathStepIndexRef = useRef<number | null>(null);
+  const feedbackElementRef = useRef<Feedback | null>(null);
   const currentUrlRef = useRef<string>(window.location.href);
 
-  // Function to explicitly select a hover step
-  const selectHoverStep = useCallback(() => {
-    isHoverStepSelectedRef.current = true;
-
-    // Show feedback to the user
-    const feedbackElement = document.createElement("div");
-    feedbackElement.textContent = "Next hover will be recorded";
-    feedbackElement.style.position = "fixed";
-    feedbackElement.style.top = "20px";
-    feedbackElement.style.left = "50%";
-    feedbackElement.style.transform = "translateX(-50%)";
-    feedbackElement.style.backgroundColor = "#1890ff";
-    feedbackElement.style.color = "white";
-    feedbackElement.style.padding = "8px 16px";
-    feedbackElement.style.borderRadius = "4px";
-    feedbackElement.style.zIndex = "9999";
-    document.body.appendChild(feedbackElement);
-
-    // Remove the feedback element after 2 seconds
-    const timeoutId = setTimeout(() => {
-      if (document.body.contains(feedbackElement)) {
-        document.body.removeChild(feedbackElement);
-      }
-    }, 2000);
-
-    // Store the feedback element and timeout ID
-    if (feedbackElementRef.current) {
-      clearTimeout(feedbackElementRef.current.timeoutId);
-      if (document.body.contains(feedbackElementRef.current.element)) {
-        document.body.removeChild(feedbackElementRef.current.element);
-      }
-    }
-    feedbackElementRef.current = { element: feedbackElement, timeoutId };
-  }, []);
-
-  // Skip if recording is not active
-  if (!recording) {
-    // Clear the timers if recording is stopped
+  // Drop anything that is in flight when recording is paused or stopped
+  useEffect(() => {
+    if (recording && !recordingPaused) return;
     if (hoverDebounceTimerRef.current) {
       window.clearTimeout(hoverDebounceTimerRef.current);
       hoverDebounceTimerRef.current = null;
     }
-
-    if (inputDebounceTimerRef.current) {
-      window.clearTimeout(inputDebounceTimerRef.current);
-      inputDebounceTimerRef.current = null;
+    if (pendingInputRef.current) {
+      window.clearTimeout(pendingInputRef.current.timer);
+      pendingInputRef.current = null;
     }
+    hoverHistoryRef.current = [];
+    lastHoveredElementRef.current = null;
+    isHoverStepSelectedRef.current = false;
+  }, [recording, recordingPaused]);
 
-    // Clear any pending hover step
-    if (pendingHoverStepRef.current) {
-      window.clearTimeout(pendingHoverStepRef.current.timer);
-      pendingHoverStepRef.current = null;
-    }
+  useLayoutEffect(() => {
+    if (!recording) return;
 
-    // If recording is not active, don't render the component
-    return null;
-  }
+    currentUrlRef.current = window.location.href;
 
-  // If recording is paused, clear timers but keep component mounted to maintain event listeners
-  if (recordingPaused) {
-    // Clear the timers when paused to prevent actions from being processed
-    if (hoverDebounceTimerRef.current) {
-      window.clearTimeout(hoverDebounceTimerRef.current);
-      hoverDebounceTimerRef.current = null;
-    }
+    const isActive = () => recordingRef.current && !pausedRef.current;
 
-    if (inputDebounceTimerRef.current) {
-      window.clearTimeout(inputDebounceTimerRef.current);
-      inputDebounceTimerRef.current = null;
-    }
-
-    // Clear any pending hover step
-    if (pendingHoverStepRef.current) {
-      window.clearTimeout(pendingHoverStepRef.current.timer);
-      pendingHoverStepRef.current = null;
-    }
-  }
-
-  // Handler for mousemove events (hovering over elements)
-  const onHandlerHover = useCallback(
-    (e: any) => {
-      // Skip if recording is paused
-      if (recordingPaused) {
-        return;
-      }
-
-      // Skip hover highlighting if selection mode is active
-      const highlightManager = HighlightOverlayManager.getInstance();
-      if (highlightManager.isSelectionActive()) {
-        return;
-      }
-
-      const hoveredElement = e.target;
-
-      // Skip if the element is part of the extension UI
-      if (hasAppClass(hoveredElement)) {
-        return;
-      }
-
-      // Get hover step object
-      const step = recordHover(hoveredElement);
-      if (step) {
-        // Only proceed if the xpath is different from the last one
-        // This prevents recording duplicate hover steps for the same element
-        if (step.xpath !== lastHoveredXpathRef.current) {
-          // Clear any existing hover debounce timer
-          if (hoverDebounceTimerRef.current) {
-            window.clearTimeout(hoverDebounceTimerRef.current);
-          }
-
-          // Clear any existing pending hover step timer
-          if (pendingHoverStepRef.current) {
-            window.clearTimeout(pendingHoverStepRef.current.timer);
-            pendingHoverStepRef.current = null;
-          }
-
-          // Set a new timer to process the hover after a delay
-          hoverDebounceTimerRef.current = window.setTimeout(() => {
-            // Re-check if recording is still active and not paused
-            if (!recording || recordingPaused) {
-              hoverDebounceTimerRef.current = null;
-              return;
-            }
-
-            // Update the last hovered xpath
-            lastHoveredXpathRef.current = step.xpath!;
-
-            // If hover step is explicitly selected, record it immediately
-            if (isHoverStepSelectedRef.current) {
-              dispatch(automationActions.addCurrentStep(step));
-              dispatch(persistEditingStateWatcher.getPayload());
-              isHoverStepSelectedRef.current = false; // Reset the flag
-            } else {
-              // Otherwise, store it as pending and wait for a click
-              const timer = window.setTimeout(() => {
-                // Re-check if recording is still active and not paused before discarding
-                if (!recording || recordingPaused) {
-                  return;
-                }
-                // If no click happens within the timeout, discard the hover step
-                pendingHoverStepRef.current = null;
-              }, HOVER_CLICK_TIMEOUT);
-
-              pendingHoverStepRef.current = { step, timer };
-            }
-
-            // Clear the debounce timer reference
-            hoverDebounceTimerRef.current = null;
-          }, HOVER_DEBOUNCE_DELAY);
-        }
-      }
-    },
-    [dispatch, HOVER_DEBOUNCE_DELAY, HOVER_CLICK_TIMEOUT],
-  );
-
-  // Handler for mousedown events (clicking on elements)
-  const onHandlerClick = useCallback(
-    (e: any) => {
-      // Skip if recording is paused
-      if (recordingPaused) {
-        return;
-      }
-
-      const clickedElement = e.target;
-
-      // Skip if the element is part of the extension UI
-      if (hasAppClass(clickedElement)) {
-        return;
-      }
-
-      // If in alternative XPath selection mode, add the alternative XPath to the step
-      if (alternativeXPathMode && alternativeXPathStepIndex !== null) {
-        const { primaryXPath, alternativeXpaths } = generateXPaths(clickedElement);
-        if (primaryXPath) {
-          // Add all generated XPaths as alternatives
-
-          alternativeXpaths.forEach((xpath) => {
-            dispatch(
-              automationActions.addAlternativeXPathToRecordedStep({
-                index: alternativeXPathStepIndex,
-                xpath,
-              }),
-            );
-          });
-
-          // Exit alternative XPath selection mode
-          setAlternativeXPathMode(false);
-          setAlternativeXPathStepIndex(null);
-
-          // Clean up the existing feedback element if it exists
-          if (feedbackElementRef.current) {
-            clearTimeout(feedbackElementRef.current.timeoutId);
-            if (document.body.contains(feedbackElementRef.current.element)) {
-              document.body.removeChild(feedbackElementRef.current.element);
-            }
-            feedbackElementRef.current = null;
-          }
-
-          // Show a visual feedback that the XPath was added
-          const feedbackElement = document.createElement("div");
-          feedbackElement.textContent = "Alternative XPath added!";
-          feedbackElement.style.position = "fixed";
-          feedbackElement.style.top = "20px";
-          feedbackElement.style.left = "50%";
-          feedbackElement.style.transform = "translateX(-50%)";
-          feedbackElement.style.backgroundColor = "#52c41a";
-          feedbackElement.style.color = "white";
-          feedbackElement.style.padding = "8px 16px";
-          feedbackElement.style.borderRadius = "4px";
-          feedbackElement.style.zIndex = "9999";
-          document.body.appendChild(feedbackElement);
-
-          // Remove the feedback element after 2 seconds
-          const timeoutId = setTimeout(() => {
-            if (document.body.contains(feedbackElement)) {
-              document.body.removeChild(feedbackElement);
-            }
-          }, 2000);
-
-          // Store the new feedback element and timeout ID
-          feedbackElementRef.current = { element: feedbackElement, timeoutId };
-
-          return;
-        }
-      }
-
-      // Check if there's a pending hover step
-      if (pendingHoverStepRef.current) {
-        // Record the pending hover step before the click
-        dispatch(automationActions.addCurrentStep(pendingHoverStepRef.current.step));
-        dispatch(persistEditingStateWatcher.getPayload());
-
-        // Clear the pending hover timer
-        window.clearTimeout(pendingHoverStepRef.current.timer);
-        pendingHoverStepRef.current = null;
-      }
-
-      // Normal click recording
-      const step = recordClick(clickedElement);
-      if (step) {
-        dispatch(automationActions.addCurrentStep(step));
-        dispatch(persistEditingStateWatcher.getPayload());
-      }
-    },
-    [dispatch, alternativeXPathMode, alternativeXPathStepIndex, feedbackElementRef],
-  );
-
-  // Handler for input events (typing in text fields)
-  const onHandlerInput = useCallback(
-    (e: any) => {
-      // Skip if recording is paused
-      if (recordingPaused) {
-        return;
-      }
-
-      // Skip if the element is part of the extension UI
-      if (hasAppClass(e.target)) {
-        return;
-      }
-
-      // Record input action if it's an input or textarea element
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
-        const step = recordInput(e.target, e.target.value);
-        if (step) {
-          // Clear any existing timer
-          if (inputDebounceTimerRef.current) {
-            window.clearTimeout(inputDebounceTimerRef.current);
-          }
-
-          // Set a new timer to record the input after a delay
-          inputDebounceTimerRef.current = window.setTimeout(() => {
-            // Re-check if recording is still active and not paused
-            if (!recording || recordingPaused) {
-              inputDebounceTimerRef.current = null;
-              return;
-            }
-
-            // Update the last input xpath
-            lastInputXpathRef.current = step.xpath!;
-            // Dispatch the step to the store
-            dispatch(automationActions.addCurrentStep(step));
-            dispatch(persistEditingStateWatcher.getPayload());
-            // Clear the timer reference
-            inputDebounceTimerRef.current = null;
-          }, INPUT_DEBOUNCE_DELAY);
-        }
-      }
-    },
-    [dispatch, recordingPaused],
-  );
-
-  // Handler for change events (selecting options from dropdowns)
-  const onHandlerChange = useCallback(
-    (e: any) => {
-      // Skip if recording is paused
-      if (recordingPaused) {
-        return;
-      }
-
-      // Skip if the element is part of the extension UI
-      if (hasAppClass(e.target)) {
-        return;
-      }
-
-      // Record select action if it's a select element
-      if (e.target.tagName === "SELECT") {
-        const step = recordSelect(e.target, e.target.value);
-        if (step) {
-
-          dispatch(automationActions.addCurrentStep(step));
-          dispatch(persistEditingStateWatcher.getPayload());
-        }
-      }
-    },
-    [dispatch],
-  );
-
-  // Handler for URL navigation detection
-  const onHandlerUrlChange = useCallback(() => {
-    // Skip if recording is not active or is paused
-    if (!recording || recordingPaused) {
-      return;
-    }
-
-    const newUrl = window.location.href;
-    if (newUrl !== currentUrlRef.current) {
-      const step = recordUrlNavigation(newUrl);
+    const addStep = (step: ScenarioStep | null) => {
+      if (!step) return;
       dispatch(automationActions.addCurrentStep(step));
       dispatch(persistEditingStateWatcher.getPayload());
+    };
+
+    const replaceFeedback = (feedback: Feedback | null) => {
+      if (feedbackElementRef.current) {
+        window.clearTimeout(feedbackElementRef.current.timeoutId);
+        feedbackElementRef.current.element.remove();
+      }
+      feedbackElementRef.current = feedback;
+    };
+
+    // Writes the pending typed value immediately so steps keep the order the user performed them in
+    const flushPendingInput = () => {
+      const pending = pendingInputRef.current;
+      if (!pending) return;
+      window.clearTimeout(pending.timer);
+      pendingInputRef.current = null;
+      if (!isActive()) return;
+      const step = recordInput(pending.element, (pending.element as HTMLInputElement).value ?? "");
+      if (step) {
+        dispatch(automationActions.upsertInputStep(step));
+        dispatch(persistEditingStateWatcher.getPayload());
+      }
+    };
+
+    const recordUrlChangeIfAny = () => {
+      if (!isActive()) return;
+      const newUrl = window.location.href;
+      if (newUrl === currentUrlRef.current) return;
+      flushPendingInput();
       currentUrlRef.current = newUrl;
-    }
-  }, [dispatch, recording, recordingPaused]);
+      addStep(recordUrlNavigation(newUrl));
+    };
 
-  // Handler for popstate events (back/forward navigation)
-  const onHandlerPopstate = useCallback(() => {
-    onHandlerUrlChange();
-  }, [onHandlerUrlChange]);
+    const onHover = (e: MouseEvent) => {
+      if (!isActive()) return;
+      if (HighlightOverlayManager.getInstance().isSelectionActive()) return;
+      const rawTarget = e.target as Element;
+      if (hasAppClass(rawTarget)) return;
 
-  // Handler for message events (for alternative XPath selection and hover step selection)
-  const onHandlerMessage = useCallback(
-    (e: MessageEvent) => {
-      // Check if the message is for alternative XPath selection
-      if (e.data && e.data.type === "SET_ALTERNATIVE_XPATH") {
+      const target = getActionableTarget(rawTarget);
+      if (!target || target === lastHoveredElementRef.current) return;
+      lastHoveredElementRef.current = target;
 
-        // Enter alternative XPath selection mode
-        setAlternativeXPathMode(true);
-        setAlternativeXPathStepIndex(e.data.stepIndex);
-
-        // Show a visual feedback that we're in alternative XPath selection mode
-        const feedbackElement = document.createElement("div");
-        feedbackElement.textContent = "Click on an element to set alternative XPath";
-        feedbackElement.style.position = "fixed";
-        feedbackElement.style.top = "20px";
-        feedbackElement.style.left = "50%";
-        feedbackElement.style.transform = "translateX(-50%)";
-        feedbackElement.style.backgroundColor = "#1890ff";
-        feedbackElement.style.color = "white";
-        feedbackElement.style.padding = "8px 16px";
-        feedbackElement.style.borderRadius = "4px";
-        feedbackElement.style.zIndex = "9999";
-        document.body.appendChild(feedbackElement);
-
-        // Remove the feedback element after 5 seconds or when a click is made
-        const timeoutId = setTimeout(() => {
-          if (document.body.contains(feedbackElement)) {
-            document.body.removeChild(feedbackElement);
-          }
-        }, 5000);
-
-        // Store the element and timeout ID for cleanup
-        const feedbackInfo = { element: feedbackElement, timeoutId };
-
-        // Update the ref to the feedback info
-        feedbackElementRef.current = feedbackInfo;
+      if (hoverDebounceTimerRef.current) {
+        window.clearTimeout(hoverDebounceTimerRef.current);
       }
-      // Check if the message is for explicit hover step selection
-      else if (e.data && e.data.type === "SELECT_HOVER_STEP") {
 
-        // Use the selectHoverStep function to handle hover step selection
-        selectHoverStep();
+      hoverDebounceTimerRef.current = window.setTimeout(() => {
+        hoverDebounceTimerRef.current = null;
+        if (!isActive() || lastHoveredElementRef.current !== target) return;
+
+        if (isHoverStepSelectedRef.current) {
+          isHoverStepSelectedRef.current = false;
+          addStep(recordHover(target));
+          return;
+        }
+
+        hoverHistoryRef.current = [
+          { element: target, time: Date.now() },
+          ...hoverHistoryRef.current.filter((entry) => entry.element !== target),
+        ].slice(0, HOVER_HISTORY_SIZE);
+      }, HOVER_DEBOUNCE_DELAY);
+    };
+
+    // A hover is only worth replaying when it revealed the clicked element (dropdowns, tooltips, menus),
+    // i.e. the pointer rested on a different, unrelated element shortly before the click.
+    const takeHoverBeforeClick = (clicked: Element): ScenarioStep | null => {
+      const now = Date.now();
+      const entry = hoverHistoryRef.current.find(
+        ({ element, time }) =>
+          now - time <= HOVER_CLICK_TIMEOUT &&
+          element !== clicked &&
+          !element.contains(clicked) &&
+          !clicked.contains(element) &&
+          element.isConnected &&
+          !isTextEntryElement(element),
+      );
+      hoverHistoryRef.current = [];
+      return entry ? recordHover(entry.element) : null;
+    };
+
+    const onClick = (e: MouseEvent) => {
+      if (!isActive() || e.button !== 0) return;
+      const rawTarget = e.target as Element;
+      const target = getActionableTarget(rawTarget);
+
+      // Leaving a field we typed in (including pressing "Save" in the extension): commit the value first
+      if (pendingInputRef.current && pendingInputRef.current.element !== target) {
+        flushPendingInput();
       }
-    },
-    [feedbackElementRef, selectHoverStep],
-  );
 
-  // Attach event listeners when the component mounts
-  useLayoutEffect(() => {
-    window.addEventListener("mousemove", onHandlerHover, { capture: true });
-    window.addEventListener("mousedown", onHandlerClick, { capture: true });
-    window.addEventListener("input", onHandlerInput, { capture: true });
-    window.addEventListener("change", onHandlerChange, { capture: true });
-    window.addEventListener("message", onHandlerMessage);
-    window.addEventListener("popstate", onHandlerPopstate);
+      if (hasAppClass(rawTarget) || !target) return;
 
-    // Override history methods to detect programmatic navigation
+      const alternativeIndex = alternativeXPathStepIndexRef.current;
+      if (alternativeIndex !== null) {
+        const { primaryXPath, alternativeXpaths } = generateXPaths(target);
+        [primaryXPath, ...alternativeXpaths].filter(Boolean).forEach((xpath) => {
+          dispatch(automationActions.addAlternativeXPathToRecordedStep({ index: alternativeIndex, xpath }));
+        });
+        dispatch(persistEditingStateWatcher.getPayload());
+        alternativeXPathStepIndexRef.current = null;
+        replaceFeedback(showFeedback("Alternative XPath added!", "#52c41a", 2000));
+        return;
+      }
+
+      // Typing and select steps already focus/set these elements on playback
+      if (isTextEntryElement(target) || target.tagName === "SELECT" || target.tagName === "OPTION") {
+        hoverHistoryRef.current = [];
+        return;
+      }
+
+      addStep(takeHoverBeforeClick(target));
+      addStep(recordClick(target));
+    };
+
+    const onInput = (e: Event) => {
+      if (!isActive()) return;
+      const target = e.target as Element;
+      if (hasAppClass(target) || !isTextEntryElement(target)) return;
+
+      if (pendingInputRef.current && pendingInputRef.current.element !== target) {
+        flushPendingInput();
+      }
+      if (pendingInputRef.current) {
+        window.clearTimeout(pendingInputRef.current.timer);
+      }
+      pendingInputRef.current = {
+        element: target,
+        timer: window.setTimeout(flushPendingInput, INPUT_DEBOUNCE_DELAY),
+      };
+    };
+
+    const onChange = (e: Event) => {
+      if (!isActive()) return;
+      const target = e.target as Element;
+      if (hasAppClass(target)) return;
+
+      if (isTextEntryElement(target)) {
+        // "change" fires when the field loses focus: commit the final value right away
+        if (pendingInputRef.current?.element === target) flushPendingInput();
+        return;
+      }
+
+      if (target.tagName === "SELECT") {
+        flushPendingInput();
+        addStep(recordSelect(target, (target as HTMLSelectElement).value));
+      }
+    };
+
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "SET_ALTERNATIVE_XPATH") {
+        alternativeXPathStepIndexRef.current = e.data.stepIndex;
+        replaceFeedback(showFeedback("Click on an element to set alternative XPath", "#1890ff", 5000));
+      } else if (e.data?.type === "SELECT_HOVER_STEP") {
+        isHoverStepSelectedRef.current = true;
+        replaceFeedback(showFeedback("Next hover will be recorded", "#1890ff", 2000));
+      }
+    };
+
+    window.addEventListener("mousemove", onHover, { capture: true });
+    window.addEventListener("mousedown", onClick, { capture: true });
+    window.addEventListener("input", onInput, { capture: true });
+    window.addEventListener("change", onChange, { capture: true });
+    window.addEventListener("message", onMessage);
+    window.addEventListener("popstate", recordUrlChangeIfAny);
+    window.addEventListener("hashchange", recordUrlChangeIfAny);
+    window.addEventListener("beforeunload", flushPendingInput);
+
+    // Override history methods to detect programmatic (SPA) navigation
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
 
     history.pushState = function (...args) {
       originalPushState.apply(history, args);
-      // Use setTimeout to ensure the URL has changed before checking
-      setTimeout(onHandlerUrlChange, 0);
+      setTimeout(recordUrlChangeIfAny, 0);
     };
 
     history.replaceState = function (...args) {
       originalReplaceState.apply(history, args);
-      // Use setTimeout to ensure the URL has changed before checking
-      setTimeout(onHandlerUrlChange, 0);
+      setTimeout(recordUrlChangeIfAny, 0);
     };
 
-    // Clean up event listeners when the component unmounts
     return () => {
-      // Remove event listeners
-      window.removeEventListener("mousemove", onHandlerHover, { capture: true });
-      window.removeEventListener("mousedown", onHandlerClick, { capture: true });
-      window.removeEventListener("input", onHandlerInput, { capture: true });
-      window.removeEventListener("change", onHandlerChange, { capture: true });
-      window.removeEventListener("message", onHandlerMessage);
-      window.removeEventListener("popstate", onHandlerPopstate);
+      window.removeEventListener("mousemove", onHover, { capture: true });
+      window.removeEventListener("mousedown", onClick, { capture: true });
+      window.removeEventListener("input", onInput, { capture: true });
+      window.removeEventListener("change", onChange, { capture: true });
+      window.removeEventListener("message", onMessage);
+      window.removeEventListener("popstate", recordUrlChangeIfAny);
+      window.removeEventListener("hashchange", recordUrlChangeIfAny);
+      window.removeEventListener("beforeunload", flushPendingInput);
 
-      // Restore original history methods
       history.pushState = originalPushState;
       history.replaceState = originalReplaceState;
 
-      // Clear any pending debounce timer
       if (hoverDebounceTimerRef.current) {
         window.clearTimeout(hoverDebounceTimerRef.current);
         hoverDebounceTimerRef.current = null;
       }
-
-      // Clean up feedback element if it exists
-      if (feedbackElementRef.current) {
-        clearTimeout(feedbackElementRef.current.timeoutId);
-        if (document.body.contains(feedbackElementRef.current.element)) {
-          document.body.removeChild(feedbackElementRef.current.element);
-        }
+      if (pendingInputRef.current) {
+        window.clearTimeout(pendingInputRef.current.timer);
+        pendingInputRef.current = null;
       }
+      replaceFeedback(null);
     };
-  }, [onHandlerHover, onHandlerClick, onHandlerInput, onHandlerChange, onHandlerMessage, onHandlerPopstate, onHandlerUrlChange]);
+  }, [recording, dispatch]);
 
   return null;
 };
