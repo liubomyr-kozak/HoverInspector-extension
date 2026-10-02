@@ -7,12 +7,17 @@ import {
   ExecutionSession,
   getSessionOwner,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/executionSession.ts";
+import { matchesDomainTrigger } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/validationUtils.ts";
+import { TriggerConfig } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types.ts";
+import { AUTOMATION_SCENARIO_PREFIX } from "@entrypoints/core/constants/automation.ts";
 
 /**
  * Background side of scenario automation across tabs:
  * - tells a content script which tab it runs in (needed to own a playback session)
  * - when a playing (or recording) tab opens a new tab, moves the playback there and turns the extension on
  *   in that tab, so the scenario continues in it
+ * - turns the extension on in tabs whose URL matches an enabled domain trigger, so the trigger can start
+ *   its scenario without the user opening Hover Inspector first
  */
 
 const EDITING_STATE_KEY = "AUTOMATION_SCENARIO_automation_scenario_editing_state";
@@ -33,12 +38,7 @@ export function handleAutomationTabPort(port: chrome.runtime.Port): boolean {
 }
 
 function isRecording(rawEditingState: unknown): boolean {
-  try {
-    const state = typeof rawEditingState === "string" ? JSON.parse(rawEditingState) : rawEditingState;
-    return (state as { status?: string } | undefined)?.status === "recording";
-  } catch {
-    return false;
-  }
+  return parseStored<{ status?: string }>(rawEditingState)?.status === "recording";
 }
 
 async function onTabCreated(tab: chrome.tabs.Tab) {
@@ -64,15 +64,44 @@ async function onTabCreated(tab: chrome.tabs.Tab) {
   }
 }
 
+const TRIGGER_KEY_PREFIX = `${AUTOMATION_SCENARIO_PREFIX}tr_`;
+
+function parseStored<T>(value: unknown): T | null {
+  try {
+    return (typeof value === "string" ? JSON.parse(value) : value) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function activateIfTriggered(tabId: number, url: string | undefined) {
+  if (!url || !/^https?:/.test(url) || Ext.session.isActive(tabId)) return;
+
+  const items = await chrome.storage.local.get(null);
+  const triggers = Object.keys(items)
+    .filter((key) => key.startsWith(TRIGGER_KEY_PREFIX))
+    .map((key) => parseStored<TriggerConfig>(items[key]));
+
+  if (matchesDomainTrigger(triggers, url)) {
+    await Ext.session.activate(tabId);
+  }
+}
+
 export function registerAutomationTabListeners() {
   chrome.tabs.onCreated.addListener((tab) => {
     onTabCreated(tab).catch((error) => console.error("Error handling new tab for automation:", error));
   });
 
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.status !== "complete" || !tabsToActivate.has(tabId)) return;
-    tabsToActivate.delete(tabId);
-    Ext.session.activate(tabId).catch((error) => console.error("Error activating automation tab:", error));
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status !== "complete") return;
+
+    if (tabsToActivate.has(tabId)) {
+      tabsToActivate.delete(tabId);
+      Ext.session.activate(tabId).catch((error) => console.error("Error activating automation tab:", error));
+      return;
+    }
+
+    activateIfTriggered(tabId, tab.url).catch((error) => console.error("Error checking URL triggers:", error));
   });
 
   chrome.tabs.onRemoved.addListener((tabId) => tabsToActivate.delete(tabId));

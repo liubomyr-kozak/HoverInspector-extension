@@ -580,7 +580,20 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
 
     if (shouldExecute && !paused && pendingSteps.length > 0) {
       if (!singleStep) {
-        yield call(startExecutionSession, { scenarioId: id, nextStepIndex: startFromStep, tabId, updatedAt: Date.now() });
+        // A playback continued after a page load keeps its start time
+        const previous = startFromStep > 0 ? yield call(loadExecutionSession) : null;
+        const previousHandoff = previous ? yield call(loadExecutionHandoff) : null;
+        const startedAt =
+          previous?.scenarioId === id && shouldResumeSession(previous, tabId, previousHandoff)
+            ? previous.startedAt
+            : undefined;
+        yield call(startExecutionSession, {
+          scenarioId: id,
+          nextStepIndex: startFromStep,
+          tabId,
+          updatedAt: Date.now(),
+          startedAt: startedAt || Date.now(),
+        });
       }
 
       // Set execution status to running
@@ -698,14 +711,24 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
       );
 
       // The playback continues on the next page / in another tab (or was replaced by another one).
-      // A playback whose last step left the page is finished though.
-      if (handedOff || (isPageUnloading() && executionLog.status !== ExecutionStatus.SUCCESS)) {
+      // When its last step left the page, the next page records the finished playback.
+      if (handedOff || isPageUnloading()) {
         yield put(automationActions.resetExecutionState());
         yield put(automationActions.setActiveScenarioId(null));
         return;
       }
 
+      // A playback spanning several pages is recorded from its start
+      let historyLog = executionLog;
       if (!singleStep) {
+        const session = yield call(loadExecutionSession);
+        if (session?.scenarioId === id && session.startedAt) {
+          historyLog = {
+            ...executionLog,
+            startTime: new Date(session.startedAt).toISOString(),
+            totalDuration: Date.now() - session.startedAt,
+          };
+        }
         yield call(releaseExecutionSession, id, tabId);
       }
 
@@ -773,7 +796,7 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
       const historyEntry = {
         scenarioId: id,
         scenarioTitle: scenario.title,
-        executionLog: executionLog,
+        executionLog: historyLog,
         timestamp: new Date().toISOString(),
       };
 
@@ -852,8 +875,33 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
     }
 
     const scenario: Scenario | undefined = scenarios?.[session.scenarioId];
-    if (!scenario || session.nextStepIndex >= (scenario.data?.length || 0)) {
+    if (!scenario) {
       yield call(clearExecutionSession);
+      return;
+    }
+
+    // The last step of the scenario led to this page: the playback is finished
+    if (session.nextStepIndex >= (scenario.data?.length || 0)) {
+      yield call(clearExecutionSession);
+      const startedAt = session.startedAt || session.updatedAt;
+      const historyId = yield call(generateUniqueId);
+      yield put(
+        saveExecutionHistoryWatcher.getPayload({
+          id: `ex_hist_${historyId}`,
+          entry: {
+            scenarioId: session.scenarioId,
+            scenarioTitle: scenario.title,
+            executionLog: {
+              entries: [],
+              startTime: new Date(startedAt).toISOString(),
+              endTime: new Date().toISOString(),
+              totalDuration: Date.now() - startedAt,
+              status: ExecutionStatus.SUCCESS,
+            },
+            timestamp: new Date().toISOString(),
+          },
+        }),
+      );
       return;
     }
 

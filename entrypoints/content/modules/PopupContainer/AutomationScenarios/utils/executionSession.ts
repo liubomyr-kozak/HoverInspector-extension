@@ -24,6 +24,8 @@ export interface ExecutionSession {
   nextStepIndex: number;
   tabId: number | null;
   updatedAt: number;
+  // When the whole playback started (it may span several pages)
+  startedAt?: number;
 }
 
 export interface ExecutionHandoff {

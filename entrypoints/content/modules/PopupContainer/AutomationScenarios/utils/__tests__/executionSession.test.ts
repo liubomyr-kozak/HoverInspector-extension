@@ -89,3 +89,19 @@ describe("execution session", () => {
     expect(canLeavePage({ type: StepType.WAIT, value: "100" })).toBe(false);
   });
 });
+
+describe("domain triggers in the background", () => {
+  it("match the URL of a tab without using window.location", async () => {
+    const { matchesDomainTrigger } = await import("../validationUtils");
+    const trigger = (condition: object, enabled = true) =>
+      ({ title: "t", scenarioId: "sc_1", enabled, type: "domain", condition }) as any;
+    expect(matchesDomainTrigger([trigger({ domainPattern: "shop.example.com" })], "https://shop.example.com/a")).toBe(
+      true,
+    );
+    expect(matchesDomainTrigger([trigger({ domainPattern: "shop.example.com" })], "https://other.com/")).toBe(false);
+    expect(
+      matchesDomainTrigger([trigger({ domainPattern: "https://x.io/cart", exactMatch: true })], "https://x.io/cart"),
+    ).toBe(true);
+    expect(matchesDomainTrigger([trigger({ domainPattern: "x.io" }, false)], "https://x.io/")).toBe(false);
+  });
+});
