@@ -29,17 +29,23 @@ const NoteMeta = styled.div`
   padding-top: 8px;
 `;
 
+// Dark or white text, whichever has the higher WCAG contrast on the note colour. The old brightness cut-off
+// (> 186) put white text on the default blue (3.7:1) and on every other theme colour.
+const relativeLuminance = (hex: string) => {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.replace(/./g, "$&$&") : clean.slice(0, 6);
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = (parseInt(full.substring(i, i + 2), 16) || 0) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const DARK_TEXT = "#111827";
 const getContrastTextColor = (hex: string) => {
-  // прибираємо "#"
-  const cleanHex = hex.replace("#", "");
-  const r = parseInt(cleanHex.substring(0, 2), 16);
-  const g = parseInt(cleanHex.substring(2, 4), 16);
-  const b = parseInt(cleanHex.substring(4, 6), 16);
-
-  // формула для яскравості
-  const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-
-  return brightness > 186 ? "#000000" : "#FFFFFF";
+  const l = relativeLuminance(hex);
+  const onWhite = 1.05 / (l + 0.05);
+  const onDark = (l + 0.05) / (relativeLuminance(DARK_TEXT) + 0.05);
+  return onDark >= onWhite ? DARK_TEXT : "#FFFFFF";
 };
 
 const CloseButton = styled.button`
