@@ -1,6 +1,6 @@
-import { clickableProps } from "@entrypoints/shared/utils/a11y";
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Col, Divider, InputNumber, List, Row, Select, Space } from "antd";
+import { Col, InputNumber, Row, Select, Space } from "antd";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import copy from "copy-to-clipboard";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
@@ -308,65 +308,50 @@ export const UnitConverter: React.FC = () => {
         </Col>
       </Row>
 
-      {/* History Section */}
+      {/* History: each row is a button that restores the conversion, with a separate copy button */}
       {history.length > 0 && (
-        <>
-          <Divider orientation="left">
-            <div className="flex items-center">
-              <span>Conversion history</span>
-              <Button
-                type="text"
-                danger
-                icon={<IconTrash size={16} />}
-                size="small"
-                onClick={clearHistory}
-                aria-label="Clear conversion history"
-                title="Clear conversion history"
-                style={{ marginLeft: "8px" }}
-              />
-            </div>
-          </Divider>
-
-          <List
-            size="small"
-            dataSource={history}
-            renderItem={(item) => (
-              <List.Item
-                key={item.id}
-                className="cursor-pointer hover:bg-gray-50"
-                {...clickableProps(() => useHistoryItem(item), `Use ${item.inputValue}${item.inputUnit} to ${item.outputUnit}`)}
-                actions={[
-                  <Tooltip title="Copy result" key="copy">
-                    <Button
-                      type="text"
-                      icon={<IconCopy size={16} />}
-                      size="small"
-                      aria-label={`Copy ${item.outputValue}${item.outputUnit}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copy(`${item.outputValue}${item.outputUnit}`);
-                      }}
-                    />
-                  </Tooltip>,
-                ]}
-              >
-                <div className="flex flex-col">
-                  <div>
-                    <span className="font-medium">
-                      {item.inputValue}
-                      {item.inputUnit}
-                    </span>
-                    <span className="mx-2">→</span>
-                    <span className="font-medium">
-                      {item.outputValue}
-                      {item.outputUnit}
-                    </span>
-                  </div>
-                </div>
-              </List.Item>
-            )}
-          />
-        </>
+        <section aria-labelledby="unit-converter-history-title" className="mt-2">
+          <div className="flex items-center justify-between gap-2 pb-1 mb-1 border-b border-gray-200">
+            <h3 id="unit-converter-history-title" className="m-0 text-sm font-semibold text-gray-800">
+              Conversion history
+            </h3>
+            <IconButton label="Clear conversion history" onClick={clearHistory} size={24}>
+              <IconTrash />
+            </IconButton>
+          </div>
+          <ul className="m-0 p-0 list-none">
+            {history.map((item) => (
+              <li key={item.id} className="flex items-center gap-1 min-w-0 border-b border-gray-100 last:border-b-0">
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 text-left bg-transparent border-0 rounded px-2 py-1.5 cursor-pointer hover:bg-gray-50 text-sm text-gray-800"
+                  title="Use this conversion"
+                  onClick={() => useHistoryItem(item)}
+                >
+                  <span className="font-medium inline-block max-w-full [overflow-wrap:anywhere]">
+                    {item.inputValue}
+                    {item.inputUnit}
+                  </span>
+                  <span className="mx-2 text-gray-500" aria-hidden>
+                    →
+                  </span>
+                  <span className="sr-only">to</span>
+                  <span className="font-medium inline-block max-w-full [overflow-wrap:anywhere]">
+                    {item.outputValue}
+                    {item.outputUnit}
+                  </span>
+                </button>
+                <IconButton
+                  label={`Copy ${item.outputValue}${item.outputUnit}`}
+                  size={24}
+                  onClick={() => copy(`${item.outputValue}${item.outputUnit}`)}
+                >
+                  <IconCopy />
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );
