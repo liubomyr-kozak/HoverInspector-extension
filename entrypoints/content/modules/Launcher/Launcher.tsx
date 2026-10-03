@@ -224,6 +224,8 @@ const Launcher: React.FC = () => {
                 <IconButton
                   key={id}
                   $active={isActive}
+                  aria-label={item.title}
+                  aria-pressed={isActive}
                   onClick={() => toggleFeature(id)}
                 >
                   <Icon />
@@ -243,7 +245,7 @@ const Launcher: React.FC = () => {
           // @ts-ignore
           getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
         >
-          <IconButton $active={false} onClick={(e) => e.stopPropagation()}>
+          <IconButton $active={false} aria-label="More tools and settings" onClick={(e) => e.stopPropagation()}>
             <IconDotsVertical />
           </IconButton>
         </Popover>

@@ -237,6 +237,8 @@ export function ResizableModal({
               </div>
               <button
                 onClick={handleCloseClick}
+                title="Close"
+                aria-label="Close"
                 className="modal-drag-handle-close-button shrink-0 flex items-center justify-center h-8 w-8 p-0 hover:bg-accent z-10 relative"
                 style={{ pointerEvents: "auto", cursor: "pointer" }}
               >
