@@ -2,16 +2,15 @@ import { useEffect, useState, useRef } from "react";
 import { TriggerConfig, TriggerType } from "../../types";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  automationActions,
   selectTriggers,
   selectScenarios,
   selectExecuting,
   selectStatus,
   ScenarioStatus,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
-import {
-  playScenarioWatcher,
-  saveTriggerWatcher,
-} from "@entrypoints/content/store/automation/automation.saga.action.ts";
+import { playScenarioWatcher } from "@entrypoints/content/store/automation/automation.saga.action.ts";
+import { saveTriggerToLocalStorage } from "../../utils/storage.ts";
 import { toast } from "react-toastify";
 import { validateDomainPattern } from "../../utils/validationUtils.ts";
 import { EXECUTION_SESSION_MAX_AGE, loadExecutionSession } from "../../utils/executionSession.ts";
@@ -46,6 +45,13 @@ export const TriggerScenarioEvaluator = () => {
 
   // Page load triggers run once per page load
   const executedPageLoadTriggers = useRef(new Set<string>());
+
+  // Whether the element of each element trigger was on the page at the last check:
+  // the trigger runs when the element appears, not on every check while it stays there
+  const elementPresentRef = useRef(new Map<string, boolean>());
+
+  // Triggers whose custom condition can't be evaluated (warned about once)
+  const unsupportedConditionsRef = useRef(new Set<string>());
 
   // Don't start scenarios while one is playing or while recording / editing
   const busyRef = useRef(false);
@@ -103,11 +109,15 @@ export const TriggerScenarioEvaluator = () => {
   };
 
   /**
-   * Evaluates a custom condition using JavaScript
+   * Evaluates a custom condition using JavaScript.
+   * Content scripts can't compile code (the extension's Content Security Policy blocks it), so a
+   * custom condition that can't be evaluated is reported once and its trigger doesn't run.
    * @param condition The trigger condition to evaluate
+   * @param triggerId The ID of the trigger being evaluated
+   * @param title The title of the trigger being evaluated
    * @returns True if the condition is met, false otherwise
    */
-  const evaluateCustomCondition = (condition: TriggerConfig["condition"]) => {
+  const evaluateCustomCondition = (condition: TriggerConfig["condition"], triggerId: string, title: string) => {
     if (!condition.customCondition) return true; // If no custom condition, consider it met
 
     try {
@@ -115,7 +125,16 @@ export const TriggerScenarioEvaluator = () => {
       const evalFunction = new Function("return " + condition.customCondition);
       return !!evalFunction();
     } catch (error) {
-      console.error(`Error evaluating custom condition: ${condition.customCondition}`, error);
+      if (!unsupportedConditionsRef.current.has(triggerId)) {
+        unsupportedConditionsRef.current.add(triggerId);
+        console.warn(`Custom condition of trigger "${title}" can't be evaluated:`, error);
+        if (error instanceof EvalError) {
+          toast.warn(`Trigger "${title}" has a custom JavaScript condition, which is not supported. It won't run.`, {
+            position: "bottom-left",
+            autoClose: 6000,
+          });
+        }
+      }
       return false;
     }
   };
@@ -148,6 +167,15 @@ export const TriggerScenarioEvaluator = () => {
       if (timeDifference < 5000) return false;
     }
 
+    // Element triggers run when the element appears (and again only after it disappeared)
+    if (trigger.type === TriggerType.ELEMENT_PRESENT) {
+      const present = evaluateElementPresentTrigger(trigger.condition);
+      const wasPresent = elementPresentRef.current.get(triggerId) || false;
+      elementPresentRef.current.set(triggerId, present);
+      if (!present || wasPresent) return false;
+      return evaluateCustomCondition(trigger.condition, triggerId, trigger.title);
+    }
+
     // Evaluate based on trigger type
     let typeConditionMet = false;
 
@@ -159,9 +187,6 @@ export const TriggerScenarioEvaluator = () => {
         // For page load triggers, we always return true as they're evaluated on page load
         typeConditionMet = true;
         break;
-      case TriggerType.ELEMENT_PRESENT:
-        typeConditionMet = evaluateElementPresentTrigger(trigger.condition);
-        break;
       case TriggerType.CUSTOM_EVENT:
         // Custom events are handled separately via event listeners
         typeConditionMet = false;
@@ -171,7 +196,7 @@ export const TriggerScenarioEvaluator = () => {
     }
 
     // If the type-specific condition is met, also check any custom condition
-    return typeConditionMet && evaluateCustomCondition(trigger.condition);
+    return typeConditionMet && evaluateCustomCondition(trigger.condition, triggerId, trigger.title);
   };
 
   /**
@@ -211,9 +236,48 @@ export const TriggerScenarioEvaluator = () => {
       lastTriggered: new Date().toISOString(),
     };
 
-    // Save the updated trigger
-    dispatch(saveTriggerWatcher.getPayload({ id: triggerId, trigger: updatedTrigger }));
+    // Save the updated trigger (not through saveTriggerWatcher: it would reset a trigger form being edited)
+    saveTriggerToLocalStorage(triggerId, updatedTrigger).then((saved) => {
+      if (saved) {
+        dispatch(automationActions.updateTrigger({ id: triggerId, trigger: updatedTrigger }));
+      }
+    });
   };
+
+  // Keep the latest executeTrigger for the event listeners below
+  const executeTriggerRef = useRef(executeTrigger);
+  executeTriggerRef.current = executeTrigger;
+
+  // When each custom event trigger last ran
+  const customEventRunsRef = useRef(new Map<string, number>());
+
+  // Custom event triggers run when the page dispatches their event on window
+  // (e.g. window.dispatchEvent(new CustomEvent("myEvent")))
+  useEffect(() => {
+    const listeners: [string, () => void][] = [];
+
+    Object.entries(triggers || {}).forEach(([triggerId, trigger]) => {
+      const eventName = trigger.condition?.eventName?.trim();
+      if (!trigger.enabled || trigger.type !== TriggerType.CUSTOM_EVENT || !eventName) return;
+
+      const listener = () => {
+        if (loadedByPlaybackRef.current !== false || busyRef.current) return;
+        // Prevent triggering more than once every 5 seconds
+        if (Date.now() - (customEventRunsRef.current.get(triggerId) || 0) < 5000) return;
+        if (!evaluateCustomCondition(trigger.condition, triggerId, trigger.title)) return;
+
+        customEventRunsRef.current.set(triggerId, Date.now());
+        executeTriggerRef.current(triggerId, trigger);
+      };
+
+      window.addEventListener(eventName, listener);
+      listeners.push([eventName, listener]);
+    });
+
+    return () => {
+      listeners.forEach(([eventName, listener]) => window.removeEventListener(eventName, listener));
+    };
+  }, [triggers]);
 
   useEffect(() => {
     // Function to check all triggers
