@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { IconGitCompare, IconArrowLeft, IconFileText, IconActivity } from "@tabler/icons-react";
 import { ReactDiffViewer } from "./components/TreeDiffView/components/ReactDiffViewer";
 import { SnapshotCompareProps } from "./types";
-import { getStylesFromSnapshot } from "./utils";
+import { getStylesFromSnapshot, isElementRooted } from "./utils";
 import { buildDOMTree } from "../../utils/domTreeBuilder";
 import { isDevelopment } from "@entrypoints/shared/helpers.ts";
 
@@ -51,13 +51,14 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
   splitView = true,
 }) => {
   // Memoize on the snapshots: getStylesFromSnapshot returns a new object each call
-  const { treeA, treeB } = useMemo(
-    () => ({
-      treeA: buildDOMTree(getStylesFromSnapshot(snapshotA)),
-      treeB: buildDOMTree(getStylesFromSnapshot(snapshotB)),
-    }),
-    [snapshotA, snapshotB],
-  );
+  const { treeA, treeB } = useMemo(() => {
+    // Two element snapshots: compare the elements themselves, even if the page around them changed
+    const relative = isElementRooted(snapshotA) && isElementRooted(snapshotB);
+    return {
+      treeA: buildDOMTree(getStylesFromSnapshot(snapshotA, relative)),
+      treeB: buildDOMTree(getStylesFromSnapshot(snapshotB, relative)),
+    };
+  }, [snapshotA, snapshotB]);
 
   const stats = useMemo(() => {
     const totalA = snapshotA.elementCount || 0;

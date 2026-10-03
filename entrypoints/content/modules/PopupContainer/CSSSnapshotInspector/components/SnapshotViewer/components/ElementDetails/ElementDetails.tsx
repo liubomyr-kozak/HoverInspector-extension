@@ -4,6 +4,7 @@ import { EmptyState } from "../../../../CSSSnapshotInspector.styled";
 import { ElementDiff } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiff.tsx";
 import { useSelector } from "react-redux";
 import { RootState } from "@entrypoints/content/store/createStore.ts";
+import { ElementChanges } from "./ElementChanges";
 import { ElementDiffSingleColumn } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/components/SnapshotViewer/components/ElementDetails/ElementDiff/ElementDiffSingleColumn.tsx";
 
 /**
@@ -22,6 +23,11 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
         <p>Select an element from the list to view its styles</p>
       </EmptyState>
     );
+  }
+
+  // Opened from a comparison: show only what changed between A and B
+  if (state.compareConfig) {
+    return <ElementChanges before={state.compareLeftData ?? null} after={state.compareRightData ?? null} />;
   }
 
   // Use Redux state if available, otherwise fallback to props
