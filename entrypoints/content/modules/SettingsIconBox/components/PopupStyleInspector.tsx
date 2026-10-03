@@ -289,7 +289,10 @@ const PopupStyleInspector = ({ selectedElementType }) => {
       {processedLines.length === 0 ? (
         <div className="text-xs text-gray-400 italic">Hover over or click an element on the page to see its CSS.</div>
       ) : (
-        <pre ref={blockRef} className="bg-gray-50 text-xs font-mono p-2 rounded border border-gray-100">
+        <pre
+          ref={blockRef}
+          className="bg-gray-50 text-xs font-mono p-2 rounded border border-gray-100 whitespace-pre-wrap break-words"
+        >
           {processedLines.map((line, i) => {
             // Для shorthand (мають prop) рендеримо заголовок з кнопкою expand
             if (line.type === "shorthand" && line.prop) {
@@ -344,7 +347,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
 
             if (line.type === "wrapper") {
               return (
-                <div key={i} data-type="wrapper" className="px-1 py-0.5 rounded text-gray-800 cursor-default">
+                <div key={i} data-type="wrapper" className="px-1 py-0.5 rounded text-gray-800 cursor-default break-all">
                   {line.value}
                 </div>
               );

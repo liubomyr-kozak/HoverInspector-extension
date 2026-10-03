@@ -33,7 +33,8 @@ const PopupContainer = ({ data, hoverElement }) => {
   const fontFamily = (data["font-family"] || "").split(",")[0].replace(/["']/g, "").trim();
 
   const hasText = !!isChildText(hoverElement?.childNodes);
-  const showTextColor = hasText && !!color;
+  // SVG text is painted with fill, so its CSS color says nothing
+  const showTextColor = hasText && !!color && !(hoverElement instanceof SVGElement);
 
   // SVG shapes are painted with fill/stroke rather than background/color
   let svgFill = "";
@@ -105,6 +106,14 @@ const PopupContainer = ({ data, hoverElement }) => {
 
   const renderBorderSide = (sideLabel, borderData) => {
     if (!borderData) return null;
+    if (borderData.style === 'none' || borderData.style === 'hidden' || parseFloat(borderData.width) === 0) {
+      return (
+        <div style={{ ...rowStyle, marginBottom: '4px' }}>
+          <span style={labelStyle}>{sideLabel}:</span>
+          <span style={{ fontSize: '11px', color: '#adb5bd' }}>none</span>
+        </div>
+      );
+    }
     return (
       <div style={{ ...rowStyle, marginBottom: '4px' }}>
         <span style={labelStyle}>{sideLabel}:</span>
@@ -141,7 +150,7 @@ const PopupContainer = ({ data, hoverElement }) => {
         gap: '8px',
         ...(hasBody ? { marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e9ecef' } : {}),
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
           {getTagMeta(tag, id, className)}
         </div>
         <div style={{
