@@ -45,19 +45,26 @@ const SortableItem = ({
 
   return (
     <DraggableItem ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
-      <DragHandle {...attributes} {...listeners}>
+      {/* Reordering is pointer-only (no keyboard sensor), so the row itself is not a tab stop; its two buttons are */}
+      <DragHandle {...attributes} {...listeners} role="group" aria-label={title} tabIndex={-1}>
         <DragFeatureIcon>
           {" "}
           <Icon />
         </DragFeatureIcon>
         <DragFeatureTitle
+          type="button"
           onClick={() => onOpen?.(id)}
           title={isActive ? "Opened" : "Open this tool"}
-          style={{ cursor: "pointer", fontWeight: isActive ? 600 : undefined }}
+          style={{ fontWeight: isActive ? 600 : undefined }}
         >
           {title}
         </DragFeatureTitle>
-        <EyeIconContainer onClick={handleEyeClick} title={isVisible ? "Hide from toolbar" : "Show on toolbar"}>
+        <EyeIconContainer
+          type="button"
+          onClick={handleEyeClick}
+          title={isVisible ? "Hide from toolbar" : "Show on toolbar"}
+          aria-label={`${title}: ${isVisible ? "hide from toolbar" : "show on toolbar"}`}
+        >
           <EyeIcon />
         </EyeIconContainer>
         <DragHandleIcon>

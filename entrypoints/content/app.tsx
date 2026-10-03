@@ -25,6 +25,7 @@ import NotificationManager from "@entrypoints/content/modules/NotificationManage
 import { TriggerScenarioEvaluator } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/TriggerForm/TriggerScenarioEvaluator.tsx";
 import { ScheduleMonitor } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScheduleMonitor.tsx";
 import { HighlightOverlayProvider } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
+import { antdTheme } from "@entrypoints/shared/styles/tokens";
 import { VisibleNotesProvider } from "@entrypoints/content/modules/PopupContainer/PageNotes/VisibleNotesProvider/VisibleNotesProvider.tsx";
 
 // import appStyles from "./app.css?inline";
@@ -71,7 +72,7 @@ export const App = ({ shadowRoot }) => {
   return (
     <StyleSheetManager target={shadowRoot}>
       <StyleProvider container={shadowRoot}>
-        <ConfigProvider getPopupContainer={getPopupContainer}>
+        <ConfigProvider getPopupContainer={getPopupContainer} theme={antdTheme}>
           <EmotionShadowRoot shadowRoot={shadowRoot}>
             <AppController>
               <HighlightOverlayProvider>

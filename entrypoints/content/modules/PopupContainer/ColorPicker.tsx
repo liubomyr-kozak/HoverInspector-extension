@@ -17,9 +17,13 @@ import {
   PortalModalHeaderButtons,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons";
 import { INSPECTOR, PICKER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
+import { tokens } from "@entrypoints/shared/styles/tokens";
 
 const Container = styled.div`
   position: relative;
+  width: 100%;
+  min-width: 0;
 `;
 
 const PickerWrapper = styled.div`
@@ -38,13 +42,14 @@ const HistoryContainer = styled.div`
   margin-bottom: 16px;
 `;
 
-const ColorHistoryItem = styled.div<{ color: string }>`
+const ColorHistoryItem = styled.button<{ $color: string }>`
   width: 24px;
   height: 24px;
+  padding: 0;
   border-radius: 4px;
-  background-color: ${(props) => props.color};
+  background-color: ${(props) => props.$color};
   cursor: pointer;
-  border: 1px solid #ccc;
+  border: 1px solid #d1d5db;
   transition: transform 0.2s;
 
   &:hover {
@@ -52,25 +57,21 @@ const ColorHistoryItem = styled.div<{ color: string }>`
   }
 `;
 
-const HistoryButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  margin-left: auto;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-
-  &:active {
-    background-color: rgba(0, 0, 0, 0.1);
-  }
+const HistoryCount = styled.span`
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: ${tokens.color.primary};
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
 `;
 
 const TitleRow = styled.div`
@@ -83,6 +84,7 @@ const CopyRow = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   margin-bottom: 12px;
 `;
 
@@ -109,8 +111,18 @@ const CopyButton = styled.button`
   color: #374151;
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 1 auto;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  /* The rgba() value is long; in a narrow panel it ends in an ellipsis instead of leaving the panel */
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   &:hover {
     background: #f3f4f6;
@@ -138,6 +150,21 @@ const ColorPicker = () => {
   const colorHistory = useSelector((state: any) => state?.app.colorHistory || []);
 
   const featurePopupPosition = useSelector((state: any) => state?.app.featurePopupPosition);
+
+  // The picker takes a fixed pixel width: follow the panel's real content width (also while it is being
+  // resized), so it never overflows a narrow panel
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => setContainerWidth(Math.floor(entry.contentRect.width)));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const pickerWidth = containerWidth
+    ? Math.max(200, containerWidth)
+    : Math.max(220, featurePopupPosition.width - 32 /* padding */ - 15 /* scrollbar */);
 
   const isFirstColor = useRef(true);
 
@@ -175,7 +202,7 @@ const ColorPicker = () => {
   };
 
   return (
-    <Container>
+    <Container ref={containerRef}>
       {/* Move FeatureTitle to portal header */}
       <PortalHeaderButtons portalId={HeaderPortalId.COLOR_PICKER}>
         <FeatureTitle className="flex items-center">
@@ -183,27 +210,15 @@ const ColorPicker = () => {
           <FeatureTitleText title={PICKER.title}>{PICKER.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
             {colorHistory.length > 0 && (
-              <HistoryButton onClick={toggleHistory} title="Color History" style={{ position: "relative" }}>
-                <IconHistory size={20} color={showHistory ? "#4CAF50" : "#666"} />
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "-5px",
-                    right: "-5px",
-                    background: "#4CAF50",
-                    color: "white",
-                    borderRadius: "50%",
-                    width: "16px",
-                    height: "16px",
-                    fontSize: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {colorHistory.length}
-                </span>
-              </HistoryButton>
+              <IconButton
+                label={showHistory ? "Hide recent colors" : "Show recent colors"}
+                active={showHistory}
+                onClick={toggleHistory}
+                style={{ position: "relative" }}
+              >
+                <IconHistory size={18} />
+                <HistoryCount aria-hidden>{colorHistory.length}</HistoryCount>
+              </IconButton>
             )}
           </PortalModalHeaderButtons>
         </FeatureTitle>
@@ -212,14 +227,16 @@ const ColorPicker = () => {
       {/* Display color history if there are any saved colors and showHistory is true */}
       {colorHistory.length > 0 && showHistory && (
         <>
-          <div style={{ marginTop: "8px", marginBottom: "4px", fontSize: "14px" }}>Recently used colors:</div>
+          <h3 className="m-0 mt-1 text-sm font-semibold text-gray-800">Recent colors</h3>
           <HistoryContainer>
             {colorHistory.map((historyColor: string, index: number) => (
               <ColorHistoryItem
                 key={index}
-                color={historyColor}
+                type="button"
+                $color={historyColor}
                 onClick={() => handleSelectHistoryColor(historyColor)}
                 title={historyColor}
+                aria-label={`Use ${historyColor}`}
               />
             ))}
           </HistoryContainer>
@@ -229,12 +246,18 @@ const ColorPicker = () => {
       <CopyRow>
         <CurrentSwatch color={color} />
         {hexValue && (
-          <CopyButton onClick={() => copyToClipboard(hexValue)} title="Copy HEX">
-            <IconCopy size={14} /> {hexValue}
+          // The short HEX value never truncates; the long rgba() one shrinks first
+          <CopyButton
+            style={{ flexShrink: 0 }}
+            onClick={() => copyToClipboard(hexValue)}
+            title="Copy HEX"
+            aria-label={`Copy ${hexValue}`}
+          >
+            <IconCopy size={14} /> <span>{hexValue}</span>
           </CopyButton>
         )}
         <CopyButton onClick={() => copyToClipboard(color)} title={isGradient ? "Copy CSS gradient" : "Copy RGBA"}>
-          <IconCopy size={14} /> {isGradient ? "gradient" : color.replace(/\s+/g, "")}
+          <IconCopy size={14} /> <span>{isGradient ? "gradient" : color.replace(/\s+/g, "")}</span>
         </CopyButton>
       </CopyRow>
 
@@ -244,7 +267,7 @@ const ColorPicker = () => {
           onChange={setColor}
           // Without the native EyeDropper the library falls back to screenshotting #root, which most pages don't have
           hideEyeDrop={typeof window === "undefined" || !("EyeDropper" in window)}
-          width={Math.max(220, featurePopupPosition.width - 32 /* padding */ - 15 /* scrollbar */)}
+          width={pickerWidth}
           height={200}
         />
       </PickerWrapper>

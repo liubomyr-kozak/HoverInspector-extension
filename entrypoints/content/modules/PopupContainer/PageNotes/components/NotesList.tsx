@@ -12,6 +12,9 @@ import {
   IconUpload,
 } from "@tabler/icons-react";
 import styled from "styled-components";
+import { Button } from "antd";
+import { tokens } from "@entrypoints/shared/styles/tokens";
+import { EmptyState } from "@entrypoints/shared/components/EmptyState";
 import { Note as NoteComponent } from "./Note";
 import { Note as NoteType, NoteGroup, NotesState, ColorPalette } from "@entrypoints/shared/types/notes";
 
@@ -40,7 +43,8 @@ const SearchContainer = styled.div`
 
 const SearchInput = styled.input`
   width: 100%;
-  padding: 8px 12px 8px 36px;
+  height: ${tokens.control.md}px;
+  padding: 0 32px 0 36px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
@@ -48,8 +52,8 @@ const SearchInput = styled.input`
   transition: border-color 0.2s;
 
   &:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: ${tokens.color.primary};
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   }
 `;
 
@@ -58,7 +62,7 @@ const SearchIcon = styled.div`
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
+  color: #6b7280;
 
   svg {
     width: 16px;
@@ -96,9 +100,10 @@ const ClearButton = styled.button`
 
 const FilterControls = styled.div`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 `;
 
 const FilterToggle = styled.button<{ $active: boolean }>`
@@ -125,75 +130,6 @@ const FilterToggle = styled.button<{ $active: boolean }>`
   }
 `;
 
-const AddNoteButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid #10b981;
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: rgba(16, 185, 129, 0.2);
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const ImportButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: rgba(139, 92, 246, 0.2);
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
-const ExportButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: rgba(245, 158, 11, 0.2);
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
-`;
-
 const ScopeToggle = styled.div`
   display: inline-flex;
   margin-top: 12px;
@@ -207,8 +143,8 @@ const ScopeButton = styled.button<{ $active: boolean }>`
   border: none;
   font-size: 12px;
   cursor: pointer;
-  background: ${(props) => (props.$active ? "#3b82f6" : "white")};
-  color: ${(props) => (props.$active ? "white" : "#6b7280")};
+  background: ${(props) => (props.$active ? tokens.color.primary : "white")};
+  color: ${(props) => (props.$active ? "white" : tokens.color.textSecondary)};
 
   & + & {
     border-left: 1px solid #d1d5db;
@@ -216,10 +152,9 @@ const ScopeButton = styled.button<{ $active: boolean }>`
 `;
 
 const LinkButton = styled.button`
-  margin-top: 12px;
   border: none;
   background: transparent;
-  color: #3b82f6;
+  color: ${tokens.color.primary};
   font-size: 13px;
   cursor: pointer;
   text-decoration: underline;
@@ -237,7 +172,10 @@ const GroupContainer = styled.div`
   margin-bottom: 16px;
 `;
 
-const GroupHeader = styled.div`
+const GroupHeader = styled.button`
+  width: 100%;
+  border: none;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -272,37 +210,6 @@ const GroupBadge = styled.span`
 const GroupContent = styled.div<{ $isExpanded: boolean }>`
   display: ${(props) => (props.$isExpanded ? "block" : "none")};
   margin-left: 16px;
-`;
-
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
-  color: #9ca3af;
-`;
-
-const EmptyIcon = styled.div`
-  margin-bottom: 12px;
-  svg {
-    width: 48px;
-    height: 48px;
-  }
-`;
-
-const EmptyTitle = styled.h3`
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #6b7280;
-`;
-
-const EmptyDescription = styled.p`
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
 `;
 
 interface NotesListProps {
@@ -409,11 +316,12 @@ export const NotesList: React.FC<NotesListProps> = ({
           <SearchInput
             type="text"
             placeholder="Search notes..."
+            aria-label="Search notes"
             value={notesState.searchQuery || ""}
             onChange={(e) => onUpdateSearchQuery(e.target.value)}
           />
           {notesState.searchQuery && (
-            <ClearButton onClick={() => onUpdateSearchQuery("")}>
+            <ClearButton type="button" aria-label="Clear search" title="Clear search" onClick={() => onUpdateSearchQuery("")}>
               <IconX />
             </ClearButton>
           )}
@@ -421,19 +329,16 @@ export const NotesList: React.FC<NotesListProps> = ({
 
         <FilterControls>
           <ButtonGroup>
-            <ImportButton onClick={onImportNotes}>
-              <IconUpload />
+            <Button size="small" icon={<IconUpload size={14} />} onClick={onImportNotes} title="Import notes from a JSON file">
               Import
-            </ImportButton>
-            <ExportButton onClick={onExportNotes}>
-              <IconDownload />
+            </Button>
+            <Button size="small" icon={<IconDownload size={14} />} onClick={onExportNotes} title="Export notes to a JSON file">
               Export
-            </ExportButton>
+            </Button>
           </ButtonGroup>
-          <AddNoteButton onClick={onCreateNote}>
-            <IconPlus />
-            Add Note
-          </AddNoteButton>
+          <Button size="small" type="primary" icon={<IconPlus size={14} />} onClick={onCreateNote}>
+            Add note
+          </Button>
         </FilterControls>
 
         <ScopeToggle role="group" aria-label="Which notes to show">
@@ -448,38 +353,34 @@ export const NotesList: React.FC<NotesListProps> = ({
 
       <Content>
         {!hasNotes ? (
-          <EmptyState>
-            <EmptyIcon>
-              <IconFolder />
-            </EmptyIcon>
-            <EmptyTitle>No notes yet</EmptyTitle>
-            <EmptyDescription>Create your first note by clicking the "Add Note" button above.</EmptyDescription>
-          </EmptyState>
+          <EmptyState
+            icon={<IconFolder />}
+            title="No notes yet"
+            description='Create your first note with the "Add note" button above.'
+          />
         ) : !hasNotesInScope ? (
-          <EmptyState>
-            <EmptyIcon>
-              <IconFolder />
-            </EmptyIcon>
-            <EmptyTitle>No notes on this page</EmptyTitle>
-            <EmptyDescription>Notes attached to other pages are hidden here.</EmptyDescription>
-            <LinkButton type="button" onClick={() => onShowAllPagesChange(true)}>
-              Show notes from all pages
-            </LinkButton>
-          </EmptyState>
+          <EmptyState
+            icon={<IconFolder />}
+            title="No notes on this page"
+            description="Notes attached to other pages are hidden here."
+            action={
+              <LinkButton type="button" onClick={() => onShowAllPagesChange(true)}>
+                Show notes from all pages
+              </LinkButton>
+            }
+          />
         ) : totalNotes === 0 ? (
-          <EmptyState>
-            <EmptyIcon>
-              <IconSearch />
-            </EmptyIcon>
-            <EmptyTitle>No matching notes</EmptyTitle>
-            <EmptyDescription>Try adjusting your search query or filter settings.</EmptyDescription>
-          </EmptyState>
+          <EmptyState
+            icon={<IconSearch />}
+            title="No matching notes"
+            description="Try another search or filter."
+          />
         ) : (
           <>
             {/* Render grouped notes */}
             {groupedNotes.grouped.map(({ group, notes }) => (
               <GroupContainer key={group!.id}>
-                <GroupHeader onClick={() => onToggleGroup(group!.id)}>
+                <GroupHeader type="button" aria-expanded={!!group!.isExpanded} onClick={() => onToggleGroup(group!.id)}>
                   {group!.isExpanded ? <IconChevronDown /> : <IconChevronRight />}
                   <GroupName>{group!.name}</GroupName>
                   <GroupBadge>{notes.length}</GroupBadge>

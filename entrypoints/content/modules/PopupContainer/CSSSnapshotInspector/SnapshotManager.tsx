@@ -23,50 +23,10 @@ import {
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { getSnapshotHostname } from "./utils/snapshotStorage";
+import { EmptyState } from "@entrypoints/shared/components/EmptyState";
 
 // Styled Components
 const ManagerContainer = styled.div``;
-
-const EmptyStateContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f8fafc, rgba(99, 102, 241, 0.03));
-  border-radius: 16px;
-  margin: 16px;
-  padding: 24px 16px;
-`;
-
-const EmptyStateIcon = styled.div`
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  border-radius: 50%;
-  padding: 20px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
-  margin-bottom: 20px;
-  border: 1px solid rgba(229, 231, 235, 0.5);
-`;
-
-const EmptyStateTitle = styled.h3`
-  font-size: 20px;
-  font-weight: 700;
-  text-align: center;
-  background: linear-gradient(135deg, #1f2937, #6b7280);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
-`;
-
-const EmptyStateDescription = styled.p`
-  color: #6b7280;
-  text-align: center;
-  margin: 0;
-  max-width: 500px;
-  line-height: 1.5;
-  font-size: 14px;
-`;
 
 const FeatureGrid = styled.div`
   display: grid;
@@ -126,11 +86,11 @@ const CardTitle = styled.div`
   gap: 8px;
 
   .icon {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: #2563eb;
     color: white;
     padding: 6px;
     border-radius: 6px;
-    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
   }
 
   .text {
@@ -207,7 +167,7 @@ const MetadataItem = styled.div`
   border-radius: 4px;
 
   .icon {
-    color: #6366f1;
+    color: #2563eb;
   }
 
   .value {
@@ -242,29 +202,29 @@ const ActionButton = styled.button<{ variant: "primary" | "secondary" | "danger"
     switch (props.variant) {
       case "primary":
         return `
-          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          background: #2563eb;
           color: white;
           &:hover {
-            background: linear-gradient(135deg, #5b5feb, #7c3aed);
-            box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+            background: #1d4ed8;
+            box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
           }
         `;
       case "danger":
         return `
-          background: linear-gradient(135deg, #ef4444, #dc2626);
+          background: #dc2626;
           color: white;
           &:hover {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            background: #b91c1c;
             box-shadow: 0 1px 4px rgba(239, 68, 68, 0.3);
           }
         `;
       case "green":
         return `
-          background: linear-gradient(135deg, #10b981, #059669);
+          background: #15803d;
           color: white;
           &:hover {
-            background: linear-gradient(135deg, #059669, #047857);
-            box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+            background: #166534;
+            box-shadow: 0 1px 4px rgba(21, 128, 61, 0.3);
           }
         `;
       default:
@@ -285,7 +245,7 @@ const SelectionBadge = styled.div`
   //position: absolute;
   //top: 12px;
   //right: 12px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: #15803d;
   color: white;
   padding: 3px 6px;
   border-radius: 8px;
@@ -294,7 +254,7 @@ const SelectionBadge = styled.div`
   display: flex;
   align-items: center;
   gap: 3px;
-  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 1px 4px rgba(21, 128, 61, 0.3);
 `;
 
 interface SnapshotManagerProps {
@@ -330,17 +290,15 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
       return (
         <>
           <ManagerContainer>
-            <EmptyStateContainer>
-              <EmptyStateIcon>
-                <IconPhotoPlus size={48} color="#9ca3af" />
-              </EmptyStateIcon>
-              <EmptyStateTitle>{isFiltered ? "No Matching Snapshots" : "No Snapshots Yet"}</EmptyStateTitle>
-              <EmptyStateDescription>
-                {isFiltered
+            <EmptyState
+              icon={<IconPhotoPlus />}
+              title={isFiltered ? "No matching snapshots" : "No snapshots yet"}
+              description={
+                isFiltered
                   ? "No snapshot title, URL or date matches your search."
-                  : "Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time."}
-              </EmptyStateDescription>
-            </EmptyStateContainer>
+                  : "Capture a snapshot of the page with the button in the header to inspect its DOM and compare changes over time."
+              }
+            />
           </ManagerContainer>
         </>
       );

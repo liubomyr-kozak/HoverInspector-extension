@@ -59,7 +59,7 @@ const PrimaryButton = styled.button`
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: #15803d;
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -67,11 +67,11 @@ const PrimaryButton = styled.button`
   color: white;
   cursor: pointer;
   transition: all 200ms ease;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.25);
 
   &:hover {
-    background: linear-gradient(135deg, #059669, #047857);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    background: #166534;
+    box-shadow: 0 4px 12px rgba(21, 128, 61, 0.3);
     transform: scale(1.02);
   }
 
@@ -95,10 +95,10 @@ const TitleSection = styled.div`
 `;
 
 const TitleIcon = styled.div`
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: #2563eb;
   padding: 16px;
   border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
 `;
 
 const TitleContent = styled.div`
@@ -124,15 +124,15 @@ const TitleInput = styled.input`
   font-size: 28px;
   font-weight: 700;
   background: transparent;
-  border: 2px solid #6366f1;
+  border: 2px solid #2563eb;
   border-radius: 8px;
   padding: 8px 12px;
   color: #1f2937;
   outline: none;
 
   &:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 `;
 
@@ -183,8 +183,8 @@ const SecondaryButton = styled.button`
 `;
 
 const MetadataBar = styled.div`
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(139, 92, 246, 0.04));
-  border: 1px solid rgba(99, 102, 241, 0.18);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.04), rgba(139, 92, 246, 0.04));
+  border: 1px solid rgba(37, 99, 235, 0.18);
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 20px;
@@ -206,7 +206,7 @@ const MetadataItem = styled.div`
   border-radius: 6px;
 
   .icon {
-    color: #6366f1;
+    color: #2563eb;
   }
 
   .value {
@@ -275,7 +275,7 @@ const LoadingSpinner = styled.div`
   width: 20px;
   height: 20px;
   border: 2px solid #d1d5db;
-  border-top: 2px solid #6366f1;
+  border-top: 2px solid #2563eb;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 

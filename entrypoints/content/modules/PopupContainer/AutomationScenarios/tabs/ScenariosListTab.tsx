@@ -84,14 +84,11 @@ const ScenariosListTab: React.FC = () => {
                   <IconRecordMail size={18} />
                 </span>
               }
-              style={{
-                backgroundColor: recording ? "#ff4d4f" : "#e91e63",
-                color: "white",
-                fontWeight: "bold",
-                flex: 3,
-              }}
+              type="primary"
+              danger
+              style={{ fontWeight: 600, flex: 3 }}
             >
-              Start Recording
+              Start recording
             </Button>
           )}
           {isScenarioCreated && (
@@ -105,15 +102,11 @@ const ScenariosListTab: React.FC = () => {
                         <IconRecordMail size={18} />
                       </span>
                     }
-                    style={{
-                      backgroundColor: recording ? "#ff4d4f" : "#e91e63",
-                      color: "white",
-                      padding: "8px 14px",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                    }}
+                    type="primary"
+                    danger
+                    style={{ fontWeight: 600 }}
                   >
-                    Start Recording
+                    Start recording
                   </Button>
                 </div>
               </AutomationFooterContainer>

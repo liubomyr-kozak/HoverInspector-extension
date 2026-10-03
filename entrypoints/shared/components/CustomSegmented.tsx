@@ -4,6 +4,7 @@ type SegmentedOption = {
   value: string;
   label: React.ReactNode;
   icon?: React.ReactNode;
+  /** Overrides the selected style; by default every segmented control uses the primary colour */
   activeClassName?: string;
 };
 
@@ -13,6 +14,8 @@ type CustomSegmentedProps = {
   options: SegmentedOption[];
   className?: string;
   inactiveClassName?: string;
+  /** Accessible name of the group, e.g. the visible heading above it */
+  ariaLabel?: string;
 };
 
 const CustomSegmented: React.FC<CustomSegmentedProps> = ({
@@ -20,24 +23,31 @@ const CustomSegmented: React.FC<CustomSegmentedProps> = ({
   onChange,
   options,
   className = "",
-  inactiveClassName = "bg-white text-gray-500 hover:bg-gray-100",
+  inactiveClassName = "bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+  ariaLabel,
 }) => {
   return (
-    <div className={`inline-flex w-full rounded-xl border border-gray-300 overflow-hidden w-full ${className}`}>
-      {options.map((option) => {
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className={`inline-flex w-full rounded-md border border-gray-300 overflow-hidden ${className}`}
+    >
+      {options.map((option, index) => {
         const isActive = option.value === value;
-        const activeClass = option.activeClassName ?? "bg-gray-200 text-black";
+        const activeClass = option.activeClassName ?? "bg-blue-600 text-white";
 
         return (
           <button
             key={option.value}
+            type="button"
+            aria-pressed={isActive}
             onClick={() => onChange(option.value)}
-            className={`flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-              isActive ? activeClass : inactiveClassName
-            }`}
+            className={`flex flex-1 min-w-0 cursor-pointer items-center justify-center gap-2 px-3 h-8 text-sm font-medium transition-colors duration-150 focus-visible:-outline-offset-2 ${
+              index > 0 ? "border-l border-gray-300" : ""
+            } ${isActive ? activeClass : inactiveClassName}`}
           >
             {option.icon}
-            <span>{option.label}</span>
+            <span className="truncate">{option.label}</span>
           </button>
         );
       })}

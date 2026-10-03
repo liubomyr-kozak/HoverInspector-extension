@@ -4,26 +4,28 @@
  * to the tool's root (.ntt-root) so nothing else in the extension is affected.
  */
 .ntt-root {
+  /* Mapped onto the extension's design tokens (entrypoints/shared/styles/tokens.ts) so this tool
+     uses the same primary blue, text greys, borders and radius as the other panels */
   --background: #ffffff;
-  --foreground: #1f1f23;
+  --foreground: #1f2937;
   --card: #ffffff;
-  --card-foreground: #1f1f23;
+  --card-foreground: #1f2937;
   --popover: #ffffff;
-  --popover-foreground: #1f1f23;
-  --primary: #030213;
+  --popover-foreground: #1f2937;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #f0f1f5;
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: rgba(0, 0, 0, 0.12);
-  --input-background: #f3f3f5;
-  --ring: #a1a1a1;
-  --radius: 0.625rem;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #1f2937;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --accent: #f3f4f6;
+  --accent-foreground: #1f2937;
+  --destructive: #dc2626;
+  --border: #e5e7eb;
+  --input: #d1d5db;
+  --input-background: #ffffff;
+  --ring: #2563eb;
+  --radius: 0.375rem;
   color: var(--foreground);
   font-size: 14px;
   line-height: 1.5;

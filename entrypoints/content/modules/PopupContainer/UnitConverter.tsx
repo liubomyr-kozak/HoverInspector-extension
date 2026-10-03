@@ -1,3 +1,4 @@
+import { clickableProps } from "@entrypoints/shared/utils/a11y";
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Col, Divider, InputNumber, List, Row, Select, Space } from "antd";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
@@ -277,7 +278,7 @@ export const UnitConverter: React.FC = () => {
             style={{ width: "100%" }}
           />
         </Col>
-        <Col flex="auto" className="text-right text-gray-400 text-xs">
+        <Col flex="auto" className="text-right text-gray-500 text-xs">
           viewport {viewport.width}×{viewport.height}
         </Col>
       </Row>
@@ -289,16 +290,18 @@ export const UnitConverter: React.FC = () => {
               {inputValue}
               {inputUnit} =
             </span>
-            <Tooltip placement="top" title="Click to Copy" clickTile={"Copied!"}>
-              <span
-                className="bg-blue-100 text-blue-800 font-semibold rounded-xs py-1 px-2 cursor-pointer"
+            <Tooltip placement="top" title="Click to copy" clickTile={"Copied!"}>
+              <button
+                type="button"
+                aria-label={`Copy ${outputValue}${outputUnit}`}
+                className="bg-blue-50 text-blue-800 border border-blue-200 font-semibold rounded py-0.5 px-2 cursor-pointer hover:bg-blue-100"
                 onClick={() => {
                   copy(`${outputValue}${outputUnit}`);
                 }}
               >
                 {outputValue}
                 {outputUnit}
-              </span>
+              </button>
             </Tooltip>
           </div>
         </Col>
@@ -309,13 +312,15 @@ export const UnitConverter: React.FC = () => {
         <>
           <Divider orientation="left">
             <div className="flex items-center">
-              <span>Conversion History</span>
+              <span>Conversion history</span>
               <Button
                 type="text"
                 danger
                 icon={<IconTrash size={16} />}
                 size="small"
                 onClick={clearHistory}
+                aria-label="Clear conversion history"
+                title="Clear conversion history"
                 style={{ marginLeft: "8px" }}
               />
             </div>
@@ -328,13 +333,14 @@ export const UnitConverter: React.FC = () => {
               <List.Item
                 key={item.id}
                 className="cursor-pointer hover:bg-gray-50"
-                onClick={() => useHistoryItem(item)}
+                {...clickableProps(() => useHistoryItem(item), `Use ${item.inputValue}${item.inputUnit} to ${item.outputUnit}`)}
                 actions={[
-                  <Tooltip title="Copy Result" key="copy">
+                  <Tooltip title="Copy result" key="copy">
                     <Button
                       type="text"
                       icon={<IconCopy size={16} />}
                       size="small"
+                      aria-label={`Copy ${item.outputValue}${item.outputUnit}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         copy(`${item.outputValue}${item.outputUnit}`);

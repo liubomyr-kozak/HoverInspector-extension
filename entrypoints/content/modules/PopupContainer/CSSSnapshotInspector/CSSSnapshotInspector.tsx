@@ -58,8 +58,8 @@ const FilterInput = styled.input`
 
   &:focus {
     outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 `;
 
@@ -89,7 +89,7 @@ const ClearButton = styled.button`
 const FilterStats = styled.div`
   margin-top: 12px;
   padding: 8px 12px;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(37, 99, 235, 0.1);
   color: #4338ca;
   font-size: 14px;
   font-weight: 500;

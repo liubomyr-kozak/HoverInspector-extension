@@ -11,7 +11,7 @@ import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { IconDeviceDesktop } from "@tabler/icons-react";
 import { INSPECTOR, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
-const { TabPane } = Tabs;
+import { tokens } from "@entrypoints/shared/styles/tokens";
 
 const Container = styled.div`
   display: flex;
@@ -28,19 +28,35 @@ const Container = styled.div`
   }
 `;
 
-const InfoList = styled.ul`
-  font-size: 14px;
+// Label above value, two columns: stays readable down to the 320px panel
+const InfoList = styled.dl`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 0;
-  list-style: none;
+  gap: 10px 12px;
+  margin: 0;
+
+  div {
+    min-width: 0;
+  }
+  dt {
+    font-size: 12px;
+    color: ${tokens.color.textMuted};
+  }
+  dd {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: ${tokens.color.text};
+    font-variant-numeric: tabular-nums;
+  }
 `;
 
-const Label = styled.div`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 12px;
+// Section heading, same size as the other tools' section headings
+const Label = styled.h3`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${tokens.color.text};
+  margin: 0 0 8px;
 `;
 
 const BreakpointList = styled.ul`
@@ -89,13 +105,38 @@ const materialBreakpoints: Breakpoint[] = [
   { label: "xl: ≥1536px", min: 1536 },
 ];
 
-const BreakpointTag = styled(Tag)<{ active: boolean }>`
-  margin: 4px;
-  font-size: 14px;
-  background-color: ${({ active }) => (active ? "#1890ff" : "#f0f0f0")};
-  color: ${({ active }) => (active ? "#fff" : "inherit")};
-  border: ${({ active }) => (active ? "none" : "1px solid #ccc")};
+const BreakpointTag = styled(Tag)<{ $active: boolean }>`
+  margin: 0;
+  font-size: 12px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+  background-color: ${({ $active }) => ($active ? tokens.color.primary : tokens.color.surfaceMuted)};
+  color: ${({ $active }) => ($active ? "#fff" : tokens.color.text)};
+  border: 1px solid ${({ $active }) => ($active ? tokens.color.primary : tokens.color.borderStrong)};
 `;
+
+const TagList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+`;
+
+const INFO_ROWS: [label: string, value: (info: any) => React.ReactNode][] = [
+  ["Inner width", (i) => `${i.width}px`],
+  ["Inner height", (i) => `${i.height}px`],
+  ["Screen width", (i) => `${i.screenWidth}px`],
+  ["Screen height", (i) => `${i.screenHeight}px`],
+  ["Pixel ratio", (i) => i.pixelRatio],
+  ["DPI", (i) => i.dpi],
+  ["DPPX", (i) => i.dppx],
+  ["DPCM", (i) => i.dpcm?.toFixed(2)],
+  ["Root font size", (i) => i.rootFontSize],
+  ["Orientation", (i) => i.orientation],
+  ["Aspect ratio", (i) => i.aspectRatio],
+];
+
+// The ruler at the top of the page shows these labels with device emoji; the panel's buttons don't need them
+const presetLabel = (label: string) => label.replace(/^[^\p{L}]+/u, "");
 
 function getActiveBreakpoint(breakpoints: Breakpoint[], width: number) {
   return breakpoints.find((bp) => width >= bp.min && (bp.max === undefined || width <= bp.max));
@@ -166,42 +207,41 @@ export default function ViewportInfoPanel() {
 
       <AntCard>
         <InfoList>
-          <li>Inner Width: {info.width}px</li>
-          <li>Inner Height: {info.height}px</li>
-          <li>Screen Width: {info.screenWidth}px</li>
-          <li>Screen Height: {info.screenHeight}px</li>
-          <li>Pixel Ratio: {info.pixelRatio}</li>
-          <li>DPI: {info.dpi}</li>
-          <li>DPPX: {info.dppx}</li>
-          <li>DPCM: {info.dpcm?.toFixed(2)}</li>
-          <li>Root Font Size: {info.rootFontSize}</li>
-          <li>Orientation: {info.orientation}</li>
-          <li>Aspect Ratio: {info.aspectRatio}</li>
+          {INFO_ROWS.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value(info)}</dd>
+            </div>
+          ))}
         </InfoList>
       </AntCard>
 
       <AntCard>
-        <Label>Media Query Recommendations</Label>
-        <Tabs defaultActiveKey="bootstrap">
-          <TabPane tab="Bootstrap" key="bootstrap">
-            {bootstrapBreakpoints.map((bp, i) => (
-              <BreakpointTag key={i} active={bp.label === activeBootstrap?.label}>
-                {bp.label}
-              </BreakpointTag>
-            ))}
-          </TabPane>
-          <TabPane tab="Material UI" key="material">
-            {materialBreakpoints.map((bp, i) => (
-              <BreakpointTag key={i} active={bp.label === activeMaterial?.label}>
-                {bp.label}
-              </BreakpointTag>
-            ))}
-          </TabPane>
-        </Tabs>
+        <Label>Framework breakpoints</Label>
+        <Tabs
+          defaultActiveKey="bootstrap"
+          size="small"
+          items={[
+            { key: "bootstrap", label: "Bootstrap", list: bootstrapBreakpoints, active: activeBootstrap },
+            { key: "material", label: "Material UI", list: materialBreakpoints, active: activeMaterial },
+          ].map(({ key, label, list, active }) => ({
+            key,
+            label,
+            children: (
+              <TagList>
+                {list.map((bp) => (
+                  <BreakpointTag key={bp.label} $active={bp.label === active?.label}>
+                    {bp.label}
+                  </BreakpointTag>
+                ))}
+              </TagList>
+            ),
+          }))}
+        />
       </AntCard>
 
       <AntCard>
-        <Label>Resize Presets</Label>
+        <Label>Resize window</Label>
         {resizeMiss && <ResizeNote>{resizeMiss}</ResizeNote>}
         <ButtonGroup>
           {breakpoints.map((bp) => (
@@ -212,7 +252,7 @@ export default function ViewportInfoPanel() {
               type={windowWidth === bp.value ? "primary" : "default"}
               loading={pendingWidth === bp.value}
             >
-              {bp.label}
+              {presetLabel(bp.label)}
             </AntButton>
           ))}
         </ButtonGroup>

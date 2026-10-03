@@ -1,3 +1,4 @@
+import { clickableProps } from "@entrypoints/shared/utils/a11y";
 import React, { useMemo, useRef, useState } from "react";
 import copy from "copy-to-clipboard";
 import DomNodeManager, { useDomNodeObserver } from "@entrypoints/core/services/dom/DomNodeManager";
@@ -262,15 +263,25 @@ const PopupStyleInspector = ({ selectedElementType }) => {
 
   return (
     <div className="p-3 w-full bg-white rounded-md border border-gray-200 shadow">
-      <div className="flex justify-between items-center mb-2 flex-wrap">
-        <span className="text-sm font-semibold">CSS Output</span>
+      <div className="flex justify-between items-center gap-2 mb-2 flex-wrap">
+        <span className="text-sm font-semibold">CSS output</span>
         <div className="flex gap-1 ml-auto">
-          <select value={unit} onChange={(e) => setUnit(e.target.value)} className="text-xs border rounded px-1">
+          <select
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            aria-label="Unit"
+            className="h-6 text-xs bg-white border border-gray-300 rounded px-1"
+          >
             <option value="px">px</option>
             <option value="rem">rem</option>
             <option value="em">em</option>
           </select>
-          <select value={format} onChange={(e) => setFormat(e.target.value)} className="text-xs border rounded px-1">
+          <select
+            value={format}
+            onChange={(e) => setFormat(e.target.value)}
+            aria-label="Output format"
+            className="h-6 min-w-0 max-w-[9rem] text-xs bg-white border border-gray-300 rounded px-1"
+          >
             <option value="css">CSS</option>
             <option value="scss">SCSS</option>
             <option value="sass">SASS</option>
@@ -279,7 +290,8 @@ const PopupStyleInspector = ({ selectedElementType }) => {
           </select>
           <button
             onClick={copyAll}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            type="button"
+            className="h-6 whitespace-nowrap text-xs bg-white border border-gray-300 hover:border-blue-600 hover:text-blue-600 px-2 rounded"
             title="Copy all styles"
           >
             {copied ? "Copied!" : "Copy all"}
@@ -287,7 +299,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
         </div>
       </div>
       {processedLines.length === 0 ? (
-        <div className="text-xs text-gray-400 italic">Hover over or click an element on the page to see its CSS.</div>
+        <div className="text-xs text-gray-500">Hover over or click an element on the page to see its CSS.</div>
       ) : (
         <pre
           ref={blockRef}
@@ -301,11 +313,13 @@ const PopupStyleInspector = ({ selectedElementType }) => {
                   key={i}
                   className="ml-2 px-1 py-0.5 rounded cursor-pointer hover:bg-yellow-100 text-gray-800 flex items-center"
                   data-type="shorthand"
-                  onClick={(e) => {
+                  aria-expanded={!!expanded[line.prop]}
+                  title="Click to copy and show the longhand values"
+                  {...clickableProps((e) => {
                     e.stopPropagation();
                     copy(line.value.trim());
                     toggleExpand(line.prop);
-                  }}
+                  })}
                 >
                   <span
                     className="inline-block w-4 text-gray-500 mr-1"
@@ -328,9 +342,8 @@ const PopupStyleInspector = ({ selectedElementType }) => {
                   key={i}
                   data-type="detail"
                   className="ml-4 px-1 py-0.5 rounded text-gray-800 bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
-                  // detail копіювати теж можна!
-                  onClick={() => copy(line.value.trim())}
                   title="Click to copy"
+                  {...clickableProps(() => copy(line.value.trim()))}
                 >
                   <RenderLineWithColor lineValue={line.value} />
                 </div>
@@ -339,7 +352,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
 
             if (line.type === "comment") {
               return (
-                <div key={i} data-type="comment" className={`px-1 py-0.5 text-gray-400 cursor-default ${i > 1 ? "mt-2" : ""}`}>
+                <div key={i} data-type="comment" className={`px-1 py-0.5 text-gray-500 cursor-default ${i > 1 ? "mt-2" : ""}`}>
                   {line.value}
                 </div>
               );
@@ -358,15 +371,11 @@ const PopupStyleInspector = ({ selectedElementType }) => {
                 key={i}
                 className={`px-1 py-0.5 rounded flex items-center justify-between ${
                   line.value.trim().startsWith("/*")
-                    ? "text-gray-400 cursor-default"
+                    ? "text-gray-500 cursor-default"
                     : "ml-2 cursor-pointer hover:bg-yellow-100"
                 }`}
                 data-type="default"
-                onClick={() => {
-                  if (!line.value.trim().startsWith("/*")) {
-                    copy(line.value.trim());
-                  }
-                }}
+                {...(line.value.trim().startsWith("/*") ? {} : clickableProps(() => copy(line.value.trim())))}
                 title={line.value.trim().startsWith("/*") ? "" : "Click to copy"}
               >
                 <RenderLineWithColor lineValue={line.value} />
