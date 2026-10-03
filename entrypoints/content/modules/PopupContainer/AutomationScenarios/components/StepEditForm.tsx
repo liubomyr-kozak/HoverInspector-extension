@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Subscription } from "rxjs";
 import { filter as rxFilter } from "rxjs/operators";
-import { Button, Checkbox, Divider, Dropdown, Input, Select, Space } from "antd";
+import { AutoComplete, Button, Checkbox, Divider, Dropdown, Input, Select, Space } from "antd";
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -12,6 +12,8 @@ import { getFilteredStepTypeOptions, ScenarioStep, StepType } from "../types";
 import { useServerSettings } from "../hooks/useServerSettings";
 import { selectFunctions, selectStoredValues } from "@entrypoints/content/store/automation/automation.slice";
 import { generateXPaths } from "../utils/xpathUtils";
+import { KEY_PRESS_OPTIONS, parseKeyCombo } from "../utils/keyboardUtils";
+import { shadowBody } from "../utils/popupContainer";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 
 // Steps that act on an element of the page
@@ -50,7 +52,17 @@ const validationSchema = yup.object().shape({
         StepType.NOTIFICATION,
       ].includes(type as StepType),
     then: (schema) => schema.required("Please enter a value"),
-    otherwise: (schema) => schema.notRequired(),
+    otherwise: (schema) =>
+      schema.when("type", {
+        is: StepType.KEY_PRESS,
+        then: (keySchema) =>
+          keySchema
+            .required("Please enter a key, e.g. Enter or Shift+Tab")
+            .test("key", "Use a key name like Enter, Escape, Tab, Space or ArrowDown, optionally after Ctrl+, Alt+, Shift+ or Meta+", (value) =>
+              !!parseKeyCombo(value),
+            ),
+        otherwise: (keySchema) => keySchema.notRequired(),
+      }),
   }),
   xpathAutoUpdated: yup.boolean().notRequired(),
 });
@@ -371,6 +383,66 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
             {errors.xpath && (
               <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.xpath.message}</div>
             )}
+          </div>
+        );
+
+      case StepType.KEY_PRESS:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Key *</label>
+              <AutoComplete
+                value={formValues.value}
+                options={KEY_PRESS_OPTIONS.map((key) => ({ value: key }))}
+                filterOption={(input, option) =>
+                  String(option?.value || "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                onChange={(value) => handleChange("value", value)}
+                placeholder="Enter, Escape, Tab, Space, ArrowDown, Shift+Tab..."
+                status={errors.value ? "error" : undefined}
+                style={{ width: "100%" }}
+                getPopupContainer={shadowBody}
+              />
+              {errors.value && (
+                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
+              )}
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Element XPath</label>
+              <Input
+                value={formValues.xpath}
+                onChange={(e) => handleChange("xpath", e.target.value)}
+                placeholder="Element that gets the key (empty: the focused element)"
+                status={errors.xpath ? "error" : undefined}
+                addonAfter={
+                  <Space>
+                    <Tooltip title="Find element in page">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<AimOutlined style={{ color: "#1890ff" }} />}
+                        onClick={() => formValues.xpath && highlightElement(formValues.xpath)}
+                        disabled={!formValues.xpath}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Select element from page">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<SelectOutlined style={{ color: "#52c41a" }} />}
+                        onClick={startElementSelectionMode}
+                        disabled={selectingElement}
+                      />
+                    </Tooltip>
+                  </Space>
+                }
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                The element is focused before the key is pressed. Enter in a form field submits the form.
+              </div>
+            </div>
           </div>
         );
 

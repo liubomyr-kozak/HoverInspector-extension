@@ -171,6 +171,8 @@ export function canLeavePage(step: ScenarioStep | undefined): boolean {
     StepType.UPDATE,
     StepType.CODE,
     StepType.FUNCTION,
+    // Enter may submit a form
+    StepType.KEY_PRESS,
   ].includes(step.type as StepType);
 }
 

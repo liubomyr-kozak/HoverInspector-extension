@@ -17,6 +17,7 @@ import "./style.css";
 import { onMessage } from "@entrypoints/features/extension/messaging.ts";
 import { store } from "@entrypoints/content/store/createStore.ts";
 import { setActiveApp, setDisableApp } from "@entrypoints/content/store/app/app.slice.ts";
+import { selectRecording, selectRecordingPaused } from "@entrypoints/content/store/automation/automation.slice.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
@@ -96,8 +97,13 @@ export default defineContentScript({
         // host, so hotkeys-js could not tell an Esc in our own input apart and closed everything.
         const onEscape = (event: KeyboardEvent) => {
           if (event.key !== "Escape" || event.defaultPrevented) return;
+          // A scenario pressing Esc on the page (key press step) must not switch the extension off mid-playback
+          if (!event.isTrusted) return;
 
           const path = event.composedPath();
+          // While recording, Esc on the page (closing the page's own dialog...) is a step of the scenario
+          const state = store.getState();
+          if (selectRecording(state) && !selectRecordingPaused(state) && !path.includes(ui.shadowHost)) return;
           const target = path[0] as HTMLElement | undefined;
           if (target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName || "")) return;
 

@@ -181,6 +181,22 @@ export function recordSelect(element: Element, value: string): ScenarioStep | nu
 }
 
 /**
+ * Creates a step object for a key press (Enter, Escape, Tab, arrows...) on the focused element.
+ * A key pressed with nothing focused (on <body>) is recorded without an element and replayed on the page.
+ *
+ * @param element The element that had the focus
+ * @param key The key, as formatKeyCombo writes it (e.g. "Enter", "Shift+Tab")
+ */
+export function recordKeyPress(element: Element | null, key: string): ScenarioStep | null {
+  if (!key) return null;
+  if (!element || element === document.body || element === document.documentElement) {
+    return { type: StepType.KEY_PRESS, value: key };
+  }
+  const { primaryXPath, alternativeXpaths } = generateXPaths(element);
+  return createStepObject(StepType.KEY_PRESS, element, primaryXPath, alternativeXpaths, key);
+}
+
+/**
  * Checks if an element is actionable (can be interacted with)
  * 
  * @param element The element to check

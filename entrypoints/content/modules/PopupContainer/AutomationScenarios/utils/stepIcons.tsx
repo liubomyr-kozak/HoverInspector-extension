@@ -13,6 +13,8 @@ import {
   IconEdit,
   IconArrowRight,
   IconBell,
+  IconKeyboard,
+  IconFileText,
 } from '@tabler/icons-react';
 import { ScenarioStep } from '../types';
 
@@ -53,6 +55,10 @@ export const getStepIcon = (stepType: string, size: number = 16): React.ReactEle
       return <IconCheck {...iconProps} />;
     case 'notification':
       return <IconBell {...iconProps} />;
+    case 'keyPress':
+      return <IconKeyboard {...iconProps} />;
+    case 'getText':
+      return <IconFileText {...iconProps} />;
     default:
       return <IconHandMove {...iconProps} />;
   }
@@ -87,6 +93,10 @@ export const getStepColor = (stepType: string): string => {
       return '#52c41a'; // Green
     case 'notification':
       return '#faad14'; // Yellow/Orange
+    case 'keyPress':
+      return '#2f54eb'; // Indigo
+    case 'getText':
+      return '#13c2c2'; // Cyan
     default:
       return '#1890ff'; // Default blue
   }
@@ -121,6 +131,10 @@ export const getStepEmoji = (stepType: string): string => {
       return '✅';
     case 'notification':
       return '🔔';
+    case 'keyPress':
+      return '⌨️';
+    case 'getText':
+      return '📄';
     default:
       return '⚙️';
   }

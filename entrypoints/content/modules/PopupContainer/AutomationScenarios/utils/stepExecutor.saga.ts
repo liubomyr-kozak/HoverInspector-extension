@@ -25,6 +25,7 @@ import { ConfirmationDialog } from "@entrypoints/content/modules/PopupContainer/
 import { NotificationDialog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/NotificationDialog.tsx";
 import React from "react";
 import { parseSelectValues } from "./recordingUtils";
+import { describeKeyCombo, parseKeyCombo, pressKey } from "./keyboardUtils";
 
 /**
  * Default delay between steps in milliseconds
@@ -327,6 +328,8 @@ export function getStepDescription(step: ScenarioStep): string {
       return `Wait for confirmation: "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
     case StepType.NOTIFICATION:
       return `Show notification: "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
+    case StepType.KEY_PRESS:
+      return `Press ${describeKeyCombo(step.value) || "key"}`;
     default:
       return `Unknown step type: ${step.type}`;
   }
@@ -397,6 +400,29 @@ export function* executeInputStep(step: ScenarioStep) {
   // Trigger input and change events
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+/**
+ * Executes a key press step: the key is pressed on the step's element (focused first), or, for a step
+ * without an element, on whatever has the focus
+ */
+export function* executeKeyPressStep(step: ScenarioStep) {
+  const combo = parseKeyCombo(step.value);
+  if (!combo) {
+    throw new Error(`Unknown key "${step.value || ""}"`);
+  }
+  let element: Element;
+  if (step.xpath) {
+    element = yield call(findStepElement, step, "key press");
+    scrollIntoViewIfNeeded(element);
+    if (element !== document.activeElement) {
+      (element as HTMLElement).focus?.({ preventScroll: true });
+    }
+  } else {
+    const active = document.activeElement;
+    element = active && active !== document.documentElement ? active : document.body;
+  }
+  pressKey(element, combo);
 }
 
 /**
@@ -858,6 +884,9 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
         break;
       case StepType.NOTIFICATION:
         yield call(executeNotificationStep, step);
+        break;
+      case StepType.KEY_PRESS:
+        yield call(executeKeyPressStep, step);
         break;
       default:
         throw new Error(`Unknown step type: ${step.type}`);

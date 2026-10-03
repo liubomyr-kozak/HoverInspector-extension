@@ -181,6 +181,7 @@ export enum StepType {
   CONFIRMATION = "confirmation",
   NOTIFICATION = "notification",
   GET_TEXT = "getText",
+  KEY_PRESS = "keyPress",
 }
 
 /**
@@ -193,6 +194,7 @@ export const stepTypeOptions = [
   { value: StepType.HOVER, label: "Hover" },
   { value: StepType.INPUT, label: "Input" },
   { value: StepType.SELECT, label: "Select" },
+  { value: StepType.KEY_PRESS, label: "Key press" },
   { value: StepType.NAVIGATE, label: "Navigate" },
   { value: StepType.CODE, label: "Code" },
   { value: StepType.FUNCTION, label: "Function" },
