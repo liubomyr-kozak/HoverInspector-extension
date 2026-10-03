@@ -15,6 +15,16 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * The panels are designed light. On a dark page (`color-scheme: dark` or
+ * <meta name="color-scheme" content="dark">) native selects, inputs and
+ * scrollbars inside them would otherwise turn dark on our white background.
+ */
+:host,
+:host body {
+  color-scheme: light only;
+}
+
 .hover-inspector-box-box-hover {
   background: #4ba5ff;
   box-shadow: 0 0 0 0.3px #4ba5ff;

@@ -78,7 +78,10 @@ export default defineContentScript({
     const ui = await createShadowRootUi(ctx, {
       name: "hover-inspector", // this is tag
       position: "overlay",
-      zIndex: 2147483646,
+      // The highest z-index there is: sites with a 2147483647 header would otherwise cover the panel's
+      // header. As the last element of its parent, the UI wins against equal z-indexes.
+      zIndex: 2147483647,
+      anchor: getUiAnchor,
       onMount: (container) => {
         // Don't mount react app directly on <body>
         const wrapper = document.createElement("div");
@@ -138,5 +141,42 @@ export default defineContentScript({
     });
 
     ui.mount();
+
+    // `zoom` on the page's <html>/<body> would scale the whole UI and shift every overlay drawn from
+    // getBoundingClientRect() (already in zoomed viewport pixels). Cancel the inherited zoom on our host.
+    const cancelPageZoom = () => {
+      let inherited = 1;
+      for (let el = ui.shadowHost.parentElement; el; el = el.parentElement) {
+        inherited *= parseFloat(getComputedStyle(el).zoom) || 1;
+      }
+      const zoom = inherited === 1 ? "" : String(1 / inherited);
+      if (ui.shadowHost.style.zoom !== zoom) ui.shadowHost.style.zoom = zoom;
+    };
+    cancelPageZoom();
+    window.addEventListener("resize", cancelPageZoom);
+    ctx.onInvalidated(() => window.removeEventListener("resize", cancelPageZoom));
   },
 });
+
+/**
+ * The UI is position: fixed, which breaks when <body> creates a containing block for fixed elements
+ * (transform, filter, contain, ...): the toolbar and panel would then be placed relative to the body
+ * and scroll away with the page. On such pages the UI goes on <html> instead. Also used while the
+ * body doesn't exist yet (script injected into a page that is still parsing).
+ */
+function getUiAnchor(): Element {
+  const body = document.body;
+  if (!body) return document.documentElement;
+
+  const style = getComputedStyle(body);
+  const createsContainingBlock =
+    style.transform !== "none" ||
+    style.filter !== "none" ||
+    style.perspective !== "none" ||
+    style.backdropFilter !== "none" ||
+    /paint|layout|strict|content/.test(style.contain) ||
+    /transform|filter|perspective/.test(style.willChange) ||
+    (!!style.containerType && style.containerType !== "normal");
+
+  return createsContainingBlock ? document.documentElement : body;
+}
