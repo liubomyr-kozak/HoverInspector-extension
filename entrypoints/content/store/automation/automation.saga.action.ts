@@ -709,15 +709,13 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
           }
 
           if (nowPaused) {
-            // Update the status of the current step to PAUSED
+            // Update the status of the current step to PAUSED. executeSteps waits before the next step until
+            // the playback is resumed or stopped (signalling a stop here made "Resume" cancel the playback)
             if (actualStepIndex + 1 < totalSteps) {
               yield put(
                 automationActions.setStepStatus({ index: actualStepIndex + 1, status: ExecutionStatus.PAUSED }),
               );
             }
-
-            // Signal to stop execution
-            yield call(stopExecution);
             return;
           }
         },
