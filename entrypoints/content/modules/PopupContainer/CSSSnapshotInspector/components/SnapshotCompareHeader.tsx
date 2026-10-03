@@ -2,6 +2,14 @@
  * SnapshotCompareHeader - Header component for COMPARE view mode (SnapshotCompare)
  */
 import React, { memo } from "react";
+import { CSSSnapshot } from "../types";
+import { tokens } from "@entrypoints/shared/styles/tokens";
+import {
+  formatSnapshotDateTime,
+  formatSnapshotTime,
+  getSnapshotKind,
+  getSnapshotName,
+} from "../utils/snapshotLabels";
 import styled from "styled-components";
 import {
   IconExclamationCircle,
@@ -185,7 +193,90 @@ const ControlButton = styled.button<{ active?: boolean }>`
   `}
 `;
 
+const CompareStrip = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid ${tokens.color.border};
+  border-radius: ${tokens.radius.lg}px;
+  background: ${tokens.color.surfaceMuted};
+  font-size: ${tokens.font.size.xs}px;
+  color: ${tokens.color.textSecondary};
+`;
+
+const CompareSide = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+
+  .tag {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  .name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+    color: ${tokens.color.text};
+  }
+
+  .time {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    color: ${tokens.color.textMuted};
+  }
+`;
+
+/** One side of the comparison: "A" is the older/base (shown as removed lines), "B" the newer (added lines) */
+const Side: React.FC<{ letter: "A" | "B"; snapshot?: CSSSnapshot }> = ({ letter, snapshot }) => {
+  if (!snapshot) return null;
+  // A capture made just for this comparison: "Live page", or "Live: button.primary" for an element
+  const live = getSnapshotKind(snapshot) === "current";
+  const liveOf = snapshot.title.startsWith("Current: ") ? snapshot.title.slice("Current: ".length) : "";
+  const name = !live
+    ? getSnapshotName(snapshot)
+    : liveOf
+      ? `Live: ${getSnapshotName({ ...snapshot, title: liveOf })}`
+      : "Live page";
+  return (
+    <CompareSide data-compare-side={letter}>
+      <span
+        className="tag"
+        style={
+          letter === "A"
+            ? { background: "#fee2e2", color: "#b91c1c" }
+            : { background: "#dcfce7", color: tokens.color.success }
+        }
+        aria-label={letter === "A" ? "Before" : "After"}
+      >
+        {letter}
+      </span>
+      <span className="name" title={name}>
+        {name}
+      </span>
+      <span className="time" title={formatSnapshotDateTime(snapshot.timestamp)}>
+        {formatSnapshotTime(snapshot.timestamp)}
+      </span>
+    </CompareSide>
+  );
+};
+
 interface SnapshotCompareHeaderProps {
+  readonly snapshotA?: CSSSnapshot;
+  readonly snapshotB?: CSSSnapshot;
   readonly onBackToList: () => void;
   readonly error?: string | null;
   readonly activeCompareView?: string;
@@ -199,6 +290,8 @@ interface SnapshotCompareHeaderProps {
  */
 export const SnapshotCompareHeader = memo<SnapshotCompareHeaderProps>(
   ({
+    snapshotA,
+    snapshotB,
     onBackToList,
     error,
     activeCompareView = "diff",
@@ -213,7 +306,7 @@ export const SnapshotCompareHeader = memo<SnapshotCompareHeaderProps>(
             <Tooltip title={"Back to list"}>
               <FeatureIcon icon={IconArrowLeft} onClick={onBackToList} />
             </Tooltip>
-            <FeatureTitleText title={`${CSS_SNAPSHOT.title} (A/B Compare)`}>{CSS_SNAPSHOT.title} (A/B Compare)</FeatureTitleText>
+            <FeatureTitleText title="Compare snapshots">Compare snapshots</FeatureTitleText>
             <PortalModalHeaderButtons>
               <ViewControls>
                 <Tooltip title="Diff view">
@@ -248,6 +341,13 @@ export const SnapshotCompareHeader = memo<SnapshotCompareHeaderProps>(
             </PortalModalHeaderButtons>
           </FeatureTitle>
         </PortalModalHeader>
+
+        {(snapshotA || snapshotB) && (
+          <CompareStrip aria-label="Compared snapshots">
+            <Side letter="A" snapshot={snapshotA} />
+            <Side letter="B" snapshot={snapshotB} />
+          </CompareStrip>
+        )}
 
         <HeaderContent>
           {error && (
