@@ -1,4 +1,5 @@
 import React from "react";
+import { renderNoteMarkup } from "../utils/noteMarkup";
 import { Popconfirm } from "antd";
 import { FiEdit2, FiTrash2, FiMapPin, FiEye, FiEyeOff } from "react-icons/fi";
 import { FaGripVertical } from "react-icons/fa6";
@@ -159,7 +160,7 @@ export const Note: React.FC<NoteProps> = ({
       </div>
 
       <div className="whitespace-pre-wrap break-words text-[13px] leading-snug text-gray-600">
-        {note.content || "No content"}
+        {note.content ? renderNoteMarkup(note.content) : "No content"}
       </div>
 
       <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">

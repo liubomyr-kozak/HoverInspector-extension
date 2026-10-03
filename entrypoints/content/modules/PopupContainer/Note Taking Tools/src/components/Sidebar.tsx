@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Plus, Search, MapPin, Globe, FolderPlus } from 'lucide-react';
 import type { Note } from '../hooks/useReduxNotes';
 import type { NoteGroup } from '@entrypoints/shared/types/notes';
+import { stripNoteMarkup } from '@entrypoints/content/modules/PopupContainer/PageNotes/utils/noteMarkup';
 
 export const ALL_NOTES = '__all__';
 export const UNCATEGORIZED_ID = '__uncategorized__';
@@ -170,7 +171,7 @@ export function Sidebar({
                 <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-sm text-foreground truncate m-0">{note.title || 'Untitled'}</h4>
                   <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed m-0">
-                    {note.content || 'No content'}
+                    {note.content ? stripNoteMarkup(note.content) : 'No content'}
                   </p>
                 </div>
               </div>

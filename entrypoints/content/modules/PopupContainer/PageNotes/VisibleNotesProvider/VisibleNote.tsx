@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { renderNoteMarkup } from "../utils/noteMarkup";
 import { useDispatch } from "react-redux";
 import { findMatchingLocation } from "@entrypoints/background/services/notes.ts";
 import { updateNote } from "@entrypoints/background/store/notesActionsSlice.ts";
@@ -112,7 +113,7 @@ const VisibleNoteView = ({ note, noteColorPalettes, onClose }) => {
       style={{ ...NOTE_VIEW_STYLE, minHeight: "100px", background: noteColor, color: textColor }}
     >
       {note.title && <NoteTitle>{note.title}</NoteTitle>}
-      <NoteContentText>{note.content || "No content"}</NoteContentText>
+      <NoteContentText>{note.content ? renderNoteMarkup(note.content) : "No content"}</NoteContentText>
       {closeButton}
     </div>
   );
