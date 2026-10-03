@@ -38,6 +38,9 @@ export function isLikelyDynamicValue(value: string): boolean {
   if (/^(css|sc|jsx|emotion|styled)-[a-z0-9]+$/i.test(value)) return true; // CSS-in-JS hashes
   if (/^[a-z0-9]{1,3}[-_][a-zA-Z0-9]{5,}$/.test(value) && /\d/.test(value)) return true; // e.g. "sc-a1b2c3"
   if (/__[a-zA-Z0-9]{5,}$/.test(value) && /\d/.test(value)) return true; // CSS modules: "button__x7Fq2"
+  // Random suffix mixing letters and digits: "late-x3k9a", "field_a8f3k2", "row:9xk2f"
+  const suffix = value.match(/[-_:]([a-zA-Z0-9]{5,12})$/)?.[1];
+  if (suffix && /[a-zA-Z]/.test(suffix) && (suffix.match(/\d/g) || []).length >= 2) return true;
   return false;
 }
 
@@ -124,7 +127,9 @@ function buildCandidates(element: Element): string[] {
     }
   }
 
-  const text = normalizeText(element.textContent);
+  // The text of an editor is what the user typed: it is not there yet when the scenario is played back
+  const isEditor = !!element.closest('[contenteditable]:not([contenteditable="false"])');
+  const text = isEditor ? "" : normalizeText(element.textContent);
   const role = element.getAttribute("role");
   if (text && text.length <= MAX_TEXT_LENGTH) {
     if (role) {

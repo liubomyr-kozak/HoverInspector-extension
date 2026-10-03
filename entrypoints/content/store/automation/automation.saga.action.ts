@@ -1001,16 +1001,17 @@ export const restoreEditingStateWatcher = sagaEnhancer(function* restoreEditingS
     const editingState = yield call(ExtensionStorageManager.getAutomationScenario, SCENARIO_EDITING_STATE_KEY);
 
     if (editingState && editingState.status && editingState.status !== ScenarioStatus.IDLE) {
-      // Restore the unified status
-      yield put(automationActions.setStatus(editingState.status));
+      // Steps first: the recorder looks at them as soon as the status says it is recording
+      if (editingState.currentSteps && editingState.currentSteps.length > 0) {
+        yield put(automationActions.setCurrentSteps(editingState.currentSteps));
+      }
 
       if (editingState.activeScenarioId) {
         yield put(automationActions.setActiveScenarioId(editingState.activeScenarioId));
       }
 
-      if (editingState.currentSteps && editingState.currentSteps.length > 0) {
-        yield put(automationActions.setCurrentSteps(editingState.currentSteps));
-      }
+      // Restore the unified status
+      yield put(automationActions.setStatus(editingState.status));
     }
   } catch (error) {
     console.error("Error restoring scenario editing state:", error);

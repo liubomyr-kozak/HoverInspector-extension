@@ -24,6 +24,7 @@ import { toast } from "react-toastify";
 import { ConfirmationDialog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ConfirmationDialog.tsx";
 import { NotificationDialog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/NotificationDialog.tsx";
 import React from "react";
+import { parseSelectValues } from "./recordingUtils";
 
 /**
  * Default delay between steps in milliseconds
@@ -222,7 +223,7 @@ function getElementByXPath(xpath: string, alternativeXpaths: string[] = []): Ele
 }
 
 // How long element-based steps wait for their target to appear (pages often render asynchronously)
-const ELEMENT_LOOKUP_TIMEOUT = 5000;
+export const ELEMENT_LOOKUP_TIMEOUT = 10000;
 const ELEMENT_LOOKUP_INTERVAL = 100;
 
 /**
@@ -237,9 +238,47 @@ function* findStepElement(step: ScenarioStep, stepLabel: string) {
     const element = getElementByXPath(step.xpath, step.alternativeXpaths);
     if (element) return element;
     if (Date.now() - startTime >= ELEMENT_LOOKUP_TIMEOUT) {
-      throw new Error(`Element not found with XPath: ${step.xpath}`);
+      const alternatives = (step.alternativeXpaths || []).filter(Boolean).length;
+      throw new Error(
+        `Element not found after ${ELEMENT_LOOKUP_TIMEOUT / 1000} s: ${step.xpath}` +
+          (alternatives ? ` (and ${alternatives} alternative XPath${alternatives === 1 ? "" : "s"})` : ""),
+      );
     }
     yield delay(ELEMENT_LOOKUP_INTERVAL);
+  }
+}
+
+/**
+ * Brings an off-screen element into view before acting on it, like a user would scroll to it
+ */
+function scrollIntoViewIfNeeded(element: Element) {
+  const rect = element.getBoundingClientRect?.();
+  if (!rect) return;
+  const outside = rect.bottom < 0 || rect.right < 0 || rect.top > window.innerHeight || rect.left > window.innerWidth;
+  if (outside) (element as HTMLElement).scrollIntoView?.({ block: "center", inline: "nearest" });
+}
+
+/**
+ * Replaces the text of a contenteditable editor. execCommand goes through the browser's editing pipeline,
+ * so editors that listen to beforeinput/input (ProseMirror, Slate, Lexical...) update their own state.
+ */
+function setEditableText(element: HTMLElement, value: string) {
+  element.focus();
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  let inserted = false;
+  try {
+    inserted = value ? document.execCommand("insertText", false, value) : document.execCommand("delete");
+  } catch {
+    inserted = false;
+  }
+  const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+  if (!inserted || normalize(element.innerText ?? element.textContent ?? "") !== normalize(value)) {
+    element.innerText = value;
+    element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
   }
 }
 
@@ -262,6 +301,8 @@ function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSe
 export function getStepDescription(step: ScenarioStep): string {
   switch (step.type) {
     case StepType.CLICK:
+      if (step.value === "checked") return "Tick checkbox";
+      if (step.value === "unchecked") return "Untick checkbox";
       return `Click on element`;
     case StepType.HOVER:
       return `Hover over element`;
@@ -297,6 +338,14 @@ export function getStepDescription(step: ScenarioStep): string {
 export function* executeClickStep(step: ScenarioStep) {
   const element: Element = yield call(findStepElement, step, "click");
 
+  // A recorded checkbox click knows the state it led to: don't flip a box that is already there
+  if (step.value === "checked" || step.value === "unchecked") {
+    const box = element instanceof HTMLLabelElement ? element.control : element;
+    if (box instanceof HTMLInputElement && box.type === "checkbox" && box.checked === (step.value === "checked")) {
+      return;
+    }
+  }
+
   (element as HTMLElement).scrollIntoView?.({ block: "center", inline: "nearest" });
 
   // Dispatch the full pointer sequence: many UI libraries react to mousedown/pointerdown, not just click
@@ -313,6 +362,7 @@ export function* executeClickStep(step: ScenarioStep) {
  */
 export function* executeHoverStep(step: ScenarioStep) {
   const element: Element = yield call(findStepElement, step, "hover");
+  scrollIntoViewIfNeeded(element);
 
   // Trigger the pointer/mouse enter events on the element
   element.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
@@ -327,9 +377,15 @@ export function* executeHoverStep(step: ScenarioStep) {
  */
 export function* executeInputStep(step: ScenarioStep) {
   const element: Element = yield call(findStepElement, step, "input");
+  scrollIntoViewIfNeeded(element);
+
+  if (element instanceof HTMLElement && element.isContentEditable) {
+    setEditableText(element, step.value || "");
+    return;
+  }
 
   if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) {
-    throw new Error(`Element with XPath ${step.xpath} is not an input or textarea element`);
+    throw new Error(`Element with XPath ${step.xpath} is not a text field or an editable element`);
   }
 
   // Focus the element
@@ -540,9 +596,26 @@ export function* executeSelectStep(step: ScenarioStep) {
   if (!(element instanceof HTMLSelectElement)) {
     throw new Error(`Element with XPath ${step.xpath} is not a select element`);
   }
+  scrollIntoViewIfNeeded(element);
 
-  // Set the value
-  setNativeValue(element, step.value || "");
+  // Options are matched by value, then by their visible text (steps written by hand often use the label)
+  const options = Array.from(element.options);
+  const findOption = (value: string) =>
+    options.find((option) => option.value === value) ||
+    options.find((option) => option.text.replace(/\s+/g, " ").trim() === value.trim());
+
+  const wanted = element.multiple ? parseSelectValues(step.value, true) : step.value ? [step.value] : [];
+  const missing = wanted.filter((value) => !findOption(value));
+  if (missing.length) throw new Error(`Option not found: ${missing.join(", ")}`);
+
+  if (element.multiple) {
+    const chosen = wanted.map(findOption);
+    options.forEach((option) => {
+      option.selected = chosen.includes(option);
+    });
+  } else {
+    setNativeValue(element, wanted.length ? findOption(wanted[0])!.value : "");
+  }
 
   // Trigger input and change events
   element.dispatchEvent(new Event("input", { bubbles: true }));

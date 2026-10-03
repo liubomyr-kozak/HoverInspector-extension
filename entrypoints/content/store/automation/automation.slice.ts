@@ -250,6 +250,15 @@ const automationSlice = createSlice({
       }
       state.currentSteps.push(action.payload);
     },
+    // Replaces the last recorded step when it is the same kind of step on the same element, else appends
+    upsertLastStep(state, action: PayloadAction<ScenarioStep>) {
+      const lastStep = state.currentSteps[state.currentSteps.length - 1];
+      if (lastStep && lastStep.type === action.payload.type && lastStep.xpath === action.payload.xpath) {
+        state.currentSteps[state.currentSteps.length - 1] = action.payload;
+        return;
+      }
+      state.currentSteps.push(action.payload);
+    },
     insertStep(state, action: PayloadAction<number>) {
       state.currentSteps.splice(action.payload, 0, { type: StepType.NOT_SET });
     },
