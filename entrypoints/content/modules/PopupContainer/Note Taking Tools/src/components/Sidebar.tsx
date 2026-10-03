@@ -2,7 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Plus, Search, MapPin, Globe, FolderPlus } from 'lucide-react';
+import { Plus, Search, MapPin, Globe, FolderPlus, FileText } from 'lucide-react';
+import { EmptyState } from '@entrypoints/shared/components/EmptyState';
 import type { Note } from '../hooks/useReduxNotes';
 import type { NoteGroup } from '@entrypoints/shared/types/notes';
 import { stripNoteMarkup } from '@entrypoints/content/modules/PopupContainer/PageNotes/utils/noteMarkup';
@@ -206,10 +207,11 @@ export function Sidebar({
           ))}
 
           {filteredNotes.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm py-10">
-              <p className="font-medium m-0">{searchQuery ? 'No notes match your search' : 'No notes yet'}</p>
-              {!searchQuery && <p className="text-xs mt-1">Click "New" to get started</p>}
-            </div>
+            <EmptyState
+              icon={searchQuery ? <Search /> : <FileText />}
+              title={searchQuery ? 'No notes match your search' : 'No notes yet'}
+              description={searchQuery ? 'Try a different word, or clear the search.' : 'Create your first note with the "New" button above.'}
+            />
           )}
         </div>
       </div>
