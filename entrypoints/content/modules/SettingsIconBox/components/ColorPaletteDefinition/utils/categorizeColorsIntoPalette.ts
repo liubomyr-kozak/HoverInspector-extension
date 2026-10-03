@@ -2,7 +2,7 @@ import {
   CategorizedColorInfo,
   ColorPalette,
 } from "@entrypoints/content/modules/SettingsIconBox/components/ColorPaletteDefinition/paletteTypes.ts";
-import { getColorInAllFormats, isLightColor } from "@entrypoints/shared/utils/colorAnalysis.ts";
+import { colorToRgb, getColorInAllFormats, isLightColor } from "@entrypoints/shared/utils/colorAnalysis.ts";
 
 export function categorizeColorsIntoPalette(
   backgroundColors: Map<string, CategorizedColorInfo>,
@@ -26,7 +26,8 @@ export function categorizeColorsIntoPalette(
     category: keyof ColorPalette,
     name: string,
   ) => {
-    const id = `${category[0]}${newPalette[category].length + 1}`;
+    // Use the full category name: first letters collide (tertiary/text both gave "t1")
+    const id = `${category}-${newPalette[category].length + 1}`;
     newPalette[category].push({ id, color, name, sourceElements: elements, frequency: count });
   };
 
@@ -81,11 +82,9 @@ export function categorizeColorsIntoPalette(
 
   sortedBackgroundColors
     .filter(([color]) => {
-      const rgb = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d*\.?\d+))?\)/);
+      const rgb = colorToRgb(color);
       if (rgb) {
-        const r = parseInt(rgb[1], 10);
-        const g = parseInt(rgb[2], 10);
-        const b = parseInt(rgb[3], 10);
+        const { r, g, b } = rgb;
         const isGrayscale = Math.abs(r - g) < 10 && Math.abs(g - b) < 10 && Math.abs(r - b) < 10;
         return isGrayscale;
       }
@@ -111,7 +110,7 @@ export function categorizeColorsIntoPalette(
   sortedBackgroundColors.forEach(([color, info]) => {
     const hexColor = getColorInAllFormats(color)?.hex || color;
     if (!newPalette.element.some((c) => c.color === hexColor)) {
-      const id = `e${newPalette.element.length + 1}`;
+      const id = `element-${newPalette.element.length + 1}`;
       let name = "Element Color";
       if (info.category)
         name = `${info.category.charAt(0).toUpperCase() + info.category.slice(1).replace(/-/g, " ")} Background`;
@@ -122,7 +121,7 @@ export function categorizeColorsIntoPalette(
   sortedTextColors.forEach(([color, info]) => {
     const hexColor = getColorInAllFormats(color)?.hex || color;
     if (!newPalette.text.some((c) => c.color === hexColor)) {
-      const id = `t${newPalette.text.length + 1}`;
+      const id = `text-${newPalette.text.length + 1}`;
       let name = "Text Color";
       if (info.category)
         name = `${info.category.charAt(0).toUpperCase() + info.category.slice(1).replace(/-/g, " ")} Text`;
@@ -134,7 +133,7 @@ export function categorizeColorsIntoPalette(
   sortedBorderColors.forEach(([color, info]) => {
     const hexColor = getColorInAllFormats(color)?.hex || color;
     if (!newPalette.border.some((c) => c.color === hexColor)) {
-      const id = `b${newPalette.border.length + 1}`;
+      const id = `border-${newPalette.border.length + 1}`;
       let name = "Border Color";
       if (info.category)
         name = `${info.category.charAt(0).toUpperCase() + info.category.slice(1).replace(/-/g, " ")} Border`;
