@@ -18,6 +18,8 @@ import { SnapshotCompareHeader } from "./components/SnapshotCompareHeader";
 import { ViewMode } from "./constants";
 import { CSSSnapshot } from "./types";
 import { useElementPicker } from "./hooks/useElementPicker";
+import { useDispatch } from "react-redux";
+import { setError } from "@entrypoints/content/store/snapshot/snapshotSlice";
 
 // Styled Components
 const MainContainer = styled.div`
@@ -108,6 +110,7 @@ const ContentWrapper = styled.div`
  * Головний компонент CSS Snapshot Inspector з оптимізацією продуктивності
  */
 export const CSSSnapshotInspector: React.FC = () => {
+  const dispatch = useDispatch();
   // Використовуємо оптимізовані хуки
 
   const {
@@ -148,6 +151,15 @@ export const CSSSnapshotInspector: React.FC = () => {
   // State for comparison view controls
   const [activeCompareView, setActiveCompareView] = React.useState<"diff" | "tree" | "stats">("diff");
   const [splitView, setSplitView] = React.useState(false); // unified diff reads better in the narrow panel; split is one click away
+
+  // Back to the list. A comparison with the current page selected an unsaved capture of the page:
+  // drop it, else its card stays "Selected" and Compare reuses the stale capture
+  const handleBackToList = useCallback(() => {
+    if (compareSnapshots.some((compared) => !snapshots.some((saved) => saved.id === compared.id))) {
+      clearCompare();
+    }
+    backToList();
+  }, [compareSnapshots, snapshots, clearCompare, backToList]);
 
   // Обробник для перегляду знімка
   const handleViewSnapshot = (snapshot: typeof selectedSnapshot) => {
@@ -194,7 +206,7 @@ export const CSSSnapshotInspector: React.FC = () => {
 
     } catch (error) {
       console.error("Failed to create current page snapshot:", error);
-      // Handle error state if needed
+      dispatch(setError(error instanceof Error ? error.message : "Could not capture the current page"));
     }
   };
 
@@ -211,7 +223,7 @@ export const CSSSnapshotInspector: React.FC = () => {
         return (
           <SnapshotViewer
             snapshot={selectedSnapshot}
-            onBack={backToList}
+            onBack={handleBackToList}
             onCompareWithCurrentPage={() => handleCompareWithCurrentPage()}
           />
         );
@@ -221,7 +233,7 @@ export const CSSSnapshotInspector: React.FC = () => {
           <SnapshotCompare
             snapshotA={compareSnapshots[0]}
             snapshotB={compareSnapshots[1]}
-            onBack={backToList}
+            onBack={handleBackToList}
             activeView={activeCompareView}
             setActiveView={setActiveCompareView}
             splitView={splitView}
@@ -250,7 +262,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     selectedSnapshot,
     compareSnapshots,
     filteredSnapshots,
-    backToList,
+    handleBackToList,
     handleViewSnapshot,
     deleteSnapshot,
     exportSnapshot,
@@ -328,14 +340,14 @@ export const CSSSnapshotInspector: React.FC = () => {
       {viewMode === ViewMode.DETAIL && (
         <SnapshotViewerHeader
           selectedSnapshot={selectedSnapshot}
-          onBackToList={backToList}
+          onBackToList={handleBackToList}
           error={error}
           onCompareWithCurrentPage={() => handleCompareWithCurrentPage()}
         />
       )}
       {viewMode === ViewMode.COMPARE && (
         <SnapshotCompareHeader
-          onBackToList={backToList}
+          onBackToList={handleBackToList}
           error={error}
           activeCompareView={activeCompareView}
           onChangeCompareView={(view) => setActiveCompareView(view as "diff" | "tree" | "stats")}

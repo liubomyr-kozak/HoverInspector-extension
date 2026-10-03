@@ -411,14 +411,20 @@ export const createCSSSnapshot = async (title?: string, options: SnapshotOptions
  * Finds the live element an element snapshot was taken from, trying each stored XPath variant
  */
 const findSnapshotRootElement = (snapshot: CSSSnapshot): Element | null => {
-  const variants = snapshot.root?.xpath;
+  const root = snapshot.root;
+  const variants = root?.xpath;
   if (!variants) return null;
+  // The looser variants (by class, by position) also match other elements once the original is gone:
+  // only accept an element of the same tag and, when the snapshot had one, the same id
+  const isSameElement = (element: Element) =>
+    (!root.tagName || element.tagName.toLowerCase() === root.tagName.toLowerCase()) &&
+    (!root.id || element.id === root.id);
   const candidates = [variants.withId, variants.optimized, variants.absolute, variants.withClasses, variants.withAttributes];
   for (const xpath of candidates) {
     if (!xpath) continue;
     try {
       const node = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-      if (node instanceof Element) return node;
+      if (node instanceof Element && isSameElement(node)) return node;
     } catch {
       // invalid XPath variant, try the next one
     }
@@ -435,6 +441,10 @@ export const createCurrentSnapshotFor = async (snapshot: CSSSnapshot): Promise<C
   const isElementSnapshot = snapshot.id.startsWith("element-snapshot-");
   const element = isElementSnapshot ? findSnapshotRootElement(snapshot) : null;
 
+  if (isElementSnapshot && !element) {
+    // Comparing the element with the whole page would mark everything as changed
+    throw new Error(`The element of "${snapshot.title}" is not on this page`);
+  }
   if (!element) {
     return createCSSSnapshot("Current Page");
   }
