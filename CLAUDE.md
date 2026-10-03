@@ -2,8 +2,8 @@
 
 Browser extension (Chrome MV3; Firefox, Edge, Safari builds) for designers and QA. It measures distances
 between page elements and offers tools in one floating panel: Element Inspector, Page Ruler, Color
-Picker, Unit Converter, Color Palette & Typography, Automation Scenarios, CSS Snapshot Inspector, Page
-Notes, Note Taking Tools. The whole UI lives in the open shadow root of a `<hover-inspector>` element on
+Picker, Unit Converter, Color Palette & Typography, Automation Scenarios, CSS Snapshot Inspector (Page
+Notes and Note Taking Tools are no longer in the launcher). The whole UI lives in the open shadow root of a `<hover-inspector>` element on
 the user's page.
 
 Full guide: `docs/CODE_STYLE.md`. Read it before your first change. Skills: see the end of this file.

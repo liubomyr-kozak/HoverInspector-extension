@@ -83,7 +83,8 @@ export const NOTE_TAKING_TOOLS = {
   multipleView: false,
 };
 
-const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION, CSS_SNAPSHOT, PAGE_NOTES, NOTE_TAKING_TOOLS];
+// Page Notes and Note Taking Tools are no longer offered (owner's request); their code stays for now
+const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION, CSS_SNAPSHOT];
 
 export const POPUP_SUPPORT_TOOLS = [
   INSPECTOR.id,
@@ -93,8 +94,6 @@ export const POPUP_SUPPORT_TOOLS = [
   ANALYZE_PAGE.id,
   AUTOMATION.id,
   CSS_SNAPSHOT.id,
-  PAGE_NOTES.id,
-  NOTE_TAKING_TOOLS.id,
 ];
 
 export const ICON_ITEMS = ICON_ITEMS_INITIAL.filter((item) => item.activatable);

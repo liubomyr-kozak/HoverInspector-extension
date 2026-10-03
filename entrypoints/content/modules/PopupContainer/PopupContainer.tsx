@@ -14,8 +14,6 @@ import {
   CSS_SNAPSHOT,
   INSPECTOR,
   PICKER,
-  PAGE_NOTES,
-  NOTE_TAKING_TOOLS,
   POPUP_SUPPORT_TOOLS,
   RULER,
 } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
@@ -24,8 +22,6 @@ import ColorPicker from "@entrypoints/content/modules/PopupContainer/ColorPicker
 import AnalyzePageUI from "@entrypoints/content/modules/PopupContainer/AnalyzePageUI.tsx";
 import { AutomationScenarios } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationScenarios.tsx";
 import { CSSSnapshotInspector } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/CSSSnapshotInspector.tsx";
-import { PageNotes } from "@entrypoints/content/modules/PopupContainer/PageNotes/PageNotes.tsx";
-import { NoteTakingToolsIntegration } from "@entrypoints/content/modules/PopupContainer/NoteTakingToolsIntegration.tsx";
 import { HighlightOverlayProvider } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
 import {
   FeatureContainer,
@@ -50,8 +46,6 @@ const COMPONENT_MAP: Record<string, JSX.Element> = {
   [ANALYZE_PAGE.id]: <AnalyzePageUI />,
   [AUTOMATION.id]: <AutomationScenarios />,
   [CSS_SNAPSHOT.id]: <CSSSnapshotInspector />,
-  [PAGE_NOTES.id]: <PageNotes />,
-  [NOTE_TAKING_TOOLS.id]: <NoteTakingToolsIntegration />,
 };
 
 export function PopupContainer() {
@@ -87,7 +81,8 @@ export function PopupContainer() {
   }, [iconOrder, iconOrderStorage]);
 
   const FeatureView = useMemo(() => {
-    return iconOrder.filter((id) => activeIcons.includes(id)).map((id) => COMPONENT_MAP[id]);
+    // Tools that were removed may still be in a saved order or active list
+    return iconOrder.filter((id) => activeIcons.includes(id) && COMPONENT_MAP[id]).map((id) => COMPONENT_MAP[id]);
   }, [iconOrder, activeIcons]);
 
   return (

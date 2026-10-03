@@ -10,6 +10,7 @@ import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOve
 import { openElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 import { AppDispatch } from "@entrypoints/content/store/createStore";
 import { createElementDiff } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/simpleDiff";
+import { diffElement } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/elementChanges";
 
 interface LineData {
   text: string;
@@ -38,17 +39,9 @@ const collectNodesByPath = (node: DOMTreeNode, collection = new Map<string, DOMT
 };
 
 /**
- * Logical/derived properties that always mirror another computed property
- * (block-size = height, transform-origin follows the size, ...). Listing them
- * would only repeat the same change several times.
- */
-const DERIVED_STYLE_PROPERTY =
-  /^(?:(?:min-|max-)?(?:block|inline)-size|(?:margin|padding|inset|border)-(?:block|inline)(?:-.+)?|perspective-origin|transform-origin)$/;
-
-/**
- * Finds elements present in both trees whose computed styles changed. The markup
- * lines alone don't carry computed styles, so without this a style-only change
- * (e.g. a colour tweak) produced an empty diff.
+ * Elements present in both trees whose computed styles changed (the same list the details popup shows).
+ * The markup lines alone don't carry computed styles, so without this a style-only change (e.g. a colour
+ * tweak) produced an empty diff.
  */
 const computeChangedStyles = (
   nodesA: Map<string, DOMTreeNode>,
@@ -58,13 +51,8 @@ const computeChangedStyles = (
   nodesA.forEach((left, path) => {
     const right = nodesB.get(path);
     if (!right) return;
-    const leftStyles = left.styles || {};
-    const rightStyles = right.styles || {};
-    const keys = new Set([...Object.keys(leftStyles), ...Object.keys(rightStyles)]);
-    const diff = [...keys]
-      .filter((key) => leftStyles[key] !== rightStyles[key] && !DERIVED_STYLE_PROPERTY.test(key))
-      .sort();
-    if (diff.length) changed.set(path, diff);
+    const names = diffElement(left, right).styles.map((change) => change.name);
+    if (names.length) changed.set(path, names);
   });
   return changed;
 };
@@ -75,7 +63,7 @@ const styleLinesFor = (node: DOMTreeNode, level: number, changedStyles?: Changed
   if (!keys) return [];
   const indent = "  ".repeat(level + 1);
   return keys.map((key) => ({
-    text: `${indent}/* style */ ${key}: ${node.styles?.[key] ?? "(not set)"};`,
+    text: `${indent}/* style */ ${key}: ${node.styles?.[key] ?? "default"};`,
     metadata: { ...node, nodeType: "style", level, styleProperty: key },
   }));
 };
@@ -314,7 +302,10 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
       let compareData: any = undefined;
       const pathString = metadata.pathString;
 
-      if (pathString && (nodesA.has(pathString) || nodesB.has(pathString))) {
+      // A single snapshot shows the same tree on both sides: there is nothing to compare
+      if (isSingleTree) {
+        compareData = undefined;
+      } else if (pathString && (nodesA.has(pathString) || nodesB.has(pathString))) {
         compareData = getStyleComparison(pathString);
       } else {
         // Fallback to old method if pathString is not available (backward compatibility)

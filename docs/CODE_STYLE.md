@@ -39,7 +39,8 @@ Contents:
 Hover Inspector is a browser extension (Chrome MV3, also Firefox/Edge/Safari builds) for designers and
 QA. It draws measurements between page elements and offers a set of tools in one floating panel:
 Element Inspector, Page Ruler, Color Picker, Unit Converter, Color Palette & Typography, Automation
-Scenarios, CSS Snapshot Inspector, Page Notes, Note Taking Tools.
+Scenarios, CSS Snapshot Inspector. Page Notes and Note Taking Tools still have code here but are no
+longer in the launcher.
 
 How it runs:
 
