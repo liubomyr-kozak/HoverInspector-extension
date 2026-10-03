@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { usePopoverFocus } from "@entrypoints/shared/utils/usePopoverFocus";
 import { useDispatch, useSelector } from "react-redux";
 import { Popover, Switch } from "antd";
 import { IconInfoCircle, IconSettings, IconPointer } from "@tabler/icons-react";
@@ -61,13 +62,23 @@ export const ElementInspectorPopup = () => {
           </span>
         </Tooltip>
       </span>
-      <Switch checkedChildren={"Yes"} unCheckedChildren={"No"} value={value} onChange={onChange} />
+      <Switch checkedChildren={"Yes"} unCheckedChildren={"No"} value={value} onChange={onChange} aria-label={title} />
     </div>
   );
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsFocus = usePopoverFocus(settingsOpen, setSettingsOpen);
+
   // Create the content for the settings popover
   const settingsContent = (
-    <div className="p-2" style={{ minWidth: "250px" }}>
+    <div
+      ref={settingsFocus.contentRef}
+      onBlur={settingsFocus.onContentBlur}
+      role="dialog"
+      aria-label="Inspector settings"
+      className="p-2"
+      style={{ minWidth: "250px" }}
+    >
       <div className="font-medium mb-2">Additional Settings</div>
       <div>
         {renderToggle(
@@ -117,10 +128,18 @@ export const ElementInspectorPopup = () => {
               placement="topRight"
               // Click as well as hover, so the settings also open from the keyboard
               trigger={["hover", "click"]}
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
               // @ts-ignore
               getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
             >
-              <IconButton label="Inspector settings" title="">
+              <IconButton
+                ref={settingsFocus.triggerRef as React.Ref<HTMLButtonElement>}
+                label="Inspector settings"
+                title=""
+                aria-haspopup="dialog"
+                aria-expanded={settingsOpen}
+              >
                 <IconSettings size={18} />
               </IconButton>
             </Popover>

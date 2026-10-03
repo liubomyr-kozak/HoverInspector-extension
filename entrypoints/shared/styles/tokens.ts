@@ -69,7 +69,8 @@ export const antdTheme = {
     Button: focusOutline,
     Checkbox: focusOutline,
     Radio: focusOutline,
-    Switch: focusOutline,
+    // The unchecked track was 25% black (#bfbfbf): its white "No" label was 1.9:1 and the track 1.8:1
+    Switch: { ...focusOutline, colorTextQuaternary: tokens.color.textMuted, colorTextTertiary: tokens.color.textSecondary },
     Segmented: focusOutline,
     Tabs: focusOutline,
     Collapse: focusOutline,
