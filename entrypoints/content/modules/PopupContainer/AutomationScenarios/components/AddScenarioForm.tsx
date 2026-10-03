@@ -1,21 +1,29 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Button, Divider, Select } from "antd";
-import { useForm, Controller } from "react-hook-form";
+import { Button, Select } from "antd";
+import { useForm, Controller, Resolver } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
 import { FormInput, FormTextArea } from "@entrypoints/shared/components/FormInput/FormInput";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { IconPlus } from "@tabler/icons-react";
+import { IconChevronDown, IconListDetails, IconPlus } from "@tabler/icons-react";
 import { useModalOverlayOptional } from "@entrypoints/shared/components/FloatingModal/ModalOverlayContext";
 import { Scenario, ScenarioStep } from "../types.ts";
-import { EmptyState } from "../styles.ts";
-import {
-  EditingStepItem,
-  EditingStepHeader,
-  EditingStepTitle,
-  StepInsertContainer,
-} from "./ScenarioItem/ScenarioItem.styled";
+import { EmptyState } from "@entrypoints/shared/components/EmptyState";
 import StepEditForm, { validateStep } from "./StepEditForm";
+import { StepCard } from "./StepForm/StepCard";
+import { InsertButton, InsertSlot, StepList } from "./StepForm/StepCard.styled";
+import {
+  Alert,
+  CountBadge,
+  DetailsPanel,
+  ErrorText,
+  Field,
+  FieldHead,
+  Label,
+  ScenarioForm,
+  SectionHead,
+} from "./StepForm/StepForm.styled";
+import { shadowBody } from "../utils/popupContainer";
 import { ScenarioPortalFooterButtons, PortalId } from "./ScenarioPortalFooterButtons";
 import RecordingFooter from "./RecordingFooter";
 import {
@@ -32,7 +40,6 @@ import {
   clearEditingStateWatcher,
   saveScenarioWatcher,
 } from "../../../../store/automation/automation.saga.action";
-import { PlusOutlined } from "@ant-design/icons";
 import { generateScenarioTitle } from "../utils/recordingUtils";
 
 // Yup validation schema
@@ -98,6 +105,10 @@ const AddScenarioForm: React.FC = () => {
   // Set once saving was refused because of incomplete steps: their errors are shown from then on
   const [stepsSubmitAttempted, setStepsSubmitAttempted] = useState<boolean>(false);
   const invalidStepIndex = currentSteps.findIndex((step) => Object.keys(validateStep(step)).length > 0);
+  // The one step whose form is open; the others show as compact rows
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  // Set when the user opened a step themselves (add, insert, save with an incomplete step): scroll to that step
+  const scrollToExpandedRef = useRef(false);
 
   // Initialize React Hook Form with the edited scenario's metadata (or a fresh default title)
   const {
@@ -106,7 +117,7 @@ const AddScenarioForm: React.FC = () => {
     reset,
     formState: { errors },
   } = useForm<ScenarioFormValues>({
-    resolver: yupResolver(validationSchema) as any,
+    resolver: yupResolver(validationSchema) as Resolver<ScenarioFormValues>,
     defaultValues: getFormValues(existingScenario),
     mode: "onChange",
   });
@@ -134,16 +145,7 @@ const AddScenarioForm: React.FC = () => {
       // A step without a type or without its element / value can't be played: let the user complete it
       if (invalidStepIndex >= 0) {
         setStepsSubmitAttempted(true);
-        const stepElement = stepsContainerRef.current?.querySelector<HTMLElement>(
-          `[data-step-index="${invalidStepIndex}"]`,
-        );
-        const scrollParent = findScrollParent(stepElement);
-        if (stepElement && scrollParent) {
-          // Not scrollIntoView: it would also scroll the panel's clipped outer containers
-          const top =
-            stepElement.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top + scrollParent.scrollTop;
-          scrollParent.scrollTo({ top: Math.max(0, top - 16), behavior: "smooth" });
-        }
+        openStep(invalidStepIndex);
         return;
       }
       const processedTags = (formData.tags || []).filter((tag): tag is string => !!tag);
@@ -166,9 +168,17 @@ const AddScenarioForm: React.FC = () => {
     () => setShowDetails(true),
   );
 
+  const openStep = (index: number) => {
+    scrollToExpandedRef.current = true;
+    setExpandedIndex(index);
+  };
+
+  const toggleStep = (index: number) => setExpandedIndex((current) => (current === index ? null : index));
+
   const onAddStep = () => {
     dispatch(automationActions.addStep());
     persistSteps();
+    openStep(currentSteps.length);
   };
 
   const handleCancel = () => {
@@ -188,7 +198,7 @@ const AddScenarioForm: React.FC = () => {
     const currentStepCount = currentSteps.length;
     const previousCount = previousStepCountRef.current;
     previousStepCountRef.current = currentStepCount;
-    if (currentStepCount <= previousCount) return;
+    if (currentStepCount <= previousCount || scrollToExpandedRef.current) return;
 
     const timer = setTimeout(() => {
       if (modalContext?.getModalContainer()) {
@@ -201,6 +211,21 @@ const AddScenarioForm: React.FC = () => {
     return () => clearTimeout(timer);
   }, [currentSteps.length, modalContext]);
 
+  // Bring the step the user opened into view (not scrollIntoView: it would also scroll the panel's clipped outer containers)
+  useEffect(() => {
+    if (expandedIndex === null || !scrollToExpandedRef.current) return;
+    const timer = setTimeout(() => {
+      scrollToExpandedRef.current = false;
+      const stepElement = stepsContainerRef.current?.querySelector<HTMLElement>(`[data-step-index="${expandedIndex}"]`);
+      const scrollParent = findScrollParent(stepElement);
+      if (!stepElement || !scrollParent) return;
+      const top =
+        stepElement.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top + scrollParent.scrollTop;
+      scrollParent.scrollTo({ top: Math.max(0, top - 16), behavior: "smooth" });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [expandedIndex, currentSteps.length]);
+
   // Step edits are applied live: the inline step forms have no own Save button
   const handleStepChange = (stepIndex: number, updatedStep: ScenarioStep) => {
     dispatch(automationActions.replaceStep({ index: stepIndex, step: updatedStep }));
@@ -210,13 +235,22 @@ const AddScenarioForm: React.FC = () => {
   const handleDeleteStep = (stepIndex: number) => {
     dispatch(automationActions.removeStep(stepIndex));
     persistSteps();
+    setExpandedIndex((current) => {
+      if (current === null || current < stepIndex) return current;
+      return current === stepIndex ? null : current - 1;
+    });
   };
+
+  // The open form follows its step when steps swap places
+  const followMove = (fromIndex: number, toIndex: number) =>
+    setExpandedIndex((current) => (current === fromIndex ? toIndex : current === toIndex ? fromIndex : current));
 
   // Handler for moving a step up
   const handleMoveStepUp = (stepIndex: number) => {
     if (stepIndex > 0) {
       dispatch(automationActions.reorderSteps({ fromIndex: stepIndex, toIndex: stepIndex - 1 }));
       persistSteps();
+      followMove(stepIndex, stepIndex - 1);
     }
   };
 
@@ -225,6 +259,7 @@ const AddScenarioForm: React.FC = () => {
     if (stepIndex < currentSteps.length - 1) {
       dispatch(automationActions.reorderSteps({ fromIndex: stepIndex, toIndex: stepIndex + 1 }));
       persistSteps();
+      followMove(stepIndex, stepIndex + 1);
     }
   };
 
@@ -232,140 +267,135 @@ const AddScenarioForm: React.FC = () => {
   const handleInsertStep = (insertIndex: number) => {
     dispatch(automationActions.insertStep(insertIndex));
     persistSteps();
+    openStep(insertIndex);
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <div>
-        <div className="flex items-center" style={{ marginBottom: "8px" }}>
-          <label style={{ fontWeight: "500" }}>Scenario Title</label>
-          <button
-            className="cursor-pointer ml-4 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-500 text-blue-600 hover:text-white rounded transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDetails(!showDetails);
-            }}
+    <ScenarioForm>
+      <Field>
+        <FieldHead>
+          <Label htmlFor="scenario-title">Title</Label>
+          <Button
+            type="text"
+            size="small"
+            aria-expanded={showDetails}
+            onClick={() => setShowDetails(!showDetails)}
+            icon={<IconChevronDown size={14} style={{ transform: showDetails ? "rotate(180deg)" : undefined }} />}
+            iconPosition="end"
           >
-            {showDetails ? "Hide Details" : "Show Details"}
-          </button>
-        </div>
+            {showDetails ? "Hide details" : "Details"}
+          </Button>
+        </FieldHead>
         <Controller
           name="title"
           control={control}
           render={({ field }) => (
-            <FormInput {...field} type="text" placeholder="Enter scenario title" error={!!errors.title} />
+            <FormInput {...field} id="scenario-title" type="text" placeholder="Scenario title" error={!!errors.title} />
           )}
         />
-        {errors.title && (
-          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.title.message}</div>
-        )}
-      </div>
+        {errors.title && <ErrorText role="alert">{errors.title.message}</ErrorText>}
+      </Field>
 
-      {/* Details fields - shown/hidden based on showDetails state */}
-      <div style={{ display: showDetails ? "block" : "none" }}>
-        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Description</label>
-        <Controller
-          name="description"
-          control={control}
-          render={({ field }) => <FormTextArea {...field} placeholder="Enter scenario description" rows={3} />}
-        />
-      </div>
+      {/* Hidden, not unmounted: the fields keep their values */}
+      <DetailsPanel style={{ display: showDetails ? undefined : "none" }}>
+        <Field>
+          <Label htmlFor="scenario-description">Description</Label>
+          <Controller
+            name="description"
+            control={control}
+            render={({ field }) => (
+              <FormTextArea {...field} id="scenario-description" placeholder="What the scenario does" rows={2} />
+            )}
+          />
+        </Field>
+        <Field>
+          <Label htmlFor="scenario-category">Category</Label>
+          <Controller
+            name="category"
+            control={control}
+            render={({ field }) => (
+              <Select
+                {...field}
+                id="scenario-category"
+                getPopupContainer={shadowBody}
+                placeholder="Choose a category"
+                options={categoryOptions}
+                allowClear
+              />
+            )}
+          />
+        </Field>
+        <Field>
+          <Label htmlFor="scenario-tags">Tags</Label>
+          <Controller
+            name="tags"
+            control={control}
+            render={({ field }) => (
+              <Select
+                {...field}
+                id="scenario-tags"
+                getPopupContainer={shadowBody}
+                mode="tags"
+                placeholder="Add tags"
+                style={{ width: "100%" }}
+                tokenSeparators={[","]}
+              />
+            )}
+          />
+        </Field>
+      </DetailsPanel>
 
-      <div style={{ display: showDetails ? "block" : "none" }}>
-        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Category</label>
-        <Controller
-          name="category"
-          control={control}
-          render={({ field }) => (
-            <Select
-              {...field}
-              getPopupContainer={() =>
-                // @ts-ignore
-                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-              }
-              placeholder="Select a category"
-              options={categoryOptions}
-              allowClear
-            />
-          )}
-        />
-      </div>
+      <div ref={stepsContainerRef}>
+        <SectionHead>
+          <h3>Steps</h3>
+          {currentSteps.length > 0 && <CountBadge>{currentSteps.length}</CountBadge>}
+        </SectionHead>
 
-      <div style={{ display: showDetails ? "block" : "none" }}>
-        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Tags</label>
-        <Controller
-          name="tags"
-          control={control}
-          render={({ field }) => (
-            <Select
-              {...field}
-              getPopupContainer={() =>
-                // @ts-ignore
-                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-              }
-              mode="tags"
-              placeholder="Add tags"
-              style={{ width: "100%" }}
-              tokenSeparators={[","]}
-            />
-          )}
-        />
-      </div>
-
-      <Divider orientation="left">Steps</Divider>
-
-      {currentSteps.length === 0 ? (
-        <EmptyState style={{ padding: "12px" }}>No steps added yet. Add a step to get started.</EmptyState>
-      ) : (
-        <div
-          ref={stepsContainerRef}
-          style={{
-            padding: "4px",
-            marginBottom: "16px",
-          }}
-        >
-          {currentSteps.map((step, index) => {
-            return (
-              <div key={`editing-${index}`}>
-                <StepInsertContainer key={`insert-before-${index}`}>
-                  <div
-                    className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center cursor-pointer shadow-md opacity-0 transform -translate-y-3 hover:opacity-100 hover:bg-blue-400 hover:scale-110 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-300 active:opacity-100 transition-all duration-200"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleInsertStep(index);
-                    }}
-                  >
-                    <PlusOutlined />
-                  </div>
-                </StepInsertContainer>
-
-                <EditingStepItem data-step-index={index}>
-                  <EditingStepHeader>
-                    <EditingStepTitle>Edit Step {index + 1}</EditingStepTitle>
-                  </EditingStepHeader>
+        {currentSteps.length === 0 ? (
+          <EmptyState
+            icon={<IconListDetails />}
+            title="No steps yet"
+            description={recording ? "Use the page: every click and text you type becomes a step." : "Add a step to get started."}
+          />
+        ) : (
+          <StepList aria-label="Steps">
+            {currentSteps.map((step, index) => (
+              <React.Fragment key={`editing-${index}`}>
+                <InsertSlot>
+                  <InsertButton type="button" onClick={() => handleInsertStep(index)} aria-label={`Insert a step before step ${index + 1}`}>
+                    <IconPlus />
+                    Step
+                  </InsertButton>
+                </InsertSlot>
+                <StepCard
+                  step={step}
+                  index={index}
+                  total={currentSteps.length}
+                  expanded={expandedIndex === index}
+                  invalid={stepsSubmitAttempted && Object.keys(validateStep(step)).length > 0}
+                  onToggle={toggleStep}
+                  onMoveUp={handleMoveStepUp}
+                  onMoveDown={handleMoveStepDown}
+                  onDelete={handleDeleteStep}
+                >
                   <StepEditForm
                     step={step}
-                    onClose={() => undefined}
+                    onClose={() => setExpandedIndex(null)}
                     onSave={(updatedStep) => handleStepChange(index, updatedStep)}
                     onChange={(updatedStep) => handleStepChange(index, updatedStep)}
-                    onDelete={() => handleDeleteStep(index)}
-                    onMoveUp={handleMoveStepUp}
-                    onMoveDown={handleMoveStepDown}
                     stepIndex={index}
                     totalSteps={currentSteps.length}
                     showErrors={stepsSubmitAttempted}
                   />
-                </EditingStepItem>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                </StepCard>
+              </React.Fragment>
+            ))}
+          </StepList>
+        )}
+      </div>
 
       {stepsSubmitAttempted && invalidStepIndex >= 0 && (
-        <div role="alert" style={{ color: "#ff4d4f", fontSize: "14px" }}>
-          Step {invalidStepIndex + 1} is incomplete. Complete or delete it to save the scenario.
-        </div>
+        <Alert role="alert">Step {invalidStepIndex + 1} is incomplete. Complete or delete it to save the scenario.</Alert>
       )}
 
       <ScenarioPortalFooterButtons portalId={recording ? PortalId.RECORDING : PortalId.SCENARIOS_TAB}>
@@ -378,10 +408,10 @@ const AddScenarioForm: React.FC = () => {
         />
       </ScenarioPortalFooterButtons>
 
-      <Button type="dashed" onClick={onAddStep} block icon={<IconPlus size={16} />} style={{ marginTop: "16px" }}>
-        Add Step
+      <Button type="dashed" onClick={onAddStep} block icon={<IconPlus size={16} />}>
+        Add step
       </Button>
-    </div>
+    </ScenarioForm>
   );
 };
 

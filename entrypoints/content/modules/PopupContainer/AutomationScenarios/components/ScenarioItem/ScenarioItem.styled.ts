@@ -1,3 +1,4 @@
+import { tokens } from "@entrypoints/shared/styles/tokens";
 import styled from "styled-components";
 import { Tag } from "antd";
 
@@ -178,25 +179,32 @@ export const StepWarning = styled.div`
   margin-top: 2px;
 `;
 
+// The inline form of a step of a saved scenario: the same card as an open step of the scenario form
 export const EditingStepItem = styled.li`
-  padding: 12px;
   margin-top: 12px;
-  background-color: #f0f7ff;
-  border: 1px solid #d0e3ff;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  border-left: 3px solid #1890ff;
-  transition: all 0.2s ease;
+  padding: 12px 14px 14px;
+  border: 1px solid ${tokens.color.primaryBorder};
+  border-radius: 10px;
+  background: ${tokens.color.surface};
+  list-style: none;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 10px 24px -10px rgba(15, 23, 42, 0.18);
 `;
 
 export const EditingStepHeader = styled.div`
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 `;
 
 export const EditingStepTitle = styled.span`
-  font-weight: bold;
+  font-size: ${tokens.font.size.xs}px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: ${tokens.color.textSecondary};
 `;
 
 export const StatusTag = styled(Tag)`

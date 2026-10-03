@@ -15,6 +15,8 @@ import {
   IconBell,
   IconKeyboard,
   IconFileText,
+  IconWorld,
+  IconEye,
 } from '@tabler/icons-react';
 import { ScenarioStep } from '../types';
 
@@ -59,6 +61,10 @@ export const getStepIcon = (stepType: string, size: number = 16): React.ReactEle
       return <IconKeyboard {...iconProps} />;
     case 'getText':
       return <IconFileText {...iconProps} />;
+    case 'navigate':
+      return <IconWorld {...iconProps} />;
+    case 'waitElementVisible':
+      return <IconEye {...iconProps} />;
     default:
       return <IconHandMove {...iconProps} />;
   }

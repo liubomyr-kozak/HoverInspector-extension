@@ -20,6 +20,7 @@ import {
   isTextEntryElement,
 } from "../utils/recordingUtils";
 import { generateXPaths } from "../utils/xpathUtils";
+import HighlightOverlayManager from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayManager";
 import { Scenario, ScenarioMap } from "../types";
 import { LiveWatchContext, LiveWatchController } from "./LiveWatchContext";
 import { SuggestionCard } from "./components/SuggestionCard";
@@ -188,7 +189,8 @@ export const LiveWatcher: React.FC = () => {
       })
       .catch(() => undefined);
 
-    const isWatching = () => !executingRef.current;
+    // Neither scenario playback nor picking an element for a step is something the user did on the page
+    const isWatching = () => !executingRef.current && !HighlightOverlayManager.getInstance().isSelectionActive();
 
     const addEvent = (kind: WatchEventKind, element: Element, value?: string) => {
       if (!element.isConnected) return;

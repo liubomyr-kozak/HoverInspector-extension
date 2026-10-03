@@ -1,71 +1,46 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Subscription } from "rxjs";
-import { filter as rxFilter } from "rxjs/operators";
-import { AutoComplete, Button, Checkbox, Divider, Dropdown, Input, Select, Space } from "antd";
-import { Controller, useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import React, { useEffect, useId, useMemo, useState } from "react";
+import { AutoComplete, Button, Dropdown, Input, InputNumber, Select, Switch } from "antd";
 import { useSelector } from "react-redux";
-import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
-import { AimOutlined, DeleteOutlined, SelectOutlined, UpOutlined, DownOutlined } from "@ant-design/icons";
-import { getFilteredStepTypeOptions, ScenarioStep, StepType } from "../types";
+import { IconArrowDown, IconArrowUp, IconTrash, IconVariable } from "@tabler/icons-react";
+import { getFilteredStepTypeOptions, ScenarioStep, StepType, stepTypeHints } from "../types";
 import { useServerSettings } from "../hooks/useServerSettings";
 import { selectFunctions, selectStoredValues } from "@entrypoints/content/store/automation/automation.slice";
-import { generateXPaths } from "../utils/xpathUtils";
-import { KEY_PRESS_OPTIONS, parseKeyCombo } from "../utils/keyboardUtils";
+import { KEY_PRESS_OPTIONS } from "../utils/keyboardUtils";
+import { parseSelectValues } from "../utils/recordingUtils";
+import { getStepIcon } from "../utils/stepIcons";
 import { shadowBody } from "../utils/popupContainer";
-import { Tooltip } from "@entrypoints/shared/components/Tooltip";
+import { findElementByXPaths } from "../liveWatch/utils/dom";
+import { ElementField } from "./StepForm/ElementField";
+import { StepFormErrors, validateStep } from "./StepForm/stepValidation";
+import {
+  ErrorText,
+  Field,
+  FieldHead,
+  Form,
+  FormFooter,
+  Hint,
+  Label,
+  MonoArea,
+  Optional,
+  SmallIconButton,
+  StoredValueChip,
+  StoredValues,
+  SwitchRow,
+  TypeOption,
+} from "./StepForm/StepForm.styled";
 
-// Steps that act on an element of the page
-const ELEMENT_STEP_TYPES = [
-  StepType.CLICK,
-  StepType.HOVER,
-  StepType.VALUE,
+export { validateStep };
+
+// Steps whose value may use stored values (${key}); the executor replaces them for these types only
+const VARIABLE_STEP_TYPES = [
   StepType.INPUT,
+  StepType.VALUE,
   StepType.SELECT,
-  StepType.GET_TEXT,
-  StepType.WAIT_ELEMENT_VISIBLE,
+  StepType.NAVIGATE,
+  StepType.REDIRECT,
+  StepType.CONFIRMATION,
+  StepType.NOTIFICATION,
 ];
-
-// Yup validation schema matching ScenarioStep interface
-const validationSchema = yup.object().shape({
-  type: yup.string().required("Please select a step type"),
-  xpath: yup.string().when("type", {
-    is: (type: string) => ELEMENT_STEP_TYPES.includes(type as StepType),
-    then: (schema) => schema.trim().required("Please enter the XPath of the element"),
-    otherwise: (schema) => schema.notRequired(),
-  }),
-  alternativeXpaths: yup.array().of(yup.string()).notRequired(),
-  value: yup.string().when("type", {
-    is: (type: string) =>
-      [
-        StepType.INPUT,
-        StepType.VALUE,
-        StepType.CODE,
-        StepType.REDIRECT,
-        StepType.WAIT,
-        StepType.WAIT_ELEMENT_VISIBLE,
-        StepType.FUNCTION,
-        StepType.NAVIGATE,
-        StepType.GET_TEXT,
-        StepType.CONFIRMATION,
-        StepType.NOTIFICATION,
-      ].includes(type as StepType),
-    then: (schema) => schema.required("Please enter a value"),
-    otherwise: (schema) =>
-      schema.when("type", {
-        is: StepType.KEY_PRESS,
-        then: (keySchema) =>
-          keySchema
-            .required("Please enter a key, e.g. Enter or Shift+Tab")
-            .test("key", "Use a key name like Enter, Escape, Tab, Space or ArrowDown, optionally after Ctrl+, Alt+, Shift+ or Meta+", (value) =>
-              !!parseKeyCombo(value),
-            ),
-        otherwise: (keySchema) => keySchema.notRequired(),
-      }),
-  }),
-  xpathAutoUpdated: yup.boolean().notRequired(),
-});
 
 interface StepEditFormProps {
   step: ScenarioStep;
@@ -82,31 +57,41 @@ interface StepEditFormProps {
   showErrors?: boolean;
 }
 
-type StepFormErrors = Partial<Record<keyof ScenarioStep, { message: string }>>;
-
-// Validates the step; returns the error of each invalid field
-export const validateStep = (values: ScenarioStep): StepFormErrors => {
-  try {
-    validationSchema.validateSync(values, { abortEarly: false });
-    return {};
-  } catch (error) {
-    const errors: StepFormErrors = {};
-    ((error as yup.ValidationError).inner || []).forEach((inner) => {
-      const field = inner.path as keyof ScenarioStep;
-      if (field && !errors[field]) {
-        errors[field] = { message: inner.message };
-      }
-    });
-    return errors;
-  }
-};
-
 // Used when no step is given (e.g. while a new scenario renders): one shared object, so effects
 // depending on the step don't run on every render
 const EMPTY_STEP = {} as ScenarioStep;
 
+// Keeps every field of the step (enableNavigation, delay, xpathAutoUpdated...), not only the edited ones
+const toFormValues = (source: ScenarioStep): ScenarioStep => ({
+  ...source,
+  type: source?.type || StepType.NOT_SET,
+  xpath: source?.xpath || "",
+  value: source?.value || "",
+  alternativeXpaths: source?.alternativeXpaths || [],
+});
+
+const toNumberString = (value: number | string | null) => (value === null || value === "" ? "" : String(value));
+
+// What the value of a step type is; steps of one kind can switch type and keep the value
+const VALUE_KINDS: Partial<Record<StepType, string>> = {
+  [StepType.INPUT]: "text",
+  [StepType.VALUE]: "text",
+  [StepType.SELECT]: "text",
+  [StepType.WAIT]: "time",
+  [StepType.WAIT_ELEMENT_VISIBLE]: "time",
+  [StepType.NAVIGATE]: "address",
+  [StepType.REDIRECT]: "address",
+  [StepType.CONFIRMATION]: "message",
+  [StepType.NOTIFICATION]: "message",
+};
+const valueKind = (type: StepType) => VALUE_KINDS[type] ?? null;
+
+// Milliseconds kept as text in the step; anything else (an old "${key}") shows as empty
+const toNumber = (value: number | string | undefined): number | null =>
+  /^\d+$/.test(String(value ?? "").trim()) ? Number(value) : null;
+
 /**
- * Form a component for editing a step in a scenario
+ * Form for one step of a scenario: its type, its element and the value it uses
  */
 const StepEditForm: React.FC<StepEditFormProps> = ({
   step = EMPTY_STEP,
@@ -124,148 +109,9 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   const functions = useSelector(selectFunctions);
   const storedValues = useSelector(selectStoredValues);
   const { syncFunctions } = useServerSettings();
-  const stepTypeOptions = getFilteredStepTypeOptions(syncFunctions);
-  const highlightManager = useHighlightOverlay();
-
-  // Initialize React Hook Form
-  const { control } = useForm<ScenarioStep>({
-    resolver: yupResolver(validationSchema),
-    defaultValues: {
-      type: step?.type || StepType.CLICK,
-      xpath: step?.xpath || "",
-      value: step?.value || "",
-      alternativeXpaths: step?.alternativeXpaths || [],
-      ...step,
-    },
-    mode: "onChange",
-  });
-
-  // Helper function to find DOM elements by XPath
-  const getElementByXPath = (xpath: string, alternativeXpaths?: string[]): HTMLElement | null => {
-    // First try the primary XPath
-    try {
-      const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-      const element = result.singleNodeValue as HTMLElement;
-      if (element) {
-        return element;
-      }
-    } catch (error) {
-      console.error("Error evaluating primary XPath:", error);
-    }
-
-    // If primary XPath failed and we have alternatives, try them
-    if (alternativeXpaths && alternativeXpaths.length > 0) {
-      for (const altXPath of alternativeXpaths) {
-        try {
-          const result = document.evaluate(altXPath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-
-          const element = result.singleNodeValue as HTMLElement;
-          if (element) {
-            return element;
-          }
-        } catch (error) {
-          console.error(`Error evaluating alternative XPath: ${altXPath}`, error);
-          // Continue to the next alternative
-        }
-      }
-    }
-
-    // If we get here, all XPaths failed
-    console.warn(`Element not found with XPath: ${xpath}`);
-    return null;
-  };
-
-  // Centralized highlight via useHighlightOverlay hook
-  const highlightElement = (primary: string) => {
-    if (!primary) return;
-    // Attempt primary then alternatives to verify existence before scroll (optional)
-    const candidates = [primary, ...(formValues.alternativeXpaths || [])];
-    let chosen = primary;
-    for (const xp of candidates) {
-      try {
-        const r = document.evaluate(xp, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-        if (r.singleNodeValue) {
-          chosen = xp;
-          (r.singleNodeValue as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
-          break;
-        }
-      } catch {}
-    }
-    highlightManager.startHighlight(chosen);
-  };
-
-  // Element selection state
-  const [selectingElement, setSelectingElement] = useState(false);
-
-  // Handle element selection with proper event management
-  const handleElementSelected = useCallback((xpath: string, element: Element) => {
-    // Generate alternative XPaths for the selected element
-    let alternativeXpaths: string[] = [];
-    if (element) {
-      const xpathResult = generateXPaths(element);
-      alternativeXpaths = xpathResult.alternativeXpaths;
-    }
-
-    // Update the primary XPath
-    handleChange("xpath", xpath);
-
-    // Store alternative XPaths in the step
-    setFormValues((prev) => ({
-      ...prev,
-      alternativeXpaths: alternativeXpaths,
-    }));
-
-    // Reset selection state
-    setSelectingElement(false);
-  }, []);
-
-  // Start element selection function using RxJS streams
-  const startElementSelectionMode = useCallback(() => {
-    setSelectingElement(true);
-  }, []);
-
-  // Set up RxJS stream subscription for element selection
-  useEffect(() => {
-    if (selectingElement) {
-      // Subscribe to the stream-based selection mode
-      const subscription: Subscription = highlightManager
-        .streamSelectionMode()
-        .pipe(
-          // Filter for element selected events
-          rxFilter((event) => event.type === "selected"),
-        )
-        .subscribe({
-          next: (event) => {
-            if (event.xpath && event.element) {
-              handleElementSelected(event.xpath, event.element);
-            }
-          },
-          error: (error) => {
-            console.error("Element selection stream error:", error);
-            setSelectingElement(false);
-          },
-          complete: () => {
-            setSelectingElement(false);
-            highlightManager.stopMouseMoveHighlight();
-          },
-        });
-
-      // Cleanup function to unsubscribe
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
-  }, [selectingElement, highlightManager, handleElementSelected]);
-
-  // Local state for the form
-  // Keeps every field of the step (enableNavigation, delay, xpathAutoUpdated...), not only the edited ones
-  const toFormValues = (source: ScenarioStep): ScenarioStep => ({
-    ...source,
-    type: source?.type || StepType.NOT_SET,
-    xpath: source?.xpath || "",
-    value: source?.value || "",
-    alternativeXpaths: source?.alternativeXpaths || [],
-  });
+  const typeId = useId();
+  const valueId = useId();
+  const extraId = useId();
 
   const [formValues, setFormValues] = useState<ScenarioStep>(() => toFormValues(step));
 
@@ -296,581 +142,355 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
     }
   }, [formValues]);
 
-  // Cleanup element selection on component unmount
-  useEffect(() => {
-    return () => {
-      if (selectingElement) {
-        highlightManager.stopSelectionMode();
-      }
-    };
-  }, [selectingElement, highlightManager]);
-
-  // Handle form field changes
   const handleChange = (field: keyof ScenarioStep, value: string | boolean) => {
     setTouchedFields((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
+    setFormValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // A new type keeps the element, and the value only where it means the same (a text, a time, an address...)
+  const handleTypeChange = (nextType: StepType) => {
+    setTouchedFields((prev) => (prev.has("type") ? prev : new Set(prev).add("type")));
     setFormValues((prev) => ({
       ...prev,
-      [field]: value,
+      type: nextType,
+      value: valueKind(prev.type) !== null && valueKind(prev.type) === valueKind(nextType) ? prev.value : "",
     }));
   };
 
-  // Insert a stored value reference into the current value field
-  const insertStoredValue = (key: string) => {
-    const variableReference = `\${${key}}`;
-    const currentValue = formValues.value || "";
-    const newValue = currentValue + variableReference;
-    handleChange("value", newValue);
+  // A picked element replaces the step's element and its fallbacks
+  const handleElementChange = (xpath: string, alternativeXpaths: string[]) => {
+    setTouchedFields((prev) => (prev.has("xpath") ? prev : new Set(prev).add("xpath")));
+    setFormValues((prev) => ({ ...prev, xpath, alternativeXpaths, xpathAutoUpdated: false }));
   };
 
-  // Handle form submission
+  // A hand-edited XPath no longer matches the fallbacks generated for the picked element
+  const handleXPathChange = (xpath: string) => {
+    setTouchedFields((prev) => (prev.has("xpath") ? prev : new Set(prev).add("xpath")));
+    setFormValues((prev) => ({ ...prev, xpath }));
+  };
+
   const handleFormSubmit = () => {
     setSubmitAttempted(true);
     if (Object.keys(validationErrors).length > 0) return;
     onSave(formValues);
   };
 
-  // Create menu items for stored values
-  const storedValueMenuItems = Object.keys(storedValues).map((key) => ({
-    key,
-    label: `${key}: ${storedValues[key]}`,
-    onClick: () => insertStoredValue(key),
-  }));
+  const type = formValues.type;
+  const value = formValues.value || "";
+  const storedKeys = Object.keys(storedValues);
 
-  // Get function options for the function type step
-  const getFunctionOptions = () => {
-    return Object.entries(functions).map(([id, func]) => ({
-      value: id,
-      label: func.title,
-    }));
+  // The <select> of a select step, to offer its options
+  const selectElement = useMemo(() => {
+    if (type !== StepType.SELECT || !formValues.xpath) return null;
+    const element = findElementByXPaths(formValues.xpath, formValues.alternativeXpaths || []);
+    return element instanceof HTMLSelectElement ? element : null;
+  }, [type, formValues.xpath, formValues.alternativeXpaths]);
+
+  const typeOptions = useMemo(
+    () =>
+      getFilteredStepTypeOptions(syncFunctions || type === StepType.FUNCTION).map((option) => ({
+        value: option.value,
+        label: (
+          <TypeOption>
+            {getStepIcon(option.value || "", 15)}
+            {option.label}
+          </TypeOption>
+        ),
+      })),
+    [syncFunctions, type],
+  );
+
+  const insertVariable = (key: string) => handleChange("value", `${value}\${${key}}`);
+
+  const variableButton =
+    VARIABLE_STEP_TYPES.includes(type) && storedKeys.length > 0 ? (
+      <Dropdown
+        trigger={["click"]}
+        getPopupContainer={shadowBody}
+        menu={{
+          items: storedKeys.map((key) => ({
+            key,
+            label: `\${${key}}`,
+            title: storedValues[key],
+            onClick: () => insertVariable(key),
+          })),
+        }}
+      >
+        <Button type="text" size="small" icon={<IconVariable size={14} />}>
+          Insert value
+        </Button>
+      </Dropdown>
+    ) : null;
+
+  const valueField = (
+    label: string,
+    control: React.ReactNode,
+    options: { optional?: boolean; hint?: React.ReactNode; withVariables?: boolean; id?: string } = {},
+  ) => (
+    <Field>
+      <FieldHead>
+        <Label htmlFor={options.id ?? valueId}>
+          {label}
+          {options.optional && <Optional>optional</Optional>}
+        </Label>
+        {options.withVariables !== false && variableButton}
+      </FieldHead>
+      {control}
+      {options.id === undefined && errors.value && <ErrorText role="alert">{errors.value.message}</ErrorText>}
+      {options.hint && <Hint>{options.hint}</Hint>}
+    </Field>
+  );
+
+  const elementField = (options: { required?: boolean; label?: string; hint?: string } = {}) => (
+    <ElementField
+      stepType={type}
+      xpath={formValues.xpath || ""}
+      alternatives={formValues.alternativeXpaths || []}
+      required={options.required ?? true}
+      label={options.label}
+      hint={options.hint}
+      error={errors.xpath?.message}
+      onXPathChange={handleXPathChange}
+      onElementChange={handleElementChange}
+    />
+  );
+
+  const textInput = (placeholder: string) => (
+    <Input
+      id={valueId}
+      value={value}
+      onChange={(e) => handleChange("value", e.target.value)}
+      placeholder={placeholder}
+      status={errors.value ? "error" : undefined}
+    />
+  );
+
+  const textArea = (placeholder: string, mono = false) => {
+    const area = (
+      <Input.TextArea
+        id={valueId}
+        value={value}
+        onChange={(e) => handleChange("value", e.target.value)}
+        placeholder={placeholder}
+        autoSize={mono ? { minRows: 4, maxRows: 14 } : { minRows: 2, maxRows: 6 }}
+        status={errors.value ? "error" : undefined}
+        spellCheck={!mono}
+      />
+    );
+    return mono ? <MonoArea>{area}</MonoArea> : area;
   };
 
-  // Render different form fields based on step type
+  const msInput = (field: "value" | "delay", placeholder: string, id: string) => (
+    <InputNumber<number>
+      id={id}
+      value={toNumber(field === "delay" ? formValues.delay : value)}
+      onChange={(next) => handleChange(field, toNumberString(next))}
+      placeholder={placeholder}
+      min={1}
+      step={500}
+      precision={0}
+      addonAfter="ms"
+      status={field === "value" && errors.value ? "error" : undefined}
+      style={{ width: "100%" }}
+    />
+  );
+
+  const selectOptions = selectElement
+    ? Array.from(selectElement.options).map((option) => ({
+        value: option.value,
+        label: option.text.trim() || option.value || "(empty)",
+      }))
+    : [];
+
   const renderTypeSpecificFields = () => {
-    switch (formValues.type) {
+    switch (type) {
       case StepType.CLICK:
       case StepType.HOVER:
-        return (
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Element XPath *</label>
-            <Input
-              value={formValues.xpath}
-              onChange={(e) => handleChange("xpath", e.target.value)}
-              placeholder="XPath of the element to interact with"
-              status={errors.xpath ? "error" : undefined}
-              addonAfter={
-                <Space>
-                  <Tooltip title="Find element in page">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                      onClick={() => formValues.xpath && highlightElement(formValues.xpath)}
-                      disabled={!formValues.xpath}
-                    />
-                  </Tooltip>
-                  <Tooltip title="Select element from page">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                      onClick={startElementSelectionMode}
-                      disabled={selectingElement}
-                    />
-                  </Tooltip>
-                </Space>
-              }
-            />
-            {errors.xpath && (
-              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.xpath.message}</div>
-            )}
-          </div>
-        );
+        return elementField();
 
       case StepType.KEY_PRESS:
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Key *</label>
+          <>
+            {valueField(
+              "Key",
               <AutoComplete
-                value={formValues.value}
+                id={valueId}
+                value={value}
                 options={KEY_PRESS_OPTIONS.map((key) => ({ value: key }))}
                 filterOption={(input, option) =>
                   String(option?.value || "")
                     .toLowerCase()
                     .includes(input.toLowerCase())
                 }
-                onChange={(value) => handleChange("value", value)}
-                placeholder="Enter, Escape, Tab, Space, ArrowDown, Shift+Tab..."
+                onChange={(next) => handleChange("value", next)}
+                placeholder="Enter, Escape, Tab, Shift+Tab…"
                 status={errors.value ? "error" : undefined}
                 style={{ width: "100%" }}
                 getPopupContainer={shadowBody}
-              />
-              {errors.value && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-              )}
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Element XPath</label>
-              <Input
-                value={formValues.xpath}
-                onChange={(e) => handleChange("xpath", e.target.value)}
-                placeholder="Element that gets the key (empty: the focused element)"
-                status={errors.xpath ? "error" : undefined}
-                addonAfter={
-                  <Space>
-                    <Tooltip title="Find element in page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                        onClick={() => formValues.xpath && highlightElement(formValues.xpath)}
-                        disabled={!formValues.xpath}
-                      />
-                    </Tooltip>
-                    <Tooltip title="Select element from page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                        onClick={startElementSelectionMode}
-                        disabled={selectingElement}
-                      />
-                    </Tooltip>
-                  </Space>
-                }
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                The element is focused before the key is pressed. Enter in a form field submits the form.
-              </div>
-            </div>
-          </div>
+              />,
+              { withVariables: false },
+            )}
+            {elementField({
+              required: false,
+              hint: "Focused before the key is pressed. Empty: the key goes to whatever has the focus.",
+            })}
+          </>
         );
 
       case StepType.VALUE:
       case StepType.INPUT:
+        return (
+          <>
+            {elementField()}
+            {valueField(type === StepType.INPUT ? "Text to type" : "Value", textInput("Text"), {
+              hint: storedKeys.length > 0 ? <>Stored values work too: <code>{"${key}"}</code></> : undefined,
+            })}
+          </>
+        );
+
       case StepType.SELECT:
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Element XPath *</label>
-              <Input
-                value={formValues.xpath}
-                onChange={(e) => handleChange("xpath", e.target.value)}
-                placeholder="XPath of the element to set value for"
-                status={errors.xpath ? "error" : undefined}
-                addonAfter={
-                  <Space>
-                    <Tooltip title="Find element in page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                        onClick={() => formValues.xpath && highlightElement(formValues.xpath)}
-                        disabled={!formValues.xpath}
-                      />
-                    </Tooltip>
-                    <Tooltip title="Select element from page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                        onClick={startElementSelectionMode}
-                        disabled={selectingElement}
-                      />
-                    </Tooltip>
-                  </Space>
-                }
-              />
-              {errors.xpath && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.xpath.message}</div>
-              )}
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Value *</label>
-              <Input
-                value={formValues.value}
-                onChange={(e) => handleChange("value", e.target.value)}
-                placeholder="Value to set"
-                status={errors.value ? "error" : undefined}
-                addonAfter={
-                  Object.keys(storedValues).length > 0 ? (
-                    <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                      <Button size="small">Insert Variable</Button>
-                    </Dropdown>
-                  ) : null
-                }
-              />
-              {errors.value && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-              )}
-              {Object.keys(storedValues).length > 0 && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Tip: You can use stored values with ${"{variableName}"} syntax
-                </div>
-              )}
-            </div>
-          </div>
+          <>
+            {elementField({ label: "Dropdown" })}
+            {valueField(
+              "Option",
+              selectElement ? (
+                <Select
+                  id={valueId}
+                  mode={selectElement.multiple ? "multiple" : undefined}
+                  value={selectElement.multiple ? parseSelectValues(value, true).filter(Boolean) : value || undefined}
+                  onChange={(next: string | string[]) =>
+                    handleChange("value", Array.isArray(next) ? JSON.stringify(next) : next)
+                  }
+                  options={selectOptions}
+                  placeholder="Choose an option"
+                  showSearch
+                  optionFilterProp="label"
+                  getPopupContainer={shadowBody}
+                  style={{ width: "100%" }}
+                />
+              ) : (
+                textInput("Option value or its text")
+              ),
+              {
+                hint: selectElement
+                  ? undefined
+                  : "Pick the dropdown on this page to choose from its options. A value or the option's text works too.",
+              },
+            )}
+          </>
         );
 
       case StepType.GET_TEXT:
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Element XPath *</label>
+          <>
+            {elementField()}
+            {valueField(
+              "Save as",
               <Input
-                value={formValues.xpath}
-                onChange={(e) => handleChange("xpath", e.target.value)}
-                placeholder="XPath of the element to get text from"
-                status={errors.xpath ? "error" : undefined}
-                addonAfter={
-                  <Space>
-                    <Tooltip title="Find element in page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                        onClick={() => formValues.xpath && highlightElement(formValues.xpath)}
-                        disabled={!formValues.xpath}
-                      />
-                    </Tooltip>
-                    <Tooltip title="Select element from page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                        onClick={startElementSelectionMode}
-                        disabled={selectingElement}
-                      />
-                    </Tooltip>
-                  </Space>
-                }
-              />
-              {errors.xpath && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.xpath.message}</div>
-              )}
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Storage Key *</label>
-              <Input
-                value={formValues.value}
+                id={valueId}
+                value={value}
                 onChange={(e) => handleChange("value", e.target.value)}
-                placeholder="Key to store the text under (e.g., 'username' or leave empty for random key)"
-                status={errors.value ? "error" : undefined}
-              />
-              {errors.value && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-              )}
-              <div className="text-xs text-gray-500 mt-1">
-                Tip: Leave empty to generate a random key, or provide a descriptive name
-              </div>
-            </div>
-            {Object.keys(storedValues).length > 0 && (
-              <div>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Stored Values</label>
-                <div className="text-xs text-gray-500 mb-2">
-                  Currently stored values that can be used in other steps:
-                </div>
-                <div className="max-h-32 overflow-y-auto border border-gray-200 rounded p-2">
-                  {Object.entries(storedValues).map(([key, value]) => (
-                    <div key={key} className="mb-1">
-                      <strong>{key}:</strong> {value.length > 50 ? `${value.substring(0, 50)}...` : value}
-                    </div>
-                  ))}
-                </div>
-              </div>
+                placeholder="key"
+                addonBefore="${"
+                addonAfter="}"
+              />,
+              {
+                optional: true,
+                withVariables: false,
+                hint: "Later steps use the text as ${key}. Empty: a key is made up.",
+              },
             )}
-          </div>
+            {storedKeys.length > 0 && (
+              <Field>
+                <Label as="span">Stored values</Label>
+                <StoredValues>
+                  {storedKeys.map((key) => (
+                    <StoredValueChip key={key} title={storedValues[key]}>
+                      {`\${${key}}`}
+                    </StoredValueChip>
+                  ))}
+                </StoredValues>
+              </Field>
+            )}
+          </>
         );
 
       case StepType.CODE:
-        return (
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>JavaScript Code *</label>
-            <Input.TextArea
-              value={formValues.value}
-              onChange={(e) => handleChange("value", e.target.value)}
-              placeholder="Enter JavaScript code to execute"
-              rows={4}
-              status={errors.value ? "error" : undefined}
-            />
-            {errors.value && (
-              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-            )}
-            {Object.keys(storedValues).length > 0 && (
-              <>
-                <div className="mt-2">
-                  <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                    <Button size="small">Insert Variable</Button>
-                  </Dropdown>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Tip: You can use stored values with ${"{variableName}"} syntax
-                </div>
-              </>
-            )}
-          </div>
-        );
+        return valueField("JavaScript", textArea("document.title = 'Done';", true), {
+          withVariables: false,
+          hint: "Runs on the page. Stored values are not replaced here.",
+        });
 
       case StepType.FUNCTION:
-        return syncFunctions ? (
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Function *</label>
-            <Select
-              value={formValues.value}
-              onChange={(value) => handleChange("value", value)}
-              placeholder="Select a function to execute"
-              options={getFunctionOptions()}
-              status={errors.value ? "error" : undefined}
-              getPopupContainer={() =>
-                // @ts-ignore
-                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-              }
-            />
-            {errors.value && (
-              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-            )}
-          </div>
-        ) : null;
+        return syncFunctions
+          ? valueField(
+              "Function",
+              <Select
+                id={valueId}
+                value={value || undefined}
+                onChange={(next: string) => handleChange("value", next)}
+                placeholder="Choose a function"
+                options={Object.entries(functions).map(([id, func]) => ({ value: id, label: func.title }))}
+                status={errors.value ? "error" : undefined}
+                getPopupContainer={shadowBody}
+                style={{ width: "100%" }}
+              />,
+              { withVariables: false },
+            )
+          : <Hint>Functions are off. Turn on function sync in the settings to choose one.</Hint>;
 
       case StepType.REDIRECT:
-        return (
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>URL *</label>
-            <Input
-              value={formValues.value}
-              onChange={(e) => handleChange("value", e.target.value)}
-              placeholder="URL to navigate to"
-              status={errors.value ? "error" : undefined}
-              addonAfter={
-                Object.keys(storedValues).length > 0 ? (
-                  <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                    <Button size="small">Insert Variable</Button>
-                  </Dropdown>
-                ) : null
-              }
-            />
-            {errors.value && (
-              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-            )}
-            {Object.keys(storedValues).length > 0 && (
-              <div className="text-xs text-gray-500 mt-1">
-                Tip: You can use stored values with ${"{variableName}"} syntax
-              </div>
-            )}
-          </div>
-        );
+        return valueField("Address", textInput("https://example.com/page"));
 
       case StepType.NAVIGATE:
         return (
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Navigation URL *</label>
-            <Input
-              value={formValues.value}
-              onChange={(e) => handleChange("value", e.target.value)}
-              placeholder="URL to navigate to"
-              status={errors.value ? "error" : undefined}
-              addonAfter={
-                Object.keys(storedValues).length > 0 ? (
-                  <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                    <Button size="small">Insert Variable</Button>
-                  </Dropdown>
-                ) : null
-              }
-            />
-            {errors.value && (
-              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-            )}
-            {Object.keys(storedValues).length > 0 && (
-              <div className="text-xs text-gray-500 mt-1">
-                Tip: You can use stored values with ${"{variableName}"} syntax
-              </div>
-            )}
-
-            {/* Enable Navigation checkbox for navigate step type */}
-            <div style={{ marginTop: "16px" }}>
-              <Tooltip title="When enabled, this navigation step will be executed during playback">
-                <Checkbox
-                  checked={formValues.enableNavigation || false}
-                  onChange={(e) => handleChange("enableNavigation", e.target.checked)}
-                  style={{ fontSize: "12px" }}
-                >
-                  Enable Navigation
-                </Checkbox>
-              </Tooltip>
-            </div>
-          </div>
+          <>
+            {valueField("Address", textInput("https://example.com/page"))}
+            <SwitchRow htmlFor={extraId}>
+              <Switch
+                id={extraId}
+                size="small"
+                checked={!!formValues.enableNavigation}
+                onChange={(checked) => handleChange("enableNavigation", checked)}
+              />
+              <span>
+                Open this address during playback
+                <small>Off: playback stays on the current page, the step only notes where the page changed.</small>
+              </span>
+            </SwitchRow>
+          </>
         );
 
       case StepType.WAIT:
-        return (
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Wait Time (ms) *</label>
-            <Input
-              type="number"
-              value={formValues.value}
-              onChange={(e) => handleChange("value", e.target.value)}
-              placeholder="Time to wait in milliseconds"
-              status={errors.value ? "error" : undefined}
-              addonAfter={
-                Object.keys(storedValues).length > 0 ? (
-                  <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                    <Button size="small">Insert Variable</Button>
-                  </Dropdown>
-                ) : null
-              }
-            />
-            {errors.value && (
-              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-            )}
-            {Object.keys(storedValues).length > 0 && (
-              <div className="text-xs text-gray-500 mt-1">
-                Tip: You can use stored values with ${"{variableName}"} syntax
-              </div>
-            )}
-          </div>
-        );
+        return valueField("Duration", msInput("value", "1000", valueId), { withVariables: false });
 
       case StepType.WAIT_ELEMENT_VISIBLE:
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Element XPath *</label>
-              <Input
-                value={formValues.xpath}
-                onChange={(e) => handleChange("xpath", e.target.value)}
-                placeholder="XPath of the element to wait for"
-                status={errors.xpath ? "error" : undefined}
-                addonAfter={
-                  <Space>
-                    <Tooltip title="Find element in page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<AimOutlined style={{ color: "#1890ff" }} />}
-                        onClick={() => formValues.xpath && highlightElement(formValues.xpath)}
-                        disabled={!formValues.xpath}
-                      />
-                    </Tooltip>
-                    <Tooltip title="Select element from page">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                        onClick={startElementSelectionMode}
-                        disabled={selectingElement}
-                      />
-                    </Tooltip>
-                  </Space>
-                }
-              />
-              {errors.xpath && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.xpath.message}</div>
-              )}
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Timeout (ms)</label>
-              <Input
-                type="number"
-                value={formValues.value}
-                onChange={(e) => handleChange("value", e.target.value)}
-                placeholder="10000"
-                min={1000}
-                max={60000}
-                addonAfter={
-                  Object.keys(storedValues).length > 0 ? (
-                    <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                      <Button size="small">Insert Variable</Button>
-                    </Dropdown>
-                  ) : null
-                }
-              />
-              {errors.value && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-              )}
-              <div className="text-xs text-gray-500 mt-1">
-                Maximum time to wait for element to become visible (1000-60000ms, default: 10000ms)
-              </div>
-              {Object.keys(storedValues).length > 0 && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Tip: You can use stored values with ${"{variableName}"} syntax
-                </div>
-              )}
-            </div>
-          </div>
+          <>
+            {elementField()}
+            {valueField("Give up after", msInput("value", "10000", valueId), {
+              optional: true,
+              withVariables: false,
+              hint: "The step fails if the element is not visible by then. Empty: 10 seconds.",
+            })}
+          </>
         );
 
       case StepType.CONFIRMATION:
-        return (
-          <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Confirmation Message *</label>
-            <Input.TextArea
-              value={formValues.value}
-              onChange={(e) => handleChange("value", e.target.value)}
-              placeholder="Enter the message to display in the confirmation notification"
-              rows={2}
-              status={errors.value ? "error" : undefined}
-            />
-            {errors.value && (
-              <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-            )}
-            {Object.keys(storedValues).length > 0 && (
-              <>
-                <div className="mt-2">
-                  <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                    <Button size="small">Insert Variable</Button>
-                  </Dropdown>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Tip: You can use stored values with ${"{variableName}"} syntax
-                </div>
-              </>
-            )}
-          </div>
-        );
+        return valueField("Message", textArea("Check the form, then continue"));
 
       case StepType.NOTIFICATION:
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Notification Message *</label>
-              <Input.TextArea
-                value={formValues.value}
-                onChange={(e) => handleChange("value", e.target.value)}
-                placeholder="Enter the message to display in the notification"
-                rows={2}
-                status={errors.value ? "error" : undefined}
-              />
-              {errors.value && (
-                <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.value.message}</div>
-              )}
-              {Object.keys(storedValues).length > 0 && (
-                <>
-                  <div className="mt-2">
-                    <Dropdown menu={{ items: storedValueMenuItems }} trigger={["click"]}>
-                      <Button size="small">Insert Variable</Button>
-                    </Dropdown>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Tip: You can use stored values with ${"{variableName}"} syntax
-                  </div>
-                </>
-              )}
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Auto Close Time (ms)</label>
-              <Input
-                type="number"
-                value={(formValues as any).delay}
-                onChange={(e) => handleChange("delay", e.target.value)}
-                placeholder="3000"
-                min={1000}
-                max={10000}
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                Time in milliseconds before the notification automatically closes (1000-10000ms, default: 3000ms)
-              </div>
-            </div>
-          </div>
+          <>
+            {valueField("Message", textArea("Order sent"))}
+            {valueField("Closes after", msInput("delay", "3000", extraId), {
+              optional: true,
+              withVariables: false,
+              id: extraId,
+              hint: "Empty: 3 seconds.",
+            })}
+          </>
         );
 
       default:
@@ -878,90 +498,64 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
     }
   };
 
+  const hasFooter = !!(onMoveUp || onMoveDown || onDelete || isSingleItem);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <div>
-        <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>Step Type *</label>
-        <Controller
-          name="type"
-          control={control}
-          render={({ field }) => (
-            <Select
-              {...field}
-              className="w-[50%]"
-              value={formValues.type}
-              onChange={(value) => {
-                field.onChange(value);
-                handleChange("type", value);
-              }}
-              placeholder="Select step type"
-              options={stepTypeOptions}
-              getPopupContainer={() =>
-                // @ts-ignore
-                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-              }
-              status={errors.type ? "error" : undefined}
-            />
-          )}
+    <Form>
+      <Field>
+        <Label htmlFor={typeId}>Type</Label>
+        <Select
+          id={typeId}
+          value={type}
+          onChange={handleTypeChange}
+          options={typeOptions}
+          status={errors.type ? "error" : undefined}
+          getPopupContainer={shadowBody}
+          listHeight={320}
+          style={{ width: "100%" }}
         />
-        {errors.type && (
-          <div style={{ color: "#ff4d4f", fontSize: "14px", marginTop: "4px" }}>{errors.type.message}</div>
-        )}
-      </div>
+        {errors.type && <ErrorText role="alert">{errors.type.message}</ErrorText>}
+        {type !== StepType.NOT_SET && <Hint>{stepTypeHints[type]}</Hint>}
+      </Field>
 
       {renderTypeSpecificFields()}
 
-      <Divider style={{ margin: "12px 0" }} />
-
-      <div className="w-full flex justify-end">
-        <Space>
-          {onMoveUp && (
-            <Tooltip title="Move step up">
-              <Button
-                type="text"
-                size="small"
-                className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
-                icon={<UpOutlined />}
-                disabled={stepIndex === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveUp(stepIndex);
-                }}
-              />
-            </Tooltip>
-          )}
-          {onMoveDown && (
-            <Tooltip title="Move step down">
-              <Button
-                type="text"
-                size="small"
-                className="step-action-btn !p-0.5 !h-6 w-6 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-40 transition-colors !bg-slate-50 dark:!bg-slate-800"
-                icon={<DownOutlined />}
+      {hasFooter && (
+        <FormFooter>
+          <div style={{ display: "flex", gap: 2 }}>
+            {onMoveUp && (
+              <SmallIconButton label="Move step up" disabled={stepIndex === 0} onClick={() => onMoveUp(stepIndex)}>
+                <IconArrowUp />
+              </SmallIconButton>
+            )}
+            {onMoveDown && (
+              <SmallIconButton
+                label="Move step down"
                 disabled={stepIndex === totalSteps - 1}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveDown(stepIndex);
-                }}
-              />
-            </Tooltip>
-          )}
-          {onDelete && (
-            <Button type="default" danger icon={<DeleteOutlined />} onClick={onDelete}>
-              Delete
-            </Button>
-          )}
-
+                onClick={() => onMoveDown(stepIndex)}
+              >
+                <IconArrowDown />
+              </SmallIconButton>
+            )}
+            {onDelete && (
+              <SmallIconButton label="Delete step" onClick={onDelete}>
+                <IconTrash />
+              </SmallIconButton>
+            )}
+          </div>
           {isSingleItem && (
             <>
-              <Button type="primary" onClick={handleFormSubmit}>
+              <Button size="small" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button size="small" type="primary" onClick={handleFormSubmit}>
                 Save
               </Button>
-              <Button onClick={onClose}>Cancel</Button>
             </>
           )}
-        </Space>
-      </div>
-    </div>
+        </FormFooter>
+      )}
+    </Form>
   );
 };
 

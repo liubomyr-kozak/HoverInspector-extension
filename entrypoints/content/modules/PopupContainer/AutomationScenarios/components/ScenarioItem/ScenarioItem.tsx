@@ -425,7 +425,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                   return (
                     <EditingStepItem key={`editing-${index}`}>
                       <EditingStepHeader>
-                        <EditingStepTitle>Edit Step {displayIndex + 1}</EditingStepTitle>
+                        <EditingStepTitle>Edit step {displayIndex + 1}</EditingStepTitle>
                       </EditingStepHeader>
                       <StepEditForm
                         step={currentSteps[originalIndex]}
