@@ -1,5 +1,5 @@
 import { clickableProps } from "@entrypoints/shared/utils/a11y";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import copy from "copy-to-clipboard";
 import DomNodeManager, { useDomNodeObserver } from "@entrypoints/core/services/dom/DomNodeManager";
 import { IconCaretDownFilled, IconCaretRightFilled } from "@tabler/icons-react";
@@ -182,10 +182,32 @@ const isCopyableLine = (line, expanded) => {
 
 const NAV_KEYS = ["ArrowDown", "ArrowUp", "Home", "End"];
 
+const CSS_OUTPUT_PREFS_KEY = "inspectorCssOutputPrefs";
+
 const PopupStyleInspector = ({ selectedElementType }) => {
   const selectedElement = useDomNodeObserver(selectedElementType);
   const [unit, setUnit] = useState("px");
   const [format, setFormat] = useState("css");
+
+  // Remember the chosen unit and output format across pages and reloads
+  const outputPrefsLoaded = useRef(false);
+  useEffect(() => {
+    browser.storage.local
+      .get(CSS_OUTPUT_PREFS_KEY)
+      .then((stored) => {
+        const saved = stored?.[CSS_OUTPUT_PREFS_KEY];
+        if (saved?.unit) setUnit(saved.unit);
+        if (saved?.format) setFormat(saved.format);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        outputPrefsLoaded.current = true;
+      });
+  }, []);
+  useEffect(() => {
+    if (!outputPrefsLoaded.current) return;
+    browser.storage.local.set({ [CSS_OUTPUT_PREFS_KEY]: { unit, format } }).catch(() => undefined);
+  }, [unit, format]);
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState({
     border: false,
