@@ -508,6 +508,52 @@ export const updateScheduleLastExecuted = async (key: string, lastExecuted: stri
   }
 };
 
+// How long a tab waits after claiming a scheduled run before checking that no other tab claimed it too
+const SCHEDULE_CLAIM_SETTLE_TIME = 400;
+
+export type ScheduleClaimResult =
+  | { status: "claimed"; schedule: ScheduleConfig }
+  | { status: "taken"; schedule: ScheduleConfig | null };
+
+/**
+ * Claims a due run of a schedule for this tab. Every tab with the extension checks the schedules,
+ * so the run is recorded in storage before the scenario starts: a tab only runs the schedule when the
+ * stored schedule is still due at the time it saw (no other tab ran it yet), and when its claim was not
+ * overwritten by another tab claiming the same run at the same time.
+ *
+ * @param {string} key - The key of the schedule (sch_...)
+ * @param {string | undefined} dueAt - The nextExecution this tab found due
+ * @param {ScheduleConfig} executedSchedule - The schedule with this run recorded (lastExecuted / nextExecution)
+ */
+export const claimScheduleRun = async (
+  key: string,
+  dueAt: string | undefined,
+  executedSchedule: ScheduleConfig,
+): Promise<ScheduleClaimResult> => {
+  const stored = (await ExtensionStorageManager.getAutomationScenario(key)) as ScheduleConfig | null;
+
+  // Deleted, edited or already run by another tab
+  if (!stored || stored.nextExecution !== dueAt || !stored.enabled) {
+    return { status: "taken", schedule: stored || null };
+  }
+
+  const claim = `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+  const claimedSchedule: ScheduleConfig = { ...executedSchedule, runClaim: claim };
+  const saved = await saveScheduleToLocalStorage(key, claimedSchedule);
+  if (!saved) {
+    return { status: "taken", schedule: stored };
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, SCHEDULE_CLAIM_SETTLE_TIME + Math.random() * 200));
+
+  const latest = (await ExtensionStorageManager.getAutomationScenario(key)) as ScheduleConfig | null;
+  if (!latest || latest.runClaim !== claim) {
+    return { status: "taken", schedule: latest || null };
+  }
+
+  return { status: "claimed", schedule: claimedSchedule };
+};
+
 /**
  * Retrieves all triggers from storage
  *
