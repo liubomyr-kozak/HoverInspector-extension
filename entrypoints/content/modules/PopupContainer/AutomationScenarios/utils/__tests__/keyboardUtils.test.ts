@@ -63,6 +63,7 @@ describe("shouldRecordKeyPress", () => {
   it("keeps Enter and Escape in a one-line field", () => {
     expect(shouldRecordKeyPress(keydown("Enter"), el("text"))).toBe(true);
     expect(shouldRecordKeyPress(keydown("Escape"), el("text"))).toBe(true);
+    expect(shouldRecordKeyPress(keydown("Enter", { ctrlKey: true }), el("area"))).toBe(true);
   });
 });
 

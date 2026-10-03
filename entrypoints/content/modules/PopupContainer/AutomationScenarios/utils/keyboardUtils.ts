@@ -178,8 +178,9 @@ export function shouldRecordKeyPress(event: KeyboardEvent, target: Element): boo
   if (target.closest("select")) return false;
   const key = event.key;
   if (isTextEntryElement(target)) {
-    // Enter in a one-line field may run a search or submit; in a textarea / editor it is a line break
-    if (key === "Enter") return target.tagName === "INPUT";
+    // Enter in a one-line field may run a search or submit; in a textarea / editor it is a line break,
+    // but Ctrl/Cmd+Enter there is the usual "send" shortcut
+    if (key === "Enter") return target.tagName === "INPUT" || event.ctrlKey || event.metaKey;
     return key === "Escape";
   }
   if (isClickOnKeyElement(target)) {
