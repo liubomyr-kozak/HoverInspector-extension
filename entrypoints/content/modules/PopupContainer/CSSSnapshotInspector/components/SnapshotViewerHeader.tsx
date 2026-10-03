@@ -318,6 +318,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                               value={title}
                               onChange={(e) => setTitle(e.target.value)}
                               autoFocus
+                              aria-label="Snapshot name"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   saveSnapshotTitle(title);
@@ -327,10 +328,12 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                                 }
                               }}
                             />
-                            <ActionButton onClick={() => saveSnapshotTitle(title)}>
+                            <ActionButton aria-label="Save name" title="Save name" onClick={() => saveSnapshotTitle(title)}>
                               <IconCheck size={18} color="#10b981" />
                             </ActionButton>
                             <ActionButton
+                              aria-label="Cancel renaming"
+                              title="Cancel renaming"
                               onClick={() => {
                                 setTitle(selectedSnapshot.title);
                                 setEditingTitle(false);
@@ -342,7 +345,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                         ) : (
                           <TitleEditContainer>
                             <TitleText>{title}</TitleText>
-                            <ActionButton onClick={() => setEditingTitle(true)}>
+                            <ActionButton aria-label="Rename snapshot" title="Rename snapshot" onClick={() => setEditingTitle(true)}>
                               <IconEdit size={16} color="#6b7280" />
                             </ActionButton>
                           </TitleEditContainer>
@@ -382,7 +385,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                     ) : (
                       <>
                         <MdOutlineCompare size={16} />
-                        <span>Compare with Current</span>
+                        <span>Compare with current page</span>
                       </>
                     )}
                   </CompareButton>

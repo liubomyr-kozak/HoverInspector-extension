@@ -4,6 +4,16 @@ import { generateDiffFile } from "@git-diff-view/file";
 
 import diffViewCss from "@git-diff-view/react/styles/diff-view.css?inline";
 
+// The library fades line numbers to 50% (#a8a8a8, 2.3:1) and greys hunk headers to #777 on blue (3.9:1)
+const diffViewContrastCss = `
+.diff-tailwindcss-wrapper .diff-line-num .opacity-\\[0\\.5\\] {
+  opacity: 1;
+}
+.diff-tailwindcss-wrapper[data-theme="light"] .diff-style-root {
+  --diff-hunk-content-color--: #4b5563;
+}
+`;
+
 // Import types from the old implementation for compatibility
 export interface DiffViewerWrapperProps {
   // Old react-diff-viewer-continued props
@@ -152,7 +162,7 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
 
   return (
     <div className="h-full">
-      <style>{diffViewCss}</style>
+      <style>{diffViewCss + diffViewContrastCss}</style>
       <DiffView
         diffFile={diffFile}
         diffViewMode={splitView ? DiffModeEnum.SplitGitHub : DiffModeEnum.Unified}
