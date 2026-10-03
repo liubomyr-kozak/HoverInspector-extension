@@ -194,10 +194,11 @@ export const HeaderContainer = styled.div`
   gap: 16px;
 `;
 
+// Tool buttons (Save, Cancel, Compare...) on their own row above the sponsor strip,
+// so the strip never squeezes them out of the panel
 export const FooterContainer = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column-reverse;
   width: 100%;
 `;
 
@@ -205,6 +206,10 @@ export const ButtonsContainer = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
+
+  &:empty {
+    display: none;
+  }
 `;
 
 export const HeaderButtonsContainer = styled.div`
