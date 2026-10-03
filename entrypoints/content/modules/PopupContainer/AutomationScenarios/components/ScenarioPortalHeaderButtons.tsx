@@ -77,10 +77,10 @@ export const PortalModalHeaderButtonsWrapper = styled.div`
   align-items: center;
   margin-left: auto;
   flex-shrink: 0;
-  margin-right: 0.75rem;
+  margin-right: 12px;
   border-right-width: 1px;
   border-style: solid;
-  padding-right: 0.75rem;
+  padding-right: 12px;
 `;
 
 export const PortalModalHeaderButtons: React.FC<{
