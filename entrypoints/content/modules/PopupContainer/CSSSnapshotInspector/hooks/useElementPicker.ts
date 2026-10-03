@@ -4,7 +4,7 @@ import { filter as rxFilter } from 'rxjs/operators';
 import { useHighlightOverlay } from '@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext';
 import { CSSSnapshot } from '../types';
 import { buildSnapshotTree } from '../utils/snapshotBuilder';
-import { saveSnapshots } from '../utils/snapshotStorage';
+import { trimAndSaveSnapshots } from '../utils/snapshotStorage';
 
 interface ElementPickerConfig {
   highlightStyles?: {
@@ -205,11 +205,8 @@ function createElementSnapshot({
 }
 
 async function saveElementSnapshot(snapshot: CSSSnapshot, existingSnapshots: CSSSnapshot[]): Promise<void> {
-  const updatedSnapshots = [...existingSnapshots, snapshot];
-  const limitedSnapshots = updatedSnapshots.slice(-50); // Keep last 50 snapshots
-  
   try {
-    await saveSnapshots(limitedSnapshots);
+    await trimAndSaveSnapshots([...existingSnapshots, snapshot]);
   } catch (error) {
     console.warn('Failed to save element snapshot:', error);
     throw new Error('Failed to save snapshot to storage');

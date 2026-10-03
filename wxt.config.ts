@@ -16,7 +16,7 @@ export default defineConfig({
     action: {
       default_icon: "icon/32.png",
     },
-    permissions: ["activeTab", "scripting", "background", "storage"],
+    permissions: ["activeTab", "scripting", "background", "storage", "unlimitedStorage"],
     web_accessible_resources: [
       {
         resources: [
