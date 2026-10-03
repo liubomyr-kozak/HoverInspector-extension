@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
@@ -52,6 +52,7 @@ const UsefulLinks = ({ category }: { category?: string }) => {
 
 const Launcher: React.FC = () => {
   const dispatch = useDispatch();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { iconOrder = POPUP_SUPPORT_TOOLS, activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
   const { visibleFeatures = [] } = useSelector((state: any) => state?.app);
 
@@ -62,6 +63,32 @@ const Launcher: React.FC = () => {
   // Function to toggle feature visibility using saga callback
   const handleToggleFeatureVisibility = (id: string) => {
     dispatch(onToggleFeatureVisibility.getPayload(id));
+  };
+
+  const toggleFeature = (id: string) => {
+    const item = ICON_ITEMS.find((i) => i.id === id);
+    if (!item?.activatable) return;
+
+    dispatch(
+      onChangeLauncherActiveFeature.getPayload({
+        id: item.id,
+        title: item.title,
+        activatable: item.activatable,
+        multipleView: item.multipleView,
+        isActive: activeIcons.includes(id),
+      }),
+    );
+  };
+
+  // Clicking a tool in the menu opens it, and pins it to the toolbar so it can be closed again there
+  const handleOpenFromMenu = (id: string) => {
+    if (!visibleFeatures.includes(id)) {
+      dispatch(onToggleFeatureVisibility.getPayload(id));
+    }
+    if (!activeIcons.includes(id)) {
+      toggleFeature(id);
+    }
+    setMenuOpen(false);
   };
 
   const sensors = useSensors(
@@ -105,7 +132,9 @@ const Launcher: React.FC = () => {
                       title={item.title}
                       icon={item.icon}
                       isVisible={isVisible}
+                      isActive={activeIcons.includes(id)}
                       onToggleVisibility={handleToggleFeatureVisibility}
+                      onOpen={handleOpenFromMenu}
                     />
                   );
                 })}
@@ -182,18 +211,7 @@ const Launcher: React.FC = () => {
                 <IconButton
                   key={id}
                   $active={isActive}
-                  onClick={() => {
-                    const payload = {
-                      id: item.id,
-                      title: item.title,
-                      activatable: item.activatable,
-                      multipleView: item.multipleView,
-                      isActive,
-                    };
-
-                    // Always use normal feature activation since minimize functionality is removed
-                    item.activatable && dispatch(onChangeLauncherActiveFeature.getPayload(payload));
-                  }}
+                  onClick={() => toggleFeature(id)}
                 >
                   <Icon />
                 </IconButton>
@@ -205,6 +223,8 @@ const Launcher: React.FC = () => {
           zIndex={1150}
           placement="topRight"
           trigger="click"
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
           // @ts-ignore
           getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
         >

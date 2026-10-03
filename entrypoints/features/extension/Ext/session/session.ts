@@ -59,3 +59,12 @@ export function isActive(tabId: number): boolean {
 export function getActivePorts() {
   return getAll(); // з `port.ts`
 }
+
+/** Resolves once the active-tab list survived from an earlier service worker run is restored */
+export const ready = state.ready;
+
+/** Forget a tab without messaging it (it is already closed) */
+export function clear(tabId: number) {
+  unregister(tabId);
+  state.clear(tabId);
+}

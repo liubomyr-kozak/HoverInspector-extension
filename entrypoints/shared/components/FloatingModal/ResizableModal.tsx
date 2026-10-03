@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Rnd } from "../ReactRnd";
 import { TbGripVertical } from "react-icons/tb";
 import { IoCloseSharp } from "react-icons/io5";
@@ -19,7 +19,12 @@ interface ResizableModalProps {
   onSizeChange?: (width: number, height: number) => void;
   position: "fixed" | "absolute";
   viewSourceType?: string;
+  minWidth?: number;
+  minHeight?: number;
 }
+
+// Keep at least this much of the header on screen so the panel can always be dragged back
+const VISIBLE_HEADER = 48;
 
 export function ResizableModal({
   isOpen,
@@ -33,12 +38,14 @@ export function ResizableModal({
   onClose,
   position,
   viewSourceType,
+  minWidth = 40,
+  minHeight = 24,
 }: ResizableModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  // rAF throttling refs
-  const dragFrame = useRef<number | null>(null);
-  const resizeFrame = useRef<number | null>(null);
+  const rndRef = useRef<Rnd | null>(null);
+  const currentPosition = useRef(initialPosition);
+  const currentSize = useRef(initialSize);
 
   // Validate and constrain initial position within viewport bounds
   const getValidatedPosition = (pos: { x: number; y: number }, size: { width: number; height: number }) => {
@@ -65,6 +72,45 @@ export function ResizableModal({
     return { x: validatedX, y: validatedY };
   };
 
+  // Pull the panel back into the window when it was saved off-screen or the window got smaller
+  const clampIntoView = () => {
+    const { x, y } = currentPosition.current;
+    const { width } = currentSize.current;
+    const clamped = {
+      x: Math.min(Math.max(x, VISIBLE_HEADER - width), window.innerWidth - VISIBLE_HEADER),
+      y: Math.min(Math.max(y, 0), window.innerHeight - VISIBLE_HEADER),
+    };
+
+    if (clamped.x !== x || clamped.y !== y) {
+      currentPosition.current = clamped;
+      rndRef.current?.updatePosition(clamped);
+      onPositionChange?.(clamped.x, clamped.y);
+    }
+  };
+
+  // The saved size can be larger than this window (or tiny from an older version)
+  const startSize = useMemo(
+    () => ({
+      width: Math.max(minWidth, Math.min(initialSize.width, window.innerWidth)),
+      height: Math.max(minHeight, Math.min(initialSize.height, window.innerHeight)),
+    }),
+    [isOpen],
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    currentPosition.current = initialPosition;
+    currentSize.current = startSize;
+    if (startSize.width !== initialSize.width || startSize.height !== initialSize.height) {
+      onSizeChange?.(startSize.width, startSize.height);
+    }
+    clampIntoView();
+
+    window.addEventListener("resize", clampIntoView);
+    return () => window.removeEventListener("resize", clampIntoView);
+  }, [isOpen]);
+
   // Close functionality removed since minimize feature is deprecated
   const handleCloseClick = (e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation();
@@ -79,42 +125,40 @@ export function ResizableModal({
   return (
     <ModalOverlay>
       <Rnd
+        ref={rndRef}
         default={{
           x: initialPosition.x,
           y: initialPosition.y,
-          width: initialSize.width,
-          height: initialSize.height,
+          width: startSize.width,
+          height: startSize.height,
         }}
         style={{ position: position, zIndex: ZINDEX_MODAL }}
-        minWidth={10}
-        minHeight={10}
-        maxHeight={800}
+        minWidth={minWidth}
+        minHeight={minHeight}
+        maxHeight={window.innerHeight}
+        maxWidth={window.innerWidth}
         scale={1}
         enableUserSelectHack={false}
         dragHandleClassName="modal-drag-handle"
         onDragStart={() => setIsDragging(true)}
         onDragStop={(e, d) => {
           setIsDragging(false);
-          if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
-
+          currentPosition.current = { x: d.x, y: d.y };
           onPositionChange?.(d.x, d.y);
+          clampIntoView();
         }}
         onResizeStart={() => setIsResizing(true)}
-        onResize={(e, direction, ref, delta, position) => {
-          if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
-
-          const width = parseInt(ref.style.width);
-          const height = parseInt(ref.style.height);
-
-          resizeFrame.current = requestAnimationFrame(() => {
-            onSizeChange?.(width, height);
-            // onPositionChange?.(position.x, position.y);
-          });
-        }}
         positionOffset={{ x: 0, y: 0 }}
-        onResizeStop={() => {
+        onResizeStop={(e, direction, ref, delta, resizePosition) => {
           setIsResizing(false);
-          if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
+
+          // Saved once per gesture; resizing from the top/left edge also moves the panel
+          currentSize.current = { width: ref.offsetWidth, height: ref.offsetHeight };
+          onSizeChange?.(ref.offsetWidth, ref.offsetHeight);
+          if (resizePosition && (resizePosition.x !== currentPosition.current.x || resizePosition.y !== currentPosition.current.y)) {
+            currentPosition.current = { x: resizePosition.x, y: resizePosition.y };
+            onPositionChange?.(resizePosition.x, resizePosition.y);
+          }
         }}
         enableResizing={{
           top: true,

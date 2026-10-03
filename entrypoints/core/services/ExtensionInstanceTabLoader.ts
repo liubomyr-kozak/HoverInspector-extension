@@ -160,15 +160,18 @@ export class ExtensionInstanceTabLoader {
     });
   };
 
-  async deactivate() {
-    const [activeTab] = await browser.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+  async deactivate(tabId?: number) {
+    // Deactivate the tab that asked for it; fall back to the active tab for callers without a sender
+    if (tabId === undefined) {
+      const [activeTab] = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      tabId = activeTab?.id;
+    }
 
-    // Якщо вкладка знайдена — викликаємо деактивацію
-    if (activeTab?.id !== undefined) {
-      await Ext.session.deactivate(activeTab.id as number);
+    if (tabId !== undefined) {
+      await Ext.session.deactivate(tabId);
     }
   }
 

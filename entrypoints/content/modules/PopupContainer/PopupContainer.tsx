@@ -1,14 +1,15 @@
-import React, { JSX, useRef, useState, useMemo } from "react";
+import React, { JSX, useEffect, useRef, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { IconX } from "@tabler/icons-react";
 import { createGlobalStyle } from "styled-components";
 import {
   onChangeFeaturePopupPosition,
   onChangeLauncherIconOrder,
+  onClearAllActiveIcons,
 } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
 import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
-import { hideSponsorMessage, clearAllActiveIcons } from "@entrypoints/content/store/app/app.slice";
+import { hideSponsorMessage } from "@entrypoints/content/store/app/app.slice";
 import { ElementInspectorPopup } from "@entrypoints/content/modules/PopupContainer/ElementInspectorPopup";
 import {
   ANALYZE_PAGE,
@@ -64,6 +65,10 @@ const GlobalStyle = createGlobalStyle`
         }
     }
 `;
+
+// Smallest size at which every tool panel is still usable (older versions allowed shrinking to 10px)
+const MIN_PANEL_WIDTH = 320;
+const MIN_PANEL_HEIGHT = 260;
 
 // POPUP_SUPPORT_TOOLS mandatory updated this list
 const COMPONENT_MAP: Record<string, JSX.Element> = {
@@ -149,23 +154,18 @@ export function PopupContainer() {
     );
   };
 
-  // Check if iconOrderStorage contains all elements from POPUP_SUPPORT_TOOLS
-  // If not, add missing elements to the end of the list
-  let iconOrder = iconOrderStorage;
-  if (iconOrderStorage.length > 0) {
-    // Find elements in POPUP_SUPPORT_TOOLS that are not in iconOrderStorage
+  // Tools added in a newer version go to the end of the user's saved order
+  const iconOrder = useMemo(() => {
+    if (!iconOrderStorage?.length) return POPUP_SUPPORT_TOOLS;
     const missingElements = POPUP_SUPPORT_TOOLS.filter((id) => !iconOrderStorage.includes(id));
+    return missingElements.length ? [...iconOrderStorage, ...missingElements] : iconOrderStorage;
+  }, [iconOrderStorage]);
 
-    // If there are missing elements, add them to the end of iconOrderStorage
-    if (missingElements.length > 0) {
-      iconOrder = [...iconOrderStorage, ...missingElements];
-      // Update the storage with the new iconOrder
+  useEffect(() => {
+    if (iconOrderStorage?.length && iconOrder !== iconOrderStorage) {
       dispatch(onChangeLauncherIconOrder.getPayload(iconOrder));
     }
-  } else {
-    // If iconOrderStorage is empty, use POPUP_SUPPORT_TOOLS
-    iconOrder = POPUP_SUPPORT_TOOLS;
-  }
+  }, [iconOrder, iconOrderStorage]);
 
   const FeatureView = useMemo(() => {
     return iconOrder.filter((id) => activeIcons.includes(id)).map((id) => COMPONENT_MAP[id]);
@@ -177,12 +177,14 @@ export function PopupContainer() {
       <FloatingModal
         open={activeIcons.length}
         title={renderHeaderContent()}
+        minWidth={MIN_PANEL_WIDTH}
+        minHeight={MIN_PANEL_HEIGHT}
         initialHeight={featurePopupPosition.height}
         initialWidth={featurePopupPosition.width}
         initialX={featurePopupPosition.x}
         initialY={featurePopupPosition.y}
         onModalStateChange={handleUpdatePopupSetting}
-        onCancel={() => dispatch(clearAllActiveIcons())}
+        onCancel={() => dispatch(onClearAllActiveIcons.getPayload())}
         footer={
           <FooterContainer>
             {shouldShowSponsorMessage ? (

@@ -14,11 +14,11 @@ const isUrlBlocked = (urlPatterns, url) => {
   });
 };
 
-export const skipTab = (tab) => {
+export const skipTab = (tab, { allowLoading = false } = {}) => {
   const isNotTabIdExist = !tab.id;
   const isNotUrlExist = !tab.url;
   const isNewTab = tab.url === newTabUrl;
-  const isTabLoading = tab.status === tabStatus.TAB_LOAD_LOADING;
+  const isTabLoading = !allowLoading && tab.status === tabStatus.TAB_LOAD_LOADING;
 
   const manifest = browserApi.runtime.getManifest();
   const excludeMatches = manifest?.content_scripts?.[0]?.exclude_matches || [];

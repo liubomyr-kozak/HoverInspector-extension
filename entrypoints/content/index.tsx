@@ -17,15 +17,8 @@ import "./style.css";
 import { onMessage } from "@entrypoints/features/extension/messaging.ts";
 import { store } from "@entrypoints/content/store/createStore.ts";
 import { setActiveApp, setDisableApp } from "@entrypoints/content/store/app/app.slice.ts";
-import hotkeys from "hotkeys-js";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
-
-declare global {
-  interface Window {
-    __HOVER_INSPECTOR_CONTENTALL_INSERTED__?: boolean;
-  }
-}
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -40,30 +33,26 @@ export default defineContentScript({
       return;
     }
 
-    // у випадку якщо було створено заінджекшено декілька разів скрипт, це може бути або глюк або логіка з
-    //  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    //             if (changeInfo.status === 'loading') { не спрацювала коректно
-    // я добавив цю перевірку
-    if (window.__HOVER_INSPECTOR_CONTENTALL_INSERTED__) {
-      return;
-    }
+    // When the script is injected a second time, WXT invalidates the previous instance's context and
+    // removes its UI. The new instance therefore always mounts (an early return here used to leave the
+    // tab with no UI at all), and the old instance drops its message handlers so only one answers.
+    const removeListeners: Array<() => void> = [];
+    ctx.onInvalidated(() => removeListeners.forEach((remove) => remove()));
 
-    window.__HOVER_INSPECTOR_CONTENTALL_INSERTED__ = true;
-
-    onMessage(HOVER_INSPECTOR_CHECK_SCRIPT, (data) => {
+    removeListeners.push(onMessage(HOVER_INSPECTOR_CHECK_SCRIPT, (data) => {
       return { checkAppHealth: true };
-    });
+    }));
 
-    onMessage(HOVER_INSPECTOR_DEACTIVATE, (data) => {
+    removeListeners.push(onMessage(HOVER_INSPECTOR_DEACTIVATE, (data) => {
       store.dispatch(setDisableApp());
-    });
+    }));
 
-    onMessage(HOVER_INSPECTOR_ACTIVATE, (data) => {
+    removeListeners.push(onMessage(HOVER_INSPECTOR_ACTIVATE, (data) => {
       store.dispatch(setActiveApp());
-    });
+    }));
 
     // Script injection message handlers
-    onMessage(DEV_SCRIPT_INJECTED, (message) => {
+    removeListeners.push(onMessage(DEV_SCRIPT_INJECTED, (message) => {
       // In development mode, inject script via DOM
       if (message.data?.downloadUrl) {
         // Use the utility function to inject the script
@@ -75,16 +64,16 @@ export default defineContentScript({
       }
 
       return { success: true, mode: "development" };
-    });
+    }));
 
-    onMessage(PROD_SCRIPT_INJECTED, (message) => {
+    removeListeners.push(onMessage(PROD_SCRIPT_INJECTED, (message) => {
       return { success: true, mode: "production" };
-    });
+    }));
 
-    onMessage(SCRIPT_INJECTION_ERROR, (message) => {
+    removeListeners.push(onMessage(SCRIPT_INJECTION_ERROR, (message) => {
       console.error("Content: Script injection error:", message);
       return { received: true };
-    });
+    }));
 
     const ui = await createShadowRootUi(ctx, {
       name: "hover-inspector", // this is tag
@@ -99,9 +88,29 @@ export default defineContentScript({
 
         root.render(<ExtensionRoot shadowRoot={ui.shadow} />);
 
-        hotkeys("esc", function () {
+        // Esc turns the extension off, except while typing (in the page or in our panels) or while one of
+        // our dropdowns/dialogs is open. Events from the shadow root reach the document retargeted to the
+        // host, so hotkeys-js could not tell an Esc in our own input apart and closed everything.
+        const onEscape = (event: KeyboardEvent) => {
+          if (event.key !== "Escape" || event.defaultPrevented) return;
+
+          const path = event.composedPath();
+          const target = path[0] as HTMLElement | undefined;
+          if (target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName || "")) return;
+
+          // Inside our UI, Esc first closes the open dropdown / dialog / menu
+          const inOverlay = path.some(
+            (node) =>
+              node instanceof HTMLElement &&
+              (/^(dialog|listbox|menu|combobox)$/.test(node.getAttribute("role") || "") ||
+                /ant-(select|dropdown|popover|modal)/.test(typeof node.className === "string" ? node.className : "")),
+          );
+          if (path.includes(ui.shadowHost) && inOverlay) return;
+
           ExtensionStorageManager.deactivateAppInTab();
-        });
+        };
+        document.addEventListener("keydown", onEscape);
+        ctx.onInvalidated(() => document.removeEventListener("keydown", onEscape));
 
         function checkAppHealth() {
           if (browser?.runtime?.id) {

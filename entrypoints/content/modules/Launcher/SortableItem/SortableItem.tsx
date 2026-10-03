@@ -17,15 +17,19 @@ interface SortableItemProps {
   title: string;
   icon: any;
   isVisible?: boolean;
+  isActive?: boolean;
   onToggleVisibility?: (id: string) => void;
+  onOpen?: (id: string) => void;
 }
 
 const SortableItem = ({ 
   id, 
   title, 
   icon, 
-  isVisible = true, 
-  onToggleVisibility
+  isVisible = true,
+  isActive = false,
+  onToggleVisibility,
+  onOpen,
 }: SortableItemProps) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
@@ -46,8 +50,14 @@ const SortableItem = ({
           {" "}
           <Icon />
         </DragFeatureIcon>
-        <DragFeatureTitle>{title}</DragFeatureTitle>
-        <EyeIconContainer onClick={handleEyeClick}>
+        <DragFeatureTitle
+          onClick={() => onOpen?.(id)}
+          title={isActive ? "Opened" : "Open this tool"}
+          style={{ cursor: "pointer", fontWeight: isActive ? 600 : undefined }}
+        >
+          {title}
+        </DragFeatureTitle>
+        <EyeIconContainer onClick={handleEyeClick} title={isVisible ? "Hide from toolbar" : "Show on toolbar"}>
           <EyeIcon />
         </EyeIconContainer>
         <DragHandleIcon>
