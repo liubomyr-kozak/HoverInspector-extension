@@ -40,7 +40,6 @@ export const BorderTokenTab: React.FC<BorderTokenTabProps> = ({ tokens, navigate
 
   return (
     <div className="space-y-2">
-      <h4 className="text-base font-medium text-gray-800">Border Radius Tokens</h4>
       
       {/* Import Section for Border Radius */}
       <ImportSection

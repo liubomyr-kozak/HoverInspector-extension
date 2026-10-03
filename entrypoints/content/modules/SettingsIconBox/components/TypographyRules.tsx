@@ -131,7 +131,7 @@ const TypographyRules: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <IconLetterCase size={18} className="text-blue-500" />
-          <h5 className="font-medium text-gray-800">Font Families</h5>
+          <h4 className="m-0 text-base font-semibold text-gray-800">Font Families</h4>
         </div>
         <div className="space-y-4">
           {Array.from(aggregatedProperties?.fontFamilies.entries() || []).map(([family, count], index) => (
@@ -218,7 +218,7 @@ const TypographyRules: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <IconRuler size={18} className="text-purple-500" />
-          <h5 className="font-medium text-gray-800">Font Sizes</h5>
+          <h4 className="m-0 text-base font-semibold text-gray-800">Font Sizes</h4>
         </div>
         <div className="space-y-4">
           {Array.from(aggregatedProperties?.fontSizes.entries() || []).map(([size, count], index) => (
@@ -276,7 +276,7 @@ const TypographyRules: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <IconLetterCase size={18} className="text-amber-500 font-bold" />
-          <h5 className="font-medium text-gray-800">Font Weights</h5>
+          <h4 className="m-0 text-base font-semibold text-gray-800">Font Weights</h4>
         </div>
         <div className="space-y-4">
           {Array.from(aggregatedProperties?.fontWeights.entries() || []).map(([weight, count], index) => (
