@@ -3,7 +3,7 @@ import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } fr
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { arrayMove, rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 import {
@@ -131,7 +131,7 @@ const Launcher: React.FC = () => {
           <SectionTitle>Features List</SectionTitle>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/*//@ts-ignore*/}
-            <SortableContext items={normalizedIconOrder} strategy={verticalListSortingStrategy}>
+            <SortableContext items={normalizedIconOrder} strategy={rectSortingStrategy}>
               <FeaturesGrid>
                 {normalizedIconOrder.map((id) => {
                   const item = ICON_ITEMS.find((i) => i.id === id);
@@ -235,6 +235,8 @@ const Launcher: React.FC = () => {
           content={content}
           zIndex={1150}
           placement="topRight"
+          // Shift the menu sideways to keep it inside narrow windows
+          align={{ overflow: { adjustY: true, shiftX: true } }}
           trigger="click"
           open={menuOpen}
           onOpenChange={setMenuOpen}
