@@ -1,4 +1,4 @@
-import { ExecutionHistoryEntry, ExecutionLog, ExecutionStatus } from "../types";
+import { ExecutionHistoryEntry, ExecutionLog, ExecutionLogEntry, ExecutionStatus, stepTypeOptions } from "../types";
 
 /**
  * How many execution history entries are kept; older ones are deleted when a run is recorded
@@ -17,6 +17,18 @@ const emptyLog = (time: string, status: ExecutionStatus): ExecutionLog => ({
 });
 
 /**
+ * Says which step failed and why, e.g. 'Step 4 (Click) failed: Element not found after 10 s: //button[...]'
+ *
+ * @param entry - The failed step's log entry; its stepIndex is the step's index in the scenario
+ */
+export function formatStepError(entry: Pick<ExecutionLogEntry, "stepIndex" | "stepType" | "error">): string {
+  const label = stepTypeOptions.find((option) => option.value && option.value === entry.stepType)?.label;
+  const reason = entry.error || "Unknown error";
+  if (!(entry.stepIndex >= 0)) return reason;
+  return `Step ${entry.stepIndex + 1}${label ? ` (${label})` : ""} failed: ${reason}`;
+}
+
+/**
  * Builds the execution history entry of a finished playback
  *
  * @param id - The history entry's key (ex_hist_...)
@@ -32,6 +44,7 @@ export function createExecutionHistoryEntry({
   totalSteps,
   stepsBefore = 0,
   triggerType,
+  triggerId,
 }: {
   id: string;
   scenarioId: string;
@@ -40,6 +53,7 @@ export function createExecutionHistoryEntry({
   totalSteps: number;
   stepsBefore?: number;
   triggerType?: string;
+  triggerId?: string;
 }): ExecutionHistoryEntry {
   const status = log.status;
   const completedInLog = (log.entries || []).filter((entry) => COMPLETED_STATUSES.includes(entry.status)).length;
@@ -56,8 +70,9 @@ export function createExecutionHistoryEntry({
     status,
     stepsCompleted,
     totalSteps,
-    ...(errorEntry?.error ? { error: errorEntry.error } : {}),
+    ...(errorEntry ? { error: formatStepError(errorEntry) } : {}),
     ...(triggerType ? { triggerType } : {}),
+    ...(triggerId ? { triggerId } : {}),
     log,
   };
 }

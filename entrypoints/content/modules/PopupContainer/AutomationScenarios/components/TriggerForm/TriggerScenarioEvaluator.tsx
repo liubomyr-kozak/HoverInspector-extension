@@ -228,7 +228,7 @@ export const TriggerScenarioEvaluator = () => {
     }
 
     // Execute the associated scenario
-    dispatch(playScenarioWatcher.getPayload({ id: trigger.scenarioId }));
+    dispatch(playScenarioWatcher.getPayload({ id: trigger.scenarioId, triggerType: "triggered", triggerId }));
 
     // Update the lastTriggered timestamp
     const updatedTrigger = {

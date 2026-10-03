@@ -1,7 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector, useStore } from "react-redux";
 import {
   getActionableTarget,
+  getEditableRoot,
+  getSelectValue,
+  getTypedValue,
   isTextEntryElement,
   recordClick,
   recordHover,
@@ -20,7 +23,7 @@ import {
 } from "@entrypoints/content/store/automation/automation.saga.action";
 import { generateXPaths } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils.ts";
 import HighlightOverlayManager from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayManager";
-import { ScenarioStep } from "./types";
+import { ScenarioStep, StepType } from "./types";
 
 // Helper function to check if an element is part of the extension UI
 function hasAppClass(node: any) {
@@ -72,6 +75,7 @@ function showFeedback(text: string, color: string, duration: number): Feedback {
  */
 const AutomationUserActionsHandler: React.FC = () => {
   const dispatch = useDispatch();
+  const store = useStore<any>();
   const recording = useSelector(selectRecording);
   const recordingPaused = useSelector(selectRecordingPaused);
 
@@ -90,6 +94,7 @@ const AutomationUserActionsHandler: React.FC = () => {
   const alternativeXPathStepIndexRef = useRef<number | null>(null);
   const feedbackElementRef = useRef<Feedback | null>(null);
   const currentUrlRef = useRef<string>(window.location.href);
+  const lastPointerTargetRef = useRef<{ element: Element; time: number } | null>(null);
 
   // Drop anything that is in flight when recording is paused or stopped
   useEffect(() => {
@@ -114,6 +119,15 @@ const AutomationUserActionsHandler: React.FC = () => {
 
     const isActive = () => recordingRef.current && !pausedRef.current;
 
+    // The recording continues on a new page (a link, a form submit, a reload): note the page change.
+    // It also keeps typing on this page from being merged into the input step of the previous page.
+    const recordedSteps: ScenarioStep[] = store.getState().automation?.currentSteps || [];
+    const lastNavigation = [...recordedSteps].reverse().find((step) => step.type === StepType.NAVIGATE);
+    if (isActive() && lastNavigation && lastNavigation.value !== window.location.href) {
+      dispatch(automationActions.addCurrentStep(recordUrlNavigation(window.location.href)));
+      dispatch(persistEditingStateWatcher.getPayload());
+    }
+
     const addStep = (step: ScenarioStep | null) => {
       if (!step) return;
       dispatch(automationActions.addCurrentStep(step));
@@ -135,7 +149,7 @@ const AutomationUserActionsHandler: React.FC = () => {
       window.clearTimeout(pending.timer);
       pendingInputRef.current = null;
       if (!isActive()) return;
-      const step = recordInput(pending.element, (pending.element as HTMLInputElement).value ?? "");
+      const step = recordInput(pending.element, getTypedValue(pending.element));
       if (step) {
         dispatch(automationActions.upsertInputStep(step));
         dispatch(persistEditingStateWatcher.getPayload());
@@ -206,6 +220,9 @@ const AutomationUserActionsHandler: React.FC = () => {
           !clickedElementsRef.current.has(element) &&
           element.isConnected &&
           !isTextEntryElement(element) &&
+          // Options and editors are not menus: hovering them reveals nothing
+          !element.closest("select") &&
+          !getEditableRoot(element) &&
           isSameWidget(element, clicked),
       );
       hoverHistoryRef.current = [];
@@ -215,7 +232,8 @@ const AutomationUserActionsHandler: React.FC = () => {
     const onClick = (e: MouseEvent) => {
       if (!isActive() || e.button !== 0) return;
       const rawTarget = e.target as Element;
-      const target = getActionableTarget(rawTarget);
+      // Inside a rich text editor the click only places the caret: the typing is recorded as one input step
+      const target = getEditableRoot(rawTarget) || getActionableTarget(rawTarget);
 
       // Leaving a field we typed in (including pressing "Save" in the extension): commit the value first
       if (pendingInputRef.current && pendingInputRef.current.element !== target) {
@@ -223,6 +241,10 @@ const AutomationUserActionsHandler: React.FC = () => {
       }
 
       if (hasAppClass(rawTarget) || !target) return;
+      lastPointerTargetRef.current = { element: target, time: Date.now() };
+
+      // A click on a SPA link may have changed the URL without a page load: keep the steps in order
+      recordUrlChangeIfAny();
 
       const alternativeIndex = alternativeXPathStepIndexRef.current;
       if (alternativeIndex !== null) {
@@ -249,7 +271,7 @@ const AutomationUserActionsHandler: React.FC = () => {
 
     const onInput = (e: Event) => {
       if (!isActive()) return;
-      const target = e.target as Element;
+      const target = getEditableRoot(e.target as Element) || (e.target as Element);
       if (hasAppClass(target) || !isTextEntryElement(target)) return;
 
       if (pendingInputRef.current && pendingInputRef.current.element !== target) {
@@ -277,8 +299,29 @@ const AutomationUserActionsHandler: React.FC = () => {
 
       if (target.tagName === "SELECT") {
         flushPendingInput();
-        addStep(recordSelect(target, (target as HTMLSelectElement).value));
+        const select = target as HTMLSelectElement;
+        const step = recordSelect(select, getSelectValue(select));
+        if (!step) return;
+        if (select.multiple) {
+          // Ctrl/Shift-clicking several options is one choice: keep a single step with the final selection
+          dispatch(automationActions.upsertLastStep(step));
+          dispatch(persistEditingStateWatcher.getPayload());
+        } else {
+          addStep(step);
+        }
       }
+    };
+
+    // Pressing Enter in a field submits its form without any mouse click: record it as a click on the form's
+    // submit button (the browser does the same), so playback submits the form too
+    const onSubmit = (e: SubmitEvent) => {
+      if (!isActive()) return;
+      const submitter = e.submitter;
+      if (!submitter || hasAppClass(submitter)) return;
+      flushPendingInput();
+      const last = lastPointerTargetRef.current;
+      if (last && Date.now() - last.time < 2000 && (last.element === submitter || last.element.contains(submitter))) return;
+      addStep(recordClick(submitter));
     };
 
     const onMessage = (e: MessageEvent) => {
@@ -295,6 +338,7 @@ const AutomationUserActionsHandler: React.FC = () => {
     window.addEventListener("mousedown", onClick, { capture: true });
     window.addEventListener("input", onInput, { capture: true });
     window.addEventListener("change", onChange, { capture: true });
+    window.addEventListener("submit", onSubmit, { capture: true });
     window.addEventListener("message", onMessage);
     window.addEventListener("popstate", recordUrlChangeIfAny);
     window.addEventListener("hashchange", recordUrlChangeIfAny);
@@ -311,33 +355,28 @@ const AutomationUserActionsHandler: React.FC = () => {
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
 
-    // Override history methods to detect programmatic (SPA) navigation
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-
-    history.pushState = function (...args) {
-      originalPushState.apply(history, args);
-      setTimeout(recordUrlChangeIfAny, 0);
-    };
-
-    history.replaceState = function (...args) {
-      originalReplaceState.apply(history, args);
-      setTimeout(recordUrlChangeIfAny, 0);
-    };
+    // SPA navigation (history.pushState/replaceState) fires no event the page can listen to, and patching
+    // history here would not help: this script runs in an isolated world, apart from the page's scripts.
+    // The Navigation API reports those URL changes to every world; a slow poll covers browsers without it.
+    const navigation = (window as any).navigation as EventTarget | undefined;
+    const onEntryChange = () => recordUrlChangeIfAny();
+    navigation?.addEventListener?.("currententrychange", onEntryChange);
+    const urlPoll = window.setInterval(recordUrlChangeIfAny, 1000);
 
     return () => {
       window.removeEventListener("mousemove", onHover, { capture: true });
       window.removeEventListener("mousedown", onClick, { capture: true });
       window.removeEventListener("input", onInput, { capture: true });
       window.removeEventListener("change", onChange, { capture: true });
+      window.removeEventListener("submit", onSubmit, { capture: true });
       window.removeEventListener("message", onMessage);
       window.removeEventListener("popstate", recordUrlChangeIfAny);
       window.removeEventListener("hashchange", recordUrlChangeIfAny);
       window.removeEventListener("beforeunload", flushPendingInput);
       document.removeEventListener("visibilitychange", onVisibilityChange);
 
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
+      navigation?.removeEventListener?.("currententrychange", onEntryChange);
+      window.clearInterval(urlPoll);
 
       if (hoverDebounceTimerRef.current) {
         window.clearTimeout(hoverDebounceTimerRef.current);
