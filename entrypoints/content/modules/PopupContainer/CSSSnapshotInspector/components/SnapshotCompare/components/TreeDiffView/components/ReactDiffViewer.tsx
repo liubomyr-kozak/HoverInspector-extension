@@ -434,6 +434,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
       showDiffOnly={showDiffOnly}
       hideLineNumbers={hideLineNumbers}
       onLineClick={handleDiffViewerLineClick}
+      wrapLines
     />
   );
 };
