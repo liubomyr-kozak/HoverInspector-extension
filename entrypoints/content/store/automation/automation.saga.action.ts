@@ -21,9 +21,10 @@ import {
   saveScheduleToLocalStorage,
   saveTriggerToLocalStorage,
 } from "../../modules/PopupContainer/AutomationScenarios/utils/storage.ts";
-import { ExecutionStatus, Scenario } from "../../modules/PopupContainer/AutomationScenarios/types";
+import { ExecutionLogEntry, ExecutionStatus, Scenario } from "../../modules/PopupContainer/AutomationScenarios/types";
 import {
   executeSteps,
+  getStepDescription,
   stopExecution,
 } from "../../modules/PopupContainer/AutomationScenarios/utils/stepExecutor.saga.ts";
 import { recordUrlNavigation } from "../../modules/PopupContainer/AutomationScenarios/utils/recordingUtils.ts";
@@ -591,16 +592,15 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         // A playback continued after a page load keeps its start time
         const previous = startFromStep > 0 ? yield call(loadExecutionSession) : null;
         const previousHandoff = previous ? yield call(loadExecutionHandoff) : null;
-        const startedAt =
-          previous?.scenarioId === id && shouldResumeSession(previous, tabId, previousHandoff)
-            ? previous.startedAt
-            : undefined;
+        const resumed = previous?.scenarioId === id && shouldResumeSession(previous, tabId, previousHandoff);
         yield call(startExecutionSession, {
           scenarioId: id,
           nextStepIndex: startFromStep,
           tabId,
           updatedAt: Date.now(),
-          startedAt: startedAt || Date.now(),
+          startedAt: (resumed && previous.startedAt) || Date.now(),
+          // Keep the log of the steps played on the previous pages
+          entries: resumed ? (previous.entries || []).filter((entry) => entry.stepIndex < startFromStep) : [],
         });
       }
 
@@ -645,7 +645,13 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         pendingSteps,
         function* (index, logEntry) {
           if (!singleStep && !handedOff) {
-            yield call(advanceExecutionSession, id, tabId, startFromStep + index + 1);
+            yield call(
+              advanceExecutionSession,
+              id,
+              tabId,
+              startFromStep + index + 1,
+              logEntry ? { ...logEntry, stepIndex: startFromStep + index } : undefined,
+            );
           }
 
           // Update the UI after each step is completed
@@ -704,11 +710,23 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
                 return true;
               }
               const stepIndex = startFromStep + index;
+              const leavesPage = canLeavePage(step);
+              // A step that leaves the page gets no log entry once it ran: log it beforehand
               const result = yield call(
                 advanceExecutionSession,
                 id,
                 tabId,
-                canLeavePage(step) ? stepIndex + 1 : stepIndex,
+                leavesPage ? stepIndex + 1 : stepIndex,
+                leavesPage
+                  ? {
+                      stepIndex,
+                      stepType: step.type,
+                      stepDescription: getStepDescription(step),
+                      status: ExecutionStatus.SUCCESS,
+                      timestamp: new Date().toISOString(),
+                      duration: 0,
+                    }
+                  : undefined,
               );
               if (result !== "continue") {
                 handedOff = true;
@@ -726,13 +744,24 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         return;
       }
 
-      // A playback spanning several pages is recorded from its start
-      let historyLog = executionLog;
+      // History entries are numbered by their step in the scenario, not on this page
+      let historyLog = {
+        ...executionLog,
+        entries: (executionLog.entries || []).map((entry: ExecutionLogEntry) => ({
+          ...entry,
+          stepIndex: startFromStep + entry.stepIndex,
+        })),
+      };
+      // A playback spanning several pages is recorded from its start, with the steps of the previous pages
       if (!singleStep) {
         const session = yield call(loadExecutionSession);
         if (session?.scenarioId === id && session.startedAt) {
           historyLog = {
-            ...executionLog,
+            ...historyLog,
+            entries: [
+              ...(session.entries || []).filter((entry: ExecutionLogEntry) => entry.stepIndex < startFromStep),
+              ...historyLog.entries,
+            ],
             startTime: new Date(session.startedAt).toISOString(),
             totalDuration: Date.now() - session.startedAt,
           };
@@ -903,7 +932,7 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
             scenarioId: session.scenarioId,
             scenarioTitle: scenario.title,
             log: {
-              entries: [],
+              entries: session.entries || [],
               startTime: new Date(startedAt).toISOString(),
               endTime: new Date().toISOString(),
               totalDuration: Date.now() - startedAt,
