@@ -74,10 +74,11 @@ export function ResizableModal({
 
   // Pull the panel back into the window when it was saved off-screen or the window got smaller
   const clampIntoView = () => {
+    // The drag grip sits at the left of the header, so the left edge stays on screen; at the right
+    // and bottom it is enough that part of the header can still be grabbed
     const { x, y } = currentPosition.current;
-    const { width } = currentSize.current;
     const clamped = {
-      x: Math.min(Math.max(x, VISIBLE_HEADER - width), window.innerWidth - VISIBLE_HEADER),
+      x: Math.min(Math.max(x, 0), window.innerWidth - VISIBLE_HEADER * 3),
       y: Math.min(Math.max(y, 0), window.innerHeight - VISIBLE_HEADER),
     };
 
@@ -138,14 +139,17 @@ export function ResizableModal({
         maxHeight={window.innerHeight}
         maxWidth={window.innerWidth}
         scale={1}
-        enableUserSelectHack={false}
+        // Without this, dragging by the title selects its text and the next drag starts a native
+        // text drag-and-drop instead of moving the panel
+        enableUserSelectHack={true}
         dragHandleClassName="modal-drag-handle"
         onDragStart={() => setIsDragging(true)}
         onDragStop={(e, d) => {
           setIsDragging(false);
           currentPosition.current = { x: d.x, y: d.y };
           onPositionChange?.(d.x, d.y);
-          clampIntoView();
+          // After react-draggable has finished its own stop handling
+          setTimeout(clampIntoView, 0);
         }}
         onResizeStart={() => setIsResizing(true)}
         positionOffset={{ x: 0, y: 0 }}
@@ -189,7 +193,7 @@ export function ResizableModal({
           {/*<div className={"flex flex-col h-full" + (!title ? " modal-drag-handle" : "")}>*/}
           {/* Header - Drag Handle */}
           {title && (
-            <div className="modal-drag-handle flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
+            <div className="modal-drag-handle select-none flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
               <div className="flex items-center gap-2 w-full">
                 <TbGripVertical className="w-4 h-4 text-muted-foreground" />
                 {title}
