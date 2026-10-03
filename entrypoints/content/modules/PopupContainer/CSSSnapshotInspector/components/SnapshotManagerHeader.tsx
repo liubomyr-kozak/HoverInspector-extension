@@ -98,14 +98,16 @@ const ActionsSection = styled.div`
   gap: 12px;
 `;
 
+// Compact square icon button: the header shares one row with the title and close button in a 350px panel
 const PrimaryButton = styled.button<{ disabled?: boolean }>`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 8px;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
   border: none;
   cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
   transition: all 300ms ease;
@@ -161,6 +163,7 @@ const CompareButton = styled.button`
 `;
 
 const MoreButton = styled.button`
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -347,63 +350,46 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
 
             <PortalModalHeaderButtons>
               <div className="flex gap-2">
-                <PrimaryButton
-                  onClick={handleCapture}
-                  disabled={isCapturing}
-                  aria-label={isCapturing ? "Capturing snapshot..." : "Capture new snapshot"}
-                >
-                  {isCapturing ? (
-                    <>
-                      <LoadingSpinner />
-                      <span>Capturing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <IconSparkles size={16} />
-                      <span>Capture Snapshot</span>
-                    </>
-                  )}
-                </PrimaryButton>
+                {/* Tooltip keeps its first title, so remount it when the state changes */}
+                <Tooltip key={String(isCapturing)} title={isCapturing ? "Capturing snapshot..." : "Capture snapshot of the page"}>
+                  <PrimaryButton
+                    onClick={handleCapture}
+                    disabled={isCapturing}
+                    aria-label={isCapturing ? "Capturing snapshot..." : "Capture new snapshot"}
+                  >
+                    {isCapturing ? <LoadingSpinner /> : <IconSparkles size={18} />}
+                  </PrimaryButton>
+                </Tooltip>
 
                 {onCaptureFromPickedElement && (
-                  <PrimaryButton
-                    onClick={handleCaptureFromPickedElement}
-                    disabled={isCapturingFromElement}
-                    style={{
-                      background: isSelectingElement 
-                        ? "linear-gradient(135deg, #ef4444, #dc2626)" 
-                        : undefined
-                    }}
-                    aria-label={
-                      isCapturingFromElement 
-                        ? "Creating element snapshot..." 
-                        : isSelectingElement 
-                        ? "Click to stop element selection (or press ESC)" 
-                        : "Make snapshot from picked element"
-                    }
+                  <Tooltip
+                    key={`${isCapturingFromElement}-${isSelectingElement}`}
                     title={
-                      isSelectingElement 
-                        ? "Element selection active - Click to stop or press ESC" 
-                        : "Click to pick an element and create a snapshot from it"
+                      isCapturingFromElement
+                        ? "Creating element snapshot..."
+                        : isSelectingElement
+                          ? "Stop element selection (or press Esc)"
+                          : "Pick an element and snapshot it"
                     }
                   >
-                    {isCapturingFromElement ? (
-                      <>
-                        <LoadingSpinner />
-                        <span>Creating...</span>
-                      </>
-                    ) : isSelectingElement ? (
-                      <>
-                        <IconCamera size={16} />
-                        <span>Stop Selection</span>
-                      </>
-                    ) : (
-                      <>
-                        <IconCamera size={16} />
-                        <span>Pick Element</span>
-                      </>
-                    )}
-                  </PrimaryButton>
+                    <PrimaryButton
+                      onClick={handleCaptureFromPickedElement}
+                      disabled={isCapturingFromElement}
+                      style={{
+                        background: isSelectingElement ? "linear-gradient(135deg, #ef4444, #dc2626)" : undefined,
+                      }}
+                      aria-label={
+                        isCapturingFromElement
+                          ? "Creating element snapshot..."
+                          : isSelectingElement
+                            ? "Stop element selection"
+                            : "Pick element to snapshot"
+                      }
+                      aria-pressed={isSelectingElement}
+                    >
+                      {isCapturingFromElement ? <LoadingSpinner /> : <IconCamera size={18} />}
+                    </PrimaryButton>
+                  </Tooltip>
                 )}
 
                 <MenuContainer>

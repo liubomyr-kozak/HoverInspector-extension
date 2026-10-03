@@ -32,40 +32,40 @@ const EmptyStateContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
   background: linear-gradient(135deg, #f8fafc, rgba(99, 102, 241, 0.03));
   border-radius: 16px;
   margin: 16px;
-  padding: 32px;
+  padding: 24px 16px;
 `;
 
 const EmptyStateIcon = styled.div`
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(8px);
   border-radius: 50%;
-  padding: 32px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  margin-bottom: 32px;
+  padding: 20px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
   border: 1px solid rgba(229, 231, 235, 0.5);
 `;
 
 const EmptyStateTitle = styled.h3`
-  font-size: 32px;
+  font-size: 20px;
   font-weight: 700;
+  text-align: center;
   background: linear-gradient(135deg, #1f2937, #6b7280);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 `;
 
 const EmptyStateDescription = styled.p`
   color: #6b7280;
   text-align: center;
-  margin-bottom: 32px;
+  margin: 0;
   max-width: 500px;
-  line-height: 1.6;
-  font-size: 18px;
+  line-height: 1.5;
+  font-size: 14px;
 `;
 
 const FeatureGrid = styled.div`
@@ -306,6 +306,8 @@ interface SnapshotManagerProps {
   readonly onToggleCompare: (snapshot: CSSSnapshot) => void;
   readonly onStartComparison?: () => void;
   readonly onCompareWithCurrentPage?: (snapshot: CSSSnapshot) => void;
+  /** True when the list is filtered by search (changes the empty state text) */
+  readonly isFiltered?: boolean;
 }
 
 export const SnapshotManager = memo<SnapshotManagerProps>(
@@ -318,6 +320,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
     onToggleCompare,
     onStartComparison,
     onCompareWithCurrentPage,
+    isFiltered = false,
   }) => {
     const [hoveredSnapshot, setHoveredSnapshot] = useState<string | null>(null);
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -329,11 +332,13 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
           <ManagerContainer>
             <EmptyStateContainer>
               <EmptyStateIcon>
-                <IconPhotoPlus size={72} color="#9ca3af" />
+                <IconPhotoPlus size={48} color="#9ca3af" />
               </EmptyStateIcon>
-              <EmptyStateTitle>No Snapshots Yet</EmptyStateTitle>
+              <EmptyStateTitle>{isFiltered ? "No Matching Snapshots" : "No Snapshots Yet"}</EmptyStateTitle>
               <EmptyStateDescription>
-                Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time.
+                {isFiltered
+                  ? "No snapshot title, URL or date matches your search."
+                  : "Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time."}
               </EmptyStateDescription>
             </EmptyStateContainer>
           </ManagerContainer>
