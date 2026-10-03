@@ -49,7 +49,8 @@ class HighlightOverlayManager {
     this.overlay = document.createElement("div");
     Object.assign(this.overlay.style, {
       position: "absolute",
-      zIndex: "2147483647",
+      // One below the extension UI (content/index.tsx), so the highlight never covers the panel
+      zIndex: "2147483646",
       pointerEvents: "none",
       display: "none",
       boxSizing: "border-box",

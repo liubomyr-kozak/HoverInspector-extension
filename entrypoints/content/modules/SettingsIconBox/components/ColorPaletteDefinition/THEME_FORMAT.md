@@ -1,7 +1,9 @@
 # Theme format
 
 The Color Palette & Typography tool can compare the page with a theme: the design tokens the page is
-supposed to use. Import one with **Theme → Import** (paste it or load a `.json` / `.css` file). It is
+supposed to use. Open **Theme** on the right of the tab bar and either **Generate theme** (every value
+the page uses now becomes a token, named like the Overview's "Copy as CSS variables"; copy it with
+**Copy JSON** and remove what should not be a token) or paste your own / load a `.json` / `.css` file. It is
 kept in the extension's storage (`browser.storage.local`, key `designTheme.active`) until you remove it.
 
 Every value found on the page is then marked:
