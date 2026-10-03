@@ -44,7 +44,7 @@
  * One visible keyboard focus ring for every hand-built control in the panels. :where() keeps the
  * specificity low so components with their own focus style (antd, the note tools' ring) keep it.
  */
-:host :where(button, a[href], summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"],
+:host :where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="option"],
     [role="switch"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: 2px solid var(--hi-color-primary);
   outline-offset: 2px;
@@ -134,8 +134,9 @@
   left: 50%;
   transform: translate(-50%, -50%);
   position: absolute;
-  background: #f5f5f5;
-  color: #ff5e2f;
+  /* The line colour (#ff5e2f) is 2.8:1 as text; the label uses a darker orange (5.2:1 on white) */
+  background: #ffffff;
+  color: #c2410c;
   padding: 0 2px;
   border-radius: 3px;
   font-size: 13px;

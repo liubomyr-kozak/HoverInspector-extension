@@ -40,7 +40,6 @@ export const ShadowTokenTab: React.FC<ShadowTokenTabProps> = ({ tokens, navigate
 
   return (
     <div className="space-y-2">
-      <h4 className="text-base font-medium text-gray-800">Shadow Tokens</h4>
       
       {/* Import Section for Shadow */}
       <ImportSection

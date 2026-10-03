@@ -26,7 +26,7 @@ export const getTagMeta = (tag, id, className) => {
           fontSize: '11px',
           fontWeight: '600',
           background: '#e3f2fd',
-          color: '#1976d2',
+          color: '#1d4ed8', // 5.6:1 on the chip (#1976d2 was 4.0:1)
           padding: '1px 5px',
           borderRadius: '3px',
           border: '1px solid #bbdefb',
@@ -43,7 +43,7 @@ export const getTagMeta = (tag, id, className) => {
           fontSize: '11px',
           fontWeight: '600',
           background: '#fff3e0',
-          color: '#ef6c00',
+          color: '#c2410c', // 4.7:1 on the chip (#ef6c00 was 2.8:1)
           padding: '1px 5px',
           borderRadius: '3px',
           border: '1px solid #ffcc02',

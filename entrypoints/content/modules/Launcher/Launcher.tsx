@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
@@ -53,6 +53,8 @@ const UsefulLinks = ({ category }: { category?: string }) => {
 const Launcher: React.FC = () => {
   const dispatch = useDispatch();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { iconOrder = POPUP_SUPPORT_TOOLS, activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
   const { visibleFeatures = [] } = useSelector((state: any) => state?.app);
 
@@ -99,10 +101,28 @@ const Launcher: React.FC = () => {
       if (event.key !== "Escape") return;
       event.preventDefault();
       setMenuOpen(false);
+      menuTriggerRef.current?.focus();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [menuOpen]);
+
+  // The menu renders at the end of the shadow root, far from its trigger in tab order: move focus into
+  // it when it opens, so keyboard users can reach the tool list
+  useEffect(() => {
+    if (!menuOpen) return;
+    const frame = requestAnimationFrame(() => {
+      menuRef.current?.querySelector<HTMLElement>("button, a[href], [tabindex]:not([tabindex='-1'])")?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [menuOpen]);
+
+  // Tabbing out of the menu closes it, so it never stays open behind the focus
+  const handleMenuBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget as Node | null;
+    if (!next || menuRef.current?.contains(next) || menuTriggerRef.current?.contains(next)) return;
+    setMenuOpen(false);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -125,7 +145,7 @@ const Launcher: React.FC = () => {
   };
 
   const content = (
-    <MenuContainer>
+    <MenuContainer ref={menuRef} onBlur={handleMenuBlur} role="dialog" aria-label="Tools and settings">
       <MenuWrapper>
         <LeftColumn>
           <SectionTitle>Tools</SectionTitle>
@@ -246,7 +266,14 @@ const Launcher: React.FC = () => {
           // @ts-ignore
           getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
         >
-          <IconButton $active={false} aria-label="More tools and settings" onClick={(e) => e.stopPropagation()}>
+          <IconButton
+            ref={menuTriggerRef}
+            $active={false}
+            aria-label="More tools and settings"
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+            onClick={(e) => e.stopPropagation()}
+          >
             <IconDotsVertical />
           </IconButton>
         </Popover>

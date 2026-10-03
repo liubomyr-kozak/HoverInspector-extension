@@ -12,6 +12,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { IconEye, IconLetterCase, IconRuler } from "@tabler/icons-react";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
 import {
   AggregatedTypographyProperties,
@@ -122,7 +123,7 @@ const TypographyRules: React.FC = () => {
 
   // Render loading state
   if (isLoading) {
-    return <div className="p-4 text-center">Loading typography analysis...</div>;
+    return <LoadingState label="Analysing typography…" />;
   }
 
   return (
@@ -130,7 +131,7 @@ const TypographyRules: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <IconLetterCase size={18} className="text-blue-500" />
-          <h5 className="font-medium text-gray-800">Font Families</h5>
+          <h4 className="m-0 text-base font-semibold text-gray-800">Font Families</h4>
         </div>
         <div className="space-y-4">
           {Array.from(aggregatedProperties?.fontFamilies.entries() || []).map(([family, count], index) => (
@@ -217,7 +218,7 @@ const TypographyRules: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <IconRuler size={18} className="text-purple-500" />
-          <h5 className="font-medium text-gray-800">Font Sizes</h5>
+          <h4 className="m-0 text-base font-semibold text-gray-800">Font Sizes</h4>
         </div>
         <div className="space-y-4">
           {Array.from(aggregatedProperties?.fontSizes.entries() || []).map(([size, count], index) => (
@@ -275,7 +276,7 @@ const TypographyRules: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <IconLetterCase size={18} className="text-amber-500 font-bold" />
-          <h5 className="font-medium text-gray-800">Font Weights</h5>
+          <h4 className="m-0 text-base font-semibold text-gray-800">Font Weights</h4>
         </div>
         <div className="space-y-4">
           {Array.from(aggregatedProperties?.fontWeights.entries() || []).map(([weight, count], index) => (

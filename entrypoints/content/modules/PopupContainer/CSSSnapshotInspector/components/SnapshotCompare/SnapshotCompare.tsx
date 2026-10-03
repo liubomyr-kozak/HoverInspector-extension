@@ -17,7 +17,8 @@ const CompareContainer = styled.div.attrs({
   backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(229, 231, 235, 0.6);
-  height: 100%;
+  /* Grow with the diff; a fixed 100% let long diffs spill out of the card */
+  min-height: 100%;
 `;
 
 const BackButton = styled.button`

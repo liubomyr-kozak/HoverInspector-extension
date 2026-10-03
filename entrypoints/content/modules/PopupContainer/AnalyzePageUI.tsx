@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow, IconLayoutDashboard, IconRefresh } from "@tabler/icons-react";
 import { Button, Tabs } from "antd";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import TypographyRules from "@entrypoints/content/modules/SettingsIconBox/components/TypographyRules.tsx";
@@ -47,19 +48,21 @@ const useLazyTokens = <T,>(extract: () => T[]) => {
 };
 
 const TokenTabFrame: React.FC<{
+  title: string;
   loading: boolean;
   empty: boolean;
   emptyText: string;
   onRescan: () => void;
   children: React.ReactNode;
-}> = ({ loading, empty, emptyText, onRescan, children }) => (
-  <div>
-    <div className="flex justify-end mb-2">
-      <Button size="small" icon={<IconRefresh size={14} />} onClick={onRescan} disabled={loading}>
-        {loading ? "Scanning..." : "Rescan"}
+}> = ({ title, loading, empty, emptyText, onRescan, children }) => (
+  <div className="space-y-2">
+    <div className="flex items-center justify-between gap-2">
+      <h4 className="m-0 text-base font-semibold text-gray-800">{title}</h4>
+      <Button size="small" icon={<IconRefresh size={14} />} onClick={onRescan} loading={loading}>
+        Rescan
       </Button>
     </div>
-    {loading ? <p className="text-sm text-gray-500">Scanning the page...</p> : children}
+    {loading ? <LoadingState inline label="Scanning the page…" /> : children}
     {!loading && empty && <p className="text-sm text-gray-500 mt-3">{emptyText}</p>}
   </div>
 );
@@ -67,7 +70,7 @@ const TokenTabFrame: React.FC<{
 const SpacingTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractSpacingTokens);
   return (
-    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No margin, padding or gap values found on this page." onRescan={rescan}>
+    <TokenTabFrame title="Spacing tokens" loading={!tokens} empty={tokens?.length === 0} emptyText="No margin, padding or gap values found on this page." onRescan={rescan}>
       <SpacingTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -76,7 +79,7 @@ const SpacingTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({
 const BorderTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractBorderRadiusTokens);
   return (
-    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No rounded corners found on this page." onRescan={rescan}>
+    <TokenTabFrame title="Border radius tokens" loading={!tokens} empty={tokens?.length === 0} emptyText="No rounded corners found on this page." onRescan={rescan}>
       <BorderTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -85,7 +88,7 @@ const BorderTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ 
 const ShadowTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractShadowTokens);
   return (
-    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No box shadows found on this page." onRescan={rescan}>
+    <TokenTabFrame title="Shadow tokens" loading={!tokens} empty={tokens?.length === 0} emptyText="No box shadows found on this page." onRescan={rescan}>
       <ShadowTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );

@@ -937,6 +937,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           <div className="relative">
             <textarea
               id="content"
+              // The form opens in its own floating window; start typing there instead of on the Add note button
+              autoFocus
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write your note content here... You can add detailed information, links, or any important details you want to remember."

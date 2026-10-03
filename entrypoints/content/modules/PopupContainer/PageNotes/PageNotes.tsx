@@ -31,6 +31,7 @@ import { TbWindowMinimize } from "react-icons/tb";
 import { FiGlobe, FiMap, FiTarget, FiX } from "react-icons/fi";
 import { AttachmentTypeEnum } from "@entrypoints/shared/types/notes";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
 const Container = styled.div`
   display: flex;
@@ -39,14 +40,6 @@ const Container = styled.div`
   background: white;
   border-radius: 8px;
   overflow: hidden;
-`;
-
-const LoadingState = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  color: #9ca3af;
 `;
 
 const ErrorState = styled.div`
@@ -375,7 +368,7 @@ export const PageNotes: React.FC = () => {
           </FeatureTitle>
         </PortalModalHeader>
         <Container>
-          <LoadingState>Loading notes...</LoadingState>
+          <LoadingState label="Loading notes…" />
         </Container>
       </div>
     );

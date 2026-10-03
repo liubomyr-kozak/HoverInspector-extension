@@ -24,7 +24,7 @@ export const ColorCategorySection: React.FC<ColorCategorySectionProps> = ({
 
   return (
     <div>
-      <h4 className="text-lg font-semibold text-gray-800 mb-3">{title}</h4>
+      <h5 className="m-0 mb-2 text-sm font-semibold text-gray-800">{title}</h5>
       <div className="flex gap-4 flex-wrap">
         {sorted.map((color) => (
           <div key={color.id} className="flex flex-col">

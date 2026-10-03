@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Plus, Search, MapPin, Globe, FolderPlus } from 'lucide-react';
+import { Plus, Search, MapPin, Globe, FolderPlus, FileText } from 'lucide-react';
+import { EmptyState } from '@entrypoints/shared/components/EmptyState';
 import type { Note } from '../hooks/useReduxNotes';
 import type { NoteGroup } from '@entrypoints/shared/types/notes';
 import { stripNoteMarkup } from '@entrypoints/content/modules/PopupContainer/PageNotes/utils/noteMarkup';
@@ -19,6 +20,8 @@ interface SidebarProps {
   selectedCategory: string;
   onCategorySelect: (category: string) => void;
   onCreateCategory: (name: string) => void;
+  /** Dropdown half of the "New" split button: other places to create a note */
+  newNoteMenu?: ReactNode;
 }
 
 /**
@@ -32,6 +35,7 @@ export function Sidebar({
   selectedCategory,
   onCategorySelect,
   onCreateCategory,
+  newNoteMenu,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -92,10 +96,18 @@ export function Sidebar({
             className="pl-9 h-8 bg-input-background border border-input"
           />
         </div>
-        <Button onClick={onNewNote} size="sm" className="h-8 gap-1.5" title="New note">
-          <Plus className="h-4 w-4" />
-          New
-        </Button>
+        <div className="flex shrink-0" role="group" aria-label="New note">
+          <Button
+            onClick={onNewNote}
+            size="sm"
+            className={`h-8 gap-1.5 ${newNoteMenu ? 'rounded-r-none' : ''}`}
+            title="New note in the selected category"
+          >
+            <Plus className="h-4 w-4" />
+            New
+          </Button>
+          {newNoteMenu}
+        </div>
       </div>
 
       {/* Categories */}
@@ -195,10 +207,11 @@ export function Sidebar({
           ))}
 
           {filteredNotes.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm py-10">
-              <p className="font-medium m-0">{searchQuery ? 'No notes match your search' : 'No notes yet'}</p>
-              {!searchQuery && <p className="text-xs mt-1">Click "New" to get started</p>}
-            </div>
+            <EmptyState
+              icon={searchQuery ? <Search /> : <FileText />}
+              title={searchQuery ? 'No notes match your search' : 'No notes yet'}
+              description={searchQuery ? 'Try a different word, or clear the search.' : 'Create your first note with the "New" button above.'}
+            />
           )}
         </div>
       </div>

@@ -171,7 +171,7 @@ export function NoteEditor({ note, isDraft, groups, palettes, onSave, onDelete, 
       variant="ghost"
       size="sm"
       onClick={() => formatText(format)}
-      className="h-7 w-7 p-0 hover:bg-muted"
+      className="h-7 w-6 p-0 hover:bg-muted"
       title={label}
       aria-label={label}
     >
@@ -191,7 +191,7 @@ export function NoteEditor({ note, isDraft, groups, palettes, onSave, onDelete, 
               saveRef.current();
               onClose();
             }}
-            className="h-7 w-7 p-0 hover:bg-muted"
+            className="h-7 w-6 p-0 hover:bg-muted"
             title="Back to notes"
             aria-label="Back to notes"
           >
@@ -213,7 +213,7 @@ export function NoteEditor({ note, isDraft, groups, palettes, onSave, onDelete, 
           {/* Color Picker */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-muted" title="Color" aria-label="Color">
+              <Button variant="ghost" size="sm" className="h-7 w-6 p-0 hover:bg-muted" title="Color" aria-label="Color">
                 <Palette className="h-4 w-4" style={{ color }} />
               </Button>
             </PopoverTrigger>
@@ -228,7 +228,7 @@ export function NoteEditor({ note, isDraft, groups, palettes, onSave, onDelete, 
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-7 w-7 p-0 hover:bg-muted ${attachment !== 'none' ? 'text-primary' : ''}`}
+                className={`h-7 w-6 p-0 hover:bg-muted ${attachment !== 'none' ? 'text-primary' : ''}`}
                 title="Show on pages"
                 aria-label="Show on pages"
               >
@@ -250,7 +250,7 @@ export function NoteEditor({ note, isDraft, groups, palettes, onSave, onDelete, 
             }}
           >
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-muted" title="More" aria-label="More">
+              <Button variant="ghost" size="sm" className="h-7 w-6 p-0 hover:bg-muted" title="More" aria-label="More">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
@@ -289,7 +289,7 @@ export function NoteEditor({ note, isDraft, groups, palettes, onSave, onDelete, 
             placeholder="Note title..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="flex-1 text-lg border-none shadow-none px-0 h-auto py-0 font-semibold placeholder:text-muted-foreground/60 bg-transparent"
+            className="flex-1 min-w-0 text-lg border-none shadow-none px-1 -ml-1 h-auto py-0 font-semibold placeholder:text-muted-foreground/60 bg-transparent"
             autoFocus={isDraft}
           />
           <select

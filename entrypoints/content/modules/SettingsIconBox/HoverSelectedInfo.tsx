@@ -3,6 +3,9 @@ import { SettingTab, SettingTabHeader, TabContainer } from "./HoverSelectedInfo.
 import { IconBrandAbstract, IconCode, IconLayersSelected, IconWashDryShade } from "@tabler/icons-react";
 import CustomSegmented from "@entrypoints/shared/components/CustomSegmented";
 import Title from "antd/es/typography/Title";
+
+// Section headings sit under the panel title: h3 for the outline, sized like antd's h5
+const sectionHeading = { fontSize: 16, marginTop: 0 };
 import PopupStyleInspector from "./components/PopupStyleInspector";
 import StyleVisualizer from "./components/StyleVisualizer";
 import { useDispatch, useSelector } from "react-redux";
@@ -67,7 +70,7 @@ const HoverSelectedInfo = () => {
   return (
     <SettingTab>
       <SettingTabHeader>
-        <Title level={5}>View type</Title>
+        <Title level={3} style={sectionHeading}>View type</Title>
         <CustomSegmented
           className="mb-5"
           value={viewType}
@@ -89,7 +92,7 @@ const HoverSelectedInfo = () => {
 
         {!isSingleSelect && (
           <>
-            <Title level={5}>Selected element</Title>
+            <Title level={3} style={sectionHeading}>Selected element</Title>
             <CustomSegmented
               className="mb-5"
               value={selectedElementType}

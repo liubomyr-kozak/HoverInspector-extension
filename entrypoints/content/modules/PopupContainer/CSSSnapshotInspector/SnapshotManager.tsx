@@ -187,11 +187,14 @@ const ActionButton = styled.button<{ variant: "primary" | "secondary" | "danger"
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 4px 8px;
-  border-radius: 5px;
-  font-size: 10px;
+  gap: 4px;
+  /* Small control from the shared tokens: 24px high, 12px text, one line */
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
   border: none;
   cursor: pointer;
   transition: all 200ms ease;
@@ -415,7 +418,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                     </MetadataItem>
                   </MetadataGrid>
 
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
                     <ActionButton
                       variant={selected ? "green" : "primary"}
                       onClick={(e) => {
@@ -438,7 +441,6 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                           }
                         }
                       }}
-                      style={{ minWidth: 80 }}
                       aria-label={(() => {
                         const isSelected = compareSnapshots.some((s) => s.id === snapshot.id);
                         if (!isSelected && compareSnapshots.length === 0) return "View details";
@@ -496,7 +498,6 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                         e.stopPropagation();
                         onCompareWithCurrentPage?.(snapshot);
                       }}
-                      style={{ minWidth: 120 }}
                       aria-label="Compare with current page"
                     >
                       <IconGitCompare size={14} />

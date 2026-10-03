@@ -19,6 +19,7 @@ import {
 import { INSPECTOR, PICKER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { tokens } from "@entrypoints/shared/styles/tokens";
+import { colorPickerStyles, useColorPickerA11y } from "./colorPickerA11y";
 
 const Container = styled.div`
   position: relative;
@@ -27,11 +28,17 @@ const Container = styled.div`
 `;
 
 const PickerWrapper = styled.div`
-  //position: absolute;
-  //top: 0;
-  //left: 0;
-
   overflow-x: auto;
+  /* Room for the focus ring of the edge controls, which the scroll container would otherwise clip */
+  padding: 3px;
+  margin: -3px;
+
+  /* The library sets \`outline: none\` inline on its inputs and tool buttons */
+  input[id^="rbgcp-"]:focus-visible,
+  [id^="rbgcp-"][role="button"]:focus-visible {
+    outline: 2px solid ${tokens.color.focusRing} !important;
+    outline-offset: 1px;
+  }
 `;
 
 const HistoryContainer = styled.div`
@@ -189,6 +196,8 @@ const ColorPicker = () => {
   }, [colorHistory]);
 
   const isGradient = color.includes("gradient");
+  const pickerRef = useRef<HTMLDivElement>(null);
+  useColorPickerA11y(pickerRef, isGradient);
   const hexValue = isGradient ? "" : targetColorStringToHex(color);
 
   // Handle selecting a color from history
@@ -261,7 +270,7 @@ const ColorPicker = () => {
         </CopyButton>
       </CopyRow>
 
-      <PickerWrapper>
+      <PickerWrapper ref={pickerRef}>
         <BestColorPicker
           value={color}
           onChange={setColor}
@@ -269,6 +278,9 @@ const ColorPicker = () => {
           hideEyeDrop={typeof window === "undefined" || !("EyeDropper" in window)}
           width={pickerWidth}
           height={200}
+          style={colorPickerStyles}
+          // The panels are always light; don't switch the picker to its dark theme on a dark OS
+          disableDarkMode
         />
       </PickerWrapper>
     </Container>

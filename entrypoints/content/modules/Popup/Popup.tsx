@@ -117,7 +117,7 @@ const PopupContainer = ({ data, hoverElement }) => {
       return (
         <div style={{ ...rowStyle, marginBottom: '4px' }}>
           <span style={labelStyle}>{sideLabel}:</span>
-          <span style={{ fontSize: '11px', color: '#adb5bd' }}>none</span>
+          <span style={{ fontSize: '11px', color: '#6b7280' }}>none</span>
         </div>
       );
     }
@@ -136,7 +136,7 @@ const PopupContainer = ({ data, hoverElement }) => {
             border: '1px solid rgba(0,0,0,0.1)'
           }} />
           <span style={{ 
-            fontSize: '10px', 
+            fontSize: '11px', 
             fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
             color: '#666'
           }}>
@@ -323,7 +323,7 @@ const PopupContainer = ({ data, hoverElement }) => {
                     border: '1px solid rgba(0,0,0,0.1)'
                   }} />
                   <span style={{ 
-                    fontSize: '10px', 
+                    fontSize: '11px', 
                     fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
                     color: '#666'
                   }}>
