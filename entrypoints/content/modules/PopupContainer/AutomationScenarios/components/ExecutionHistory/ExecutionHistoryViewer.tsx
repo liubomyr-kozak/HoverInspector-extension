@@ -25,6 +25,7 @@ import {
 } from "@ant-design/icons";
 import { ExecutionHistoryEntry, ExecutionHistoryMap, ExecutionStatus } from "../../types.ts";
 import ExecutionLogViewer from "./ExecutionLogViewer.tsx";
+import { describeExecutionStart } from "../../utils/executionHistory.ts";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -250,6 +251,11 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
           <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
             {record.stepsCompleted} / {record.totalSteps} steps
           </div>
+          {describeExecutionStart(record) && (
+            <div style={{ fontSize: 12, color: "#d46b08", marginTop: 2 }} title="Steps before it did not run in this playback">
+              {describeExecutionStart(record)}
+            </div>
+          )}
         </div>
       ),
     },
@@ -448,6 +454,14 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
                         {selectedEntry.stepsCompleted} / {selectedEntry.totalSteps}
                       </Text>
                     </div>
+                    {describeExecutionStart(selectedEntry) && (
+                      <div>
+                        <Text strong>Started: </Text>
+                        <Text>
+                          {describeExecutionStart(selectedEntry)} (steps 1–{selectedEntry.startedFromStep} did not run)
+                        </Text>
+                      </div>
+                    )}
                     {selectedEntry.triggerType && (
                       <div>
                         <Text strong>Trigger Type: </Text>

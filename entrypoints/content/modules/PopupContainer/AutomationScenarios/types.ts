@@ -181,6 +181,7 @@ export enum StepType {
   CONFIRMATION = "confirmation",
   NOTIFICATION = "notification",
   GET_TEXT = "getText",
+  KEY_PRESS = "keyPress",
 }
 
 /**
@@ -193,6 +194,7 @@ export const stepTypeOptions = [
   { value: StepType.HOVER, label: "Hover" },
   { value: StepType.INPUT, label: "Input" },
   { value: StepType.SELECT, label: "Select" },
+  { value: StepType.KEY_PRESS, label: "Key press" },
   { value: StepType.NAVIGATE, label: "Navigate" },
   { value: StepType.CODE, label: "Code" },
   { value: StepType.FUNCTION, label: "Function" },
@@ -272,6 +274,10 @@ export interface ExecutionHistoryEntry {
   error?: string;
   triggerType?: string; // manual, scheduled, triggered
   triggerId?: string; // ID of the schedule or trigger that initiated the execution
+  // Index of the first step played when the playback did not start at the first step (retry / play from a step).
+  // The steps before it did not run in this playback and are not counted in stepsCompleted.
+  startedFromStep?: number;
+  retry?: boolean; // Started by "Retry from step N" after a failure
   log: ExecutionLog;
 }
 

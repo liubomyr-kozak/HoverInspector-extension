@@ -13,10 +13,8 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { MAX_FOLDER_TITLE_LENGTH, ScenarioFolderGroup } from "../utils/folderUtils";
+import { shadowBody } from "../utils/popupContainer";
 
-const shadowBody = (): HTMLElement =>
-  // @ts-ignore
-  (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!;
 
 const iconButton =
   "flex items-center justify-center w-6 h-6 shrink-0 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-100 " +

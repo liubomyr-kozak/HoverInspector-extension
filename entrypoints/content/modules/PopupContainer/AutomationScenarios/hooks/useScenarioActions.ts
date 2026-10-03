@@ -24,9 +24,10 @@ export const useScenarioActions = () => {
    * Play a scenario
    * @param id The ID of the scenario to play
    * @param startFromStep Optional step index to start from
+   * @param retry The playback retries a failed step (shown in the execution history)
    */
-  const playScenario = (id: string, startFromStep?: number) => {
-    dispatch(playScenarioWatcher.getPayload({ id, startFromStep }));
+  const playScenario = (id: string, startFromStep?: number, retry?: boolean) => {
+    dispatch(playScenarioWatcher.getPayload({ id, startFromStep, ...(retry ? { retry } : {}) }));
   };
 
   /**

@@ -9,6 +9,7 @@ import {
   recordClick,
   recordHover,
   recordInput,
+  recordKeyPress,
   recordSelect,
   recordUrlNavigation,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/recordingUtils.ts";
@@ -22,6 +23,10 @@ import {
   syncRecordingStateWatcher,
 } from "@entrypoints/content/store/automation/automation.saga.action";
 import { generateXPaths } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils.ts";
+import {
+  formatKeyCombo,
+  shouldRecordKeyPress,
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/keyboardUtils.ts";
 import HighlightOverlayManager from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayManager";
 import { ScenarioStep, StepType } from "./types";
 
@@ -43,6 +48,11 @@ const HOVER_WIDGET_DEPTH = 4; // How far up the hovered element and the clicked 
 type HoverEntry = { element: Element; time: number };
 type PendingInput = { element: Element; timer: number };
 type Feedback = { element: HTMLElement; timeoutId: number };
+type KeyEntry = { element: Element; key: string; time: number };
+type PendingEnter = { element: Element; key: string; submitted: boolean };
+
+// How long after a key press a click or change counts as caused by that key
+const KEY_EFFECT_WINDOW = 1000;
 
 function showFeedback(text: string, color: string, duration: number): Feedback {
   const feedbackElement = document.createElement("div");
@@ -95,6 +105,8 @@ const AutomationUserActionsHandler: React.FC = () => {
   const feedbackElementRef = useRef<Feedback | null>(null);
   const currentUrlRef = useRef<string>(window.location.href);
   const lastPointerTargetRef = useRef<{ element: Element; time: number } | null>(null);
+  const lastKeyRef = useRef<KeyEntry | null>(null);
+  const pendingEnterRef = useRef<PendingEnter | null>(null);
 
   // Drop anything that is in flight when recording is paused or stopped
   useEffect(() => {
@@ -110,6 +122,8 @@ const AutomationUserActionsHandler: React.FC = () => {
     hoverHistoryRef.current = [];
     lastHoveredElementRef.current = null;
     isHoverStepSelectedRef.current = false;
+    lastKeyRef.current = null;
+    pendingEnterRef.current = null;
   }, [recording, recordingPaused]);
 
   useLayoutEffect(() => {
@@ -297,6 +311,22 @@ const AutomationUserActionsHandler: React.FC = () => {
         return;
       }
 
+      // Space on a checkbox, Space / arrow keys on a radio: no mousedown, so the click was not recorded.
+      // Record it from the change, but only right after a key on that box (or its radio group): changes
+      // made by the page's own scripts are not the user's
+      if (isToggleInput(target)) {
+        if (!wasChangedByKey(target as HTMLInputElement)) return;
+        flushPendingInput();
+        lastKeyRef.current = null;
+        const box = target as HTMLInputElement;
+        const step = recordClick(box);
+        if (!step) return;
+        // recordClick reads the state a click leads to before the click; the box has its new state already
+        if (box.type === "checkbox") step.value = box.checked ? "checked" : "unchecked";
+        addStep(step);
+        return;
+      }
+
       if (target.tagName === "SELECT") {
         flushPendingInput();
         const select = target as HTMLSelectElement;
@@ -314,14 +344,95 @@ const AutomationUserActionsHandler: React.FC = () => {
 
     // Pressing Enter in a field submits its form without any mouse click: record it as a click on the form's
     // submit button (the browser does the same), so playback submits the form too
+    // A form without a submit button submitted by Enter in its only field is recorded as that key press: playback
+    // presses Enter there, which submits the form the same way (requestSubmit)
     const onSubmit = (e: SubmitEvent) => {
       if (!isActive()) return;
+      const form = e.target as HTMLFormElement;
+      if (hasAppClass(form)) return;
+      const pendingEnter = pendingEnterRef.current;
+      const byEnter = !!pendingEnter && !pendingEnter.submitted && form.contains(pendingEnter.element);
+      if (byEnter) pendingEnter!.submitted = true;
       const submitter = e.submitter;
-      if (!submitter || hasAppClass(submitter)) return;
+      if (!submitter) {
+        if (byEnter) {
+          flushPendingInput();
+          addStep(recordKeyPress(pendingEnter!.element, pendingEnter!.key));
+        }
+        return;
+      }
+      if (hasAppClass(submitter)) return;
       flushPendingInput();
       const last = lastPointerTargetRef.current;
       if (last && Date.now() - last.time < 2000 && (last.element === submitter || last.element.contains(submitter))) return;
       addStep(recordClick(submitter));
+      lastPointerTargetRef.current = { element: submitter, time: Date.now() };
+    };
+
+    const isToggleInput = (element: Element) =>
+      element instanceof HTMLInputElement && (element.type === "checkbox" || element.type === "radio");
+
+    // Whether the user's last key changed this checkbox / radio (arrow keys move the check to another radio of the group)
+    const wasChangedByKey = (box: HTMLInputElement) => {
+      const last = lastKeyRef.current;
+      if (!last || Date.now() - last.time > KEY_EFFECT_WINDOW) return false;
+      if (last.element === box) return last.key === " ";
+      const pointer = lastPointerTargetRef.current;
+      if (pointer && Date.now() - pointer.time < KEY_EFFECT_WINDOW) return false;
+      return (
+        box.type === "radio" &&
+        last.element instanceof HTMLInputElement &&
+        last.element.type === "radio" &&
+        !!box.name &&
+        last.element.name === box.name &&
+        last.element.form === box.form &&
+        /^Arrow/.test(last.key)
+      );
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!isActive()) return;
+      const target = e.target as Element;
+      if (!(target instanceof Element) || hasAppClass(target)) return;
+      lastKeyRef.current = { element: target, key: e.key, time: Date.now() };
+      if (!shouldRecordKeyPress(e, target)) return;
+
+      // What was typed comes before the key that follows it
+      flushPendingInput();
+      const key = formatKeyCombo(e);
+
+      if (e.key === "Enter" && isTextEntryElement(target)) {
+        // Enter in a field may submit its form (a click on its submit button, or a form without one: see onSubmit).
+        // The submit event follows this keydown in the same task: decide once it had the chance to fire.
+        const pending: PendingEnter = { element: target, key, submitted: false };
+        pendingEnterRef.current = pending;
+        window.setTimeout(() => {
+          if (pendingEnterRef.current === pending) pendingEnterRef.current = null;
+          if (!pending.submitted && isActive()) addStep(recordKeyPress(target, key));
+        }, 0);
+        return;
+      }
+      addStep(recordKeyPress(target, key));
+    };
+
+    // Enter / Space on a button or a link makes the browser fire a click without any mousedown: record it as a click
+    const onKeyboardClick = (e: MouseEvent) => {
+      if (!isActive() || e.detail !== 0) return;
+      const last = lastKeyRef.current;
+      if (!last || (last.key !== "Enter" && last.key !== " ") || Date.now() - last.time > KEY_EFFECT_WINDOW) return;
+      const rawTarget = e.target as Element;
+      if (hasAppClass(rawTarget)) return;
+      const target = getActionableTarget(rawTarget);
+      if (!target || !(last.element === rawTarget || last.element === target || last.element.contains(rawTarget))) return;
+      // Checkboxes and radios are recorded from their change, fields and selects by their own steps
+      if (isToggleInput(target) || isTextEntryElement(target) || target.tagName === "SELECT" || target.tagName === "OPTION") {
+        return;
+      }
+      lastKeyRef.current = null;
+      flushPendingInput();
+      addStep(recordClick(target));
+      lastPointerTargetRef.current = { element: target, time: Date.now() };
+      clickedElementsRef.current.add(target);
     };
 
     const onMessage = (e: MessageEvent) => {
@@ -339,6 +450,8 @@ const AutomationUserActionsHandler: React.FC = () => {
     window.addEventListener("input", onInput, { capture: true });
     window.addEventListener("change", onChange, { capture: true });
     window.addEventListener("submit", onSubmit, { capture: true });
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    window.addEventListener("click", onKeyboardClick, { capture: true });
     window.addEventListener("message", onMessage);
     window.addEventListener("popstate", recordUrlChangeIfAny);
     window.addEventListener("hashchange", recordUrlChangeIfAny);
@@ -369,6 +482,8 @@ const AutomationUserActionsHandler: React.FC = () => {
       window.removeEventListener("input", onInput, { capture: true });
       window.removeEventListener("change", onChange, { capture: true });
       window.removeEventListener("submit", onSubmit, { capture: true });
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
+      window.removeEventListener("click", onKeyboardClick, { capture: true });
       window.removeEventListener("message", onMessage);
       window.removeEventListener("popstate", recordUrlChangeIfAny);
       window.removeEventListener("hashchange", recordUrlChangeIfAny);
