@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { IconX } from "@tabler/icons-react";
 import { IconPalette } from "@tabler/icons-react";
 import ColorDetails from "./ColorDetails.tsx";
 import { getColorInAllFormats } from "@entrypoints/shared/utils/colorAnalysis.ts";
@@ -205,6 +206,24 @@ export const ColorPaletteDefinition: React.FC = () => {
 
   const selectedColor = useMemo(() => selectedColorId && getSelectedColor(), [selectedColorId, colorPalette]);
 
+  // In the narrow panel the details wrap above the swatches: bring them into view when a colour is picked
+  const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const details = detailsRef.current;
+    if (!selectedColorId || !details) return;
+    let scrollParent = details.parentElement;
+    while (scrollParent) {
+      const { overflowY } = window.getComputedStyle(scrollParent);
+      if ((overflowY === "auto" || overflowY === "scroll") && scrollParent.scrollHeight > scrollParent.clientHeight) break;
+      scrollParent = scrollParent.parentElement;
+    }
+    if (!scrollParent) return;
+    const offset = details.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top;
+    if (offset < 0 || offset > scrollParent.clientHeight - 80) {
+      scrollParent.scrollTo({ top: scrollParent.scrollTop + offset - 12, behavior: "smooth" });
+    }
+  }, [selectedColorId]);
+
   return (
     <div className="bg-white p-5 rounded-lg mb-6 shadow-sm border border-gray-100">
       <div className="flex items-center gap-3 mb-6">
@@ -242,8 +261,9 @@ export const ColorPaletteDefinition: React.FC = () => {
         normalize={normalizeColor}
       />
 
-      <div className="flex gap-6">
-        <div className="flex-1">
+      {/* Side by side when there is room; otherwise wrap-reverse puts the details above the swatches */}
+      <div className="flex flex-wrap-reverse gap-6">
+        <div style={{ flex: "1 1 240px", minWidth: 0 }}>
           <div className="space-y-6">
             {extractionStatus.isExtracting && !extractionStatus.lastExtracted && (
               <p className="text-sm text-gray-500">Extracting colors from the page...</p>
@@ -284,15 +304,28 @@ export const ColorPaletteDefinition: React.FC = () => {
             </button>
             {extractionStatus.lastExtracted && (
               <p className="text-sm text-gray-600 mt-2">
-                Last extracted: {extractionStatus.lastExtracted.toLocaleTimeString()}(
+                Last extracted: {extractionStatus.lastExtracted.toLocaleTimeString()} (
                 {extractionStatus.totalColorsFound} colors from {extractionStatus.totalElementsAnalyzed} elements)
               </p>
             )}
           </div>
         </div>
 
-        {selectedColorId && (
-          <div className="pl-6 border-l border-gray-200">
+        {selectedColorId && selectedColor && (
+          <div
+            ref={detailsRef}
+            className="relative"
+            style={{ flex: "1 1 240px", minWidth: 0 }}
+          >
+            <button
+              type="button"
+              aria-label="Close color details"
+              title="Close"
+              onClick={() => setSelectedColorId(null)}
+              className="absolute top-2 right-2 z-10 p-1 rounded text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            >
+              <IconX size={14} />
+            </button>
             <ColorDetails
               color={selectedColor as any}
               formatColor={formatColor}
