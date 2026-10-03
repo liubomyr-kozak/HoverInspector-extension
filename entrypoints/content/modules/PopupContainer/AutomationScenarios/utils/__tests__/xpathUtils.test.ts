@@ -42,6 +42,26 @@ describe("isLikelyDynamicValue", () => {
     expect(isLikelyDynamicValue("3f2b8c1e-1234-4abc-9def-0123456789ab")).toBe(true);
     expect(isLikelyDynamicValue("late-x3k9a")).toBe(true);
     expect(isLikelyDynamicValue("dropdown_menu_a8f3k2")).toBe(true);
+    expect(isLikelyDynamicValue("sc-a1b2c3")).toBe(true);
+    expect(isLikelyDynamicValue("sc-bdVaJa")).toBe(true);
+    expect(isLikelyDynamicValue("button__x7Fq2")).toBe(true);
+    expect(isLikelyDynamicValue("jss-3k9x2")).toBe(true);
+  });
+
+  it("keeps readable ids whose short prefix contains a digit", () => {
+    expect(isLikelyDynamicValue("h2-title")).toBe(false);
+    expect(isLikelyDynamicValue("h1_heading")).toBe(false);
+    expect(isLikelyDynamicValue("v2-header")).toBe(false);
+    expect(isLikelyDynamicValue("h3-subtitle")).toBe(false);
+    expect(isLikelyDynamicValue("p1-summary")).toBe(false);
+    expect(isLikelyDynamicValue("card__title2")).toBe(false);
+    expect(isLikelyDynamicValue("ui-button1")).toBe(false);
+  });
+
+  it("uses readable ids with digits as locators", () => {
+    document.body.innerHTML = `<h2 id="h2-title">Welcome</h2><h2>Other</h2>`;
+    const { primaryXPath } = generateXPaths(document.getElementById("h2-title")!);
+    expect(primaryXPath).toBe(`//*[@id="h2-title"]`);
   });
 
   it("keeps human readable values", () => {
