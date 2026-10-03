@@ -225,6 +225,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
             </Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
               {formatTimestamp(record.executionTime)} · {formatDuration(record.duration)}
+              {record.triggerType && record.triggerType !== "manual" ? ` · ${record.triggerType}` : ""}
             </Text>
             {record.error && (
               <div

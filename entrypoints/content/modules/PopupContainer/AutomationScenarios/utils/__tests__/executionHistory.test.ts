@@ -88,6 +88,18 @@ describe("execution history entries", () => {
   });
 });
 
+describe("trigger of a playback", () => {
+  it("keeps what started the playback", () => {
+    const log = { entries: [], startTime: "2026-01-01T10:00:00.000Z", endTime: "", totalDuration: 0, status: ExecutionStatus.SUCCESS };
+    const base = { id: "ex_hist_b", scenarioId: "sc_a", scenarioTitle: "A", log, totalSteps: 1 };
+    expect(createExecutionHistoryEntry({ ...base, triggerType: "scheduled", triggerId: "sch_1" })).toMatchObject({
+      triggerType: "scheduled",
+      triggerId: "sch_1",
+    });
+    expect(createExecutionHistoryEntry(base)).not.toHaveProperty("triggerId");
+  });
+});
+
 describe("formatStepError", () => {
   it("names the failed step by its number and type", () => {
     expect(formatStepError({ stepIndex: 3, stepType: StepType.CLICK, error: "Element not found after 10 s: //a" })).toBe(

@@ -508,10 +508,11 @@ export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcherF
 
 // Play Scenario
 export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(action: {
-  payload: { id: string; startFromStep?: number; singleStep?: boolean };
+  payload: { id: string; startFromStep?: number; singleStep?: boolean; triggerType?: string; triggerId?: string };
 }) {
   try {
-    const { id, startFromStep = 0, singleStep = false } = action.payload;
+    const { id, startFromStep = 0, singleStep = false, triggerId } = action.payload;
+    const triggerType = action.payload.triggerType || "manual";
 
     // Get the scenario from state
     const scenarios = yield select((state) => state.automation.scenarios);
@@ -604,6 +605,8 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
           startedAt: (resumed && previous.startedAt) || Date.now(),
           // Keep the log of the steps played on the previous pages
           entries: resumed ? (previous.entries || []).filter((entry) => entry.stepIndex < startFromStep) : [],
+          triggerType,
+          ...(triggerId ? { triggerId } : {}),
         });
       }
 
@@ -850,6 +853,8 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         log: { ...historyLog, status: executionLog.status },
         totalSteps: singleStep ? 1 : totalStepsInScenario,
         stepsBefore: singleStep ? 0 : startFromStep,
+        triggerType,
+        triggerId,
       });
 
       // Save the execution history entry
@@ -946,6 +951,8 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
               status: ExecutionStatus.SUCCESS,
             },
             totalSteps: scenario.data?.length || 0,
+            triggerType: session.triggerType,
+            triggerId: session.triggerId,
           }),
         }),
       );
@@ -963,7 +970,14 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
       );
     }
 
-    yield put(playScenarioWatcher.getPayload({ id: session.scenarioId, startFromStep: session.nextStepIndex }));
+    yield put(
+      playScenarioWatcher.getPayload({
+        id: session.scenarioId,
+        startFromStep: session.nextStepIndex,
+        triggerType: session.triggerType,
+        triggerId: session.triggerId,
+      }),
+    );
   } catch (error) {
     console.error("Error resuming scenario execution:", error);
   }

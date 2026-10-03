@@ -44,6 +44,7 @@ export function createExecutionHistoryEntry({
   totalSteps,
   stepsBefore = 0,
   triggerType,
+  triggerId,
 }: {
   id: string;
   scenarioId: string;
@@ -52,6 +53,7 @@ export function createExecutionHistoryEntry({
   totalSteps: number;
   stepsBefore?: number;
   triggerType?: string;
+  triggerId?: string;
 }): ExecutionHistoryEntry {
   const status = log.status;
   const completedInLog = (log.entries || []).filter((entry) => COMPLETED_STATUSES.includes(entry.status)).length;
@@ -70,6 +72,7 @@ export function createExecutionHistoryEntry({
     totalSteps,
     ...(errorEntry ? { error: formatStepError(errorEntry) } : {}),
     ...(triggerType ? { triggerType } : {}),
+    ...(triggerId ? { triggerId } : {}),
     log,
   };
 }
