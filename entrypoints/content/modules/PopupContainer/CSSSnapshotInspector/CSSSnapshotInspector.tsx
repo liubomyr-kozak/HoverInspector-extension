@@ -147,7 +147,7 @@ export const CSSSnapshotInspector: React.FC = () => {
 
   // State for comparison view controls
   const [activeCompareView, setActiveCompareView] = React.useState<"diff" | "tree" | "stats">("diff");
-  const [splitView, setSplitView] = React.useState(true);
+  const [splitView, setSplitView] = React.useState(false); // unified diff reads better in the narrow panel; split is one click away
 
   // Обробник для перегляду знімка
   const handleViewSnapshot = (snapshot: typeof selectedSnapshot) => {
