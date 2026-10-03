@@ -256,23 +256,38 @@ export function eventsToSteps(events: WatchEvent[], typedValues: ReadonlyMap<str
   });
 }
 
-/** One-line description of an action, e.g. Click "Save", Fill "Email", Press Enter */
-export function describeEvent(event: Pick<WatchEvent, "kind" | "label" | "value">): string {
-  const label = event.label ? `"${event.label}"` : "the element";
+/** An action split for display: the verb, the element (or key) and an optional detail (the chosen option) */
+export interface EventParts {
+  verb: string;
+  target: string;
+  detail?: string;
+}
+
+export function describeEventParts(event: Pick<WatchEvent, "kind" | "label" | "value">): EventParts {
+  const target = event.label || "element";
   switch (event.kind) {
     case WatchEventKind.CLICK:
-      if (event.value === "checked") return `Tick ${label}`;
-      if (event.value === "unchecked") return `Untick ${label}`;
-      return `Click ${label}`;
+      if (event.value === "checked") return { verb: "Tick", target };
+      if (event.value === "unchecked") return { verb: "Untick", target };
+      return { verb: "Click", target };
     case WatchEventKind.INPUT:
-      return `Fill ${label}`;
+      return { verb: "Fill", target };
     case WatchEventKind.SELECT:
-      return `Choose ${event.value ? `"${event.value}"` : "an option"} in ${label}`;
+      return { verb: "Choose", target, ...(event.value ? { detail: event.value } : {}) };
     case WatchEventKind.KEY_PRESS:
-      return `Press ${describeKeyCombo(event.value)}`;
+      return { verb: "Press", target: describeKeyCombo(event.value) };
     default:
-      return label;
+      return { verb: "", target };
   }
+}
+
+/** One-line description of an action, e.g. Click "Save", Fill "Email", Press Enter */
+export function describeEvent(event: Pick<WatchEvent, "kind" | "label" | "value">): string {
+  const { verb, target, detail } = describeEventParts(event);
+  if (event.kind === WatchEventKind.KEY_PRESS) return `${verb} ${target}`;
+  const name = event.label ? `"${target}"` : "the element";
+  if (event.kind === WatchEventKind.SELECT) return `${verb} ${detail ? `"${detail}"` : "an option"} in ${name}`;
+  return `${verb} ${name}`;
 }
 
 /**
