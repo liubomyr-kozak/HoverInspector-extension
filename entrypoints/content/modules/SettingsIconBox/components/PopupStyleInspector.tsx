@@ -34,7 +34,15 @@ function mergeTextTokens(tokens: any) {
   return merged;
 }
 
-function parseCssLine(lineValue) {
+function parseCssLine(rawLineValue) {
+  // Keep the line's indentation (SASS / styled formats indent their declarations)
+  const indent = /^\s*/.exec(rawLineValue)?.[0] || "";
+  const lineValue = rawLineValue.slice(indent.length);
+  const tokens = parseCssLineContent(lineValue);
+  return indent ? [{ type: "text", value: indent }, ...tokens] : tokens;
+}
+
+function parseCssLineContent(lineValue) {
   const match = /^([\w-]+)\s*:\s*([^;]+)(;?)/.exec(lineValue);
   
   // If no CSS property format match, try to parse as space-separated color values
@@ -49,7 +57,7 @@ function parseCssLine(lineValue) {
     while ((matchColor = COLOR_GRADIENT_REGEX.exec(lineValue)) !== null) {
       if (matchColor.index > lastIndex) {
         const text = lineValue.slice(lastIndex, matchColor.index);
-        if (text.trim()) tokens.push({ type: "text", value: text });
+        if (text) tokens.push({ type: "text", value: text });
       }
       const colorValue = matchColor[0];
       
@@ -66,7 +74,7 @@ function parseCssLine(lineValue) {
 
     if (lastIndex < lineValue.length) {
       const remainingText = lineValue.slice(lastIndex);
-      if (remainingText.trim()) tokens.push({ type: "text", value: remainingText });
+      if (remainingText) tokens.push({ type: "text", value: remainingText });
     }
 
     // If we found any color tokens, return the parsed tokens, otherwise treat as plain text
@@ -167,6 +175,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
   const selectedElement = useDomNodeObserver(selectedElementType);
   const [unit, setUnit] = useState("px");
   const [format, setFormat] = useState("css");
+  const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState({
     border: false,
     margin: false,
@@ -175,12 +184,31 @@ const PopupStyleInspector = ({ selectedElementType }) => {
 
   const blockRef = useRef(null);
 
-  const convert = (val) => (!val || val === "false" ? "" : convertPx(val, unit));
-
   const processedLines = useMemo(() => {
     if (!selectedElement || !(selectedElement instanceof Element)) return [];
     const styles = { ...DomNodeManager.getStyleByNode(selectedElement) };
+    const computed = getComputedStyle(selectedElement);
+    // The computed "background" shorthand only repeats background-color/-image in a long resolved form
+    delete styles.background;
 
+    // getStyleByNode reports the on-screen box (border box, after transforms). CSS width/height are the
+    // computed values instead; they don't apply to inline boxes, where they compute to "auto".
+    (["width", "height"] as const).forEach((prop) => {
+      const value = computed.getPropertyValue(prop);
+      if (!value || value === "auto" || computed.display === "inline") delete styles[prop];
+      else styles[prop] = value;
+    });
+
+    // rem is relative to the root font size; em to the element's own font size, except font-size itself,
+    // which is relative to the parent's
+    const px = (v) => parseFloat(v) || 16;
+    const rootSize = px(getComputedStyle(document.documentElement).fontSize);
+    const ownSize = px(computed.fontSize);
+    const parentSize = selectedElement.parentElement ? px(getComputedStyle(selectedElement.parentElement).fontSize) : rootSize;
+    const baseFor = (prop?: string) => (unit === "rem" ? rootSize : prop === "font-size" ? parentSize : ownSize);
+    const convert = (val, prop?: string) => (!val || val === "false" ? "" : convertPx(val, unit, baseFor(prop)));
+
+    const emitted = new Set<string>();
     const lines = [
       ...Object.entries(GROUPS).flatMap(([group, keys]) => {
         let section: any[] = [];
@@ -199,9 +227,11 @@ const PopupStyleInspector = ({ selectedElementType }) => {
           }
 
           Object.keys(styles).forEach((prop) => {
-            if (prop.startsWith(key)) {
+            // "background" also prefixes background-color, which has its own key: emit each property once
+            if (prop.startsWith(key) && !emitted.has(prop)) {
+              emitted.add(prop);
               const rawVal = styles[prop];
-              const val = typeof rawVal === "string" && rawVal.startsWith("#") ? minifyHex(rawVal) : convert(rawVal);
+              const val = typeof rawVal === "string" && rawVal.startsWith("#") ? minifyHex(rawVal) : convert(rawVal, prop);
               if (val) section.push({ type: "line", value: `${prop}: ${val}` });
             }
           });
@@ -211,7 +241,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
 
         return [
           // добавляю /* Box Model */,   /* Typography */ або інші заголовки
-          { type: "comment", value: `\n /* ${group} */` },
+          { type: "comment", value: `/* ${group} */` },
           ...section.filter(isValid),
         ];
       }),
@@ -223,7 +253,12 @@ const PopupStyleInspector = ({ selectedElementType }) => {
   const toggleExpand = (prop) => setExpanded((prev) => ({ ...prev, [prop]: !prev[prop] }));
   const renderIcon = (prop) =>
     expanded[prop] ? <IconCaretDownFilled size={12} /> : <IconCaretRightFilled size={12} />;
-  const copyAll = () => copy(processedLines.map((line) => line.value).join("\n"));
+  const copyAll = () => {
+    // A blank line before each section comment, as in the panel
+    copy(processedLines.map((line, i) => (line.type === "comment" && i > 1 ? `\n${line.value}` : line.value)).join("\n"));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
 
   return (
     <div className="p-3 w-full bg-white rounded-md border border-gray-200 shadow">
@@ -247,12 +282,12 @@ const PopupStyleInspector = ({ selectedElementType }) => {
             className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
             title="Copy all styles"
           >
-            Copy all
+            {copied ? "Copied!" : "Copy all"}
           </button>
         </div>
       </div>
       {processedLines.length === 0 ? (
-        <div className="text-xs text-gray-400 italic">No changed styles detected.</div>
+        <div className="text-xs text-gray-400 italic">Hover over or click an element on the page to see its CSS.</div>
       ) : (
         <pre ref={blockRef} className="bg-gray-50 text-xs font-mono p-2 rounded border border-gray-100">
           {processedLines.map((line, i) => {
@@ -295,6 +330,14 @@ const PopupStyleInspector = ({ selectedElementType }) => {
                   title="Click to copy"
                 >
                   <RenderLineWithColor lineValue={line.value} />
+                </div>
+              );
+            }
+
+            if (line.type === "comment") {
+              return (
+                <div key={i} data-type="comment" className={`px-1 py-0.5 text-gray-400 cursor-default ${i > 1 ? "mt-2" : ""}`}>
+                  {line.value}
                 </div>
               );
             }
