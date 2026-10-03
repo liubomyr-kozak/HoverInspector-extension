@@ -1,4 +1,5 @@
 import { isButtonElement } from "./isButtonElement";
+import { calculateContrastRatio, getEffectiveBackgroundColor } from "./colorAnalysis";
 
 /**
  * Helper function to safely get className as a string, handling both string and SVGAnimatedString
@@ -101,18 +102,24 @@ export const checkElementIssues = (element: Element): { category: ElementCategor
   }
   
   // Check for missing labels on form elements
-  if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement) {
+  const isUnlabelledInputType =
+    element instanceof HTMLInputElement && ['hidden', 'submit', 'button', 'reset', 'image'].includes(element.type);
+  if (
+    !isUnlabelledInputType &&
+    (element instanceof HTMLInputElement || element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement)
+  ) {
     const id = element.getAttribute('id');
     if (id) {
       // Check if there's a label associated with this input
-      const hasLabel = document.querySelector(`label[for="${id}"]`) !== null;
+      // Ids can contain characters that are special in selectors (e.g. "a:b", "1x")
+      const hasLabel = document.querySelector(`label[for="${CSS.escape(id)}"]`) !== null || element.closest('label') !== null;
       if (!hasLabel && !element.hasAttribute('aria-label') && !element.hasAttribute('aria-labelledby')) {
         return {
           category: 'a11y-missing-label',
           details: 'Form element is missing an associated label'
         };
       }
-    } else if (!element.hasAttribute('aria-label') && !element.hasAttribute('aria-labelledby')) {
+    } else if (!element.hasAttribute('aria-label') && !element.hasAttribute('aria-labelledby') && !element.closest('label')) {
       return {
         category: 'a11y-missing-label',
         details: 'Form element is missing an associated label'
@@ -161,18 +168,21 @@ export const checkElementIssues = (element: Element): { category: ElementCategor
     }
   }
   
-  // Check for contrast issues (simplified check)
-  if (element.textContent && element.textContent.trim() !== '') {
-    const backgroundColor = style.backgroundColor;
-    const color = style.color;
-    
-    // Very simplified contrast check - in a real implementation, you would use a proper contrast ratio calculation
-    if (backgroundColor === color || 
-        (backgroundColor === 'rgba(0, 0, 0, 0)' && color === 'rgb(255, 255, 255)') ||
-        (backgroundColor === 'rgb(255, 255, 255)' && color === 'rgb(255, 255, 255)')) {
+  // Check for contrast issues on elements that render text themselves
+  const hasOwnText = Array.from(element.childNodes).some(
+    (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+  );
+  if (hasOwnText) {
+    // Transparent backgrounds show their ancestors' background
+    const background = getEffectiveBackgroundColor(element);
+    const ratio = calculateContrastRatio(style.color, background);
+    const fontSize = parseFloat(style.fontSize) || 16;
+    const isLargeText = fontSize >= 24 || (fontSize >= 18.66 && parseInt(style.fontWeight) >= 700);
+    const required = isLargeText ? 3 : 4.5;
+    if (ratio < required) {
       return {
         category: 'a11y-contrast-issue',
-        details: 'Text has poor contrast with its background'
+        details: `Text has poor contrast with its background (${ratio.toFixed(2)}:1, needs ${required}:1)`
       };
     }
   }
@@ -180,14 +190,12 @@ export const checkElementIssues = (element: Element): { category: ElementCategor
   return null;
 };
 
+/**
+ * Categorizes an element by what it is (button, input, container...).
+ * Accessibility/design issues are reported separately by checkElementIssues.
+ */
 export const categorizeElement = (element: Element | null): ElementCategory | null => {
   if (!element) return null;
-  
-  // Check for accessibility and design issues first
-  const issues = checkElementIssues(element);
-  if (issues) {
-    return issues.category;
-  }
   
   // Check if it's a button first
   if (isButtonElement(element)) {
@@ -533,21 +541,18 @@ export const categorizeAllElements = (): CategorizedElement[] => {
   const categorizedElements: CategorizedElement[] = [];
   
   allElements.forEach(element => {
-    // Check for accessibility and design issues first
-    const issues = checkElementIssues(element);
-    if (issues) {
-      categorizedElements.push({ 
-        element, 
-        category: issues.category,
-        issueDetails: issues.details
-      });
-      return; // Skip further categorization for this element
-    }
-    
-    // If no issues, categorize by element type
+    if (element.tagName.toLowerCase() === 'hover-inspector') return; // the extension's own UI
+
+    // Categorize by element type; issues no longer replace the category, they are attached as details
     const category = categorizeElement(element);
-    if (category) {
-      categorizedElements.push({ element, category });
+    const issues = checkElementIssues(element);
+
+    if (category || issues) {
+      categorizedElements.push({
+        element,
+        category: category ?? 'other',
+        ...(issues ? { issueDetails: issues.details } : {}),
+      });
     }
   });
   
