@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { arrayMove, rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 import {
@@ -91,6 +91,19 @@ const Launcher: React.FC = () => {
     setMenuOpen(false);
   };
 
+  // Esc closes the open menu first; marking the event handled keeps the global Esc shortcut from
+  // switching the whole extension off at the same time
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [menuOpen]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -118,7 +131,7 @@ const Launcher: React.FC = () => {
           <SectionTitle>Features List</SectionTitle>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/*//@ts-ignore*/}
-            <SortableContext items={normalizedIconOrder} strategy={verticalListSortingStrategy}>
+            <SortableContext items={normalizedIconOrder} strategy={rectSortingStrategy}>
               <FeaturesGrid>
                 {normalizedIconOrder.map((id) => {
                   const item = ICON_ITEMS.find((i) => i.id === id);
@@ -211,6 +224,8 @@ const Launcher: React.FC = () => {
                 <IconButton
                   key={id}
                   $active={isActive}
+                  aria-label={item.title}
+                  aria-pressed={isActive}
                   onClick={() => toggleFeature(id)}
                 >
                   <Icon />
@@ -222,13 +237,15 @@ const Launcher: React.FC = () => {
           content={content}
           zIndex={1150}
           placement="topRight"
+          // Shift the menu sideways to keep it inside narrow windows
+          align={{ overflow: { adjustY: true, shiftX: true } }}
           trigger="click"
           open={menuOpen}
           onOpenChange={setMenuOpen}
           // @ts-ignore
           getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
         >
-          <IconButton $active={false} onClick={(e) => e.stopPropagation()}>
+          <IconButton $active={false} aria-label="More tools and settings" onClick={(e) => e.stopPropagation()}>
             <IconDotsVertical />
           </IconButton>
         </Popover>

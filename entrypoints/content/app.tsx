@@ -53,7 +53,8 @@ export const App = ({ shadowRoot }) => {
       if (!existingStyle) {
         const styleElement = document.createElement("style");
         styleElement.id = "react-toastify-styles";
-        styleElement.textContent = toastifyStyles;
+        // `:root` never matches inside a shadow root; the toast colour variables have to sit on the host
+        styleElement.textContent = toastifyStyles.replace(/:root\b/g, ":host");
         shadowRoot.appendChild(styleElement);
       }
     }

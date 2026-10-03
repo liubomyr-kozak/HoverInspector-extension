@@ -52,7 +52,7 @@ export const BecomeASponsor = styled.a`
   cursor: pointer;
   //mask: linear-gradient(to top, #000 1%, 0%, #0000 8%, 0%, #000 10%, 0%, #0000 16%, 0%, #000 19%, 0%, #0000 24%, 0%, #000 28%, 0%, #0000 32%, 0%, #000 37%, 0%, #0000 40%, 0%, #000 46%, 0%, #0000 48%, 0%, #000 55%, 0%, #0000 56%, 0%, #000 57%);
   padding: 16px;
-  inline-size: 5rem;
+  inline-size: 80px;
   aspect-ratio: 1;
   justify-self: center;
   width: 100%;
