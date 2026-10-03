@@ -4,7 +4,7 @@ import { IconAlertTriangle, IconRefresh } from "@tabler/icons-react";
 import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import { EmptyState } from "@entrypoints/shared/components/EmptyState";
 import { summarize, type ThemeMatch } from "../utils/themeDiff";
-import { usePalette, type PaletteTab } from "../PaletteContext";
+import { PALETTE_TAB_BAR_HEIGHT_VAR, usePalette, type PaletteTab } from "../PaletteContext";
 import { MatchBadge } from "./MatchBadge";
 import { TokenDetailPanel, type TokenDetail } from "./TokenDetailPanel";
 
@@ -40,6 +40,9 @@ export interface TokenGroup {
 
 /** Side by side above this width, otherwise the details open under the group of the selected value */
 const WIDE_MIN = 600;
+/** The panel body's padding: the tab bar sticks this far above the body's top edge, the card under it */
+const PANEL_PADDING = 16;
+const STICKY_CARD_TOP = `calc(var(${PALETTE_TAB_BAR_HEIGHT_VAR}, 0px) - ${PANEL_PADDING}px)`;
 
 const useWidth = (ref: React.RefObject<HTMLElement | null>) => {
   const [width, setWidth] = useState(0);
@@ -52,6 +55,22 @@ const useWidth = (ref: React.RefObject<HTMLElement | null>) => {
     return () => observer.disconnect();
   }, [ref]);
   return width;
+};
+
+/** Height of the nearest scrolling ancestor (the panel body), so the sticky card fits in what is visible */
+const useScrollParentHeight = (ref: React.RefObject<HTMLElement | null>) => {
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    let parent = ref.current?.parentElement ?? null;
+    while (parent && !/(auto|scroll)/.test(getComputedStyle(parent).overflowY)) parent = parent.parentElement;
+    if (!parent) return;
+    const scroller = parent;
+    setHeight(scroller.clientHeight);
+    const observer = new ResizeObserver(() => setHeight(scroller.clientHeight));
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
 };
 
 const entryLabel = (entry: TokenEntry) =>
@@ -214,6 +233,7 @@ export const TokenTabLayout: React.FC<TokenTabLayoutProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   const wide = useWidth(containerRef) >= WIDE_MIN;
+  const scrollerHeight = useScrollParentHeight(containerRef);
 
   const allEntries = useMemo(() => groups.flatMap((g) => g.entries), [groups]);
   const visibleGroups = useMemo(() => {
@@ -233,15 +253,16 @@ export const TokenTabLayout: React.FC<TokenTabLayoutProps> = ({
   const selected = allEntries.find((e) => e.id === selectedId) || null;
   const detail = selected ? getDetail(selected) : null;
 
-  // Bring the details into view when a value is picked
+  // Bring the details into view when a value is picked; side by side the card is sticky and already in view
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || wide) return;
     const frame = requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
     return () => cancelAnimationFrame(frame);
   }, [selectedId, wide]);
 
   const panel = detail && (
-    <div ref={detailRef} className={wide ? "sticky top-0" : "my-1"}>
+    // scrollMarginTop: scrolled into view below the sticky tab bar, not under it
+    <div ref={detailRef} className={wide ? undefined : "my-1"} style={{ scrollMarginTop: STICKY_CARD_TOP }}>
       <TokenDetailPanel detail={detail} themeActive={!!theme} onClose={() => setSelectedId(null)} />
     </div>
   );
@@ -303,7 +324,20 @@ export const TokenTabLayout: React.FC<TokenTabLayoutProps> = ({
                 </div>
               ))}
             </div>
-            {wide && panel && <div style={{ flex: "0 0 300px", maxWidth: "45%" }}>{panel}</div>}
+            {wide && panel && (
+              // Stays in view under the sticky tab bar while the values scroll; scrolls itself when taller
+              <div
+                className="sticky self-start overflow-y-auto"
+                style={{
+                  flex: "0 0 300px",
+                  maxWidth: "45%",
+                  top: STICKY_CARD_TOP,
+                  maxHeight: scrollerHeight ? `calc(${scrollerHeight}px - var(${PALETTE_TAB_BAR_HEIGHT_VAR}, 0px))` : undefined,
+                }}
+              >
+                {panel}
+              </div>
+            )}
           </div>
           {!wide && panel && !selectedGroupKey && panel}
         </>

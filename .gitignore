@@ -32,6 +32,8 @@ playground
 
 # Documentation files
 **/docs/
+# ...except the repo's own guides at the root
+!/docs/
 **/*implementation*.md
 **/*summary*.md
 **/*implementation*.js

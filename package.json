@@ -18,6 +18,7 @@
     "build:safari": "wxt build -b safari",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify": "bash scripts/verify.sh",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src",
     "lint:custom": "eslint",
