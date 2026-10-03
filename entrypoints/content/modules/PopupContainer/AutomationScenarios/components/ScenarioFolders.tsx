@@ -82,38 +82,67 @@ export const FolderNameInput: React.FC<{
   );
 };
 
-/**
- * Small toolbar above the list: a button that turns into a name field to create a folder
- */
-export const NewFolderBar: React.FC<{ onCreate: (title: string) => Promise<string | null> }> = ({ onCreate }) => {
-  const [creating, setCreating] = useState(false);
+/** Shared row geometry so folder rows line up with the scenario rows (12px side padding, 36px tall) */
+const folderRow = "flex items-center gap-1 pl-2 pr-3 min-h-9 border-b border-gray-100 dark:border-gray-700";
 
-  return (
-    <div className="flex items-center justify-end min-h-[28px] mb-1">
-      {creating ? (
-        <FolderNameInput
-          placeholder="New folder name"
-          onSubmit={async (title) => {
-            const error = await onCreate(title);
-            if (!error) setCreating(false);
-            return error;
-          }}
-          onCancel={() => setCreating(false)}
-        />
-      ) : (
-        <button
-          type="button"
-          className="flex items-center gap-1 px-2 h-7 rounded text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700"
-          onClick={() => setCreating(true)}
-          title="Create a folder"
-        >
-          <IconFolderPlus size={16} />
-          New folder
-        </button>
+/**
+ * Header of the scenario list: what the list holds on the left, the folder action on the right. This is the
+ * one fixed place for creating folders, so the action never floats on its own.
+ */
+export const ScenarioListToolbar: React.FC<{
+  scenarioCount: number;
+  folderCount: number;
+  creating: boolean;
+  onNewFolder: () => void;
+}> = ({ scenarioCount, folderCount, creating, onNewFolder }) => (
+  <div
+    className="flex items-center justify-between gap-2 h-9 pl-3 pr-1 border-b border-gray-200 dark:border-gray-700"
+    data-testid="scenario-list-toolbar"
+  >
+    <span className="flex items-center gap-2 min-w-0 text-xs text-gray-500 dark:text-gray-400">
+      <span className="font-semibold uppercase tracking-wide">Scenarios</span>
+      <span className="tabular-nums">{scenarioCount}</span>
+      {folderCount > 0 && (
+        <span className="truncate">
+          · {folderCount} {folderCount === 1 ? "folder" : "folders"}
+        </span>
       )}
-    </div>
-  );
-};
+    </span>
+    <button
+      type="button"
+      className="flex shrink-0 items-center gap-1 px-2 h-7 rounded text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700"
+      onClick={onNewFolder}
+      disabled={creating}
+      title="Create a folder"
+    >
+      <IconFolderPlus size={16} />
+      New folder
+    </button>
+  </div>
+);
+
+/**
+ * The name field for a new folder, drawn as a folder row at the top of the folders so it appears where the
+ * folder will be.
+ */
+export const NewFolderRow: React.FC<{
+  onCreate: (title: string) => Promise<string | null>;
+  onDone: () => void;
+}> = ({ onCreate, onDone }) => (
+  <div className={`${folderRow} py-1 bg-gray-50 dark:bg-gray-800`} data-testid="new-folder-row">
+    <span className="w-6 shrink-0" />
+    <IconFolderPlus size={16} className="shrink-0 text-gray-500 mr-1" />
+    <FolderNameInput
+      placeholder="New folder name"
+      onSubmit={async (title) => {
+        const error = await onCreate(title);
+        if (!error) onDone();
+        return error;
+      }}
+      onCancel={onDone}
+    />
+  </div>
+);
 
 /**
  * Header row of a folder in the scenario list: collapse toggle, name, scenario count, rename and delete
@@ -133,7 +162,8 @@ export const FolderHeader: React.FC<{
 
   if (renaming) {
     return (
-      <div className="flex items-center gap-1 px-1 py-1 border-b border-gray-100 dark:border-gray-700">
+      <div className={`${folderRow} py-1 bg-gray-50 dark:bg-gray-800`}>
+        <span className="w-6 shrink-0" />
         <FolderNameInput
           initialValue={group.title}
           onSubmit={async (title) => {
@@ -149,7 +179,7 @@ export const FolderHeader: React.FC<{
 
   return (
     <div
-      className="flex items-center gap-1 px-1 h-8 border-b border-gray-100 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 select-none"
+      className={`${folderRow} select-none ${isLoose ? "" : "bg-gray-50 dark:bg-gray-800"}`}
       data-folder-id={group.folderId || "none"}
     >
       {isLoose ? (
@@ -167,13 +197,17 @@ export const FolderHeader: React.FC<{
         </button>
       )}
       <span
-        className={`flex items-center gap-1.5 min-w-0 flex-1 text-[13px] font-medium text-gray-700 dark:text-gray-200 ${isLoose ? "" : "cursor-pointer"}`}
+        className={`flex items-center gap-2 min-w-0 flex-1 text-[13px] ${
+          isLoose ? "text-gray-500 dark:text-gray-400" : "font-medium text-gray-700 dark:text-gray-200 cursor-pointer"
+        }`}
         onClick={isLoose ? undefined : onToggle}
         title={group.title}
       >
         <FolderIcon size={16} className="shrink-0 text-gray-500" />
         <span className="truncate">{group.title}</span>
-        <span className="shrink-0 text-xs font-normal text-gray-400">{count}</span>
+        <span className="shrink-0 min-w-[20px] px-1.5 rounded-full bg-gray-200/70 text-center text-[11px] leading-[18px] font-normal tabular-nums text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+          {count}
+        </span>
       </span>
       {!isLoose && (
         <>
@@ -221,7 +255,7 @@ export const FolderHeader: React.FC<{
  * Shown inside an open folder that has no scenarios yet
  */
 export const EmptyFolderHint: React.FC = () => (
-  <div className="px-3 py-2 text-xs text-gray-400 border-b border-gray-100 dark:border-gray-700">
+  <div className="pl-3 pr-3 py-2 text-xs text-gray-500 border-b border-gray-100 dark:border-gray-700 dark:text-gray-400">
     Empty. Use a scenario's ⋮ menu → Move to folder.
   </div>
 );
