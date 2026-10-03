@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
@@ -90,6 +90,19 @@ const Launcher: React.FC = () => {
     }
     setMenuOpen(false);
   };
+
+  // Esc closes the open menu first; marking the event handled keeps the global Esc shortcut from
+  // switching the whole extension off at the same time
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [menuOpen]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
