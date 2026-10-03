@@ -6,7 +6,7 @@ import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon";
 
 import HoverSelectedInfo from "@entrypoints/content/modules/SettingsIconBox/HoverSelectedInfo.tsx";
 import { onUpdateEventPreventDefaultWatcher } from "@entrypoints/content/store/app/saga-action/app.saga.action";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import {
   PortalModalHeader,
@@ -107,7 +107,7 @@ export const ElementInspectorPopup = () => {
       <PortalModalHeader portalId={HeaderPortalId.ELEMENT_INSPECTOR}>
         <FeatureTitle>
           <FeatureIcon icon={INSPECTOR.icon} isBetta />
-          {INSPECTOR.title}
+          <FeatureTitleText title={INSPECTOR.title}>{INSPECTOR.title}</FeatureTitleText>
 
           <PortalModalHeaderButtons>
             <Popover

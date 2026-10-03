@@ -48,7 +48,7 @@ export const PortalModalHeader: React.FC<{
         // Create a new portal element if it doesn't exist
         const portalElement = document.createElement("div");
         portalElement.dataset.portalId = portalId; // Для ідентифікації
-        portalElement.className = "w-full";
+        portalElement.className = "w-full min-w-0";
         container.appendChild(portalElement);
         setPortalContainer(portalElement);
 
@@ -76,10 +76,11 @@ export const PortalModalHeaderButtonsWrapper = styled.div`
   display: flex;
   align-items: center;
   margin-left: auto;
-  margin-right: 1.5rem;
+  flex-shrink: 0;
+  margin-right: 0.75rem;
   border-right-width: 1px;
   border-style: solid;
-  padding-right: 1.25rem;
+  padding-right: 0.75rem;
 `;
 
 export const PortalModalHeaderButtons: React.FC<{

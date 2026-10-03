@@ -22,7 +22,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import {
   PortalId,
   ScenarioPortalFooterButtons,
@@ -346,7 +346,7 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
         <PortalModalHeader portalId={HeaderPortalId.CSS_SNAPSHOT}>
           <FeatureTitle>
             <FeatureIcon icon={CSS_SNAPSHOT.icon} isBetta />
-            {CSS_SNAPSHOT.title}
+            <FeatureTitleText title={CSS_SNAPSHOT.title}>{CSS_SNAPSHOT.title}</FeatureTitleText>
 
             <PortalModalHeaderButtons>
               <div className="flex gap-2">

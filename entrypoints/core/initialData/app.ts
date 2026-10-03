@@ -8,7 +8,7 @@ export const appSettingsInitial = {
   featurePopupPosition: {
     x: 16,
     y: 40, // below the Page Ruler strip
-    width: 380,
+    width: 440,
     height: 560,
   },
   preventDefault: false,

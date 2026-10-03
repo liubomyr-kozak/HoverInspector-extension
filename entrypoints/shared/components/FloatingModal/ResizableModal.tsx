@@ -193,14 +193,14 @@ export function ResizableModal({
           {/*<div className={"flex flex-col h-full" + (!title ? " modal-drag-handle" : "")}>*/}
           {/* Header - Drag Handle */}
           {title && (
-            <div className="modal-drag-handle select-none flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
-              <div className="flex items-center gap-2 w-full">
-                <TbGripVertical className="w-4 h-4 text-muted-foreground" />
+            <div className="modal-drag-handle select-none flex items-center justify-between gap-1 px-3 py-3 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
+              <div className="flex items-center gap-2 w-full min-w-0">
+                <TbGripVertical className="w-4 h-4 shrink-0 text-muted-foreground" />
                 {title}
               </div>
               <button
                 onClick={handleCloseClick}
-                className="modal-drag-handle-close-button h-8 w-8 p-0 hover:bg-accent z-10 relative"
+                className="modal-drag-handle-close-button shrink-0 flex items-center justify-center h-8 w-8 p-0 hover:bg-accent z-10 relative"
                 style={{ pointerEvents: "auto", cursor: "pointer" }}
               >
                 <IoCloseSharp size={"20px"} />

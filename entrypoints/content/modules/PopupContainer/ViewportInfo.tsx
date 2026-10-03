@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { Button as AntButton, Card as AntCard, Tabs, Tag } from "antd";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import {
   PortalModalHeader,
   HeaderPortalId,
@@ -138,7 +138,7 @@ export default function ViewportInfoPanel() {
       <PortalModalHeader portalId={HeaderPortalId.VIEWPORT_INFO}>
         <FeatureTitle>
           <FeatureIcon icon={RULER.icon} isBetta />
-          {RULER.title}
+          <FeatureTitleText title={RULER.title}>{RULER.title}</FeatureTitleText>
         </FeatureTitle>
       </PortalModalHeader>
 

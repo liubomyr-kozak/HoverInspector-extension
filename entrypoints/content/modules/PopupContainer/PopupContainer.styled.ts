@@ -144,14 +144,26 @@ export const HideButton = styled.button`
 `;
 
 export const FeatureTitle = styled.div`
-  font-size: 15px;
+  font-size: 13px;
   font-weight: bold;
+  letter-spacing: 0.02em;
   color: #888;
   text-transform: uppercase;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-width: 0;
+`;
+
+// Single-line tool name in the panel header; long names end in an ellipsis
+// instead of pushing the header to three lines
+export const FeatureTitleText = styled.span`
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 export const FeatureContainer = styled.div.attrs({
@@ -169,6 +181,7 @@ export const HeaderContainer = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-width: 0;
   gap: 16px;
 `;
 
@@ -189,6 +202,7 @@ export const HeaderButtonsContainer = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
+  min-width: 0;
 `;
 
 export const MinimizeButton = styled.button<{ isMinimized?: boolean }>`

@@ -3,7 +3,7 @@ import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOve
 import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow } from "@tabler/icons-react";
 import { Tabs } from "antd";
 
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import TypographyRules from "@entrypoints/content/modules/SettingsIconBox/components/TypographyRules.tsx";
 import {
   PortalModalHeader,
@@ -165,7 +165,7 @@ export const AnalyzePageUI = () => {
       <PortalModalHeader portalId={HeaderPortalId.ANALYZE_PAGE}>
         <FeatureTitle>
           <FeatureIcon icon={ANALYZE_PAGE.icon} isBetta />
-          {ANALYZE_PAGE.title}
+          <FeatureTitleText title={ANALYZE_PAGE.title}>{ANALYZE_PAGE.title}</FeatureTitleText>
         </FeatureTitle>
       </PortalModalHeader>
 

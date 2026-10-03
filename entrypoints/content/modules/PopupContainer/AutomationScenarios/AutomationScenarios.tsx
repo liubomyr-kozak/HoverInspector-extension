@@ -31,7 +31,7 @@ import { RecordingText } from "./styles";
 import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationUserActionsHandler.tsx";
 import { PiVinylRecordDuotone } from "react-icons/pi";
 import { HeaderPortalId, PortalModalHeader, PortalModalHeaderButtons } from "./components/ScenarioPortalHeaderButtons";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { AUTOMATION } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { TbWindowMinimize } from "react-icons/tb";
@@ -111,7 +111,7 @@ export const AutomationScenarios: React.FC = () => {
       <PortalModalHeader portalId={HeaderPortalId.SCENARIOS_TAB}>
         <FeatureTitle>
           <FeatureIcon icon={AUTOMATION.icon} isBetta />
-          {AUTOMATION.title}
+          <FeatureTitleText title={AUTOMATION.title}>{AUTOMATION.title}</FeatureTitleText>
           {recording && (
             <RecordingText>
               rec

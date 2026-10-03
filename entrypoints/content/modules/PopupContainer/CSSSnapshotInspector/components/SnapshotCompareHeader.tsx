@@ -18,7 +18,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CONVERT_TOOLS, CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { Tooltip } from "@/entrypoints/shared/components/Tooltip";
 
 const HeaderContent = styled.div`
@@ -213,7 +213,7 @@ export const SnapshotCompareHeader = memo<SnapshotCompareHeaderProps>(
             <Tooltip title={"Back to list"}>
               <FeatureIcon icon={IconArrowLeft} onClick={onBackToList} />
             </Tooltip>
-            {CSS_SNAPSHOT.title} (A/B Compare)
+            <FeatureTitleText title={`${CSS_SNAPSHOT.title} (A/B Compare)`}>{CSS_SNAPSHOT.title} (A/B Compare)</FeatureTitleText>
             <PortalModalHeaderButtons>
               <ViewControls>
                 <Tooltip title="Diff view">

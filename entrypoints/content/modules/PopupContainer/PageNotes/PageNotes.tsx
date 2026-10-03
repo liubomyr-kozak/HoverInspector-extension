@@ -24,7 +24,7 @@ import {
   PortalModalHeader,
   PortalModalHeaderButtons,
 } from "../AutomationScenarios/components/ScenarioPortalHeaderButtons";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { PAGE_NOTES } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { TbWindowMinimize } from "react-icons/tb";
@@ -352,7 +352,7 @@ export const PageNotes: React.FC = () => {
         <PortalModalHeader portalId={HeaderPortalId.PAGE_NOTES}>
           <FeatureTitle>
             <FeatureIcon icon={PAGE_NOTES.icon} />
-            {PAGE_NOTES.title}
+            <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
             <PortalModalHeaderButtons>
               <div
                 className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
@@ -379,7 +379,7 @@ export const PageNotes: React.FC = () => {
         <PortalModalHeader portalId={HeaderPortalId.PAGE_NOTES}>
           <FeatureTitle>
             <FeatureIcon icon={PAGE_NOTES.icon} />
-            {PAGE_NOTES.title}
+            <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
             <PortalModalHeaderButtons>
               <div
                 className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
@@ -421,7 +421,7 @@ export const PageNotes: React.FC = () => {
       <PortalModalHeader portalId={HeaderPortalId.PAGE_NOTES}>
         <FeatureTitle>
           <FeatureIcon icon={PAGE_NOTES.icon} />
-          {PAGE_NOTES.title}
+          <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
             {/* Note Visibility & Attachment buttons */}
             <div className="flex items-center gap-1 mr-2">

@@ -6,7 +6,7 @@ import { targetColorStringToHex } from "@entrypoints/content/modules/Popup/helpe
 import BestColorPicker from "react-best-gradient-color-picker";
 import styled from "styled-components";
 import { useDispatch, useSelector } from "react-redux";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { useDebouncedCallback } from "@entrypoints/shared/utils/useDebouncedCallback.ts";
 import { addColorToHistory } from "@entrypoints/content/store/app/app.slice.ts";
@@ -180,7 +180,7 @@ const ColorPicker = () => {
       <PortalHeaderButtons portalId={HeaderPortalId.COLOR_PICKER}>
         <FeatureTitle className="flex items-center">
           <FeatureIcon icon={PICKER.icon} isBetta />
-          {PICKER.title}
+          <FeatureTitleText title={PICKER.title}>{PICKER.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
             {colorHistory.length > 0 && (
               <HistoryButton onClick={toggleHistory} title="Color History" style={{ position: "relative" }}>

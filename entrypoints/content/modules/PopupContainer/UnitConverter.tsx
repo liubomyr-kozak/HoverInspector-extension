@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Col, Divider, InputNumber, List, Row, Select } from "antd";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import copy from "copy-to-clipboard";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 import { IconCopy, IconTrash } from "@tabler/icons-react";
@@ -210,7 +210,7 @@ export const UnitConverter: React.FC = () => {
       <PortalModalHeader portalId={HeaderPortalId.UNIT_CONVERTER}>
         <FeatureTitle>
           <FeatureIcon icon={CONVERT_TOOLS.icon} isBetta />
-          {CONVERT_TOOLS.title}
+          <FeatureTitleText title={CONVERT_TOOLS.title}>{CONVERT_TOOLS.title}</FeatureTitleText>
         </FeatureTitle>
       </PortalModalHeader>
 

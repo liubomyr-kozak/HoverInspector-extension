@@ -6,7 +6,7 @@ import {
   PortalModalHeader,
   PortalModalHeaderButtons,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { NOTE_TAKING_TOOLS } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { onToggleFeatureMinimized } from "@entrypoints/content/store/app/saga-action/app.saga.action";
@@ -26,7 +26,7 @@ export const NoteTakingToolsIntegration: React.FC = () => {
       <PortalModalHeader portalId={HEADER_PORTAL_ID}>
         <FeatureTitle>
           <FeatureIcon icon={NOTE_TAKING_TOOLS.icon} />
-          {NOTE_TAKING_TOOLS.title}
+          <FeatureTitleText title={NOTE_TAKING_TOOLS.title}>{NOTE_TAKING_TOOLS.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
             <div
               className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"

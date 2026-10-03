@@ -11,7 +11,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { ScenarioPortalFooterButtons } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalFooterButtons.tsx";
 import { AutomationFooterContainer } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/styles.ts";
@@ -299,7 +299,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
             <Tooltip title={"Back to list"}>
               <FeatureIcon icon={IconArrowLeft} onClick={onBackToList} />
             </Tooltip>
-            {CSS_SNAPSHOT.title} (Page Details)
+            <FeatureTitleText title={`${CSS_SNAPSHOT.title} (Page Details)`}>{CSS_SNAPSHOT.title} (Page Details)</FeatureTitleText>
           </FeatureTitle>
         </PortalModalHeader>
 
