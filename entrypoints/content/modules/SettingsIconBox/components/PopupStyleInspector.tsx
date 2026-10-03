@@ -313,8 +313,9 @@ const PopupStyleInspector = ({ selectedElementType }) => {
   return (
     <div className="p-3 w-full bg-white rounded-md border border-gray-200 shadow">
       <div className="flex justify-between items-center gap-2 mb-2 flex-wrap">
-        <span className="text-sm font-semibold">CSS output</span>
-        <div className="flex gap-1 ml-auto">
+        <h3 className="m-0 text-sm font-semibold">CSS output</h3>
+        {/* Wraps under the heading in a narrow panel; the format select is the one that shrinks */}
+        <div className="flex gap-1 ml-auto min-w-0 max-w-full">
           <select
             value={unit}
             onChange={(e) => setUnit(e.target.value)}
