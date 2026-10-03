@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Col, Divider, InputNumber, List, Row, Select } from "antd";
+import { Button, Col, Divider, InputNumber, List, Row, Select, Space } from "antd";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import copy from "copy-to-clipboard";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
@@ -26,6 +26,9 @@ interface ConversionHistoryItem {
 
 // Kept in extension storage so it follows the user across sites and never touches the page's own localStorage
 const HISTORY_STORAGE_KEY = "unitConverterHistory";
+
+const getPopupContainer = () =>
+  (document.querySelector("hover-inspector")!.shadowRoot as unknown as HTMLElement)?.querySelector("html > body") as HTMLElement;
 
 // rem is relative to the page's root font size, which is not always 16px
 const getRootFontSize = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -222,40 +225,39 @@ export const UnitConverter: React.FC = () => {
         </FeatureTitle>
       </PortalModalHeader>
 
-      <Row gutter={12} style={{ marginBottom: 16 }}>
-        <Col span={10}>
-          <InputNumber
-            value={inputValue}
-            onChange={(v) => setInputValue(v ?? 0)}
-            style={{ width: "100%" }}
-            addonAfter={inputUnit}
-          />
+      {/* The value and its unit form one control; the unit is chosen in the select only, not repeated */}
+      <Row gutter={8} align="middle" wrap={false} style={{ marginBottom: 16 }}>
+        <Col flex="auto">
+          <Space.Compact block>
+            <InputNumber
+              value={inputValue}
+              onChange={(v) => setInputValue(v ?? 0)}
+              style={{ width: "100%" }}
+              aria-label="Value"
+            />
+            <Select
+              value={inputUnit}
+              onChange={setInputUnit}
+              options={unitOptions}
+              style={{ width: 84, flex: "none" }}
+              aria-label="From unit"
+              // @ts-ignore
+              getPopupContainer={getPopupContainer}
+            />
+          </Space.Compact>
         </Col>
-        <Col span={6}>
-          <Select
-            value={inputUnit}
-            onChange={setInputUnit}
-            options={unitOptions}
-            style={{ width: "100%" }}
-            // @ts-ignore
-            getPopupContainer={() =>
-              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")
-            }
-          />
-        </Col>
-        <Col span={2} style={{ textAlign: "center", lineHeight: "32px" }}>
+        <Col flex="none" className="text-gray-500" style={{ fontSize: 16, lineHeight: "32px" }} aria-hidden>
           =
         </Col>
-        <Col span={6}>
+        <Col flex="84px">
           <Select
             value={outputUnit}
             onChange={setOutputUnit}
             options={unitOptions}
             style={{ width: "100%" }}
+            aria-label="To unit"
             // @ts-ignore
-            getPopupContainer={() =>
-              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")
-            }
+            getPopupContainer={getPopupContainer}
           />
         </Col>
       </Row>
@@ -294,7 +296,8 @@ export const UnitConverter: React.FC = () => {
                   copy(`${outputValue}${outputUnit}`);
                 }}
               >
-                {outputValue} {outputUnit}
+                {outputValue}
+                {outputUnit}
               </span>
             </Tooltip>
           </div>

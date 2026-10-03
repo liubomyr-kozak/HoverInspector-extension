@@ -5,7 +5,10 @@ import React from "react";
  * note text. These helpers show that formatting instead of the raw markers. They build React elements
  * (never HTML), so note text can't inject markup.
  */
-const INLINE_PATTERN = /\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|<u>([^<\n]+)<\/u>|\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+// Link URLs may contain one level of balanced parentheses (`javascript:alert(1)`, wiki links), so the
+// whole link is consumed and no stray ")" is left behind after a blocked or allowed link.
+const INLINE_PATTERN =
+  /\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|<u>([^<\n]+)<\/u>|\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g;
 
 const isSafeUrl = (url: string) => /^(https?:|mailto:)/i.test(url);
 

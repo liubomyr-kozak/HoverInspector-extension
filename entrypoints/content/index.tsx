@@ -154,9 +154,129 @@ export default defineContentScript({
     };
     cancelPageZoom();
     window.addEventListener("resize", cancelPageZoom);
+    keepUiOutOfContainingBlocks(ui.shadowHost, ctx);
     ctx.onInvalidated(() => window.removeEventListener("resize", cancelPageZoom));
   },
 });
+
+/**
+ * Everything in the UI is position: fixed, which breaks as soon as an ancestor of the host creates a
+ * containing block for fixed elements: a transform/filter/perspective/contain on <html> (the anchor
+ * fallback below can't move above that) would make the toolbar and panel scroll off with the page.
+ *
+ * On such pages the host is shown as a manual popover in the browser's top layer, where it is laid out
+ * against the viewport whatever its ancestors do (and paints above every page z-index). Other pages
+ * keep the plain host, so page-anchored content in it (sticky notes) keeps scrolling natively with the
+ * page. The UA styles for [popover] (centered, padded, bordered, scrollable, opaque) are cancelled with
+ * inline !important so the host stays the 0x0 overflow-visible box WXT expects, also against page
+ * rules such as `[popover] { ... !important }`.
+ */
+function keepUiOutOfContainingBlocks(host: HTMLElement, ctx: { onInvalidated: (cb: () => void) => void }) {
+  if (typeof host.showPopover !== "function") return;
+
+  const topLayerStyles: Record<string, string> = {
+    position: "fixed",
+    inset: "0 auto auto 0",
+    margin: "0",
+    padding: "0",
+    border: "0",
+    width: "0",
+    height: "0",
+    "min-width": "0",
+    "min-height": "0",
+    "max-width": "none",
+    "max-height": "none",
+    overflow: "visible",
+    background: "transparent",
+    color: "inherit",
+    display: "block",
+    opacity: "1",
+    visibility: "visible",
+    transform: "none",
+    translate: "none",
+    scale: "none",
+    rotate: "none",
+    filter: "none",
+    clip: "auto",
+    "clip-path": "none",
+    contain: "none",
+  };
+  const plainCssText = host.style.cssText;
+  let inTopLayer = false;
+
+  const show = () => {
+    if (!inTopLayer || !host.isConnected || host.matches(":popover-open")) return;
+    try {
+      host.showPopover();
+    } catch {
+      // In a document that can't show popovers: stays a regular fixed overlay.
+    }
+  };
+
+  const enter = () => {
+    inTopLayer = true;
+    const zoom = host.style.zoom;
+    for (const [prop, value] of Object.entries(topLayerStyles)) host.style.setProperty(prop, value, "important");
+    host.style.zoom = zoom;
+    host.setAttribute("popover", "manual");
+    show();
+  };
+
+  const leave = () => {
+    inTopLayer = false;
+    const zoom = host.style.zoom;
+    if (host.matches(":popover-open")) host.hidePopover();
+    host.removeAttribute("popover");
+    host.style.cssText = plainCssText;
+    host.style.zoom = zoom;
+  };
+
+  const update = () => {
+    if (!host.isConnected) return;
+    const needed = hasFixedContainingBlockAncestor(host);
+    if (needed && !inTopLayer) enter();
+    else if (!needed && inTopLayer) leave();
+    else show();
+  };
+  update();
+
+  // Re-show if anything (a page script toggling every [popover], a re-mount) hides it
+  host.addEventListener("toggle", (event) => {
+    if ((event as ToggleEvent).newState === "closed") queueMicrotask(show);
+  });
+  // Pages switch these styles at runtime (classes/inline styles on <html>/<body>, media queries)
+  const observer = new MutationObserver(update);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+  if (document.body) observer.observe(document.body, { attributes: true, attributeFilter: ["class", "style"] });
+  window.addEventListener("resize", update);
+  ctx.onInvalidated(() => {
+    observer.disconnect();
+    window.removeEventListener("resize", update);
+  });
+}
+
+/** Whether a computed style makes the element the containing block of its position: fixed descendants. */
+function createsFixedContainingBlock(style: CSSStyleDeclaration): boolean {
+  return (
+    style.transform !== "none" ||
+    (!!style.translate && style.translate !== "none") ||
+    (!!style.scale && style.scale !== "none") ||
+    (!!style.rotate && style.rotate !== "none") ||
+    style.filter !== "none" ||
+    style.perspective !== "none" ||
+    (!!style.backdropFilter && style.backdropFilter !== "none") ||
+    /paint|layout|strict|content/.test(style.contain) ||
+    /transform|filter|perspective|translate|scale|rotate/.test(style.willChange) ||
+    (!!style.containerType && style.containerType !== "normal")
+  );
+}
+
+function hasFixedContainingBlockAncestor(element: Element): boolean {
+  for (let el = element.parentElement; el; el = el.parentElement) {
+    if (createsFixedContainingBlock(getComputedStyle(el))) return true;
+  }
+  return false;
+}
 
 /**
  * The UI is position: fixed, which breaks when <body> creates a containing block for fixed elements
@@ -168,15 +288,5 @@ function getUiAnchor(): Element {
   const body = document.body;
   if (!body) return document.documentElement;
 
-  const style = getComputedStyle(body);
-  const createsContainingBlock =
-    style.transform !== "none" ||
-    style.filter !== "none" ||
-    style.perspective !== "none" ||
-    style.backdropFilter !== "none" ||
-    /paint|layout|strict|content/.test(style.contain) ||
-    /transform|filter|perspective/.test(style.willChange) ||
-    (!!style.containerType && style.containerType !== "normal");
-
-  return createsContainingBlock ? document.documentElement : body;
+  return createsFixedContainingBlock(getComputedStyle(body)) ? document.documentElement : body;
 }

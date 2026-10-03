@@ -26,7 +26,7 @@ import { DEFAULT_NOTE_COLORS } from "@entrypoints/background/services/notes.ts";
 import {
   DEFAULT_NOTE_HEIGHT,
   DEFAULT_NOTE_WIDTH,
-  getDefaultNotePosition,
+  getFreeNotePosition,
 } from "../VisibleNotesProvider/notePosition";
 import {
   PortalId,
@@ -449,8 +449,8 @@ export const NoteForm: React.FC<NoteFormProps> = ({
         });
         if (!updated) throw new Error("The note no longer exists");
       } else {
-        // Place a new free-floating note in view, where it stays until moved
-        const position = getDefaultNotePosition(Math.random().toString(36));
+        // Place a new free-floating note in view, clear of the stickies already shown, where it stays until moved
+        const position = getFreeNotePosition(DEFAULT_NOTE_WIDTH, DEFAULT_NOTE_HEIGHT);
         formData.locations = formData.locations.map((location) =>
           location.coordinates || location.elementXPath
             ? location

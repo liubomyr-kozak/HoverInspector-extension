@@ -8,6 +8,7 @@ import {
   onUserEventSelectWatcher,
 } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import { userEventScrollConfirm } from "@entrypoints/content/store/app/app.slice";
+import { watchSameOriginFrames } from "@entrypoints/shared/utils/frames";
 
 let preNodeTarget: any = null;
 const OUTLINE_STYLE_ID = "hover-inspector-element-outline";
@@ -157,22 +158,28 @@ const EventListenerProvider: React.FC = () => {
   const onChange = useCallback((e: any) => onHandlerChange(e), []);
 
   useLayoutEffect(() => {
-    window.addEventListener("mousemove", onInputMove, { capture: true });
-    window.addEventListener("mouseup", onMouseUp, { capture: true });
-    window.addEventListener("mousedown", onMouseDown, { capture: true });
-    window.addEventListener("click", onClick, { capture: true });
-    window.addEventListener("scroll", onScroll, { capture: true });
-    window.addEventListener("input", onInput, { capture: true });
-    window.addEventListener("change", onChange, { capture: true });
+    const listeners: Array<[string, (e: any) => void]> = [
+      ["mousemove", onInputMove],
+      ["mouseup", onMouseUp],
+      ["mousedown", onMouseDown],
+      ["click", onClick],
+      ["scroll", onScroll],
+      ["input", onInput],
+      ["change", onChange],
+    ];
+    const listen = (target: Window) => {
+      listeners.forEach(([type, listener]) => target.addEventListener(type, listener, { capture: true }));
+      return () => listeners.forEach(([type, listener]) => target.removeEventListener(type, listener, { capture: true }));
+    };
+
+    const unlistenTop = listen(window);
+    // Same-origin iframes: their events never reach the top window, so hover/click/scroll are taken
+    // from each frame's own window. Rects are mapped back to the top viewport by DomNodeManager.
+    const stopWatchingFrames = watchSameOriginFrames(listen);
 
     return () => {
-      window.removeEventListener("mousemove", onInputMove, { capture: true });
-      window.removeEventListener("mousedown", onMouseDown, { capture: true });
-      window.removeEventListener("mouseup", onMouseUp, { capture: true });
-      window.removeEventListener("click", onClick, { capture: true });
-      window.removeEventListener("scroll", onScroll, { capture: true });
-      window.removeEventListener("input", onInput, { capture: true });
-      window.removeEventListener("change", onChange, { capture: true });
+      unlistenTop();
+      stopWatchingFrames();
     };
   }, []);
 
