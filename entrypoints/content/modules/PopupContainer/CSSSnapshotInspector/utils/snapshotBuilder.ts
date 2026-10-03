@@ -42,6 +42,11 @@ const shouldSkipElement = (element: Element): boolean => {
     return true;
   }
 
+  // Skip the extension's own UI host
+  if (tag === "hover-inspector") {
+    return true;
+  }
+
   // Skip our own highlight overlay node
   if (
     (element as HTMLElement).id === "hover-inspector-highlight-node" ||
@@ -155,60 +160,73 @@ const extractInlineStyles = (element: Element): Record<string, string> => {
   return inlineStyles;
 };
 
+type ClassRuleIndex = Map<string, CSSStyleRule[]>;
+
+/** Matches class tokens in a selector, including escaped characters (e.g. .md\:flex) */
+const CLASS_TOKEN_RE = /\.((?:\\.|[\w-])+)/g;
+
+const unescapeClassName = (token: string): string => token.replace(/\\(.)/g, "$1");
+
 /**
- * Extracts CSS rules for element classes from document stylesheets
+ * Indexes all accessible style rules by the class names their selectors reference.
+ * Built once per capture instead of scanning every rule for every element.
  */
-const extractClassRules = (element: Element): Record<string, Record<string, string>> => {
-  
-  const classRules: Record<string, Record<string, string>> = {};
-  const classList = Array.from(element.classList);
-  
-  if (classList.length === 0) {
-    return classRules;
+const buildClassRuleIndex = (): ClassRuleIndex => {
+  const index: ClassRuleIndex = new Map();
+
+  for (const styleSheet of Array.from(document.styleSheets)) {
+    let rules: CSSRuleList;
+    try {
+      rules = styleSheet.cssRules;
+    } catch {
+      // Cross-origin stylesheet (CORS) - its rules can't be read
+      continue;
+    }
+    if (!rules) continue;
+
+    for (const rule of Array.from(rules)) {
+      if (!(rule instanceof CSSStyleRule) || !rule.selectorText) continue;
+
+      const classNames = new Set<string>();
+      for (const match of rule.selectorText.matchAll(CLASS_TOKEN_RE)) {
+        classNames.add(unescapeClassName(match[1]));
+      }
+      classNames.forEach((className) => {
+        const list = index.get(className);
+        if (list) list.push(rule);
+        else index.set(className, [rule]);
+      });
+    }
   }
-  
-  
-  try {
-    // Iterate through all stylesheets
-    for (const styleSheet of Array.from(document.styleSheets)) {
-      try {
-        if (!styleSheet.cssRules) continue;
-        
-        // Iterate through CSS rules
-        for (const rule of Array.from(styleSheet.cssRules)) {
-          if (rule instanceof CSSStyleRule) {
-            // Check if rule selector matches any of the element's classes
-            for (const className of classList) {
-              const classSelector = `.${className}`;
-              if (rule.selectorText && rule.selectorText.includes(classSelector)) {
-                
-                if (!classRules[className]) {
-                  classRules[className] = {};
-                }
-                
-                // Extract CSS properties from the rule
-                const style = rule.style;
-                for (let i = 0; i < style.length; i++) {
-                  const property = style[i];
-                  const value = style.getPropertyValue(property);
-                  if (value) {
-                    classRules[className][property] = value;
-                  }
-                }
-              }
-            }
-          }
+
+  return index;
+};
+
+/**
+ * Extracts CSS rules for element classes from the pre-built rule index.
+ * Class names are matched exactly (".btn" no longer matches ".btn-primary").
+ */
+const extractClassRules = (element: Element, index: ClassRuleIndex): Record<string, Record<string, string>> => {
+  const classRules: Record<string, Record<string, string>> = {};
+
+  for (const className of Array.from(element.classList)) {
+    const rules = index.get(className);
+    if (!rules) continue;
+
+    const properties: Record<string, string> = {};
+    for (const rule of rules) {
+      const style = rule.style;
+      for (let i = 0; i < style.length; i++) {
+        const property = style[i];
+        const value = style.getPropertyValue(property);
+        if (value) {
+          properties[property] = value;
         }
-      } catch (error) {
-        // Skip stylesheets that can't be accessed (CORS, etc.)
-        console.warn(`[CSS Snapshot] Could not access stylesheet:`, error);
-        continue;
       }
     }
-  } catch (error) {
-    console.error(`[CSS Snapshot] Error extracting class rules:`, error);
+    classRules[className] = properties;
   }
-  
+
   return classRules;
 };
 
@@ -220,6 +238,7 @@ const buildSnapshotNode = (
   path: string[],
   options: SnapshotOptions,
   stats: { processed: number; skipped: number },
+  classRuleIndex: ClassRuleIndex,
 ): SnapshotNode | null => {
   // Перевіряємо ліміти
   if (stats.processed >= (options.maxElements || PERFORMANCE_LIMITS.MAX_ELEMENTS)) {
@@ -252,11 +271,11 @@ const buildSnapshotNode = (
     }
   }
 
-  // Отримуємо розміри
+  // Отримуємо розміри (document coordinates, so they don't depend on the scroll position)
   const rect = element.getBoundingClientRect();
   const bounds = {
-    top: Math.round(rect.top),
-    left: Math.round(rect.left),
+    top: Math.round(rect.top + window.scrollY),
+    left: Math.round(rect.left + window.scrollX),
     width: Math.round(rect.width),
     height: Math.round(rect.height),
   };
@@ -269,7 +288,7 @@ const buildSnapshotNode = (
   const inlineStyles = extractInlineStyles(element);
 
   // Отримуємо CSS правила для класів елемента
-  const classRules = extractClassRules(element);
+  const classRules = extractClassRules(element, classRuleIndex);
 
   // Отримуємо текстовий контент для листових вузлів
   const text =
@@ -278,7 +297,7 @@ const buildSnapshotNode = (
   // Рекурсивно обробляємо дочірні елементи
   const children: SnapshotNode[] = [];
   for (const child of Array.from(element.children)) {
-    const childNode = buildSnapshotNode(child as Element, elementPath, options, stats);
+    const childNode = buildSnapshotNode(child as Element, elementPath, options, stats, classRuleIndex);
     if (childNode) {
       // Додаємо дочірній вузол лише якщо він має стилі або дочірні елементи
       if (
@@ -331,7 +350,7 @@ export const buildSnapshotTree = (
   const startTime = performance.now();
   const stats = { processed: 0, skipped: 0 };
 
-  const tree = buildSnapshotNode(root, [], options, stats);
+  const tree = buildSnapshotNode(root, [], options, stats, buildClassRuleIndex());
 
   if (!tree) {
     throw new Error("Failed to build snapshot tree: root element was skipped");
