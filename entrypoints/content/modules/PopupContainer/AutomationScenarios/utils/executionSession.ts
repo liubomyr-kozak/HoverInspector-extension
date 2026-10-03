@@ -9,7 +9,7 @@
  * which keeps writing its progress, can't overwrite it.
  */
 
-import { ScenarioStep, StepType } from "../types";
+import { ExecutionLogEntry, ScenarioStep, StepType } from "../types";
 
 export const EXECUTION_SESSION_KEY = "hi_automation_execution_session";
 export const EXECUTION_HANDOFF_KEY = "hi_automation_execution_handoff";
@@ -26,6 +26,9 @@ export interface ExecutionSession {
   updatedAt: number;
   // When the whole playback started (it may span several pages)
   startedAt?: number;
+  // Log entries of the steps already played, by their index in the scenario, so the history of a
+  // playback that spans several pages lists every step and not only the ones of the last page
+  entries?: ExecutionLogEntry[];
 }
 
 export interface ExecutionHandoff {
@@ -101,13 +104,28 @@ export async function advanceExecutionSession(
   scenarioId: string,
   tabId: number | null,
   nextStepIndex: number,
+  entry?: ExecutionLogEntry,
 ): Promise<SessionAdvanceResult> {
   const session = await loadExecutionSession();
   if (!session || session.scenarioId !== scenarioId) return "stopped";
   const owner = getSessionOwner(session, await loadExecutionHandoff());
   if (tabId !== null && owner !== null && owner !== tabId) return "handed-off";
-  await saveExecutionSession({ ...session, tabId: owner, nextStepIndex, updatedAt: Date.now() });
+  const entries = entry ? addSessionEntry(session.entries, entry) : session.entries;
+  await saveExecutionSession({ ...session, tabId: owner, nextStepIndex, updatedAt: Date.now(), entries });
   return "continue";
+}
+
+/**
+ * Adds the log entry of a step, replacing an earlier entry of the same step (a step that may leave the
+ * page is logged before it runs and again once it finished on this page)
+ */
+export function addSessionEntry(
+  entries: ExecutionLogEntry[] | undefined,
+  entry: ExecutionLogEntry,
+): ExecutionLogEntry[] {
+  return [...(entries || []).filter((e) => e.stepIndex !== entry.stepIndex), entry].sort(
+    (a, b) => a.stepIndex - b.stepIndex,
+  );
 }
 
 /**

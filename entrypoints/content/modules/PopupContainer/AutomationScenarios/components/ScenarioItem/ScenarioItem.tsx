@@ -346,8 +346,8 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
             <StepsHeading>
               <StepsHeadingText>Steps</StepsHeadingText>
               <StepCount>
-                {currentStepIndex >= 0 ? currentStepIndex + 1 : 0} / {steps.length} steps
-                {scenario.data.length === 1 ? "step" : "steps"}
+                {currentStepIndex >= 0 ? `${currentStepIndex + 1} / ` : ""}
+                {steps.length} {steps.length === 1 ? "step" : "steps"}
               </StepCount>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <SpeedControlButton initialSpeed={executionSpeed} onSpeedChange={handleSpeedChange} />

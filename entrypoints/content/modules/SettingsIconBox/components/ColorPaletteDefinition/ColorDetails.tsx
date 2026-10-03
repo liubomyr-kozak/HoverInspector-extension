@@ -47,7 +47,7 @@ export const ColorDetails: React.FC<ColorDetailsProps> = ({
   const contrastWithBlack = calculateContrastRatio(color.color, "#000000");
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mt-4 w-80 sticky top-0 ">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 w-full sticky top-0">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-12 h-12 rounded-md border shadow-inner" style={{ backgroundColor: color.color }} />
         <div>

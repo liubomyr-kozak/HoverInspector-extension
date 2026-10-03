@@ -708,6 +708,7 @@ export function* executeWaitElementVisibleStep(step: ScenarioStep) {
  */
 export function* executeStep(step: ScenarioStep, stepIndex: number) {
   // Starting step execution - console.log removed\n
+  let startTime = Date.now();
 
   try {
     // Check if this is a function step and syncFunctions is disabled
@@ -736,7 +737,7 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
     }
 
     // Create a log entry for this step
-    const startTime = Date.now();
+    startTime = Date.now();
     const description = getStepDescription(step);
 
     // Executing step of specified type - console.log removed\n
@@ -819,7 +820,8 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
       stepType: step.type,
       stepDescription: getStepDescription(step),
       timestamp: new Date(endTime).toISOString(),
-      duration: 0,
+      // A failed step usually spent its time waiting for the element
+      duration: endTime - startTime,
       status: ExecutionStatus.ERROR,
       error: (error as Error)?.message || "An error occurred during execution",
     };

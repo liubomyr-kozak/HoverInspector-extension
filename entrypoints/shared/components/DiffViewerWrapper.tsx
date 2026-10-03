@@ -35,6 +35,8 @@ export interface DiffViewerWrapperProps {
   rightTitle?: string | React.ReactElement;
   nonce?: string;
   container?: HTMLElement | ShadowRoot | null;
+  // Wrap long lines instead of cutting them off (narrow panels)
+  wrapLines?: boolean;
 }
 
 /**
@@ -50,6 +52,7 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
   hideLineNumbers = false,
   showDiffOnly = true,
   onLineClick,
+  wrapLines = false,
   // Other props are ignored for now in this initial implementation
   ...otherProps
 }) => {
@@ -127,7 +130,7 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
               <div
                 key={index}
                 onClick={(event) => onLineClick?.(`L${index + 1}`, { lineNumber: index + 1, side: SplitSide.old }, event)}
-                style={{ whiteSpace: "pre", cursor: onLineClick ? "pointer" : "default", lineHeight: "20px" }}
+                style={{ whiteSpace: wrapLines ? "pre-wrap" : "pre", wordBreak: wrapLines ? "break-all" : undefined, cursor: onLineClick ? "pointer" : "default", lineHeight: "20px" }}
               >
                 {line}
               </div>
@@ -155,6 +158,7 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
         diffViewMode={splitView ? DiffModeEnum.SplitGitHub : DiffModeEnum.Unified}
         diffViewTheme={useDarkTheme ? "dark" : "light"}
         diffViewHighlight={true}
+        diffViewWrap={wrapLines}
         className="diff-viewer-wrapper"
         onLineClick={(lineNumber: number, side: SplitSide, event: React.MouseEvent<HTMLElement>) => {
           if (onLineClick) {

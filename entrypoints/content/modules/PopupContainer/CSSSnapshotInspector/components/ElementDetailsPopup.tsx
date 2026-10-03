@@ -73,7 +73,7 @@ export const ElementDetailsPopup: React.FC = () => {
   return (
     <FloatingModal
       open={state.isOpen}
-      title="Element details"
+      title={state.title ? `Element details: ${state.title}` : "Element details"}
       onCancel={() => dispatch(closeElementDetails())}
       initialWidth={panelPosition.width}
       initialHeight={panelPosition.height}

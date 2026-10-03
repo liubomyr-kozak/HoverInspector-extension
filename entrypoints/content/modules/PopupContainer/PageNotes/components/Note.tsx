@@ -1,4 +1,5 @@
 import React from "react";
+import { renderNoteMarkup } from "../utils/noteMarkup";
 import { Popconfirm } from "antd";
 import { FiEdit2, FiTrash2, FiMapPin, FiEye, FiEyeOff } from "react-icons/fi";
 import { FaGripVertical } from "react-icons/fa6";
@@ -89,8 +90,9 @@ export const Note: React.FC<NoteProps> = ({
         <FaGripVertical className="h-4 w-4" />
       </div>
 
-      <div className="mb-2 flex items-center justify-between">
-        <h4 className="flex-1 m-0 text-sm font-semibold text-gray-700">{note.title || ""}</h4>
+      {/* Untitled notes: the actions float beside the text instead of leaving an empty title row */}
+      <div className={note.title ? "mb-2 flex items-center justify-between" : "float-right ml-2 mb-1 flex"}>
+        {note.title && <h4 className="flex-1 m-0 text-sm font-semibold text-gray-700">{note.title}</h4>}
 
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
           <button
@@ -159,10 +161,10 @@ export const Note: React.FC<NoteProps> = ({
       </div>
 
       <div className="whitespace-pre-wrap break-words text-[13px] leading-snug text-gray-600">
-        {note.content || "No content"}
+        {note.content ? renderNoteMarkup(note.content) : "No content"}
       </div>
 
-      <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">
+      <div className="clear-both mt-2 flex items-center justify-between text-[11px] text-gray-400">
         <span className="truncate mr-2" title={describeLocations(note)}>
           {describeLocations(note)}
           {note.isVisible === false ? " · hidden" : ""}

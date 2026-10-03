@@ -15,7 +15,7 @@ import {
   EditingStepTitle,
   StepInsertContainer,
 } from "./ScenarioItem/ScenarioItem.styled";
-import StepEditForm from "./StepEditForm";
+import StepEditForm, { validateStep } from "./StepEditForm";
 import { ScenarioPortalFooterButtons, PortalId } from "./ScenarioPortalFooterButtons";
 import RecordingFooter from "./RecordingFooter";
 import {
@@ -67,6 +67,19 @@ const getFormValues = (scenario?: Scenario): ScenarioFormValues => ({
   tags: scenario?.tags || [],
 });
 
+// The nearest ancestor that actually scrolls (the panel body)
+const findScrollParent = (start: HTMLElement | null | undefined): HTMLElement | null => {
+  let element = start?.parentElement ?? null;
+  while (element) {
+    const { overflowY } = window.getComputedStyle(element);
+    if ((overflowY === "auto" || overflowY === "scroll") && element.scrollHeight > element.clientHeight) {
+      return element;
+    }
+    element = element.parentElement;
+  }
+  return null;
+};
+
 const AddScenarioForm: React.FC = () => {
   const dispatch = useDispatch();
   // Selectors replacing props
@@ -82,6 +95,9 @@ const AddScenarioForm: React.FC = () => {
 
   // State for tracking details section visibility
   const [showDetails, setShowDetails] = useState<boolean>(false);
+  // Set once saving was refused because of incomplete steps: their errors are shown from then on
+  const [stepsSubmitAttempted, setStepsSubmitAttempted] = useState<boolean>(false);
+  const invalidStepIndex = currentSteps.findIndex((step) => Object.keys(validateStep(step)).length > 0);
 
   // Initialize React Hook Form with the edited scenario's metadata (or a fresh default title)
   const {
@@ -115,6 +131,21 @@ const AddScenarioForm: React.FC = () => {
   // Saves the scenario. Keeps fields this form does not edit (folder, speed, repeat...) of an existing scenario.
   const saveScenario = handleSubmit(
     (formData) => {
+      // A step without a type or without its element / value can't be played: let the user complete it
+      if (invalidStepIndex >= 0) {
+        setStepsSubmitAttempted(true);
+        const stepElement = stepsContainerRef.current?.querySelector<HTMLElement>(
+          `[data-step-index="${invalidStepIndex}"]`,
+        );
+        const scrollParent = findScrollParent(stepElement);
+        if (stepElement && scrollParent) {
+          // Not scrollIntoView: it would also scroll the panel's clipped outer containers
+          const top =
+            stepElement.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top + scrollParent.scrollTop;
+          scrollParent.scrollTo({ top: Math.max(0, top - 16), behavior: "smooth" });
+        }
+        return;
+      }
       const processedTags = (formData.tags || []).filter((tag): tag is string => !!tag);
       const scenarioToSave: Scenario = {
         repeat: 1,
@@ -147,69 +178,27 @@ const AddScenarioForm: React.FC = () => {
   };
 
 
-  // Refs for tracking steps container and previous count for auto-scroll
+  // Refs for tracking steps container and previous count for auto-scroll.
+  // Starts at the current count so opening an existing scenario does not jump to its last step.
   const stepsContainerRef = useRef<HTMLDivElement>(null);
-  const previousStepCountRef = useRef<number>(0);
+  const previousStepCountRef = useRef<number>(currentSteps.length);
 
-  // Effect to scroll to bottom when new steps are added
+  // Scroll the panel to the newest step when one is added (recorded or "Add Step")
   useEffect(() => {
     const currentStepCount = currentSteps.length;
     const previousCount = previousStepCountRef.current;
-    
-    // If we have more steps than before, scroll to bottom
-    if (currentStepCount > previousCount && currentStepCount > 0) {
-      // Use setTimeout to ensure DOM has updated
-      setTimeout(() => {
-        if (modalContext) {
-          // Use the context's scroll method
-          modalContext.scrollToBottom();
-        } else if (stepsContainerRef.current) {
-          // Fallback to finding scrollable parent container
-          let scrollContainer = stepsContainerRef.current.closest(
-            '.ant-modal-body, .ant-tabs-content, [class*="modal"], [style*="overflow"]',
-          );
-
-          // If no specific scrollable container found, try to find any scrollable parent
-          if (!scrollContainer) {
-            let element = stepsContainerRef.current.parentElement;
-            while (element && element !== document.body) {
-              const style = window.getComputedStyle(element);
-              if (
-                style.overflow === "auto" ||
-                style.overflow === "scroll" ||
-                style.overflowY === "auto" ||
-                style.overflowY === "scroll"
-              ) {
-                scrollContainer = element;
-                break;
-              }
-              element = element.parentElement;
-            }
-          }
-
-          // If still no scrollable container found, try shadow DOM approach as fallback
-          if (!scrollContainer) {
-            const hoverInspector = document.querySelector("hover-inspector") as HTMLElement & {
-              shadowRoot: ShadowRoot | null;
-            };
-            scrollContainer = hoverInspector?.shadowRoot?.querySelector(
-              "html > body .draggable-modal .ant-modal-body",
-            ) as HTMLElement;
-          }
-
-          // Scroll to bottom with smooth behavior
-          if (scrollContainer) {
-            scrollContainer.scrollTo({
-              top: scrollContainer.scrollHeight,
-              behavior: "smooth",
-            });
-          }
-        }
-      }, 100); // Small delay to ensure DOM has rendered
-    }
-
-    // Update the previous count
     previousStepCountRef.current = currentStepCount;
+    if (currentStepCount <= previousCount) return;
+
+    const timer = setTimeout(() => {
+      if (modalContext?.getModalContainer()) {
+        modalContext.scrollToBottom();
+        return;
+      }
+      const scrollParent = findScrollParent(stepsContainerRef.current);
+      scrollParent?.scrollTo({ top: scrollParent.scrollHeight, behavior: "smooth" });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [currentSteps.length, modalContext]);
 
   // Step edits are applied live: the inline step forms have no own Save button
@@ -350,7 +339,7 @@ const AddScenarioForm: React.FC = () => {
                   </div>
                 </StepInsertContainer>
 
-                <EditingStepItem>
+                <EditingStepItem data-step-index={index}>
                   <EditingStepHeader>
                     <EditingStepTitle>Edit Step {index + 1}</EditingStepTitle>
                   </EditingStepHeader>
@@ -364,11 +353,18 @@ const AddScenarioForm: React.FC = () => {
                     onMoveDown={handleMoveStepDown}
                     stepIndex={index}
                     totalSteps={currentSteps.length}
+                    showErrors={stepsSubmitAttempted}
                   />
                 </EditingStepItem>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {stepsSubmitAttempted && invalidStepIndex >= 0 && (
+        <div role="alert" style={{ color: "#ff4d4f", fontSize: "14px" }}>
+          Step {invalidStepIndex + 1} is incomplete. Complete or delete it to save the scenario.
         </div>
       )}
 

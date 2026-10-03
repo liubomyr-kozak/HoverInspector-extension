@@ -8,6 +8,8 @@ export interface ElementData {
 export interface ElementDiffSingleColumnProps {
   left: ElementData;
   right: ElementData;
+  // CSS selector of the element shown above its properties
+  selector?: string;
 }
 
 export interface CSSPropertyChange {

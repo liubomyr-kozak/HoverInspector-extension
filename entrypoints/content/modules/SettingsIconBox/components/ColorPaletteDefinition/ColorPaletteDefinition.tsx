@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { IconX } from "@tabler/icons-react";
 import { IconPalette } from "@tabler/icons-react";
 import ColorDetails from "./ColorDetails.tsx";
 import { getColorInAllFormats } from "@entrypoints/shared/utils/colorAnalysis.ts";
@@ -17,6 +18,24 @@ import { useDispatch } from "react-redux";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import ColorCategorySection from "./ColorCategorySection.tsx";
 import { ImportSection } from "./ImportSection";
+
+let colorContext: CanvasRenderingContext2D | null = null;
+
+/**
+ * Canonical form of a CSS colour ("#fff", "white" and "rgb(255,255,255)" all give "#ffffff"), null when
+ * the value isn't a colour. The canvas only accepts valid colours into fillStyle.
+ */
+const normalizeColor = (value: string): string | null => {
+  colorContext = colorContext || document.createElement("canvas").getContext("2d");
+  if (!colorContext) return value.toLowerCase();
+  colorContext.fillStyle = "#000001";
+  colorContext.fillStyle = value;
+  const first = String(colorContext.fillStyle);
+  colorContext.fillStyle = "#000002";
+  colorContext.fillStyle = value;
+  // Unchanged sentinel: the browser rejected the value
+  return first === "#000001" && String(colorContext.fillStyle) === "#000002" ? null : first;
+};
 
 // Start empty: the palette is filled from the page, never from placeholder colours
 const emptyPalette: ColorPalette = {
@@ -187,6 +206,24 @@ export const ColorPaletteDefinition: React.FC = () => {
 
   const selectedColor = useMemo(() => selectedColorId && getSelectedColor(), [selectedColorId, colorPalette]);
 
+  // In the narrow panel the details wrap above the swatches: bring them into view when a colour is picked
+  const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const details = detailsRef.current;
+    if (!selectedColorId || !details) return;
+    let scrollParent = details.parentElement;
+    while (scrollParent) {
+      const { overflowY } = window.getComputedStyle(scrollParent);
+      if ((overflowY === "auto" || overflowY === "scroll") && scrollParent.scrollHeight > scrollParent.clientHeight) break;
+      scrollParent = scrollParent.parentElement;
+    }
+    if (!scrollParent) return;
+    const offset = details.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top;
+    if (offset < 0 || offset > scrollParent.clientHeight - 80) {
+      scrollParent.scrollTo({ top: scrollParent.scrollTop + offset - 12, behavior: "smooth" });
+    }
+  }, [selectedColorId]);
+
   return (
     <div className="bg-white p-5 rounded-lg mb-6 shadow-sm border border-gray-100">
       <div className="flex items-center gap-3 mb-6">
@@ -221,10 +258,12 @@ export const ColorPaletteDefinition: React.FC = () => {
           // For named colors, return as-is
           return trimmed;
         }}
+        normalize={normalizeColor}
       />
 
-      <div className="flex gap-6">
-        <div className="flex-1">
+      {/* Side by side when there is room; otherwise wrap-reverse puts the details above the swatches */}
+      <div className="flex flex-wrap-reverse gap-6">
+        <div style={{ flex: "1 1 240px", minWidth: 0 }}>
           <div className="space-y-6">
             {extractionStatus.isExtracting && !extractionStatus.lastExtracted && (
               <p className="text-sm text-gray-500">Extracting colors from the page...</p>
@@ -265,15 +304,28 @@ export const ColorPaletteDefinition: React.FC = () => {
             </button>
             {extractionStatus.lastExtracted && (
               <p className="text-sm text-gray-600 mt-2">
-                Last extracted: {extractionStatus.lastExtracted.toLocaleTimeString()}(
+                Last extracted: {extractionStatus.lastExtracted.toLocaleTimeString()} (
                 {extractionStatus.totalColorsFound} colors from {extractionStatus.totalElementsAnalyzed} elements)
               </p>
             )}
           </div>
         </div>
 
-        {selectedColorId && (
-          <div className="pl-6 border-l border-gray-200">
+        {selectedColorId && selectedColor && (
+          <div
+            ref={detailsRef}
+            className="relative"
+            style={{ flex: "1 1 240px", minWidth: 0 }}
+          >
+            <button
+              type="button"
+              aria-label="Close color details"
+              title="Close"
+              onClick={() => setSelectedColorId(null)}
+              className="absolute top-2 right-2 z-10 p-1 rounded text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            >
+              <IconX size={14} />
+            </button>
             <ColorDetails
               color={selectedColor as any}
               formatColor={formatColor}

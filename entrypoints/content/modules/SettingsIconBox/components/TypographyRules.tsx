@@ -30,6 +30,22 @@ const TypographyRules: React.FC = () => {
   const [aggregatedProperties, setAggregatedProperties] = useState<AggregatedTypographyProperties | null>(null);
   // Only true until the first analysis finishes; later rescans update in place without flashing
   const [isLoading, setIsLoading] = useState(true);
+  // Element lists opened with "+N more"
+  const [expandedLists, setExpandedLists] = useState<Set<string>>(() => new Set());
+  const toggleList = (key: string) =>
+    setExpandedLists((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const visibleElements = <T,>(key: string, elements: T[]) => (expandedLists.has(key) ? elements : elements.slice(0, 5));
+  const moreButton = (key: string, total: number, className: string) =>
+    total > 5 && (
+      <button type="button" onClick={() => toggleList(key)} className={className}>
+        {expandedLists.has(key) ? "Show less" : `+${total - 5} more`}
+      </button>
+    );
   const highlightManager = useHighlightOverlay();
 
   useEffect(() => {
@@ -166,7 +182,7 @@ const TypographyRules: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {elementsWithFamily.slice(0, 5).map((typographyEl, idx) => {
+                          {visibleElements(`family:${family}`, elementsWithFamily).map((typographyEl, idx) => {
                             const displayName = getElementDisplayName(typographyEl.element);
 
                             return (
@@ -181,10 +197,10 @@ const TypographyRules: React.FC = () => {
                               </button>
                             );
                           })}
-                          {elementsWithFamily.length > 5 && (
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200">
-                              +{elementsWithFamily.length - 5} more
-                            </span>
+                          {moreButton(
+                            `family:${family}`,
+                            elementsWithFamily.length,
+                            "text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-md text-gray-600 border border-gray-200",
                           )}
                         </div>
                       </div>
@@ -228,7 +244,7 @@ const TypographyRules: React.FC = () => {
                       <div className="mt-3 pt-3 border-t border-gray-100">
                         <div className="text-xs text-gray-500 mb-1">Found in {elementsWithSize.length} elements:</div>
                         <div className="flex flex-wrap gap-1">
-                          {elementsWithSize.slice(0, 5).map((typographyEl, idx) => {
+                          {visibleElements(`size:${size}`, elementsWithSize).map((typographyEl, idx) => {
                             const displayName = getElementDisplayName(typographyEl.element);
 
                             return (
@@ -242,9 +258,7 @@ const TypographyRules: React.FC = () => {
                               </button>
                             );
                           })}
-                          {elementsWithSize.length > 5 && (
-                            <span className="text-xs text-gray-500">+{elementsWithSize.length - 5} more</span>
-                          )}
+                          {moreButton(`size:${size}`, elementsWithSize.length, "text-xs text-gray-500 hover:text-blue-600 px-1")}
                         </div>
                       </div>
                     );
@@ -293,7 +307,7 @@ const TypographyRules: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {elementsWithWeight.slice(0, 5).map((typographyEl, idx) => {
+                          {visibleElements(`weight:${weight}`, elementsWithWeight).map((typographyEl, idx) => {
                             const displayName = getElementDisplayName(typographyEl.element);
 
                             return (
@@ -308,10 +322,10 @@ const TypographyRules: React.FC = () => {
                               </button>
                             );
                           })}
-                          {elementsWithWeight.length > 5 && (
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200">
-                              +{elementsWithWeight.length - 5} more
-                            </span>
+                          {moreButton(
+                            `weight:${weight}`,
+                            elementsWithWeight.length,
+                            "text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-md text-gray-600 border border-gray-200",
                           )}
                         </div>
                       </div>

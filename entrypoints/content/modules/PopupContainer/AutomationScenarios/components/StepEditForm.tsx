@@ -66,12 +66,14 @@ interface StepEditFormProps {
   stepIndex?: number;
   totalSteps?: number;
   isSingleItem?: boolean;
+  // Show the errors of every field, not only of the edited ones (the parent tried to save)
+  showErrors?: boolean;
 }
 
 type StepFormErrors = Partial<Record<keyof ScenarioStep, { message: string }>>;
 
 // Validates the step; returns the error of each invalid field
-const validateStep = (values: ScenarioStep): StepFormErrors => {
+export const validateStep = (values: ScenarioStep): StepFormErrors => {
   try {
     validationSchema.validateSync(values, { abortEarly: false });
     return {};
@@ -105,6 +107,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   stepIndex = 0,
   totalSteps = 1,
   isSingleItem,
+  showErrors = false,
 }) => {
   const functions = useSelector(selectFunctions);
   const storedValues = useSelector(selectStoredValues);
@@ -265,13 +268,13 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const validationErrors = useMemo(() => validateStep(formValues), [formValues]);
   const errors: StepFormErrors = useMemo(() => {
-    if (submitAttempted) return validationErrors;
+    if (submitAttempted || showErrors) return validationErrors;
     const visible: StepFormErrors = {};
     (Object.keys(validationErrors) as (keyof ScenarioStep)[]).forEach((field) => {
       if (touchedFields.has(field)) visible[field] = validationErrors[field];
     });
     return visible;
-  }, [validationErrors, touchedFields, submitAttempted]);
+  }, [validationErrors, touchedFields, submitAttempted, showErrors]);
 
   // Live mode: report every user edit to the parent (used where the form has no own Save button)
   useEffect(() => {

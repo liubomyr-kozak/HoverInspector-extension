@@ -12,7 +12,10 @@ import {
   IconAnalyze,
   IconArrowLeft,
   IconCamera,
+  IconX,
 } from "@tabler/icons-react";
+import { useDispatch } from "react-redux";
+import { setError } from "@entrypoints/content/store/snapshot/snapshotSlice";
 import { MdOutlineCompare } from "react-icons/md";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import {
@@ -79,16 +82,39 @@ const ErrorContainer = styled.div`
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(8px);
+  width: 100%;
+  box-sizing: border-box;
 
-  div:first-child {
+  .error-text {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .error-text div:first-child {
     font-size: 14px;
     font-weight: 600;
     color: #991b1b;
   }
 
-  div:last-child {
+  .error-text div:last-child {
     font-size: 12px;
     color: #dc2626;
+  }
+
+  button {
+    display: flex;
+    flex-shrink: 0;
+    padding: 4px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #991b1b;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: rgba(248, 113, 113, 0.2);
   }
 `;
 
@@ -316,6 +342,7 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
     onCaptureFromPickedElement,
     isSelectingElement = false,
   }) => {
+    const dispatch = useDispatch();
     const [menuOpen, setMenuOpen] = useState(false);
     const [isCapturingFromElement, setIsCapturingFromElement] = useState<boolean>(false);
 
@@ -450,12 +477,15 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
 
         <HeaderContent>
           {error && (
-            <ErrorContainer>
-              <IconExclamationCircle size={22} />
-              <div>
+            <ErrorContainer role="alert">
+              <IconExclamationCircle size={22} style={{ flexShrink: 0 }} />
+              <div className="error-text">
                 <div>Error occurred</div>
                 <div>{error}</div>
               </div>
+              <button type="button" aria-label="Dismiss error" onClick={() => dispatch(setError(null))}>
+                <IconX size={16} />
+              </button>
             </ErrorContainer>
           )}
         </HeaderContent>
