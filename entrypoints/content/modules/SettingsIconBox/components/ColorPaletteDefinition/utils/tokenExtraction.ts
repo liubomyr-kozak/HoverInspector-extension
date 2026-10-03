@@ -237,10 +237,13 @@ export const extractShadowTokens = (): ShadowToken[] => {
         let name = 'Medium';
         const tagName = element.tagName.toLowerCase();
         
-        // Analyze shadow properties to determine size
-        const shadowParts = boxShadow.split(' ');
-        const offsetY = Math.abs(parseInt(shadowParts[1] || '0'));
-        const blurRadius = parseInt(shadowParts[2] || '0');
+        // Analyze shadow properties to determine size. The computed value starts with
+        // the colour ("rgba(0, 0, 0, 0.1) 0px 2px 6px 0px"), so read the lengths of the
+        // first shadow instead of splitting on spaces.
+        const firstShadow = boxShadow.replace(/\([^)]*\)/g, '()').split(',')[0];
+        const lengths = (firstShadow.match(/-?\d*\.?\d+px/g) || []).map((v) => parseFloat(v));
+        const offsetY = Math.abs(lengths[1] || 0);
+        const blurRadius = lengths[2] || 0;
         
         if (offsetY <= 1 && blurRadius <= 2) name = 'Small';
         else if (offsetY <= 4 && blurRadius <= 6) name = 'Medium';
