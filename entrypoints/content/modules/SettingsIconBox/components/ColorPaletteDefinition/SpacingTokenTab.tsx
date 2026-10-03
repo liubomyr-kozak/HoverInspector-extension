@@ -61,7 +61,7 @@ export const SpacingTokenTab: React.FC<SpacingTokenTabProps> = ({ tokens, naviga
       <div className="grid grid-cols-3 gap-2">
         {tokens.map((token) => (
           <div key={token.id} className="p-2 border border-gray-200 rounded">
-            <div className="flex justify-between items-center mb-1">
+            <div className="flex flex-wrap justify-between items-baseline gap-x-1 mb-1">
               <span className="text-sm font-medium text-gray-800">{token.name}</span>
               <span className="text-xs text-gray-500">{token.value}</span>
             </div>

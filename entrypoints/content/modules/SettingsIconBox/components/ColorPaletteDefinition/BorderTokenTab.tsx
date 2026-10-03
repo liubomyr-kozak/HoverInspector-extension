@@ -55,10 +55,11 @@ export const BorderTokenTab: React.FC<BorderTokenTabProps> = ({ tokens, navigate
           return trimmed;
         }}
       />
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-2">
+      {/* Columns follow the panel width (md:/lg: breakpoints follow the page's width instead) */}
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))" }}>
         {tokens.map((token) => (
           <div key={token.id} className="p-2 border border-gray-200 rounded">
-            <div className="flex justify-between items-center mb-1">
+            <div className="flex flex-wrap justify-between items-baseline gap-x-1 mb-1">
               <span className="text-sm font-medium text-gray-800">{token.name}</span>
               <span className="text-xs text-gray-500">{token.value}</span>
             </div>

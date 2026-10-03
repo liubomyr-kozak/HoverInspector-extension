@@ -52,7 +52,8 @@ export const ShadowTokenTab: React.FC<ShadowTokenTabProps> = ({ tokens, navigate
           return value.trim().toLowerCase().replace(/\s+/g, ' ');
         }}
       />
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-2">
+      {/* Columns follow the panel width (md:/lg: breakpoints follow the page's width instead) */}
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))" }}>
         {tokens.map((token) => (
           <div key={token.id} className="p-2 border border-gray-200 rounded">
             <div className="flex justify-between items-center mb-1">
