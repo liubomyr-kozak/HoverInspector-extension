@@ -11,7 +11,7 @@ import { SnapshotViewer } from "./components/SnapshotViewer";
 import { useSnapshots, useSnapshotFilter } from "./hooks/useSnapshots";
 import { useViewMode } from "./hooks/useViewMode";
 import { exportSnapshot } from "./utils/snapshotStorage";
-import { createCSSSnapshot } from "./utils/snapshotBuilder";
+import { createCurrentSnapshotFor } from "./utils/snapshotBuilder";
 import { SnapshotManagerHeader } from "./components/SnapshotManagerHeader";
 import { SnapshotViewerHeader } from "./components/SnapshotViewerHeader";
 import { SnapshotCompareHeader } from "./components/SnapshotCompareHeader";
@@ -178,8 +178,8 @@ export const CSSSnapshotInspector: React.FC = () => {
 
 
     try {
-      // Create a snapshot of the current page
-      const currentPageSnapshot = await createCSSSnapshot("Current Page");
+      // Capture the current page (or the same element, for element snapshots)
+      const currentPageSnapshot = await createCurrentSnapshotFor(firstSnapshot);
 
       // Clear existing comparison snapshots
       clearCompare();
@@ -241,6 +241,7 @@ export const CSSSnapshotInspector: React.FC = () => {
             onToggleCompare={toggleCompare}
             onStartComparison={handleStartComparison}
             onCompareWithCurrentPage={handleCompareWithCurrentPage}
+            isFiltered={snapshots.length > 0 && filteredSnapshots.length !== snapshots.length}
           />
         );
     }

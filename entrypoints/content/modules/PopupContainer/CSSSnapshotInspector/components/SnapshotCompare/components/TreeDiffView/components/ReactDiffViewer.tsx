@@ -37,6 +37,14 @@ const collectNodesByPath = (node: DOMTreeNode, collection = new Map<string, DOMT
 };
 
 /**
+ * Logical/derived properties that always mirror another computed property
+ * (block-size = height, transform-origin follows the size, ...). Listing them
+ * would only repeat the same change several times.
+ */
+const DERIVED_STYLE_PROPERTY =
+  /^(?:(?:min-|max-)?(?:block|inline)-size|(?:margin|padding|inset|border)-(?:block|inline)(?:-.+)?|perspective-origin|transform-origin)$/;
+
+/**
  * Finds elements present in both trees whose computed styles changed. The markup
  * lines alone don't carry computed styles, so without this a style-only change
  * (e.g. a colour tweak) produced an empty diff.
@@ -52,7 +60,9 @@ const computeChangedStyles = (
     const leftStyles = left.styles || {};
     const rightStyles = right.styles || {};
     const keys = new Set([...Object.keys(leftStyles), ...Object.keys(rightStyles)]);
-    const diff = [...keys].filter((key) => leftStyles[key] !== rightStyles[key]).sort();
+    const diff = [...keys]
+      .filter((key) => leftStyles[key] !== rightStyles[key] && !DERIVED_STYLE_PROPERTY.test(key))
+      .sort();
     if (diff.length) changed.set(path, diff);
   });
   return changed;

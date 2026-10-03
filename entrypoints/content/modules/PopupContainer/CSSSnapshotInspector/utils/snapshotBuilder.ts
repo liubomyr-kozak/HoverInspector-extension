@@ -408,6 +408,61 @@ export const createCSSSnapshot = async (title?: string, options: SnapshotOptions
 };
 
 /**
+ * Finds the live element an element snapshot was taken from, trying each stored XPath variant
+ */
+const findSnapshotRootElement = (snapshot: CSSSnapshot): Element | null => {
+  const variants = snapshot.root?.xpath;
+  if (!variants) return null;
+  const candidates = [variants.withId, variants.optimized, variants.absolute, variants.withClasses, variants.withAttributes];
+  for (const xpath of candidates) {
+    if (!xpath) continue;
+    try {
+      const node = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      if (node instanceof Element) return node;
+    } catch {
+      // invalid XPath variant, try the next one
+    }
+  }
+  return null;
+};
+
+/**
+ * Captures the current state of the page in the same scope as `snapshot`: for an
+ * element snapshot (from "Pick Element") only that element is captured again, so the
+ * comparison lines up instead of diffing one element against the whole page.
+ */
+export const createCurrentSnapshotFor = async (snapshot: CSSSnapshot): Promise<CSSSnapshot> => {
+  const isElementSnapshot = snapshot.id.startsWith("element-snapshot-");
+  const element = isElementSnapshot ? findSnapshotRootElement(snapshot) : null;
+
+  if (!element) {
+    return createCSSSnapshot("Current Page");
+  }
+
+  const { tree, stats } = buildSnapshotTree(element, {
+    maxElements: 1000,
+    skipInvisible: true,
+    includeText: true,
+    includeUnchanged: false,
+  });
+
+  return {
+    id: `current-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+    timestamp: Date.now(),
+    url: window.location.href,
+    title: `Current: ${snapshot.title}`,
+    elementCount: stats.totalNodes,
+    root: tree,
+    metadata: {
+      userAgent: navigator.userAgent,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      colorScheme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+      optimized: true,
+    },
+  };
+};
+
+/**
  * CLEANUP: August 2025
  * Removed unused compareSnapshots function and its helper hasNodeChanged function.
  * The comparison functionality is now implemented directly in the SnapshotCompare component
