@@ -350,6 +350,7 @@ class HighlightOverlayManager {
     this.stopHighlight();
     this.clearHandlers();
     this.overlay.remove();
+    document.getElementById("highlight-overlay-blink-styles")?.remove();
     HighlightOverlayManager.instance = undefined as any;
   }
 }
