@@ -72,15 +72,15 @@ export const PortalModalHeader: React.FC<{
   return createPortal(children, portalContainer);
 };
 
-export const PortalModalHeaderButtonsWrapper = styled.div`
+export const PortalModalHeaderButtonsWrapper = styled.div.attrs({ className: "hi-header-buttons" })`
   display: flex;
   align-items: center;
+  gap: 4px;
   margin-left: auto;
   flex-shrink: 0;
-  margin-right: 12px;
-  border-right-width: 1px;
-  border-style: solid;
-  padding-right: 12px;
+  margin-right: 8px;
+  border-right: 1px solid #e5e7eb;
+  padding-right: 8px;
 `;
 
 export const PortalModalHeaderButtons: React.FC<{

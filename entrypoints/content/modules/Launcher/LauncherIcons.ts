@@ -37,7 +37,7 @@ export const PICKER = {
 
 export const CONVERT_TOOLS = {
   id: "convertTools",
-  title: "Convert tools",
+  title: "Unit Converter",
   icon: IconTransformFilled,
   activatable: true,
   multipleView: false,

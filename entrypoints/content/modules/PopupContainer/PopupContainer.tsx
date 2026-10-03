@@ -213,18 +213,21 @@ export function PopupContainer() {
                   </BecomeASponsorText>
                 ) : (
                   <BecomeASponsorText>
-                    <h3>Become a Sponsor</h3>
+                    <h3>Become a sponsor</h3>
                     <p title="Support the project and help bring new features faster.">Help bring new features faster.</p>
                   </BecomeASponsorText>
                 )}
 
-                <div
+                <button
+                  type="button"
                   style={{
                     position: "absolute",
                     top: "5px",
                     right: "5px",
                     cursor: "pointer",
                     zIndex: 10,
+                    display: "flex",
+                    border: "none",
                     background: "rgba(255,255,255,0.7)",
                     borderRadius: "50%",
                     padding: "2px",
@@ -232,11 +235,14 @@ export function PopupContainer() {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    // Enter/Space: there is no press to time, so it is a simple "hide until tomorrow"
+                    if (e.detail === 0) pressTimerDate.current = Date.now();
                     handleHideSponsorMessage(e);
                   }}
                   onMouseDown={handleSponsorMouseDown}
                   onMouseUp={handleHideSponsorMessage}
                   title="Hide until tomorrow"
+                  aria-label="Hide the sponsor message until tomorrow"
                 >
                   <IconX
                     size={16}
@@ -244,7 +250,7 @@ export function PopupContainer() {
                       animation: isLongPress ? "spin 1s linear infinite" : "none",
                     }}
                   />
-                </div>
+                </button>
               </BecomeASponsor>
             ) : null}
             <ButtonsContainer id="hover-inspector-popup-footer-container" />

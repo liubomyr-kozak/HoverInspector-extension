@@ -25,6 +25,31 @@
   color-scheme: light only;
 }
 
+:host {
+  /* Design tokens, mirrored in entrypoints/shared/styles/tokens.ts */
+  --hi-color-primary: #2563eb;
+  --hi-color-primary-hover: #1d4ed8;
+  --hi-color-primary-bg: #eff6ff;
+  --hi-color-text: #1f2937;
+  --hi-color-text-secondary: #4b5563;
+  --hi-color-text-muted: #6b7280;
+  --hi-color-border: #e5e7eb;
+  --hi-color-danger: #dc2626;
+  --hi-radius: 6px;
+  --hi-control-height: 32px;
+  --hi-control-height-sm: 24px;
+}
+
+/*
+ * One visible keyboard focus ring for every hand-built control in the panels. :where() keeps the
+ * specificity low so components with their own focus style (antd, the note tools' ring) keep it.
+ */
+:host :where(button, a[href], summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"],
+    [role="switch"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--hi-color-primary);
+  outline-offset: 2px;
+}
+
 .hover-inspector-box-box-hover {
   background: #4ba5ff;
   box-shadow: 0 0 0 0.3px #4ba5ff;

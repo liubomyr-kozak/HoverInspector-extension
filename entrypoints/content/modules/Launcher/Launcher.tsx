@@ -128,7 +128,7 @@ const Launcher: React.FC = () => {
     <MenuContainer>
       <MenuWrapper>
         <LeftColumn>
-          <SectionTitle>Features List</SectionTitle>
+          <SectionTitle>Tools</SectionTitle>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/*//@ts-ignore*/}
             <SortableContext items={normalizedIconOrder} strategy={rectSortingStrategy}>
@@ -171,17 +171,18 @@ const Launcher: React.FC = () => {
             Feedback
             <span className="flex ml-auto">
               <span className="mr-2">
-                <Tooltip placement="top" title="Support / Labolatory Channel">
+                <Tooltip placement="top" title="Support / Laboratory channel on Slack">
                   <a
                     target="_blank"
+                    aria-label="Support channel on Slack"
                     href="https://join.slack.com/t/browserextensionshq/shared_invite/zt-34o10eynr-Fof1vlJyx6PxpqjspCLKaw"
                   >
                     <IconBrandSlack />
                   </a>
                 </Tooltip>
               </span>
-              <Tooltip placement="top" title="Email">
-                <a target="_blank" href="https://forms.gle/kaZFbYjP9zd4x6Re6">
+              <Tooltip placement="top" title="Send feedback">
+                <a target="_blank" aria-label="Send feedback" href="https://forms.gle/kaZFbYjP9zd4x6Re6">
                   <IconMailFilled />
                 </a>
               </Tooltip>

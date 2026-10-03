@@ -31,14 +31,26 @@ export const DragFeatureIcon = styled.div`
   align-items: center;
 `;
 
-export const DragFeatureTitle = styled.div`
+export const DragFeatureTitle = styled.button`
   margin: 0 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 `;
 
-export const EyeIconContainer = styled.div`
+export const EyeIconContainer = styled.button`
   display: flex;
   align-items: center;
   margin-right: 8px;
+  padding: 2px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
   cursor: pointer;
   margin-left: auto;
 
