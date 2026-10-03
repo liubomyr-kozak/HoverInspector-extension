@@ -49,16 +49,14 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
   activeView = "diff",
   splitView = true,
 }) => {
-  const stylesA = getStylesFromSnapshot(snapshotA);
-  const stylesB = getStylesFromSnapshot(snapshotB);
-
-  const { treeA, treeB } = useMemo(() => {
-    const resultTrees = {
-      treeA: buildDOMTree(stylesA),
-      treeB: buildDOMTree(stylesB),
-    };
-    return resultTrees;
-  }, [stylesA, stylesB]);
+  // Memoize on the snapshots: getStylesFromSnapshot returns a new object each call
+  const { treeA, treeB } = useMemo(
+    () => ({
+      treeA: buildDOMTree(getStylesFromSnapshot(snapshotA)),
+      treeB: buildDOMTree(getStylesFromSnapshot(snapshotB)),
+    }),
+    [snapshotA, snapshotB],
+  );
 
   const stats = useMemo(() => {
     const totalA = snapshotA.elementCount || 0;
