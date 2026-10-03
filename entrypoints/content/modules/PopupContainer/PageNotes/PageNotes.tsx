@@ -30,6 +30,7 @@ import { PAGE_NOTES } from "@entrypoints/content/modules/Launcher/LauncherIcons.
 import { TbWindowMinimize } from "react-icons/tb";
 import { FiGlobe, FiMap, FiTarget, FiX } from "react-icons/fi";
 import { AttachmentTypeEnum } from "@entrypoints/shared/types/notes";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 
 const Container = styled.div`
   display: flex;
@@ -369,15 +370,11 @@ export const PageNotes: React.FC = () => {
             <FeatureIcon icon={PAGE_NOTES.icon} />
             <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
             <PortalModalHeaderButtons>
-              <div
-                className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-                onClick={() => {
+              <IconButton label="Minimize Page Notes" onClick={() => {
                   handleToggleFeatureMinimized("pageNotes");
-                }}
-                title={`Minimize Page Notes`}
-              >
-                <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-              </div>
+                }}>
+                <TbWindowMinimize />
+              </IconButton>
             </PortalModalHeaderButtons>
           </FeatureTitle>
         </PortalModalHeader>
@@ -396,15 +393,11 @@ export const PageNotes: React.FC = () => {
             <FeatureIcon icon={PAGE_NOTES.icon} />
             <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
             <PortalModalHeaderButtons>
-              <div
-                className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-                onClick={() => {
+              <IconButton label="Minimize Page Notes" onClick={() => {
                   handleToggleFeatureMinimized("pageNotes");
-                }}
-                title={`Minimize Page Notes`}
-              >
-                <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-              </div>
+                }}>
+                <TbWindowMinimize />
+              </IconButton>
             </PortalModalHeaderButtons>
           </FeatureTitle>
         </PortalModalHeader>
@@ -439,51 +432,35 @@ export const PageNotes: React.FC = () => {
           <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
             {/* Note Visibility & Attachment buttons */}
-            <div className="flex items-center gap-1 mr-2">
-              <button
-                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
-                  selectedAttachmentType === "global"
-                    ? "bg-blue-100 text-blue-600"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}
+            <div className="flex items-center gap-1">
+              <IconButton
+                label="Filter: notes shown on all pages"
+                active={selectedAttachmentType === "global"}
                 onClick={() => handleAttachmentTypeClick("global")}
-                title="Filter: notes shown on all pages"
               >
                 <FiGlobe className="w-4 h-4" />
-              </button>
-              <button
-                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
-                  selectedAttachmentType === "route"
-                    ? "bg-blue-100 text-blue-600"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}
+              </IconButton>
+              <IconButton
+                label="Filter: notes attached to routes or domains"
+                active={selectedAttachmentType === "route"}
                 onClick={() => handleAttachmentTypeClick("route")}
-                title="Filter: notes attached to routes or domains"
               >
                 <FiMap className="w-4 h-4" />
-              </button>
-              <button
-                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
-                  selectedAttachmentType === "element"
-                    ? "bg-blue-100 text-blue-600"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}
+              </IconButton>
+              <IconButton
+                label="Filter: notes attached to page elements"
+                active={selectedAttachmentType === "element"}
                 onClick={() => handleAttachmentTypeClick("element")}
-                title="Filter: notes attached to page elements"
               >
                 <FiTarget className="w-4 h-4" />
-              </button>
+              </IconButton>
             </div>
 
-            <div
-              className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-              onClick={() => {
+            <IconButton label="Minimize Page Notes" onClick={() => {
                 handleToggleFeatureMinimized("pageNotes");
-              }}
-              title={`Minimize Page Notes`}
-            >
-              <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-            </div>
+              }}>
+                <TbWindowMinimize />
+              </IconButton>
           </PortalModalHeaderButtons>
         </FeatureTitle>
       </PortalModalHeader>
