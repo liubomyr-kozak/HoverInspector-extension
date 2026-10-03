@@ -65,8 +65,12 @@ const TooltipLabelSize = styled.div`
   display: block;
 `;
 
-const TooltipLabel = styled.div<{ $x: number }>`
+const TooltipLabel = styled.button<{ $x: number }>`
   position: absolute;
+  border: none;
+  margin: 0;
+  font-family: inherit;
+  line-height: normal;
   left: ${({ $x }) => $x}px;
   top: 22px;
   transform: translateX(-50%);
@@ -92,20 +96,22 @@ const TooltipLabel = styled.div<{ $x: number }>`
     transition: border-color 0.2s ease;
   }
 
-  &:hover {
-    background-color: #007bff;
+  &:hover,
+  &:focus-visible {
+    background-color: #2563eb;
     z-index: ${ZINDEX_RULER_WRAPPER_LABEL};
   }
 
-  &:hover::before {
-    border-color: transparent transparent #007bff transparent;
+  &:hover::before,
+  &:focus-visible::before {
+    border-color: transparent transparent #2563eb transparent;
   }
 
-  &:hover ${TooltipLabelSizeLabel} {
+  &:hover ${TooltipLabelSizeLabel}, &:focus-visible ${TooltipLabelSizeLabel} {
     display: block;
   }
 
-  &:hover ${TooltipLabelSize} {
+  &:hover ${TooltipLabelSize}, &:focus-visible ${TooltipLabelSize} {
     display: none;
   }
 `;
@@ -178,14 +184,20 @@ export const ViewportRuler = () => {
           return <Tick key={x} $x={x} $height={height} />;
         })}
         {breakpoints.map(({ label, value }) => (
-          <TooltipLabel key={value} $x={value} onClick={() => handleLabelClick(value)}>
+          <TooltipLabel
+            key={value}
+            type="button"
+            $x={value}
+            onClick={() => handleLabelClick(value)}
+            aria-label={`Resize the window to ${value}px (${label.replace(/^[^A-Za-z]+/, "").replace(/\s*\(.*\)$/, "")})`}
+          >
             <TooltipLabelSizeLabel> {label}</TooltipLabelSizeLabel>
             <TooltipLabelSize>{value}px</TooltipLabelSize>
           </TooltipLabel>
         ))}
       </RulerWrapper>
       <CurrentSizeLabel>Current: {windowWidth}px</CurrentSizeLabel>
-      {resizeMiss && <ResizeMissLabel>{resizeMiss}</ResizeMissLabel>}
+      {resizeMiss && <ResizeMissLabel role="status">{resizeMiss}</ResizeMissLabel>}
     </>
   );
 };
