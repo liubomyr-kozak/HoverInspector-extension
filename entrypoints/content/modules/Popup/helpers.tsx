@@ -29,7 +29,7 @@ export const getTagMeta = (tag, id, className) => {
           padding: '1px 5px',
           borderRadius: '3px',
           border: '1px solid #bbdefb'
-        }}>#{id}</span>
+        }}>{id.startsWith('#') ? id : `#${id}`}</span>
       )}
       {className && (
         <span style={{
@@ -45,7 +45,7 @@ export const getTagMeta = (tag, id, className) => {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
-        }}>.{className}</span>
+        }}>{className.startsWith('.') ? className : `.${className}`}</span>
       )}
     </div>
   );

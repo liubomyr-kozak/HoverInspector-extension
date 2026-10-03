@@ -50,7 +50,7 @@ export const normalizePaddingMargin = (nodeStyle, rule) => {
     const sideEqual = right === left
     const topBottomEqual = top === bottom
 
-    if (sideEqual === topBottomEqual && right === bottom && top === left) {
+    if (top === right && right === bottom && bottom === left) {
         return `${top}px`
     }
 
@@ -225,13 +225,16 @@ class DomNodeManager {
         const nodeEl = typeof value === 'string' ? this.get(value) : value;
         if (!nodeEl) return {}
 
+        // One computed style object per call instead of one per property
+        const computed = window.getComputedStyle(nodeEl);
+        const rect = nodeEl.getBoundingClientRect();
         let nodeStyle = styleRules.reduce((options, ruleName) => {
-                const value = getStyle(nodeEl, ruleName);
+                const value = computed.getPropertyValue(ruleName);
 
                 if (value === 'rgba(0, 0, 0, 0)') return options;
 
                 if (ruleName === 'height' || ruleName === 'width') {
-                    options[ruleName] = `${nodeEl.getBoundingClientRect()[ruleName]}px`;
+                    options[ruleName] = `${rect[ruleName]}px`;
                 } else {
                     options[ruleName] = value;
                 }

@@ -9,6 +9,10 @@ import cx from "classnames";
 
 const PopupContainer = ({ data, hoverElement }) => {
   const { height, width, tag, className, id, padding, margin, border, color, backgroundColor, font } = data;
+  const fontSize = data["font-size"];
+  const fontWeight = data["font-weight"];
+  const lineHeight = data["line-height"];
+  const fontFamily = (data["font-family"] || "").split(",")[0].replace(/["']/g, "").trim();
 
   const renderColorInfo = (label, colorValue, showLabel = true) => {
     if (!colorValue) return null;
@@ -176,10 +180,18 @@ const PopupContainer = ({ data, hoverElement }) => {
             Typography
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', color: '#666' }}>Font Size:</span>
-              {renderSpacingValue(font)}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#666' }}>Size / Weight:</span>
+              {renderSpacingValue(`${fontSize}${lineHeight && lineHeight !== "normal" ? ` / ${lineHeight}` : ""} · ${fontWeight}`)}
             </div>
+            {fontFamily && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: '#666' }}>Family:</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {renderSpacingValue(fontFamily)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -449,6 +461,8 @@ const Popup = React.memo(() => {
   const listenChangeUserAction = useSelector((state) => (state as any).app.userAction);
   const popupRef = useRef<any>(null);
   const lockRerender = useRef(false);
+  // Hover/scroll that arrived while the popup was being measured; replayed on unlock so the last one wins
+  const pendingUpdate = useRef<string | null>(null);
   const [popup, setPopup] = useState({
     isVisible: false,
     visibleIn: {} as any,
@@ -457,7 +471,10 @@ const Popup = React.memo(() => {
   });
 
   const updatePopup = useCallback((activeElementType) => {
-    if (lockRerender.current) return;
+    if (lockRerender.current) {
+      pendingUpdate.current = activeElementType;
+      return;
+    }
 
     const hoverNodeParams = DomNodeManager.getStyleByNode(activeElementType);
 
@@ -489,9 +506,17 @@ const Popup = React.memo(() => {
       // Розблокуємо ререндер через ще одну "подію"
       setTimeout(() => {
         lockRerender.current = false;
+
+        if (pendingUpdate.current) {
+          const next = pendingUpdate.current;
+          pendingUpdate.current = null;
+          updatePopupRef.current(next);
+        }
       }, 0);
     }, 0);
   }, []);
+  const updatePopupRef = useRef(updatePopup);
+  updatePopupRef.current = updatePopup;
 
   useEffect(() => {
     updatePopup("hoverElement");
