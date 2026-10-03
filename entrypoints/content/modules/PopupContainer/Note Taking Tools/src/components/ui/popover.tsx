@@ -5,6 +5,10 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { cn } from "./utils";
 
+// Where popovers are portalled. Note Taking Tools runs in the extension's shadow root, so the
+// default (document.body) would put popovers outside it, without any styles.
+export const PortalContainerContext = React.createContext<HTMLElement | null>(null);
+
 function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
@@ -19,8 +23,9 @@ function PopoverContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+  const container = React.useContext(PortalContainerContext);
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

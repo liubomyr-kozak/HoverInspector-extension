@@ -1,313 +1,204 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
-import { 
-  Plus, 
-  Search, 
-  FileText, 
-  Folder,
-  MapPin,
-  Calendar,
-  Tag,
-  ChevronLeft,
-  Menu
-} from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Plus, Search, MapPin, Globe, FolderPlus } from 'lucide-react';
+import type { Note } from '../hooks/useReduxNotes';
+import type { NoteGroup } from '@entrypoints/shared/types/notes';
 
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  color: string;
-  location?: string;
-  category: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export const ALL_NOTES = '__all__';
+export const UNCATEGORIZED_ID = '__uncategorized__';
 
 interface SidebarProps {
   notes: Note[];
-  activeNoteId?: string;
+  groups: NoteGroup[];
   onNoteSelect: (noteId: string) => void;
   onNewNote: () => void;
+  // ALL_NOTES, UNCATEGORIZED_ID or a group id
   selectedCategory: string;
   onCategorySelect: (category: string) => void;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
+  onCreateCategory: (name: string) => void;
 }
 
-export function Sidebar({ 
-  notes, 
-  activeNoteId, 
-  onNoteSelect, 
+/**
+ * Notes list with search and categories (note groups)
+ */
+export function Sidebar({
+  notes,
+  groups,
+  onNoteSelect,
   onNewNote,
   selectedCategory,
   onCategorySelect,
-  isCollapsed,
-  onToggleCollapse
+  onCreateCategory,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
 
+  const uncategorizedCount = notes.filter((n) => !n.groupId).length;
   const categories = [
-    { name: 'All Notes', icon: FileText, count: notes.length },
-    { name: 'Things to do', icon: Calendar, count: notes.filter(n => n.category === 'Things to do').length },
-    { name: 'Meeting Notes', icon: Folder, count: notes.filter(n => n.category === 'Meeting Notes').length },
-    { name: 'Weekend Plans', icon: Calendar, count: notes.filter(n => n.category === 'Weekend Plans').length },
-    { name: 'Work Tasks this Month', icon: Tag, count: notes.filter(n => n.category === 'Work Tasks this Month').length },
-    { name: 'Blog Post Ideas', icon: FileText, count: notes.filter(n => n.category === 'Blog Post Ideas').length },
-    { name: 'Vacation Ideas', icon: MapPin, count: notes.filter(n => n.category === 'Vacation Ideas').length },
-    { name: 'Interesting Sites', icon: FileText, count: notes.filter(n => n.category === 'Interesting Sites').length },
-    { name: 'Books to Read', icon: FileText, count: notes.filter(n => n.category === 'Books to Read').length },
+    { id: ALL_NOTES, name: 'All Notes', count: notes.length },
+    ...groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      count: notes.filter((n) => n.groupId === group.id).length,
+    })),
+    ...(groups.length > 0 && uncategorizedCount > 0
+      ? [{ id: UNCATEGORIZED_ID, name: 'Uncategorized', count: uncategorizedCount }]
+      : []),
   ];
 
-  const filteredNotes = notes.filter(note => {
-    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         note.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All Notes' || note.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const query = searchQuery.toLowerCase();
+  const filteredNotes = notes
+    .filter((note) => {
+      const matchesSearch = note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query);
+      const matchesCategory =
+        selectedCategory === ALL_NOTES ||
+        (selectedCategory === UNCATEGORIZED_ID ? !note.groupId : note.groupId === selectedCategory);
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', { 
-      month: 'short', 
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     }).format(new Date(date));
   };
 
-  const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
-
-  if (isCollapsed) {
-    return (
-      <div className="w-16 bg-background border-r border-border h-full flex flex-col">
-        {/* Collapsed Header */}
-        <div className="p-4 space-y-4">
-          <Button
-            onClick={onToggleCollapse}
-            variant="ghost"
-            size="sm"
-            className="w-8 h-8 p-0"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-          
-          <Button 
-            onClick={onNewNote} 
-            variant="ghost"
-            size="sm"
-            className="w-8 h-8 p-0"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Collapsed Categories */}
-        <div className="px-4 pb-4">
-          <ScrollArea className="max-h-64">
-            <div className="space-y-2">
-              {categories.map((category) => {
-                const Icon = category.icon;
-                const isSelected = selectedCategory === category.name;
-                
-                return (
-                  <Button
-                    key={category.name}
-                    variant="ghost"
-                    size="sm"
-                    className={`w-8 h-8 p-0 ${
-                      isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
-                    }`}
-                    onClick={() => onCategorySelect(category.name)}
-                    title={category.name}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </Button>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </div>
-
-        <Separator />
-
-        {/* Collapsed Notes List */}
-        <div className="flex-1 overflow-hidden px-4">
-          <ScrollArea className="flex-1">
-            <div className="space-y-2 py-4">
-              {filteredNotes.map((note) => (
-                <div
-                  key={note.id}
-                  className={`w-8 h-8 rounded-lg cursor-pointer transition-all duration-200 flex items-center justify-center ${
-                    activeNoteId === note.id 
-                      ? 'bg-accent shadow-sm' 
-                      : 'bg-muted/50 hover:bg-muted hover:shadow-sm'
-                  }`}
-                  onClick={() => onNoteSelect(note.id)}
-                  title={note.title || 'Untitled'}
-                >
-                  <div 
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: note.color }}
-                  />
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-      </div>
-    );
-  }
+  const submitCategory = () => {
+    const name = newCategory.trim();
+    if (!name) return;
+    onCreateCategory(name);
+    setNewCategory('');
+    setIsCategoryFormOpen(false);
+  };
 
   return (
-    <div className="w-80 bg-background border-r border-border h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FileText className="h-6 w-6 text-foreground" />
-            <span className="text-xl font-semibold">Notes</span>
-          </div>
-          {selectedCategory !== 'All Notes' && (
-            <Button
-              onClick={onToggleCollapse}
-              variant="ghost"
-              size="sm"
-              className="p-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        
-        <Button 
-          onClick={onNewNote} 
-          className="w-full justify-start gap-3 h-11 bg-muted hover:bg-muted/80"
-          variant="ghost"
-        >
-          <Plus className="h-4 w-4" />
-          New Note
-        </Button>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="flex-1 min-h-0 flex flex-col gap-3">
+      {/* Search and new note */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11 bg-muted border-0"
+            className="pl-9 h-9 bg-muted border-0"
           />
         </div>
+        <Button onClick={onNewNote} size="sm" className="h-9 gap-1.5" title="New note">
+          <Plus className="h-4 w-4" />
+          New
+        </Button>
       </div>
 
-      {/* Current Category Header */}
-      {selectedCategory !== 'All Notes' && selectedCategoryData && (
-        <div className="px-6 pb-4">
-          <div className="flex items-center gap-3 p-3 bg-accent/50 rounded-lg">
-            <selectedCategoryData.icon className="h-5 w-5 text-accent-foreground" />
-            <div className="flex-1">
-              <h3 className="font-medium text-accent-foreground">{selectedCategory}</h3>
-              <p className="text-sm text-muted-foreground">{filteredNotes.length} notes</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Categories */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {categories.map((category) => {
+          const isSelected = selectedCategory === category.id;
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onCategorySelect(category.id)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                isSelected
+                  ? 'bg-primary text-primary-foreground border-transparent'
+                  : 'border-border text-foreground hover:bg-muted'
+              }`}
+            >
+              <span className="max-w-[120px] truncate">{category.name}</span>
+              <span className={isSelected ? 'opacity-70' : 'text-muted-foreground'}>{category.count}</span>
+            </button>
+          );
+        })}
 
-      {/* Categories - only show when All Notes is selected */}
-      {selectedCategory === 'All Notes' && (
-        <>
-          <div className="px-6 pb-4">
-            <h3 className="mb-4 text-sm font-medium text-muted-foreground uppercase tracking-wide">Categories</h3>
-            <ScrollArea className="max-h-64">
-              <div className="space-y-1">
-                {categories.map((category) => {
-                  const Icon = category.icon;
-                  const isSelected = selectedCategory === category.name;
-                  
-                  return (
-                    <Button
-                      key={category.name}
-                      variant="ghost"
-                      className={`w-full justify-between p-3 h-auto text-left ${
-                        isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
-                      }`}
-                      onClick={() => onCategorySelect(category.name)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium truncate">{category.name}</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground font-normal">{category.count}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </div>
-          <Separator />
-        </>
-      )}
+        <Popover open={isCategoryFormOpen} onOpenChange={setIsCategoryFormOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+              title="New category"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+              Category
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 p-3">
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitCategory();
+              }}
+            >
+              <Input
+                autoFocus
+                placeholder="Category name"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="h-8"
+              />
+              <Button type="submit" size="sm" disabled={!newCategory.trim()}>
+                Add
+              </Button>
+            </form>
+          </PopoverContent>
+        </Popover>
+      </div>
 
       {/* Notes List */}
-      <div className="flex-1 overflow-hidden">
-        <div className="px-6 py-4">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            {selectedCategory === 'All Notes' ? `${selectedCategory} (${filteredNotes.length})` : 'Notes'}
-          </h3>
-        </div>
-        
-        <ScrollArea className="flex-1 px-6">
-          <div className="space-y-3 pb-6">
-            {filteredNotes.map((note) => (
-              <div
-                key={note.id}
-                className={`p-4 rounded-xl cursor-pointer transition-all duration-200 ${
-                  activeNoteId === note.id 
-                    ? 'bg-accent shadow-sm' 
-                    : 'bg-muted/50 hover:bg-muted hover:shadow-sm'
-                }`}
-                onClick={() => onNoteSelect(note.id)}
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <div 
-                    className="w-3 h-3 rounded-full flex-shrink-0 mt-1.5"
-                    style={{ backgroundColor: note.color }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-sm text-foreground truncate mb-1">
-                      {note.title || 'Untitled'}
-                    </h4>
-                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                      {note.content || 'No content'}
-                    </p>
+      <div className="flex-1 min-h-0 overflow-y-auto pb-20">
+        <div className="space-y-2">
+          {filteredNotes.map((note) => (
+            <div
+              key={note.id}
+              role="button"
+              tabIndex={0}
+              className="p-3 rounded-xl cursor-pointer transition-all duration-200 bg-muted/50 hover:bg-muted"
+              onClick={() => onNoteSelect(note.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onNoteSelect(note.id);
+              }}
+            >
+              <div className="flex items-start gap-3 mb-2">
+                <div className="w-3 h-3 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: note.color }} />
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-sm text-foreground truncate m-0">{note.title || 'Untitled'}</h4>
+                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed m-0">
+                    {note.content || 'No content'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span className="font-medium whitespace-nowrap">{formatDate(note.updatedAt)}</span>
+                <span className="truncate">{note.category}</span>
+                {note.location && (
+                  <div className="flex items-center gap-1 min-w-0">
+                    {note.attachment === 'global' ? (
+                      <Globe className="h-3 w-3 flex-shrink-0" />
+                    ) : (
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                    )}
+                    <span className="truncate max-w-[110px] font-medium">{note.location}</span>
                   </div>
-                </div>
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="font-medium">{formatDate(note.updatedAt)}</span>
-                  {note.location && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      <span className="truncate max-w-20 font-medium">{note.location}</span>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            ))}
-            
-            {filteredNotes.length === 0 && (
-              <div className="text-center text-muted-foreground text-sm py-12">
-                <div className="space-y-2">
-                  <p className="font-medium">{searchQuery ? 'No notes match your search' : 'No notes yet'}</p>
-                  {!searchQuery && (
-                    <p className="text-xs">Click "New Note" to get started</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+            </div>
+          ))}
+
+          {filteredNotes.length === 0 && (
+            <div className="text-center text-muted-foreground text-sm py-10">
+              <p className="font-medium m-0">{searchQuery ? 'No notes match your search' : 'No notes yet'}</p>
+              {!searchQuery && <p className="text-xs mt-1">Click "New" to get started</p>}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
