@@ -247,11 +247,9 @@ export const updateFolderInLocalStorage = async (id: string, folder: ScenarioFol
     // The 'fo_' prefix will help distinguish folders from scenarios in the UI
     const prefixedId = id.startsWith("fo_") ? id : `fo_${id}`;
 
-    // Extract the ID without the prefix for the storage manager
-    const storageId = prefixedId.replace(/^fo_/, "");
-
+    // Keep the prefix in the stored key: getAllFoldersFromLocalStorage looks folders up by it
     const result = await ExtensionStorageManager.saveFolder({
-      id: storageId,
+      id: prefixedId,
       folder,
     });
     return result.success;
