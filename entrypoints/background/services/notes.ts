@@ -1,4 +1,4 @@
-import { Note, NoteLocation, NotesState, NoteGroup, ColorPalette } from "@entrypoints/shared/types/notes.ts";
+import { Note, NoteLocation, NoteGroup, ColorPalette, NotePatternType } from "@entrypoints/shared/types/notes.ts";
 
 /**
  * Creates a new note with proper structure
@@ -7,21 +7,25 @@ export function createNewNote(
   formData: Partial<Note> & { content: string; title: string; locations: NoteLocation[] },
 ): Note {
   return {
+    isVisible: true,
     ...formData,
+    title: formData.title ?? "",
+    content: formData.content ?? "",
+    locations: Array.isArray(formData.locations) ? formData.locations : [],
     id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    isVisible: true,
   };
 }
 
 /**
  * Updates a note with new data while preserving locations array
  */
-export function updateNoteData(note: Note, updates: Partial<Note> & { locations?: boolean }): Note {
+export function updateNoteData(note: Note, updates: Partial<Note>): Note {
+  const { id: _id, createdAt: _createdAt, ...rest } = updates;
   return {
     ...note,
-    ...updates,
+    ...rest,
     updatedAt: Date.now(),
   };
 }
@@ -29,8 +33,9 @@ export function updateNoteData(note: Note, updates: Partial<Note> & { locations?
 /**
  * Creates a new note group
  */
-export function createNewNoteGroup(data: { name: string; color: string }): NoteGroup {
+export function createNewNoteGroup(data: { name: string; color?: string }): NoteGroup {
   return {
+    color: "#6B7280",
     ...data,
     id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     createdAt: Date.now(),
@@ -57,87 +62,189 @@ export function createNewColorPalette(data: Partial<ColorPalette>): ColorPalette
   return {
     ...data,
     id: data.id || `color_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    name: data.name || "Custom Color",
+    name: data.name || `Custom ${data.value || "#000000"}`,
     value: data.value || "#000000",
     isDefault: data.isDefault || false,
-    createdAt: Date.now(),
+    createdAt: data.createdAt || Date.now(),
   };
 }
+
+/**
+ * Repairs groups saved by an older version that stored the payload wrapper ({ data: { name, color } })
+ */
+export function normalizeNoteGroups(groups: any[] = []): NoteGroup[] {
+  return groups
+    .map((group) => (group && !group.name && group.data?.name ? { ...group, ...group.data, data: undefined } : group))
+    .filter((group) => group && typeof group.name === "string" && group.name.trim());
+}
+
+/**
+ * Drops broken palettes saved by an older version (black "Custom Color" entries created from
+ * an unwrapped payload) and makes sure the default colors exist with their fixed ids
+ */
+export function normalizeColorPalettes(palettes: any[] = []): ColorPalette[] {
+  const valid = palettes.filter(
+    (palette) =>
+      palette &&
+      typeof palette.id === "string" &&
+      typeof palette.value === "string" &&
+      !(palette.name === "Custom Color" && palette.value === "#000000" && !palette.isDefault),
+  );
+  const missingDefaults = DEFAULT_NOTE_COLORS.filter((color) => !valid.some((palette) => palette.id === color.id));
+  return [...missingDefaults, ...valid];
+}
+
+// Default note colors. Fixed ids so a note's colorId keeps pointing at the same color.
+export const DEFAULT_NOTE_COLORS: ColorPalette[] = [
+  { id: "blue", name: "Blue", value: "#3B82F6", isDefault: true, createdAt: 0 },
+  { id: "red", name: "Red", value: "#EF4444", isDefault: true, createdAt: 0 },
+  { id: "green", name: "Green", value: "#10B981", isDefault: true, createdAt: 0 },
+  { id: "yellow", name: "Yellow", value: "#F59E0B", isDefault: true, createdAt: 0 },
+  { id: "purple", name: "Purple", value: "#8B5CF6", isDefault: true, createdAt: 0 },
+  { id: "orange", name: "Orange", value: "#F97316", isDefault: true, createdAt: 0 },
+  { id: "pink", name: "Pink", value: "#EC4899", isDefault: true, createdAt: 0 },
+  { id: "cyan", name: "Cyan", value: "#06B6D4", isDefault: true, createdAt: 0 },
+];
+
+const escapeRegExp = (value: string) => value.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+
+// Turns a glob-like pattern ("*" = any characters) into an anchored RegExp
+const globToRegExp = (pattern: string) => new RegExp("^" + pattern.split("*").map(escapeRegExp).join(".*") + "$");
+
+const trimTrailingSlash = (path: string) => (path.length > 1 ? path.replace(/\/+$/, "") : path);
+
+const toUrl = (url: string | URL): URL | null => {
+  try {
+    return url instanceof URL ? url : new URL(url);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Checks a route pattern against a page URL.
+ *
+ * - patternType "regex": the pattern is a RegExp tested against the path (with query) and the full URL.
+ * - patternType "url" (default): "example.com/users/*", "https://example.com/a" or "/users/*".
+ *   An optional host must match the page host; the path must match exactly ("*" is a wildcard),
+ *   so "/" only matches the root page.
+ */
+export function matchesRoutePattern(
+  pattern: string | undefined,
+  patternType: NotePatternType | undefined,
+  pageUrl: string | URL,
+): boolean {
+  const url = toUrl(pageUrl);
+  if (!url || !pattern || !pattern.trim()) return false;
+
+  const trimmed = pattern.trim();
+  const pathWithQuery = url.pathname + url.search;
+
+  if (patternType === "regex") {
+    try {
+      const regex = new RegExp(trimmed);
+      return regex.test(pathWithQuery) || regex.test(url.href);
+    } catch {
+      return false;
+    }
+  }
+
+  // Split an optional protocol/host from the path
+  let rest = trimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  let hostPattern: string | undefined;
+  if (!rest.startsWith("/")) {
+    const slashIndex = rest.indexOf("/");
+    const firstSegment = slashIndex === -1 ? rest : rest.slice(0, slashIndex);
+    const looksLikeHost =
+      firstSegment === url.hostname ||
+      firstSegment === url.host ||
+      firstSegment.includes(".") ||
+      firstSegment.includes(":") ||
+      firstSegment === "localhost" ||
+      firstSegment === "*";
+    if (looksLikeHost) {
+      hostPattern = firstSegment;
+      rest = slashIndex === -1 ? "/" : rest.slice(slashIndex);
+    } else {
+      rest = "/" + rest;
+    }
+  }
+
+  if (hostPattern) {
+    const hostRegex = globToRegExp(hostPattern.toLowerCase());
+    if (!hostRegex.test(url.host.toLowerCase()) && !hostRegex.test(url.hostname.toLowerCase())) return false;
+  }
+
+  // Ignore a hash in the pattern; compare against the query only when the pattern has one
+  const pathPattern = rest.split("#")[0];
+  const target = pathPattern.includes("?") ? pathWithQuery : url.pathname;
+
+  if (pathPattern.includes("*")) {
+    return globToRegExp(pathPattern).test(target);
+  }
+
+  return trimTrailingSlash(target) === trimTrailingSlash(pathPattern);
+}
+
+/**
+ * Single source of truth for "does this location apply to this page".
+ * Used by the notes list, the sticky notes provider and findMatchingLocation.
+ */
+export function matchesLocation(location: NoteLocation, pageUrl: string | URL): boolean {
+  const url = toUrl(pageUrl);
+  if (!url || !location) return false;
+
+  switch (location.attachmentType) {
+    case "global":
+      return true;
+
+    case "domain":
+      return location.domain === url.hostname || location.routePattern === url.hostname;
+
+    case "route":
+      // Route attachments are domain-specific
+      if (location.domain && location.domain !== url.hostname) return false;
+      return matchesRoutePattern(location.routePattern, location.patternType, url);
+
+    default:
+      // Fallback to legacy behavior for unknown attachment types
+      return location.domain === url.hostname || location.url === url.href;
+  }
+}
+
+const getLocationPriority = (location: NoteLocation, currentUrl: string): number => {
+  switch (location.attachmentType) {
+    case "route":
+      return location.patternType === "regex" || location.routePattern?.includes("*") ? 80 : 100;
+    case "domain":
+      // Exact URL match within domain beats a domain-wide match; a location saved for
+      // another URL of the domain comes last
+      if (!location.url) return 50;
+      return location.url === currentUrl ? 70 : 45;
+    case "global":
+      return 10;
+    default:
+      return 40;
+  }
+};
 
 /**
  * Finds matching location for current page context with smart priority-based selection
  * Priority: Route (exact) > Route (pattern) > Domain (exact URL) > Domain > Global
  */
 export function findMatchingLocation(note: Note, currentDomain: string, currentUrl: string): NoteLocation | undefined {
-  const currentPath = new URL(currentUrl).pathname;
-  const matchingLocations: Array<{ location: NoteLocation; priority: number; exactness: number }> = [];
-
-  for (const location of note.locations) {
-    let isMatch = false;
-    let priority = 0;
-    let exactness = 0;
-
-    switch (location.attachmentType) {
-      case "route":
-        // Route notes are domain-specific
-        if (location.domain === currentDomain) {
-          if (location.routePattern) {
-            if (location.routePattern.includes("*")) {
-              // Pattern matching
-              const pattern = location.routePattern.replace(/\*/g, ".*");
-              const regex = new RegExp("^" + pattern + "$");
-              if (regex.test(currentPath) || regex.test(currentUrl)) {
-                isMatch = true;
-                priority = 80; // High priority but lower than exact route match
-                exactness = location.routePattern.length; // Longer patterns are more specific
-              }
-            } else {
-              // Exact route match
-              if (currentPath === location.routePattern || currentUrl.includes(location.routePattern)) {
-                isMatch = true;
-                priority = 100; // Highest priority for exact route match
-                exactness = location.routePattern.length;
-              }
-            }
-          }
-        }
-        break;
-
-      case "domain":
-        if (location.domain === currentDomain) {
-          isMatch = true;
-          if (location.url && location.url === currentUrl) {
-            // Exact URL match within domain
-            priority = 70;
-            exactness = location.url.length;
-          } else {
-            // Domain-wide match
-            priority = 50;
-            exactness = location.domain.length;
-          }
-        }
-        break;
-
-      case "global":
-        isMatch = true;
-        priority = 10; // Lowest priority for global notes
-        exactness = 0;
-        break;
-
-      default:
-        // Fallback to legacy behavior for unknown attachment types
-        if (location.domain === currentDomain || location.url === currentUrl) {
-          isMatch = true;
-          priority = location.url === currentUrl ? 60 : 40;
-          exactness = location.url === currentUrl ? (location.url?.length || 0) : (location.domain?.length || 0);
-        }
-        break;
-    }
-
-    if (isMatch) {
-      matchingLocations.push({ location, priority, exactness });
-    }
-  }
+  const matchingLocations = (note.locations || [])
+    .filter((location) => matchesLocation(location, currentUrl))
+    .map((location) => ({
+      location,
+      priority: getLocationPriority(location, currentUrl),
+      exactness:
+        location.attachmentType === "route"
+          ? (location.routePattern || "").length
+          : location.url && location.url === currentUrl
+            ? location.url.length
+            : (location.domain || "").length,
+    }));
 
   if (matchingLocations.length === 0) {
     return undefined;
@@ -155,75 +262,32 @@ export function findMatchingLocation(note: Note, currentDomain: string, currentU
 }
 
 /**
- * Checks if a note should be visible on current page
+ * Checks if a note is attached to the current page (ignores the note's visibility flag)
+ */
+export function isNoteOnPage(note: Note, currentDomain: string, currentUrl: string): boolean {
+  if (Array.isArray(note.locations)) {
+    return note.locations.some((location) => matchesLocation(location, currentUrl));
+  }
+
+  // Backward compatibility: legacy notes stored domain/url on the note itself
+  return (note as any).domain === currentDomain || (note as any).url === currentUrl;
+}
+
+/**
+ * Checks if a note should be visible (as a sticky note) on current page
  */
 export function shouldNoteBeVisibleOnPage(
   note: Note,
   currentDomain: string,
   currentUrl: string,
-  groups: NoteGroup[] = [],
+  // Groups only organize notes; they don't affect where a note is shown
+  _groups: NoteGroup[] = [],
 ): boolean {
   if (!note.isVisible) {
     return false;
   }
 
-  // Check if note matches current page route/URL using locations array
-  let matchesRoute = false;
-
-  if (note.locations && note.locations.length > 0) {
-    // Use new locations array with attachment type-specific logic
-    matchesRoute = note.locations.some((location) => {
-      switch (location.attachmentType) {
-        case "global":
-          // Global notes are visible on all pages
-          return true;
-
-        case "domain":
-          // Domain notes are visible on pages matching the domain
-          return location.domain === currentDomain;
-
-        case "route":
-          // Route notes are visible on pages matching the route pattern
-          // First check if domain matches (route attachments are domain-specific)
-          if (location.domain !== currentDomain) {
-            return false;
-          }
-
-          if (location.routePattern) {
-            const currentPath = new URL(currentUrl).pathname;
-            // Simple pattern matching - exact match or wildcard support
-            if (location.routePattern.includes("*")) {
-              const pattern = location.routePattern.replace(/\*/g, ".*");
-              const regex = new RegExp("^" + pattern + "$");
-              return regex.test(currentPath) || regex.test(currentUrl);
-            } else {
-              // Exact match for route pattern
-              return currentPath === location.routePattern || currentUrl.includes(location.routePattern);
-            }
-          }
-          return false;
-
-        default:
-          // Fallback to legacy behavior for unknown attachment types
-          return location.domain === currentDomain || location.url === currentUrl;
-      }
-    });
-  } else {
-    // Backward compatibility: check legacy single values
-    matchesRoute = (note as any).domain === currentDomain || (note as any).url === currentUrl;
-  }
-
-  // Check if note belongs to a group that should be visible on this page
-  let matchesGroup = false;
-  if (note.groupId) {
-    const group = groups.find((g) => g.id === note.groupId);
-    if (group) {
-      // Groups can be visible across domains/routes (implement group visibility logic here if needed)
-      matchesGroup = true;
-    }
-  }
-
-  return matchesRoute || matchesGroup;
+  return isNoteOnPage(note, currentDomain, currentUrl);
 }
 
 /**

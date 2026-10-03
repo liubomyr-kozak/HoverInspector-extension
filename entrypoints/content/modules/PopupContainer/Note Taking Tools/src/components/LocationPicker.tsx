@@ -1,161 +1,52 @@
-import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Badge } from './ui/badge';
-import { MapPin, Navigation, X } from 'lucide-react';
+import { MapPin, Globe, X, Check } from 'lucide-react';
+import type { NoteAttachment } from '../hooks/useReduxNotes';
 
 interface LocationPickerProps {
-  location: string;
-  onChange: (location: string) => void;
+  attachment: NoteAttachment;
+  // Description of the current attachment (e.g. "example.com/page")
+  location?: string;
+  onChange: (attachment: NoteAttachment) => void;
 }
 
-const commonLocations = [
-  'Home',
-  'Office',
-  'Coffee Shop',
-  'Library',
-  'Meeting Room',
-  'Travel',
-  'Campus',
-  'Downtown',
-  'Park',
-  'Gym'
+const OPTIONS: { value: NoteAttachment; label: string; description: string; icon: typeof MapPin }[] = [
+  { value: 'page', label: 'This page', description: 'Show as a sticky note on this page', icon: MapPin },
+  { value: 'global', label: 'All pages', description: 'Show as a sticky note on every page', icon: Globe },
+  { value: 'none', label: 'Not on a page', description: 'Keep the note only in this list', icon: X },
 ];
 
-export function LocationPicker({ location, onChange }: LocationPickerProps) {
-  const [customLocation, setCustomLocation] = useState('');
-  const [currentLocation, setCurrentLocation] = useState<string>('');
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by this browser.');
-      return;
-    }
-
-    setIsGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        // Reverse geocoding using a mock implementation
-        // In a real app, you'd use a service like Google Maps API
-        try {
-          const locationName = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          setCurrentLocation(locationName);
-          setIsGettingLocation(false);
-        } catch (error) {
-          setCurrentLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-          setIsGettingLocation(false);
-        }
-      },
-      (error) => {
-        console.error('Error getting location:', error);
-        setIsGettingLocation(false);
-        alert('Unable to get your location. Please enter it manually.');
-      }
-    );
-  };
-
-  const handleLocationSelect = (selectedLocation: string) => {
-    onChange(selectedLocation);
-  };
-
-  const handleCustomLocationSubmit = () => {
-    if (customLocation.trim()) {
-      onChange(customLocation.trim());
-      setCustomLocation('');
-    }
-  };
-
-  const clearLocation = () => {
-    onChange('');
-  };
-
+/**
+ * Chooses where the note is shown on web pages (stored as the note's page locations)
+ */
+export function LocationPicker({ attachment, location, onChange }: LocationPickerProps) {
   return (
-    <div className="space-y-4">
-      {/* Current selection */}
-      {location && (
-        <div className="flex items-center gap-2 p-2 bg-accent rounded-lg">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <span className="flex-1 text-sm">{location}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearLocation}
-            className="p-1 h-auto"
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium m-0">Show on pages</h4>
+      {attachment === 'page' && location && (
+        <p className="text-xs text-muted-foreground m-0 truncate" title={location}>
+          Attached to {location}
+        </p>
       )}
-
-      {/* Get current location */}
-      <div>
-        <Button
-          variant="outline"
-          onClick={getCurrentLocation}
-          disabled={isGettingLocation}
-          className="w-full justify-start gap-2"
-        >
-          <Navigation className="h-4 w-4" />
-          {isGettingLocation ? 'Getting location...' : 'Use current location'}
-        </Button>
-        
-        {currentLocation && (
-          <div className="mt-2 p-2 bg-muted rounded text-sm">
-            <div className="flex items-center justify-between">
-              <span>Found: {currentLocation}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleLocationSelect(currentLocation)}
-              >
-                Use
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Common locations */}
-      <div>
-        <h4 className="mb-2 text-sm font-medium">Quick select</h4>
-        <div className="flex flex-wrap gap-1">
-          {commonLocations.map((commonLocation) => (
-            <Badge
-              key={commonLocation}
-              variant="outline"
-              className="cursor-pointer hover:bg-accent"
-              onClick={() => handleLocationSelect(commonLocation)}
+      <div className="space-y-1">
+        {OPTIONS.map((option) => {
+          const Icon = option.icon;
+          const isSelected = attachment === option.value;
+          return (
+            <Button
+              key={option.value}
+              variant="ghost"
+              onClick={() => onChange(option.value)}
+              className={`w-full h-auto justify-start gap-3 py-2 ${isSelected ? 'bg-accent' : ''}`}
             >
-              {commonLocation}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      {/* Custom location */}
-      <div>
-        <h4 className="mb-2 text-sm font-medium">Custom location</h4>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Enter location..."
-            value={customLocation}
-            onChange={(e) => setCustomLocation(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleCustomLocationSubmit();
-              }
-            }}
-          />
-          <Button 
-            onClick={handleCustomLocationSubmit}
-            disabled={!customLocation.trim()}
-          >
-            Add
-          </Button>
-        </div>
+              <Icon className="h-4 w-4" />
+              <div className="flex-1 text-left">
+                <div className="text-sm font-medium">{option.label}</div>
+                <div className="text-xs text-muted-foreground font-normal whitespace-normal">{option.description}</div>
+              </div>
+              {isSelected && <Check className="h-4 w-4" />}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
