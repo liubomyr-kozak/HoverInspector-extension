@@ -328,8 +328,7 @@ export const DiffPopup: React.FC<DiffPopupProps> = React.memo(({ diff, leftNode,
   // Keyboard: Esc closes (emit custom event parent may capture)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") debugger;
-
+      if (e.key !== "Escape") return;
       containerRef.current?.dispatchEvent(new CustomEvent("diff-popup:close", { bubbles: true }));
     };
     window.addEventListener("keydown", handler);
