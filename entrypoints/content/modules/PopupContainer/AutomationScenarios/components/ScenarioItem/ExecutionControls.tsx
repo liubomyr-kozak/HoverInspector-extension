@@ -75,7 +75,7 @@ const ExecutionControls: React.FC<ExecutionControlsProps> = ({ currentStepIndex,
       {failed && (
         <>
           <Tooltip title={`Retry from step ${failedStepIndex + 1}`}>
-            <PauseResumeButton paused={true} onClick={() => playScenario(scenarioId, failedStepIndex)}>
+            <PauseResumeButton paused={true} onClick={() => playScenario(scenarioId, failedStepIndex, true)}>
               <IconRotateClockwise size={14} color="white" />
             </PauseResumeButton>
           </Tooltip>

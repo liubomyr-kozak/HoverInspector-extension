@@ -10,6 +10,7 @@ import {
   MinusCircleOutlined
 } from "@ant-design/icons";
 import { ExecutionHistoryEntry, ExecutionStatus, ScenarioMap } from "../types";
+import { describeExecutionStart } from "../utils/executionHistory";
 
 const { Text, Title } = Typography;
 
@@ -201,6 +202,7 @@ const ScenarioExecutionHistory: React.FC<ScenarioExecutionHistoryProps> = ({
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <Text type="secondary">
                       Steps: {item.stepsCompleted} / {item.totalSteps}
+                      {describeExecutionStart(item) ? ` · ${describeExecutionStart(item)}` : ""}
                     </Text>
                     {item.duration > 0 && (
                       <Text type="secondary">

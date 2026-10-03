@@ -508,7 +508,15 @@ export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcherF
 
 // Play Scenario
 export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(action: {
-  payload: { id: string; startFromStep?: number; singleStep?: boolean; triggerType?: string; triggerId?: string };
+  payload: {
+    id: string;
+    startFromStep?: number;
+    singleStep?: boolean;
+    triggerType?: string;
+    triggerId?: string;
+    // "Retry from step N" after a failure (for the history)
+    retry?: boolean;
+  };
 }) {
   try {
     const { id, startFromStep = 0, singleStep = false, triggerId } = action.payload;
@@ -556,6 +564,9 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
     // or in the tab a step opens (see executionSession.ts). Single step runs stay on this page.
     const tabId: number | null = singleStep ? null : yield call(getCurrentTabId);
     let handedOff = false;
+    // Where this playback started: a playback continued after a page load keeps the start of the first page
+    let startedFromStep = singleStep ? 0 : startFromStep;
+    let retry = !!action.payload.retry;
 
     // Set active scenario ID
     yield put(automationActions.setActiveScenarioId(id));
@@ -597,6 +608,10 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         const previous = startFromStep > 0 ? yield call(loadExecutionSession) : null;
         const previousHandoff = previous ? yield call(loadExecutionHandoff) : null;
         const resumed = previous?.scenarioId === id && shouldResumeSession(previous, tabId, previousHandoff);
+        if (resumed) {
+          startedFromStep = previous.startedFromStep || 0;
+          retry = !!previous.retry;
+        }
         yield call(startExecutionSession, {
           scenarioId: id,
           nextStepIndex: startFromStep,
@@ -607,6 +622,7 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
           entries: resumed ? (previous.entries || []).filter((entry) => entry.stepIndex < startFromStep) : [],
           triggerType,
           ...(triggerId ? { triggerId } : {}),
+          ...(startedFromStep > 0 ? { startedFromStep, ...(retry ? { retry } : {}) } : {}),
         });
       }
 
@@ -852,7 +868,9 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         scenarioTitle: scenario.title,
         log: { ...historyLog, status: executionLog.status },
         totalSteps: singleStep ? 1 : totalStepsInScenario,
-        stepsBefore: singleStep ? 0 : startFromStep,
+        // The log holds the steps of every page of this playback: only those count as completed
+        startedFromStep: singleStep ? 0 : startedFromStep,
+        retry,
         triggerType,
         triggerId,
       });
@@ -951,6 +969,8 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
               status: ExecutionStatus.SUCCESS,
             },
             totalSteps: scenario.data?.length || 0,
+            startedFromStep: session.startedFromStep,
+            retry: session.retry,
             triggerType: session.triggerType,
             triggerId: session.triggerId,
           }),
