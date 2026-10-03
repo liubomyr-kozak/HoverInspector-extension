@@ -212,12 +212,15 @@ export function matchesLocation(location: NoteLocation, pageUrl: string | URL): 
   }
 }
 
-const getLocationPriority = (location: NoteLocation): number => {
+const getLocationPriority = (location: NoteLocation, currentUrl: string): number => {
   switch (location.attachmentType) {
     case "route":
       return location.patternType === "regex" || location.routePattern?.includes("*") ? 80 : 100;
     case "domain":
-      return 50;
+      // Exact URL match within domain beats a domain-wide match; a location saved for
+      // another URL of the domain comes last
+      if (!location.url) return 50;
+      return location.url === currentUrl ? 70 : 45;
     case "global":
       return 10;
     default:
@@ -227,15 +230,20 @@ const getLocationPriority = (location: NoteLocation): number => {
 
 /**
  * Finds matching location for current page context with smart priority-based selection
- * Priority: Route (exact) > Route (pattern) > Domain > Global
+ * Priority: Route (exact) > Route (pattern) > Domain (exact URL) > Domain > Global
  */
 export function findMatchingLocation(note: Note, currentDomain: string, currentUrl: string): NoteLocation | undefined {
   const matchingLocations = (note.locations || [])
     .filter((location) => matchesLocation(location, currentUrl))
     .map((location) => ({
       location,
-      priority: getLocationPriority(location),
-      exactness: (location.routePattern || location.domain || "").length,
+      priority: getLocationPriority(location, currentUrl),
+      exactness:
+        location.attachmentType === "route"
+          ? (location.routePattern || "").length
+          : location.url && location.url === currentUrl
+            ? location.url.length
+            : (location.domain || "").length,
     }));
 
   if (matchingLocations.length === 0) {
