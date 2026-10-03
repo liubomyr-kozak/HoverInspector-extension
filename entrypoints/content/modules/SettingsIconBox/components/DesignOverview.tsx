@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, ConfigProvider, Segmented } from "antd";
+import { Button, ConfigProvider, Radio } from "antd";
 import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import { toast } from "react-toastify";
 import {
@@ -374,11 +374,14 @@ export const DesignOverview: React.FC = () => {
             <span className="text-xs text-gray-600" id="design-overview-grid-label">
               Grid
             </span>
-            <Segmented<SpacingGrid>
+            {/* A radio group rather than antd's Segmented, which puts aria-selected on role-less divs */}
+            <Radio.Group
               size="small"
+              optionType="button"
+              buttonStyle="solid"
               aria-labelledby="design-overview-grid-label"
               value={grid ?? audit.grid}
-              onChange={changeGrid}
+              onChange={(e) => changeGrid(e.target.value as SpacingGrid)}
               options={[
                 { label: "4px", value: 4 },
                 { label: "8px", value: 8 },
