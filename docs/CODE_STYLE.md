@@ -1,324 +1,180 @@
-# Hover Inspector: code style and architecture guide
+# Hover Inspector: code style and architecture
 
-This guide tells you exactly how to write code in this repository. Follow it word for word.
+## Read first
 
-How to read it:
+Read this introduction for every task. Then read **only the sections selected by the table below**.
+The rest of this file is a reference, not a checklist to apply to every change.
 
-- **Always** and **Never** are hard rules. Do not break them.
-- Every rule points to real code as `path:line`. Open that file when you are unsure.
-- When old code does something different from this guide, follow this guide. Section 14 lists the old
-  patterns you must not copy.
-- The newest code (commits from October 2026, the "cycle 3–5" work in `git log`) is the model. When two
-  files disagree, copy the newer one.
+Rules apply to code you add or change. They do not authorize cleanup of unrelated code.
+Direct user instructions take precedence. If a documented API differs from the actual source, inspect
+its definition and report the mismatch; do not invent an API or choose a pattern by commit date.
+Examples marked **fragment** omit surrounding code. Inspect the named source for its current API.
 
-Contents:
+### Core rules
 
-1. Project in one page
-2. Commands
-3. Folder map
-4. File naming
-5. Writing a component
-6. The tool panel: header, body, footer
-7. Shared components and helpers
-8. Styling
-9. State: Redux, sagas, local state
-10. Storage
-11. Background and messaging
-12. Working with the host page
-13. TypeScript, imports, comments, errors, logging
-14. Legacy code: do not copy
-15. Tests
-16. Browser check with Playwright
-17. Git: branches, commits, pull requests
-18. Checklist before you commit
+1. Make the smallest change that satisfies the request. Preserve unrelated behavior and formatting.
+   Do not add a context, Redux slice, helper file or abstraction just to satisfy a numerical limit.
+2. Use Yarn only. Do not use npm, npx or pnpm, or add their lockfiles.
+3. Use typed React function components. No new `any`, `@ts-ignore`, `@ts-nocheck` or `@ts-expect-error`.
+4. Keep tool-specific code in its tool. Reuse existing shared components and helpers before adding one.
+5. For UI: antd controls, Tailwind layout, shared design tokens. Keep overlays in the shadow root.
+6. Preserve the host page. Clean up listeners, observers, timers and injected DOM/styles.
+7. Store extension data in extension storage, never the host page's localStorage or sessionStorage.
+8. Validate incoming messages before using them. Keep privileged extension APIs in the background.
+9. Keep new comments and UI copy in English. No debug statements or commented-out code in additions.
+10. Run the checks that cover the change. Report failures and unverified behavior explicitly.
 
----
+### Select what to read
+
+Read every row that matches your change. Do not read unrelated recipes.
+
+| Task | Read |
+| --- | --- |
+| Locate code or add a file | [1. Architecture](#1-project-in-one-page), [3. Placement](#3-folder-map), [4. Naming](#4-file-naming) |
+| Any TypeScript change | [13. TypeScript and errors](#13-typescript-imports-comments-errors-logging) |
+| Add or change UI | [5. Components](#5-writing-a-component), [7. Shared pieces](#7-shared-components-and-helpers), [8. Styling](#8-styling), [16. Browser checks](#16-browser-check-with-playwright) |
+| Add a tool or change its header/footer | [6. Panel](#6-the-tool-panel-header-body-footer) |
+| Change state or async Redux work | [9. State](#9-state-redux-sagas-local-state) |
+| Read or write saved data | [10. Storage](#10-storage) |
+| Change background code or messages | [11. Messaging](#11-background-and-messaging) |
+| Touch page DOM, events, overlays or frames | [12. Host page](#12-working-with-the-host-page) |
+| Work in a file with conflicting old patterns | [14. Legacy](#14-legacy-code-do-not-copy) |
+| Add or change behavior | [15. Tests](#15-tests), [18. Verification](#18-checklist-before-you-commit) |
+| Run commands or prepare a commit/PR | [2. Commands](#2-commands), [17. Git](#17-git-branches-commits-pull-requests), [18. Verification](#18-checklist-before-you-commit) |
 
 ## 1. Project in one page
 
-Hover Inspector is a browser extension (Chrome MV3, also Firefox/Edge/Safari builds) for designers and
-QA. It draws measurements between page elements and offers a set of tools in one floating panel:
-Element Inspector, Page Ruler, Color Picker, Unit Converter, Color Palette & Typography, Automation
-Scenarios, CSS Snapshot Inspector, Page Notes, Note Taking Tools.
+Hover Inspector is a WXT browser extension for designers and QA. Its tools share one floating panel.
 
-How it runs:
+- `entrypoints/background/index.ts`: toolbar click, content-script injection, tab events and ports.
+- `entrypoints/content/index.tsx`: creates the open shadow-root UI named `hover-inspector`.
+- `entrypoints/content/app.tsx`: React providers, antd theme and overlay container.
+- `entrypoints/content/modules/PopupContainer/PopupContainer.tsx`: tool registration (`COMPONENT_MAP`).
+- `entrypoints/content/modules/Launcher/LauncherIcons.ts`: tool ids, names and icons.
+- `entrypoints/frame-agent.ts`: entrypoint for the cross-origin frame agent.
 
-1. The user clicks the extension button. The background service worker
-   (`entrypoints/background/index.ts:24`) injects the content script into the tab.
-2. The content script (`entrypoints/content/index.tsx`) creates a shadow-root UI named
-   `hover-inspector` (`entrypoints/content/index.tsx:79-85`) and renders React into it.
-3. Inside the shadow root: the launcher toolbar at the bottom, and one floating panel
-   (`entrypoints/content/modules/PopupContainer/PopupContainer.tsx`) that shows the open tools.
-4. Data that must survive reloads is saved in `browser.storage.local`, mostly through the background.
-5. Cross-origin iframes get a small "frame agent" script (`entrypoints/frame-agent.ts`).
-
-Stack:
-
-| Part | Library |
-| --- | --- |
-| Extension framework | WXT 0.20, Manifest V3 (`wxt.config.ts`) |
-| UI | React 19, function components and hooks |
-| Language | TypeScript (`strict: true`, `noImplicitAny: false`, `tsconfig.json`) |
-| App state | Redux Toolkit slices + redux-saga (`entrypoints/content/store/`) |
-| Controls | antd 5 inside `StyleProvider` + `ConfigProvider` (`entrypoints/content/app.tsx:73-77`) |
-| Styling | Tailwind 3, styled-components 6, antd theme from shared tokens |
-| Icons | `@tabler/icons-react` (preferred), some `react-icons` |
-| Messaging | `@webext-core/messaging` and plain `chrome.runtime.sendMessage` (section 11) |
-| Tests | vitest 3 + jsdom (`vitest.config.ts`) |
-| Package manager | Yarn 1 only (`package.json` `"packageManager": "yarn@1.22.22"`) |
-
----
+Stack: React, TypeScript, Redux Toolkit + redux-saga, antd, Tailwind, styled-components, vitest + jsdom.
+Use `package.json` for current versions and scripts; `wxt.config.ts` for extension build configuration.
 
 ## 2. Commands
 
-**Always** use Yarn. **Never** run `npm install`, `npm run …` or `npx` inside the repo. **Never** create
-or commit `package-lock.json` or `pnpm-lock.yaml`. `yarn.lock` is the only lockfile.
+Run commands in the checkout you are editing. Use `git rev-parse --show-toplevel` to identify it.
 
-| Command | What it does |
+| Command | Purpose |
 | --- | --- |
-| `yarn install` | Install dependencies. Also runs `wxt prepare`. |
-| `yarn build` | Production build into `dist/chrome-mv3/`. Must pass before every commit. |
-| `yarn test` | Run all vitest tests once. Must pass before every commit. |
-| `yarn dev` | WXT dev mode (opens a browser with the extension). |
-| `yarn start` | Standalone Vite page at http://localhost:4400 (`vite.standalone.config.ts`). |
-| `yarn test:watch` | vitest in watch mode. |
-| `yarn compile` | `tsc --noEmit`. The repo already has about 227 old errors. Use it only to check your own files (section 18). |
+| `yarn install` | Install dependencies; also runs WXT prepare. Only needed when dependencies need installation. |
+| `yarn dev` | WXT development browser. |
+| `yarn start` | Standalone Vite page at localhost:4400; does not replace extension checks. |
+| `yarn build` | Production extension in `dist/chrome-mv3/`. |
+| `yarn test` | All vitest tests, once. |
+| `yarn vitest run <path>` | Focused tests for a file or directory. Replace `<path>`. |
+| `yarn test:watch` | Tests in watch mode. |
+| `yarn compile` | Full TypeScript diagnostics (`tsc --noEmit`). |
+| `yarn verify` | Existing script: pattern checks, changed-file TypeScript filtering, tests and build. See section 18 for limits. |
 
----
+Keep `yarn.lock` as the only package lockfile. Existing TypeScript failures are not a fixed allowance;
+compare diagnostics before and after your change rather than relying on a documented error count.
 
 ## 3. Folder map
 
-```
-entrypoints/
-  background/            Service worker. WXT entry: background/index.ts
-    index.ts             Toolbar click, tab events, ports
-    automationTabs.ts    Automation playback across tabs
-    frameAgentRelay.ts   Relays frame-agent messages between frames
-    services/            Pure data logic used by the background (notes.ts, noteScope.ts) + their tests
-    store/               "Chrome slices": functions that run in the background (section 11)
-      actions/           Plain objects of async functions, one file per domain
-      slices/            chromeActionsSlice(actions) wrappers
-      notesActionsSlice.ts  createChromeSlice({...}) for notes
-  content/               Content script. WXT entry: content/index.tsx
-    index.tsx            Creates the shadow-root UI, global Esc, keyboard-focus flag
-    app.tsx              Providers: styled-components, antd StyleProvider/ConfigProvider, toasts
-    style.css            Tailwind + global CSS of the shadow root (focus rules, overlay boxes)
-    modules/             All UI
-      PopupContainer/    The panel and every tool that lives in it
-        PopupContainer.tsx         COMPONENT_MAP: tool id -> component
-        PopupContainer.styled.ts   FeatureTitle, FeatureTitleText, header/footer containers
-        <ToolName>.tsx             Small tools: one file (UnitConverter.tsx, ColorPicker.tsx)
-        <ToolName>/                Big tools: a folder (CSSSnapshotInspector/, PageNotes/, AutomationScenarios/)
-      Launcher/          Toolbar + LauncherIcons.ts (the list of tools)
-      SettingsIconBox/   Inspector and palette internals (HoverSelectedInfo, ColorPaletteDefinition/)
-      ...                Overlays drawn on the page (HoveredBox, SelectedBox, ElementInspector)
-    store/               Content Redux store: one folder per slice
-  core/                  Infrastructure with no UI: storage services, chrome-slice libs, constants, models
-    constants/           Storage keys (automation.ts, cssSnapshot.ts, notes.ts, index.ts)
-    libs/                sagaEnhancer, chromeActionsSlice, createChromeSlice, requestProcessing
-    services/storage/    ExtensionStorageManager, AppStorageService, LocalStorage
-    initialData/app.ts   Default app settings + migrateAppSettings
-  features/              Extension plumbing shared by background and content
-    extension/messaging.ts      @webext-core/messaging protocol (activate/deactivate/check)
-    extension/Ext/              Tab sessions, icons, ports (used by the background)
-    serviceRedux/               Redux middleware
-  shared/                Code used by more than one tool or by both content and agent
-    components/          IconButton, EmptyState, LoadingState, Tooltip, FeatureIcon, FloatingModal...
-    styles/tokens.ts     Design tokens + antd theme
-    utils/               Pure helpers and small hooks (a11y.ts, frames.ts, designAudit.ts...) + __tests__/
-    hoverCard/           Hover card catalog, store and element info
-    frameAgent/          Frame agent protocol, hub, agent
-    types/               Shared types (notes.ts)
-    constant/zIndex.ts   z-index constants
-  frame-agent.ts         WXT unlisted script, injected into cross-origin frames
-  locales/en/messages.json
-src/                     Standalone dev page entry (yarn start)
-.standalone/             Polyfills and types for the standalone page
-```
+Choose the location in this order:
 
-What goes where (decide in this order):
+| Code | Location under `entrypoints/` |
+| --- | --- |
+| Used by one tool | `content/modules/PopupContainer/<ToolName>/` |
+| UI used by multiple tools | `shared/components/` |
+| Pure helper or hook used by multiple tools | `shared/utils/` |
+| Types used across tools | `shared/types/<domain>.ts` |
+| Infrastructure without UI | `core/` |
+| Storage key constants used by background | `core/constants/<domain>.ts` |
+| Background-only work | `background/` |
+| Extension lifecycle plumbing | `features/extension/` |
+| Content Redux state | `content/store/<domain>/` |
 
-1. Code used by one tool only → inside that tool: `entrypoints/content/modules/PopupContainer/<ToolName>/`.
-2. UI used by two or more tools → `entrypoints/shared/components/<Name>.tsx`.
-3. A pure function used by two or more tools → `entrypoints/shared/utils/<name>.ts`.
-4. A hook used by two or more tools → `entrypoints/shared/utils/use<Name>.ts`
-   (example: `entrypoints/shared/utils/usePopoverFocus.ts`). A hook used by one tool →
-   `<ToolName>/hooks/use<Name>.ts` (example: `CSSSnapshotInspector/hooks/useSnapshots.ts`).
-5. Types used by one tool → `<ToolName>/types.ts`. Types used by many → `entrypoints/shared/types/<domain>.ts`.
-6. Storage keys used by the background → `entrypoints/core/constants/<domain>.ts`.
-7. Code that must run in the background → `entrypoints/background/` (section 11).
+Small tools may remain a single `<ToolName>.tsx`. For larger tools, create only folders actually needed:
+`components/`, `hooks/`, `utils/`, `types.ts`, `constants.ts`, `<ToolName>.styled.ts`.
+The `CSSSnapshotInspector/` folder demonstrates this organization; it is not a template to copy whole.
 
-`core/` vs `shared/` vs `features/`:
-
-- `core/` = infrastructure without React: storage, slice libraries, constants, models.
-- `shared/` = reusable building blocks for the UI and for the frame agent: components, tokens, pure utils.
-- `features/` = extension plumbing: messaging protocol, tab sessions. Do not put tool code here.
-
-WXT rules (WXT treats some paths as build entrypoints):
-
-- **Never** add a new file directly in `entrypoints/` (like `entrypoints/foo.ts`). WXT builds it as a new
-  entrypoint. `entrypoints/frame-agent.ts` is one on purpose.
-- **Never** add `index.ts`/`index.tsx` directly inside a new first-level folder (`entrypoints/foo/index.ts`).
-  WXT builds that as an entrypoint too.
-
-Tool folder template (big tool):
-
-```
-entrypoints/content/modules/PopupContainer/<ToolName>/
-  <ToolName>.tsx          The root component, exported by name; renders header portal + body
-  <ToolName>.styled.ts    Optional: styled-components used by several files of the tool
-  types.ts                Interfaces, type aliases and enums of the tool
-  constants.ts            Optional: constants of the tool
-  components/             Child components, one per file: <Name>.tsx
-  hooks/                  use<Name>.ts
-  utils/                  Pure functions: <name>.ts
-    __tests__/            <name>.test.ts for every util
-```
-
-Real example: `entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/` (components/, hooks/,
-utils/, utils/__tests__/, types.ts, constants.ts).
-
----
+Do not add files directly under `entrypoints/`, or `index.ts`/`index.tsx` inside a new first-level
+entrypoint folder, unless the task explicitly needs a WXT entrypoint. WXT treats those as build entries.
 
 ## 4. File naming
 
-| Kind | Name | Example |
-| --- | --- | --- |
-| React component | `PascalCase.tsx`, one main component per file, same name as the file | `shared/components/EmptyState.tsx` |
-| Hook | `useCamelCase.ts` | `shared/utils/usePopoverFocus.ts` |
-| Pure util | `camelCase.ts` | `CSSSnapshotInspector/utils/snapshotLabels.ts` |
-| styled-components of a component | `<Component>.styled.ts` | `PopupContainer/PopupContainer.styled.ts` |
-| Types and enums of a tool | `types.ts` | `AutomationScenarios/types.ts` |
-| Constants of a tool | `constants.ts` | `CSSSnapshotInspector/constants.ts` |
-| Redux slice (content) | `store/<domain>/<domain>.slice.ts` | `content/store/notes/notes.slice.ts` |
-| Saga actions | `store/<domain>/<domain>.saga.action.ts` | `content/store/automation/automation.saga.action.ts` |
-| Saga watchers | `store/<domain>/<domain>.saga.ts` | `content/store/automation/automation.saga.ts` |
-| Test | `__tests__/<file>.test.ts` next to the code | `shared/utils/__tests__/frames.test.ts` |
+| Kind | Name |
+| --- | --- |
+| Component | `PascalCase.tsx` matching the main component |
+| Hook | `useCamelCase.ts` |
+| Pure helper | `camelCase.ts` |
+| Styled components | `<Component>.styled.ts` |
+| Tool types / constants | `types.ts` / `constants.ts` |
+| Content slice | `<domain>.slice.ts` |
+| Saga actions / watchers | `<domain>.saga.action.ts` / `<domain>.saga.ts` |
+| Test | `__tests__/<name>.test.ts` (or `.test.tsx` for JSX) near the source |
 
-Rules:
+Use `.tsx` only for JSX. Keep component-only props interfaces in that component file. Move types used
+by multiple files to `types.ts`; split by domain only when a single types file becomes hard to navigate.
+Use existing domain enums when available. A small local union does not need conversion to an enum.
+New string enum members use `UPPER_SNAKE` names.
 
-1. Use `.tsx` only when the file contains JSX. Everything else is `.ts`.
-2. Put interfaces, types and enums in separate files (`types.ts`), not in the component file, when they
-   are used by more than one file. A props interface used only by its component stays in that file.
-3. When a tool has many types, group them in a folder (`types/` with one file per domain).
-4. When you write a `switch` over string values, check whether an `enum` fits. Example enums:
-   `HeaderPortalId` (`ScenarioPortalHeaderButtons.tsx:6`), `StepType` (`AutomationScenarios/types.ts:167`),
-   `AttachmentTypeEnum` (`shared/types/notes.ts:19`). Enum members are `UPPER_SNAKE`, values are strings.
-5. **Never** add new barrel `index.ts` files. Import the file itself.
-6. `entrypoints/shared/enam.ts` is an empty legacy file (misspelt "enum"). **Never** add code to it.
-   Put enums in `types.ts`.
-7. New tests go in `__tests__/` next to the code. (The older `background/services/*.test.ts` files sit
-   beside their source; do not copy that.)
-
----
+Do not add barrel `index.ts` files or put code in the empty legacy `shared/enam.ts`.
 
 ## 5. Writing a component
 
-Rules:
+- Write a named function component export. Use typed props; `React.FC<Props>` and typed functions both work.
+- Define `interface <Name>Props` above the component. Destructure props and defaults in the parameters.
+- Keep handlers local unless they need reuse. Keep simple expressions local too.
+- Extract parsing, matching or calculation when it has meaningful branches, needs independent testing,
+  or is reused. Do not create a helper file for every expression.
+- Start with local state and explicit props. Use tool context when multiple descendants need the same
+  state and intermediate components merely relay it. Use Redux for shared domain/app state (section 9).
+  Do not introduce either solely because props pass through a fixed number of levels.
 
-1. **Always** write function components. **Never** write class components.
-2. Export components by name: `export const UnitConverter: React.FC = () => {...}`
-   (`PopupContainer/UnitConverter.tsx:37`). A `default` export is allowed in addition, not instead.
-3. Type props with an `interface <Name>Props` above the component. Document non-obvious props with a
-   one-line `/** ... */` comment.
-4. Destructure props in the parameter list and give defaults there.
-5. Use `React.FC<Props>` or a plain function with typed props. Both exist; prefer `React.FC<Props>`.
-6. Keep event handlers inside the component as `const handleX = () => {...}` or inline arrows.
-7. Do not drill props through more than two levels. Use a React context (example:
-   `SettingsIconBox/components/ColorPaletteDefinition/PaletteContext.tsx`) or Redux instead.
-8. Extract any logic that does not need React (parsing, formatting, matching) into `utils/<name>.ts` and
-   test it.
-
-Real example of props (`shared/components/EmptyState.tsx:44-54`):
+Complete minimal component example:
 
 ```tsx
-export interface EmptyStateProps {
-  icon?: React.ReactNode;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  /** A button or link that resolves the empty state */
-  action?: React.ReactNode;
-  className?: string;
+import { IconCopy } from "@tabler/icons-react";
+
+import { IconButton } from "@entrypoints/shared/components/IconButton";
+
+interface CopyValueButtonProps {
+  value: string;
+  onCopy: (value: string) => void;
 }
 
-/** The one empty state every tool uses: muted icon, short title, one line of help, optional action */
-export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, action, className }) => (
+/** Copies an available value through the caller's clipboard handler. */
+export const CopyValueButton = ({ value, onCopy }: CopyValueButtonProps) => (
+  <IconButton label="Copy value" disabled={!value} onClick={() => onCopy(value)}>
+    <IconCopy size={18} aria-hidden />
+  </IconButton>
+);
 ```
 
-Real example of `readonly` props in new code (`CSSSnapshotInspector/SnapshotManager.tsx:285-300`):
+Accessibility:
 
-```tsx
-interface SnapshotManagerProps {
-  readonly snapshots: readonly CSSSnapshot[];
-  readonly onView: (snapshot: CSSSnapshot) => void;
-  readonly onRename: (id: string, name: string) => Promise<boolean>;
-  /** True when the list is filtered by search (changes the empty state text) */
-  readonly isFiltered?: boolean;
-```
-
-Accessibility rules for components (WCAG 2.1 AA):
-
-1. Every clickable thing is a `<button type="button">`, an antd control, or uses `clickableProps`
-   (section 7.4). **Never** put `onClick` on a bare `<div>` or `<span>`.
-2. Every icon-only button has an accessible name. Use `IconButton` with `label` (section 7.1).
-3. Every form field has a label or `aria-label` (`UnitConverter.tsx:233-238`: `aria-label="Value"`).
-4. Toggle buttons set `aria-pressed`. Menu triggers set `aria-haspopup` and `aria-expanded`
-   (`SnapshotManager.tsx:270`).
-5. Text contrast is at least 4.5:1 on its background. Use the token colours (section 8.1); they are
-   chosen to pass.
-6. Decorative icons get `aria-hidden`.
-
----
+- Prefer `<button type="button">`, antd controls or shared `IconButton`. No bare clickable `div`/`span`.
+  If a native button cannot fit the required structure, use `clickableProps` (section 7).
+- Every icon button has an accessible name; every field has a label or `aria-label`.
+- Set `aria-pressed` for toggles; menu triggers expose `aria-haspopup` and `aria-expanded`.
+- Decorative icons use `aria-hidden`. Use semantic parents for `li`, `dt` and `dd`.
+- Check text contrast against the actual background. A token alone does not guarantee contrast for
+  every combination. Normal text needs at least 4.5:1; do not use text lighter than gray-500 on white.
 
 ## 6. The tool panel: header, body, footer
 
-Every tool renders inside one shared panel (`PopupContainer.tsx`). The panel has three parts:
+### Header
 
-```
-+---------------------------------------------------+
-| header: #popup-header-container                   |  <- your tool portals its title + buttons here
-+---------------------------------------------------+
-| body: your component's normal JSX                 |
-+---------------------------------------------------+
-| footer: #hover-inspector-popup-footer-container   |  <- optional: your tool portals buttons here
-+---------------------------------------------------+
-```
+Every tool puts its title and header actions into the shared header portal.
 
-The containers are created in `PopupContainer.tsx:71` (header) and `PopupContainer.tsx:108` (footer).
+1. Add the tool's id to `HeaderPortalId` in
+   `entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx`.
+   Use a unique string such as `MY_TOOL = "my-tool-header"`.
+2. Render `PortalModalHeader` with that enum value.
+3. Inside it render `FeatureTitle`, `FeatureIcon` and `FeatureTitleText`.
+4. Use the tool's title from `LauncherIcons.ts` as both visible text and the title attribute.
+5. Put header actions inside `PortalModalHeaderButtons`; use `IconButton` at its default 28px size,
+   with 18px icons.
 
-### 6.1 Header (required for every tool)
-
-Steps:
-
-1. Add your portal id to the `HeaderPortalId` enum in
-   `entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx:6-20`.
-   Format: `MY_TOOL = "my-tool-header"`.
-2. At the top of your tool's JSX, render `PortalModalHeader` with that id.
-3. Inside it, render `FeatureTitle` > `FeatureIcon` + `FeatureTitleText` (+ optional `PortalModalHeaderButtons`).
-4. Pass the tool's `title` from `LauncherIcons.ts` both as text and as the `title` attribute.
-
-Real example (`PopupContainer/ElementInspectorPopup.tsx:132-168`, shortened):
-
-```tsx
-<PortalModalHeader portalId={HeaderPortalId.ELEMENT_INSPECTOR}>
-  <FeatureTitle>
-    <FeatureIcon icon={INSPECTOR.icon} isBetta />
-    <FeatureTitleText title={INSPECTOR.title}>{INSPECTOR.title}</FeatureTitleText>
-
-    <PortalModalHeaderButtons>
-      <IconButton
-        label={editingCard ? "Close hover card editor" : "Customize hover card"}
-        active={editingCard}
-        onClick={() => setEditingCard((v) => !v)}
-      >
-        <IconLayoutList size={18} />
-      </IconButton>
-    </PortalModalHeaderButtons>
-  </FeatureTitle>
-</PortalModalHeader>
-```
-
-Imports for the header:
+Imports and JSX fragment (replace `TOOL` and `MY_TOOL` with your registered tool):
 
 ```tsx
 import {
@@ -328,390 +184,134 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon";
-import { IconButton } from "@entrypoints/shared/components/IconButton";
+
+<PortalModalHeader portalId={HeaderPortalId.MY_TOOL}>
+  <FeatureTitle>
+    <FeatureIcon icon={TOOL.icon} />
+    <FeatureTitleText title={TOOL.title}>{TOOL.title}</FeatureTitleText>
+    <PortalModalHeaderButtons>{/* Tool action buttons */}</PortalModalHeaderButtons>
+  </FeatureTitle>
+</PortalModalHeader>;
 ```
 
-Rules:
+`FeatureTitleText` handles truncation. `PortalModalHeaderButtons` supplies the class used for narrow
+headers. Do not replace either with raw title text or an arbitrary wrapper.
+Use `PortalModalHeader`, not its old alias `ScenarioPortalHeaderButtons`.
+Set `FeatureIcon`'s `isBetta` only when the owner designates the tool as beta.
 
-- **Always** use `FeatureTitleText`. It truncates long names with an ellipsis
-  (`PopupContainer.styled.ts:58-66`). **Never** put the title text straight into `FeatureTitle`.
-- Header buttons go inside `PortalModalHeaderButtons` (it carries the `hi-header-buttons` class that the
-  narrow-header container query uses, `PopupContainer.styled.ts:92-97`).
-- Header buttons are `IconButton` with the default size 28. Icons inside are `size={18}`.
-- Use `PortalModalHeader`. `ScenarioPortalHeaderButtons` is the same component under an old alias
-  (`ScenarioPortalHeaderButtons.tsx:92`); do not use the alias in new code.
-- `isBetta` on `FeatureIcon` shows a "Beta" badge. Use it only for tools the owner calls beta.
+### Footer and size
 
-Do this / not this:
+Use `ScenarioPortalFooterButtons` from the sibling `ScenarioPortalFooterButtons.tsx` file for view
+actions such as Save or Compare. Reuse your tool's `HeaderPortalId` value as `portalId`; never borrow
+another tool's id. Leave `containerId` unset to target the shared footer. Render only when actions apply.
 
-```tsx
-// Do: id from the enum
-<PortalModalHeader portalId={HeaderPortalId.UNIT_CONVERTER}>
-
-// Not this: a string literal (NoteTakingToolsIntegration.tsx:15 does this; it is legacy)
-const HEADER_PORTAL_ID = "note-taking-tools-header";
-<PortalModalHeader portalId={HEADER_PORTAL_ID}>
-```
-
-### 6.2 Footer (optional)
-
-Use the footer for the main actions of a tool view (Save, Compare, Clear). The footer row hides itself
-when it is empty (`PopupContainer.styled.ts:107-115`).
-
-Steps:
-
-1. Import `ScenarioPortalFooterButtons` from
-   `@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalFooterButtons`.
-2. Render it anywhere in your tool's JSX with a unique `portalId`. Reuse your `HeaderPortalId` value
-   (the CSS Snapshot tool does this: `SnapshotManagerHeader.tsx:412`).
-3. Do not pass `containerId`. The default is `hover-inspector-popup-footer-container`
-   (`ScenarioPortalFooterButtons.tsx:17`).
-4. Render it only while the actions apply (wrap it in a condition).
-
-Real example (`CSSSnapshotInspector/components/SnapshotManagerHeader.tsx:410-441`, shortened):
-
-```tsx
-{compareSnapshots && compareSnapshots.length > 0 && (
-  <ScenarioPortalFooterButtons portalId={HeaderPortalId.CSS_SNAPSHOT}>
-    <AutomationFooterContainer>
-      <div className="flex items-center gap-2 w-full min-w-0">
-        <span className="flex-1 min-w-0 truncate text-xs text-gray-600" aria-live="polite">
-          {compareSnapshots.length === 2 ? "2 selected" : "1 selected · tick 1 more"}
-        </span>
-        <Button size="middle" onClick={onClearCompare}>Clear</Button>
-      </div>
-    </AutomationFooterContainer>
-  </ScenarioPortalFooterButtons>
-)}
-```
-
-### 6.3 Panel size
-
-- The panel's minimum size is **320 × 260 px** (`PopupContainer.tsx:40-42`). The default is 440 × 560
-  (`core/initialData/app.ts:8-13`).
-- **Always** make your tool work at 320px wide: no horizontal scroll, no clipped buttons, no overlapping
-  text. Check it at 320px and 440px (section 16).
-- Use `min-w-0` on flex children that contain text, and `truncate` (Tailwind) or
-  `text-overflow: ellipsis` for single-line labels.
-- Let rows wrap (`flex-wrap`) instead of overflowing.
-
----
+The panel minimum is 320 × 260px; default is 440 × 560px. Check the tool at widths 320px and 440px.
+Use `min-w-0`, truncation for single-line text and wrapping rows to prevent overflow or clipped controls.
 
 ## 7. Shared components and helpers
 
-Use these. **Never** write your own version of them.
-
-### 7.1 `IconButton` (`entrypoints/shared/components/IconButton.tsx`)
-
-Square icon-only button with a name, hover, focus ring and optional pressed state.
-
-```tsx
-export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "aria-label"> {
-  /** Accessible name; also used as the tooltip unless `title` is given */
-  label: string;
-  variant?: Variant;      // "ghost" (default) | "primary" | "danger"
-  /** Toggle buttons: highlighted and announced as pressed */
-  active?: boolean;
-  /** Square size in px (default 28, fits the panel header) */
-  size?: number;
-}
-```
-
-(`IconButton.tsx:71-79`)
-
-Usage (`UnitConverter.tsx:318-320`):
-
-```tsx
-<IconButton label="Clear conversion history" onClick={clearHistory} size={24}>
-  <IconTrash />
-</IconButton>
-```
-
-Rules: `label` is required and is a sentence-case action ("Clear conversion history"). Sizes in use:
-28 (header, default), 26 (cards), 24 (compact rows). Pass `active` only for toggles.
-
-### 7.2 `EmptyState` (`entrypoints/shared/components/EmptyState.tsx`)
-
-Use it whenever a list or view has nothing to show.
-
-```tsx
-<EmptyState
-  icon={<IconCamera />}
-  title="No snapshots yet"
-  description="Capture the page or pick an element to start."
-  action={<Button type="primary" onClick={onCapture}>Snapshot page</Button>}
-/>
-```
-
-### 7.3 `LoadingState` (`entrypoints/shared/components/LoadingState.tsx`)
-
-Use it while data loads. It is announced to screen readers (`role="status"`).
-
-```tsx
-<LoadingState label="Loading notes…" />
-<LoadingState label="Scanning" progress={{ done, total }} progressUnit="elements" />
-<LoadingState label="Loading" inline />   // compact, inside a section
-```
-
-### 7.4 `clickableProps` (`entrypoints/shared/utils/a11y.ts:8`)
-
-Makes a non-button element (a row, a chip, a code line) work like a button with keyboard (focusable,
-Enter and Space). Prefer a real `<button>`. Use `clickableProps` only when a button breaks the layout.
-
-```tsx
-import { clickableProps } from "@entrypoints/shared/utils/a11y";
-
-<div className="..." {...clickableProps(() => copyLine(line.value.trim(), i), "Copy line")}>
-```
-
-(real use: `SettingsIconBox/components/PopupStyleInspector.tsx:433`)
-
-### 7.5 Other shared pieces
+Inspect the existing component's API before using it; do not create a duplicate for the same behavior.
+Paths in this table are under `entrypoints/`.
 
 | Need | Use |
 | --- | --- |
-| Tooltip | `Tooltip` from `@entrypoints/shared/components/Tooltip` (antd tooltip already set up for the shadow root) |
-| Copy button | `CopyButton` from `@entrypoints/shared/components/CopyButton` |
-| Keyboard support for an antd `Popover` | `usePopoverFocus(open, setOpen)` from `@entrypoints/shared/utils/usePopoverFocus` (example `ElementInspectorPopup.tsx:73-84,145-165`) |
-| Debounce a callback | `useDebouncedCallback` from `@entrypoints/shared/utils/useDebouncedCallback` |
-| Toast message | `toast.success(...)` / `toast.error(...)` from `react-toastify` (`ColorPicker.tsx:139-146`) |
-| Highlight a page element | `useHighlightOverlay()` from `@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext` |
-| Element → CSS selector | `entrypoints/shared/utils/toSelector.ts` |
-| Frames helpers | `entrypoints/shared/utils/frames.ts` |
-| z-index values | `entrypoints/shared/constant/zIndex.ts` |
+| Icon-only button | `shared/components/IconButton.tsx`: required `label`, optional `active` for toggles; sizes 28 header, 26 cards, 24 compact rows |
+| Empty view | `shared/components/EmptyState.tsx`: `title`, optional `icon`, `description`, `action` |
+| Loading view | `shared/components/LoadingState.tsx`: `label`, optional `inline` or progress |
+| Tooltip | `shared/components/Tooltip.tsx`, already configured for the shadow root |
+| Copy button | `shared/components/CopyButton.tsx` |
+| Keyboard behavior for a non-button | `shared/utils/a11y.ts`: `clickableProps` |
+| Popover keyboard/focus handling | `shared/utils/usePopoverFocus.ts` |
+| Debounce | `shared/utils/useDebouncedCallback.ts` |
+| Page highlight | `shared/components/HighlightOverlay/HighlightOverlayContext.tsx` |
+| Element selector | `shared/utils/toSelector.ts` |
+| Frame helpers | `shared/utils/frames.ts` |
+| z-index values | `shared/constant/zIndex.ts` |
 
----
+Use `toast` from `react-toastify` for feedback. Hide or disable copying when there is no actual value;
+do not copy a placeholder such as "(not provided)".
 
 ## 8. Styling
 
-### 8.1 Design tokens
+### Choose a styling tool
 
-All colours, radii, control heights and font sizes come from `entrypoints/shared/styles/tokens.ts:8-44`.
+1. antd for standard controls. Prefer its size props over custom control styling.
+2. Tailwind for layout and simple typography in JSX.
+3. styled-components for prop-driven states, child selectors, pseudo-classes or reusable styled pieces.
+   Prefix styling-only props with `$`, such as `$selected`.
 
-```ts
-export const tokens = {
-  color: {
-    primary: "#2563eb",          // Tailwind blue-600
-    primaryHover: "#1d4ed8",     // blue-700
-    primaryBg: "#eff6ff",        // blue-50: selected background
-    primaryBorder: "#bfdbfe",    // blue-200
-    text: "#1f2937",             // gray-800
-    textSecondary: "#4b5563",    // gray-600
-    textMuted: "#6b7280",        // gray-500 (lowest allowed text colour on white)
-    border: "#e5e7eb",           // gray-200
-    borderStrong: "#d1d5db",     // gray-300
-    surface: "#ffffff",
-    surfaceMuted: "#f9fafb",     // gray-50
-    danger: "#dc2626", dangerHover: "#b91c1c", dangerBg: "#fef2f2",
-    success: "#15803d", successBg: "#f0fdf4",
-    warning: "#b45309", warningBg: "#fffbeb",
-    focusRing: "#2563eb",
-  },
-  radius: { sm: 4, md: 6, lg: 8 },
-  control: { sm: 24, md: 32 },
-  font: { size: { xs: 12, sm: 13, md: 14, lg: 16 } /* + family, mono */ },
-} as const;
-```
+Use `entrypoints/shared/styles/tokens.ts` for colors, radii and sizes. In styled-components, use
+`${tokens.color.text}` or `${tokens.radius.md}px`. In Tailwind, use the corresponding palette class.
+Read the token definition for its current value instead of copying a token object into another file.
 
-The same tokens feed:
+- No hard-coded hex value when an existing token represents it.
+- No legacy orange `primary-*` Tailwind palette or `dark:` classes; this UI is light only.
+- Use `px` in styled-components and inline styles. Tailwind rem values are converted at build time
+  by `postcss.config.cjs`; styled-components values are not.
+- Inline styles are for computed dimensions or one-off numeric values, not colors.
+- Do not import global CSS from a component. The shadow root receives `content/style.css`.
 
-- the antd theme `antdTheme` (`tokens.ts:56-92`), applied in `content/app.tsx:75`;
-- CSS variables `--hi-color-*` on the shadow host (`content/style.css:28-41`), for plain CSS files only.
+### Shadow-root overlays
 
-Rules:
-
-1. In styled-components, **always** write `${tokens.color.x}` / `${tokens.radius.md}px`. **Never** write a
-   hex colour that has a token.
-2. In Tailwind classes, use the palette class that equals the token: `text-gray-800` (text),
-   `text-gray-600` (secondary), `text-gray-500` (muted), `border-gray-200` (border), `bg-gray-50`
-   (muted surface), `text-blue-600`/`bg-blue-600` (primary), `bg-blue-50 border-blue-300` (selected).
-3. **Never** use text lighter than gray-500 (`#6b7280`) on white. `text-gray-400` fails AA.
-4. **Never** use the Tailwind `primary-*` colours from `tailwind.config.cjs` (an old orange scale).
-5. **Never** use `dark:` Tailwind classes. The UI is light only (`content/style.css:23-26`).
-
-### 8.2 Tailwind vs styled-components vs antd
-
-Pick in this order:
-
-1. **antd** for every standard control: `Button`, `Input`, `InputNumber`, `Select`, `Switch`, `Checkbox`,
-   `Radio`, `Tabs`, `Popover`, `Popconfirm`, `Tooltip` (via the shared wrapper), `Spin`. Use antd size
-   props (`size="small"`) instead of restyling.
-2. **Tailwind classes** for layout and simple text in JSX: `flex`, `items-center`, `gap-2`, `mb-3`,
-   `min-w-0`, `truncate`, `text-sm`, `font-semibold`, `text-gray-500`. Example: `UnitConverter.tsx:313-353`,
-   `TokenTabLayout.tsx:94-103`.
-3. **styled-components** when you need tokens, states driven by props, child selectors, pseudo-classes
-   or a piece reused in several places. Transient props start with `$` (`$selected`, `$active`).
-   Example: `CSSSnapshotInspector/SnapshotManager.tsx:82-105`.
-
-Rules:
-
-- Inline `style={{...}}` only for one-off numbers that Tailwind cannot express well (antd `Col` widths,
-  computed sizes). Not for colours.
-- **Never** use `rem` in styled-components or inline styles. Write `px`. Tailwind's rem values are
-  converted to px at build time (`postcss.config.cjs:1-16`) because the page's root font size is not ours.
-  styled-components output is not converted.
-- **Never** import a global `.css` file from a component. The shadow root receives
-  `content/style.css` only.
-
-### 8.3 Shadow root rules
-
-The whole UI lives in the open shadow root of the `<hover-inspector>` element. Page CSS does not reach
-it, and our CSS must not reach the page.
-
-1. antd overlays (Select, Popover, Popconfirm, Dropdown, Tooltip, Tabs overflow menu) **must** render
-   inside the shadow root. `ConfigProvider getPopupContainer` does this by default
-   (`content/app.tsx:65-70`):
-
-   ```tsx
-   // antd overlays (selects, popovers, dropdowns) default to document.body, where the page's CSS
-   // applies and the shadow root's antd styles don't; keep them inside the UI
-   const getPopupContainer = React.useCallback(
-     () => (shadowRoot?.querySelector("body") as HTMLElement) || (shadowRoot as unknown as HTMLElement),
-     [shadowRoot],
-   );
-   ```
-
-2. When you pass `getPopupContainer` yourself (needed when the overlay must sit inside a scrolling or
-   clipped area), use `shadowBody` from `entrypoints/shared/utils/shadowBody.ts`. It is typed for antd,
-   so you never need `// @ts-ignore`:
-
-   ```tsx
-   import { shadowBody } from "@entrypoints/shared/utils/shadowBody";
-   <Popconfirm getPopupContainer={shadowBody} overlayStyle={{ maxWidth: 280 }} ... />
-   <Select value={unit} onChange={setUnit} options={options} getPopupContainer={shadowBody} />
-   ```
-
-   Some old files define their own `getPopupContainer` with `// @ts-ignore` (for example
-   `UnitConverter.tsx`). Never copy that, even in the same file: import `shadowBody` instead.
-
-3. **Never** let an overlay render into the page's `document.body`. Past bugs from this:
-   - The Analyze Page tabs "more" menu opened in the page body, unstyled and off screen
-     (commit `1f5644d`, fix at `AnalyzePageUI.tsx:60-63`).
-   - Every overlay without an explicit container went to the page body until the global default was
-     added (commit `f6e962d`).
-4. Keep confirmations and menus inside the panel width. Give a `Popconfirm`/`Popover` a `maxWidth`
-   (commit `f2efe98`, `ScenarioMenu.tsx:65`) and use `placement="bottomRight"` for triggers at the right edge.
-5. Wrap an `IconButton` that is an antd `Popover`/`Popconfirm` trigger in `<span className="inline-flex">`
-   so antd can attach its handlers and position the overlay (`SnapshotManager.tsx:269-273`).
-6. For a ⋮ row menu, copy `RowMenu` in `SnapshotManager.tsx:229-276` (antd `Popover`, `role="menu"`,
-   `MenuItem` buttons with `role="menuitem"`). **Never** build a menu as an absolutely positioned `div`
-   (old `DropdownMenu` in `SnapshotManagerHeader.tsx:160` is legacy).
-7. To find the shadow root from code: `document.querySelector("hover-inspector")?.shadowRoot`.
-
-### 8.4 Focus: outlines only for keyboard users
-
-The content script sets `data-hi-keyboard` on the host while the user presses Tab or arrow keys and
-removes it on pointer down (`content/index.tsx:123-132`):
+antd overlays must stay inside the extension shadow root. `ConfigProvider` in `content/app.tsx`
+provides the default. When passing `getPopupContainer` explicitly, use the existing `shadowBody` helper:
 
 ```tsx
-const onKeyboardNav = (event: KeyboardEvent) => {
-  if (event.key === "Tab" || event.key.startsWith("Arrow")) host.setAttribute("data-hi-keyboard", "");
-};
-const onPointerNav = () => host.removeAttribute("data-hi-keyboard");
+import { Select } from "antd";
+
+import { shadowBody } from "@entrypoints/shared/utils/shadowBody";
+
+// JSX fragment: value, setValue and options belong to the surrounding component.
+<Select value={value} onChange={setValue} options={options} getPopupContainer={shadowBody} />;
 ```
 
-`content/style.css:43-58` then draws one focus ring for keyboard users and none for mouse users:
+Do not duplicate container lookup code or suppress type errors. Verify the actual open overlay stays
+inside the shadow root; do not send it to the page's `document.body`.
 
-```css
-:host(:not([data-hi-keyboard])) *:focus,
-:host(:not([data-hi-keyboard])) *:focus-visible {
-  outline: none !important;
-}
+- Give menus/confirmations a suitable `maxWidth`; use `bottomRight` placement at a right edge.
+- Wrap an `IconButton` used as a Popover/Popconfirm trigger in `<span className="inline-flex">`.
+- For a row menu, use the `RowMenu` pattern in `CSSSnapshotInspector/SnapshotManager.tsx`
+  (antd Popover and menu semantics), not a hand-positioned dropdown div.
 
-:host([data-hi-keyboard]) :where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"],
-    [role="option"], [role="switch"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible {
-  outline: 2px solid var(--hi-color-primary);
-  outline-offset: 2px;
-}
-```
+### Focus, selection and text
 
-Rules:
+The host's `data-hi-keyboard` attribute and `content/style.css` control keyboard focus outlines.
+Do not add button `focus:ring-*` or custom focus outlines. Preserve visible keyboard focus and verify
+mouse clicks do not leave an outline. If a third-party widget needs a fix, scope it under
+`:host([data-hi-keyboard])`; antd focus appearance comes from the shared theme.
 
-1. **Never** add your own `:focus` / `:focus-visible` outline or `focus:ring-*` classes to buttons. The
-   global rule covers `button`, `[role=button]`, `[tabindex]` and the other roles listed.
-2. **Never** draw a focus outline for mouse users.
-3. If a third-party widget removes outlines inline, scope your fix under `:host([data-hi-keyboard])`
-   (example `ColorPicker.tsx:36-41`).
-4. antd focus rings come from the theme (`tokens.ts:46-53`). Do not override them.
+Selected items use background tint and border color, not rings: for example `bg-blue-50 border-blue-300`.
+Set `aria-pressed` for toggles or `aria-selected` for listbox/tab items as appropriate.
 
-### 8.5 Selection: tint, not rings
-
-Show "selected" with a background tint and border colour, never with an outline or ring.
-
-Do this (`SettingsIconBox/components/ColorPaletteDefinition/tokenUi/TokenTabLayout.tsx:100-102`):
-
-```tsx
-className={`w-full flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors ${
-  selected ? "border-blue-300 bg-blue-50" : "border-transparent hover:border-gray-200 hover:bg-gray-50"
-}`}
-```
-
-Or with styled-components (`CSSSnapshotInspector/SnapshotManager.tsx:90`):
-
-```tsx
-background: ${(p) => (p.$confirming ? tokens.color.dangerBg : p.$selected ? tokens.color.primaryBg : tokens.color.surface)};
-```
-
-Not this (legacy, `PageNotes/components/NoteForm.tsx:547`):
-
-```tsx
-? "border-indigo-500 shadow-lg ring-2 ring-indigo-200"
-```
-
-Also set `aria-pressed={selected}` (toggle) or `aria-selected` (in a listbox/tablist).
-
-### 8.6 Text and labels
-
-1. **Sentence case** for every label, button, heading, tooltip and message: "Conversion history",
-   "Count again", "Compare with current page", "Customize hover card…".
-2. Exception: tool names in `LauncherIcons.ts` are product names in Title Case ("Unit Converter").
-   Keep that style for a new tool name.
-3. Not this (legacy, `ElementInspectorPopup.tsx:85-88`): "Additional Settings", "Prevent Default".
-4. Use plain English, short. An ellipsis "…" ends a label that opens more UI.
-5. Section headings inside a tool: `<h3 className="m-0 text-sm font-semibold text-gray-800">`
-   (`UnitConverter.tsx:315`).
-6. Panel title style is fixed by `FeatureTitle` (uppercase, 13px). Do not restyle it.
-
----
+Use sentence case for labels and messages. Tool product names keep their `LauncherIcons.ts` casing.
+Keep labels short; use an ellipsis for actions that open further UI. Do not restyle the panel title.
 
 ## 9. State: Redux, sagas, local state
 
-### 9.1 Which state where
-
-| Data | Where |
+| Data | Owner |
 | --- | --- |
-| UI state of one component (input text, open/closed, selected row) | `useState` in the component |
-| State shared by components of one tool | React context in the tool folder, or a content slice |
-| App-wide state (open tools, panel position, inspector settings) | content Redux store, `app` slice |
-| Data of a domain used across the UI (automation, notes form, snapshots) | content Redux slice |
-| Data that must persist | storage (section 10), loaded into state on mount |
+| State used by one component | Local `useState` |
+| State shared within a tool | Lift to a common owner; use tool context when prop relaying becomes the problem |
+| App-wide or shared domain state | Content Redux slice |
+| Data that survives reloads | Storage, loaded into the appropriate state owner |
 
-Local `useState` is fine and preferred for anything that only one component uses. Small tools like
-`UnitConverter.tsx` use only local state + storage.
+Small tools may use local state and storage directly. Do not add Redux just for persistence.
 
-### 9.2 The content store
+### Content slices
 
-Files: `content/store/createStore.ts` (store + saga middleware), `content/store/rootReducer.ts:11-19`
-(slices), `content/store/rootSaga.ts:7` (sagas).
+Add `<domain>/<domain>.slice.ts` under `entrypoints/content/store/` and register its reducer in
+`rootReducer.ts`. Export typed selectors alongside the slice and use `useSelector(selectX)` in UI.
 
-To add a slice:
-
-1. Create `entrypoints/content/store/<domain>/<domain>.slice.ts`.
-2. Add it to `combineReducers` in `entrypoints/content/store/rootReducer.ts`.
-
-Slice template (real file: `content/store/notes/notes.slice.ts`):
+Minimal slice template (adapt the domain, file and registration):
 
 ```ts
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-export interface WordCounterState {
+interface WordCounterState {
   lastCount: number;
 }
 
-const initialState: WordCounterState = {
-  lastCount: 0,
-};
-
+const initialState: WordCounterState = { lastCount: 0 };
 const wordCounterSlice = createSlice({
   name: "wordCounter",
   initialState,
@@ -723,560 +323,269 @@ const wordCounterSlice = createSlice({
 });
 
 export const { setLastCount } = wordCounterSlice.actions;
-
+/** Selects the most recent count. */
 export const selectLastCount = (state: { wordCounter: WordCounterState }) => state.wordCounter.lastCount;
-
 export default wordCounterSlice.reducer;
 ```
 
-Rules:
+### Sagas
 
-1. Type the state with an `interface`. **Never** write `(state: any)` in reducers.
-2. Export selectors next to the slice: `export const selectX = (state: { domain: DomainState }) => ...`
-   (`content/store/automation/automation.slice.ts:563-576`).
-3. In components, use `useSelector(selectX)`. Do not write `useSelector((state: any) => ...)` in new code.
+For side effects triggered by Redux actions, follow the existing domain's saga setup:
 
-### 9.3 Sagas and `sagaEnhancer` (`getPayload`)
+1. Define the action generator using `sagaEnhancer` in `<domain>.saga.action.ts`.
+2. Give its generator a unique name: the enhancer derives an action type from the name.
+3. Register the watcher in `<domain>.saga.ts`; register a new domain saga in `rootSaga.ts`.
+4. Dispatch with `action.getPayload(payload)`.
 
-Side effects (storage writes, async work after an action) run in sagas. `sagaEnhancer`
-(`core/libs/sagaEnhancer.ts:11-35`) turns a named generator into a saga that knows its own action type:
+Use `call` for async operations in new sagas; do not copy older direct promise yields.
+Fragment inside an existing saga (import `call` and `put` from `redux-saga/effects`):
 
 ```ts
-export const sagaEnhancer = <P = unknown>(sagaFn: SagaFunction<P>): EnhancedSaga<P> => {
-  let sagaName = sagaFn.name;
-  ...
-  const actionType = sagaName.replace(/([A-Z])/g, "_$1").toUpperCase() + "__SAGA_ENHANCER";
-  enhancedSaga.actionType = actionType;
-  enhancedSaga.getPayload = (payload?: P) => ({ type: actionType, payload });
-  return enhancedSaga;
-};
+yield call(() => ExtensionStorageManager.changeLauncherIconOrder(payload));
+yield put(setLauncherIconOrder(payload));
 ```
 
-Steps to add a saga:
-
-1. Write it in `content/store/<domain>/<domain>.saga.action.ts`. The generator **must** have a unique name
-   (the action type is built from it).
-
-   ```ts
-   // content/store/app/saga-action/app.saga.action.ts:114-122
-   export const onChangeLauncherIconOrder = sagaEnhancer(function* changeLauncherIconOrderFn({
-     payload,
-   }: {
-     payload: string[];
-   }) {
-     yield ExtensionStorageManager.changeLauncherIconOrder(payload);
-
-     yield put(setLauncherIconOrder(payload));
-   });
-   ```
-
-2. Register it in `content/store/<domain>/<domain>.saga.ts`:
-
-   ```ts
-   // content/store/app/app.saga.ts:30
-   yield takeLatest(onChangeLauncherIconOrder.actionType, onChangeLauncherIconOrder);
-   ```
-
-   A new `<domain>.saga.ts` must also be added to `content/store/rootSaga.ts:7`.
-
-3. Dispatch it with `getPayload`:
-
-   ```ts
-   // PopupContainer.tsx:85
-   dispatch(onChangeLauncherIconOrder.getPayload(iconOrder));
-   ```
-
-Rules:
-
-- Wrap saga bodies that can fail in `try { ... } catch (error) { console.error("Error loading scenarios:", error); } finally { ... }`
-  (`automation.saga.action.ts:49-65`).
-- Use `call(fn, ...args)` for async functions in new sagas.
-- Naming: two styles exist. The `app` domain uses `onXxx` in `app/saga-action/app.saga.action.ts`; the
-  `automation` domain uses `xxxWatcher` in `automation/automation.saga.action.ts`. For a new domain use
-  the automation style: `<verb><Noun>Watcher` in `<domain>/<domain>.saga.action.ts`. When you add to an
-  existing domain, follow that domain's style.
-
----
+Catch failures and restore loading state in `finally` where applicable. Existing domains keep their
+naming; for a new domain use `<verb><Noun>Watcher` in `<domain>.saga.action.ts`.
+Reference definitions: `core/libs/sagaEnhancer.ts`, `content/store/rootSaga.ts`.
 
 ## 10. Storage
 
-There are two ways to persist data. Pick by size and owner.
+Choose the existing storage owner before adding a write path.
 
-### 10.1 Small per-tool preferences: `browser.storage.local` directly
-
-Use this for a tool's own settings or short history (a few KB). This is the pattern in the newest code:
-`UnitConverter.tsx:28-73`, `PopupStyleInspector.tsx:186-211`, `PaletteContext.tsx:33-45`,
-`shared/hoverCard/store.ts`.
-
-Template (copy exactly, rename the key and type):
-
-```tsx
-// Extension storage, never the page's localStorage: the choice follows the user across sites
-const PREFS_STORAGE_KEY = "wordCounterPrefs";
-
-const [prefs, setPrefs] = useState<WordCounterPrefs>(DEFAULT_PREFS);
-const prefsLoaded = useRef(false);
-
-// Load once
-useEffect(() => {
-  browser.storage.local
-    .get(PREFS_STORAGE_KEY)
-    .then((stored) => {
-      const saved = stored?.[PREFS_STORAGE_KEY];
-      if (saved) setPrefs({ ...DEFAULT_PREFS, ...saved });
-    })
-    .catch((error) => console.error("Failed to load word counter preferences", error))
-    .finally(() => {
-      prefsLoaded.current = true;
-    });
-}, []);
-
-// Save on change, but never overwrite the saved value with the defaults before it has loaded
-useEffect(() => {
-  if (!prefsLoaded.current) return;
-  browser.storage.local.set({ [PREFS_STORAGE_KEY]: prefs }).catch(() => undefined);
-}, [prefs]);
-```
-
-Rules:
-
-1. Key name: `camelCase` naming the tool and the data: `unitConverterHistory`, `inspectorCssOutputPrefs`,
-   `hoverCardConfig`. A dotted form is also used (`designTheme.active`); either is fine, be consistent
-   within your tool.
-2. Put the key in a `const ... _STORAGE_KEY` at the top of the file, or in the tool's `constants.ts` if
-   two files use it.
-3. **Never** use the page's `window.localStorage` or `sessionStorage`. That is the website's storage.
-4. **Always** merge saved data over defaults (`{ ...DEFAULT_PREFS, ...saved }`) so new fields get defaults.
-5. `browser` is a WXT auto-import in app code. In a module that has unit tests, import it explicitly:
-   `import { browser } from "wxt/browser";` (`shared/hoverCard/store.ts:2`).
-6. To share live state between components and tabs, copy `shared/hoverCard/store.ts`
-   (`useSyncExternalStore` + `browser.storage.onChanged`).
-
-### 10.2 App settings and domain data: `ExtensionStorageManager` and the background
-
-Use this for app settings (`APP_STORE_STATE`), automation data, CSS snapshots, element details.
-
-Chain:
-
-```
-component / saga
-  -> ExtensionStorageManager.<method>()          core/services/storage/ExtensionStorageManager.ts
-  -> background slice function (e.g. changeLauncherIconOrder)   background/store/slices/*.ts
-  -> chrome.runtime.sendMessage in production (requestProcessing.ts:17-31),
-     direct call in development (requestProcessing.ts:34-38)
-  -> background action (background/store/actions/appStateActions.ts)
-  -> AppStorageService / AppLocalStorage
-  -> LocalStorage (JSON.stringify into browser.storage.local)   core/services/storage/LocalStorage.ts
-```
-
-Storage keys in this layer (`core/constants/`):
-
-| Key | Content |
+| Data | Path |
 | --- | --- |
-| `APP_STORE_STATE` | App settings object (`core/constants/index.ts`) |
-| `AUTOMATION_SCENARIO_<id>` | One automation record. Every automation record uses this prefix (`core/constants/automation.ts:1-7`). The id prefix says what it is: `sc_` scenario, `fo_` folder, `fu_` function, `sch_` schedule, `tr_` trigger, `notification_` notification. |
-| `CSS_SNAPSHOT_<id>`, `CSS_SNAPSHOTS_LIST` | CSS snapshots (`core/constants/cssSnapshot.ts`) |
-| `ELEMENT_DETAILS_<id>`, `ELEMENT_DETAILS_LIST`, `ELEMENT_DETAILS_PANEL_POSITION` | Saved element details (`core/constants/elementDetails.ts`) |
-| `notes` | Notes chrome slice state (`background/store/notesActionsSlice.ts:43-47`) |
+| Small preferences/history owned by one tool | `browser.storage.local` directly |
+| App settings, automation, CSS snapshots, element details | `ExtensionStorageManager` and background actions |
+| Notes | Existing `background/store/notesActionsSlice.ts` actions |
 
-Rules:
+For a tested module, explicitly `import { browser } from "wxt/browser"`; tests do not get WXT auto-imports.
 
-1. New ids for automation records: `` `fo_${await generateUniqueId()}` `` (`useScenarioFolders.ts:39`).
-   Keep the prefix; list code filters by it (`AutomationScenarios/utils/storage.ts:110`).
-2. Settings are changed through a queue that reads, changes and writes the whole object
-   (`appStateActions.ts:5-17`). Add a new setting as a new action that uses `updateAppState`.
-3. A new settings field needs a default in `appSettingsInitial` and a merge rule in `migrateAppSettings`
-   (`core/initialData/app.ts`), so old saved settings keep working.
+### Small per-tool preferences
 
----
+- Use a descriptive key such as `unitConverterHistory`, declared as a constant. Reuse the domain's key
+  convention. Move the key to tool `constants.ts` only when shared by files.
+- Load before enabling saves. Do not overwrite existing storage with initial defaults during loading.
+- Validate saved fields against their expected types; merge valid saved fields over defaults.
+- Handle load failure explicitly; do not silently overwrite data after a failed read.
+- If the UI permits editing during load, ensure the late load cannot overwrite that edit. The simpler
+  option is to keep preference controls disabled until loading finishes.
+- Handle async failures according to section 13. Do not write after the owning UI has been disposed.
+- For live shared state across components/tabs, inspect `shared/hoverCard/store.ts`
+  (`useSyncExternalStore` and `browser.storage.onChanged`) instead of inventing a second mechanism.
+
+These are behavior requirements, not a universal copy-and-paste hook. Adapt the existing tool's storage
+code and test the load/save ordering when changing it.
+
+### App settings and domain data
+
+The usual chain is component/saga → `core/services/storage/ExtensionStorageManager.ts` → background
+slice → background action → storage service. Inspect the domain before extending the chain.
+
+- App settings actions use the `updateAppState` queue in `background/store/actions/appStateActions.ts`.
+- A new setting needs a default and migration handling in `core/initialData/app.ts`.
+- Use storage keys from `core/constants/`: `index.ts`, `automation.ts`, `cssSnapshot.ts`, `elementDetails.ts`.
+- Preserve automation record prefixes (`sc_`, `fo_`, `fu_`, `sch_`, `tr_`, `notification_`); list logic
+  depends on them. Keep existing data readable when changing its shape.
 
 ## 11. Background and messaging
 
-### 11.1 Two contexts
+Background has privileged tabs/scripting/windows APIs and no page DOM. Content has page DOM and React.
+Put work in background when it needs those privileged APIs, outlives the page or coordinates tabs.
 
-- **Background** (`entrypoints/background/`): service worker. Has `chrome.tabs`, `chrome.scripting`,
-  `chrome.windows`. No DOM, no React.
-- **Content** (`entrypoints/content/`): runs in the page. Has the DOM and React. Cannot call
-  `chrome.tabs` or `chrome.scripting`.
+Reuse the layer for the domain:
 
-Put code in the background only when it needs a background-only API, must outlive the page, or
-coordinates several tabs (`background/automationTabs.ts`). Everything else stays in content.
+| Purpose | Existing layer |
+| --- | --- |
+| Extension activation/deactivation/check | `features/extension/messaging.ts`, `@webext-core/messaging` |
+| Call background domain actions | `core/libs/chromeActionsSlice.ts` and `background/store/actions/`, `background/store/slices/` |
+| Notes with persisted slice state | `core/libs/createChromeSlice.ts`, `background/store/notesActionsSlice.ts` |
+| Frame agent | Runtime messages with a `type` field; `shared/frameAgent/protocol.ts`, `background/frameAgentRelay.ts` |
 
-### 11.2 Messaging layers in use
+Do not introduce `webext-bridge`; it is installed but unused.
 
-1. **`@webext-core/messaging`** for extension lifecycle messages: `features/extension/messaging.ts:11-33`.
+To extend a background domain action, add the function to that domain's action object and export it
+through its slice. Add a storage-manager method when the existing domain uses that manager. Notes
+export their actions directly. Follow the receiving API's `({ data }, sender)` contract and return
+JSON-serializable values. Inspect the wrapper's error result before handling it at the caller.
 
-   ```ts
-   interface ProtocolMap {
-     [HOVER_INSPECTOR_ACTIVATE](s: any): any;
-     [HOVER_INSPECTOR_DEACTIVATE](s: any): any;
-     [HOVER_INSPECTOR_CHECK_SCRIPT](s: any): any;
-     ...
-   }
-   export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>();
-   ```
+Message boundary rules:
 
-   Content listens with `onMessage(...)` and stores the remover (`content/index.tsx:40-53`).
-   The background sends with `sendMessage(HOVER_INSPECTOR_DEACTIVATE, null, tabId)`
-   (`features/extension/Ext/session/session.ts`). Message names live in `shared/globalEvents.ts`.
-
-2. **Chrome slices** for "call a background function from content and get its result":
-   - `chromeActionsSlice(actions)` (`core/libs/chromeActionsSlice.ts:3-44`): wraps a plain object of
-     async functions; used by `background/store/slices/*.ts`.
-   - `createChromeSlice({ name, version, initialState, actions })` (`core/libs/createChromeSlice.ts:48`):
-     the newer form with its own persisted state; used by `background/store/notesActionsSlice.ts`.
-     Content imports the exported functions and calls them like normal async functions
-     (`PageNotes/PageNotes.tsx:7-14`: `getAllNotes`, `updateNote`).
-
-3. **Plain `chrome.runtime.sendMessage` + `browser.runtime.onMessage`** with a `type` field, for the frame
-   agent (`shared/frameAgent/protocol.ts`, `background/frameAgentRelay.ts`).
-
-`webext-bridge` is in `package.json` but is not used (only a commented-out import at
-`content/index.tsx:14`). **Never** use it.
-
-Recipe: call new background logic from content.
-
-1. If it belongs to notes, add an action to `actions` in `background/store/notesActionsSlice.ts` and
-   export it at the bottom of the file.
-2. Otherwise add an async function to the right `background/store/actions/<domain>Actions.ts`, then add
-   its name to the destructured export in `background/store/slices/<domain>Slice.ts`.
-3. Call it from content through `ExtensionStorageManager` (add a method there) or import it directly
-   like `PageNotes.tsx` does.
-4. Action functions receive `({ data }, sender)`. Read the payload from `data`.
-5. Return plain JSON-serialisable values. Errors are logged and returned as `{ success: false, error }`
-   (`chromeActionsSlice.ts:28-36`).
-
-### 11.3 Message security
-
-Every listener checks who sent the message and what it contains:
-
-```ts
-// background/frameAgentRelay.ts:45-49
-browser.runtime.onMessage.addListener((message: unknown, sender) => {
-  if (!isFrameAgentRuntimeMessage(message)) return;
-  // From content scripts of this extension only
-  const tabId = sender.tab?.id;
-  if (sender.id !== browser.runtime.id || tabId == null || sender.frameId == null) return;
-```
-
-Rules:
-
-1. Type unknown input as `unknown`, then narrow with a type guard (`isObject`, `isFrameKey`).
-2. Check `sender.id === browser.runtime.id` for messages from content scripts.
-3. Return `false`/`undefined` for messages that are not yours, so other listeners can answer
-   (`chromeActionsSlice.ts:23-26`).
-4. **Never** trust `window.postMessage` data. Pages can send anything.
-
----
+- Treat incoming values as `unknown`, then validate their shape before accessing fields.
+- For content-script messages, check `sender.id === browser.runtime.id` and required tab/frame identity.
+- Ignore messages outside your protocol so other listeners can handle them.
+- Never trust page `window.postMessage` payloads. Do not send page content over that channel.
 
 ## 12. Working with the host page
 
-### 12.1 Never break the page
+### Page interaction and cleanup
 
-1. **Never** change the page's styles, classes or DOM permanently. Every change must be undone when the
-   tool closes or the extension turns off.
-2. Inject page-wide CSS as one `<style id="hover-inspector-...">` element and remove it to undo
-   (`shared/utils/allBorders.ts:7-25`). Use outlines, not borders, so layout does not shift.
-3. Overlays you draw (boxes, lines, notes) live in the shadow root, `position: fixed`, with
-   `pointer-events: none` when they must not block the page (`content/style.css:178-184`).
-4. **Never** call `preventDefault()`/`stopPropagation()` on page events unless the user turned that on
-   (the Inspector's "Prevent default" setting).
-5. Esc turns the extension off (`content/index.tsx:95-121`). If your UI handles Esc itself (a popover, an
-   edit field), call `event.preventDefault()` and `event.stopPropagation()` in a capture listener
-   (`usePopoverFocus.ts:25-32`).
-6. Read page values with `getComputedStyle` and `getBoundingClientRect`. Remember the page may use `zoom`
-   or `transform`; see the comments in `content/index.tsx:169-182`.
-7. `rem` on the page is the page's root font size, not 16px (`UnitConverter.tsx:34-35`).
+- Undo changes to page DOM/styles/classes when the tool closes or the extension deactivates.
+- For page-wide CSS, use an identifiable `hover-inspector-...` style element and remove it on cleanup.
+  Use outlines rather than borders for highlighting to avoid shifting layout.
+- Keep UI overlays in the shadow root; use fixed positioning and `pointer-events: none` where they
+  must not intercept page interaction.
+- Do not cancel host-page events unless the user enabled an interaction mode that requires it.
+  Inside the extension UI, an Esc handler that closes a popover/editor should prevent the same event
+  from also deactivating the extension; use the existing `usePopoverFocus` pattern.
+- Read geometry with `getBoundingClientRect` and styles with `getComputedStyle`; account for zoom and
+  transforms. The host page's rem size is not necessarily 16px.
+- Clean up each effect where it is created: event listeners, observers, timers, styles and overlays.
+  Disconnect observers. Listeners outside React belong in WXT `ctx.onInvalidated` cleanup.
 
-### 12.2 Cleanup on deactivate
+Reference: `content/index.tsx`, `content/modules/EventListenerProvider.tsx`, `shared/utils/allBorders.ts`.
 
-When the user switches the extension off, the content store sets `isActive = false` and
-`AppController` renders nothing (`content/modules/AppController/AppController.tsx:33-35`). Every tool
-unmounts. When the script is injected again, WXT invalidates the old context (`content/index.tsx:37-41`).
+### Frames
 
-So:
+Use `watchSameOriginFrames` from `shared/utils/frames.ts` for accessible frames.
+Cross-origin frames use `frame-agent.ts` and `shared/frameAgent/agent.ts`; the top frame draws the UI.
 
-1. **Always** undo side effects in the `useEffect` cleanup that created them: listeners, observers,
-   timers, intervals, injected styles, highlight overlays.
+When extending the frame protocol:
 
-   ```tsx
-   // content/modules/EventListenerProvider.tsx:150-162
-   useEffect(() => {
-     if (!showAllBorders) return;
-     setAllBordersVisible(document, true);
-     const stopWatchingFrames = watchSameOriginFrames((frameWindow) => {
-       setAllBordersVisible(frameWindow.document, true);
-       return () => setAllBordersVisible(frameWindow.document, false);
-     });
-     return () => {
-       setAllBordersVisible(document, false);
-       stopWatchingFrames();
-     };
-   }, [showAllBorders]);
-   ```
+1. Add the field to its type in `shared/frameAgent/protocol.ts`.
+2. Validate it in the sanitizer with a type check and size/length limit.
+3. Add invalid-input and boundary cases in `shared/frameAgent/__tests__/protocol.test.ts`.
+4. For a computed property, extend the whitelist source (`styleRulesList` or `CARD_COMPUTED_PROPS`).
 
-2. Listeners added outside React (in `content/index.tsx`) are removed in `ctx.onInvalidated(...)`.
-3. A `ResizeObserver`/`MutationObserver` is disconnected in cleanup (`TokenTabLayout.tsx:44-55`).
-
-### 12.3 Same-origin and cross-origin frames
-
-- Same-origin iframes are reached directly through `frame.contentDocument`; use
-  `watchSameOriginFrames` from `shared/utils/frames.ts`.
-- Cross-origin iframes get the **frame agent** (`entrypoints/frame-agent.ts` →
-  `shared/frameAgent/agent.ts`). It is injected with `scripting.executeScript` into all frames, only
-  while the extension is on in that tab (`background/frameAgentRelay.ts:26-38`). It mounts no UI; it
-  reports hover/select data and the top frame draws everything.
-- Trust model (`shared/frameAgent/protocol.ts:1-14`): content travels only through extension messaging;
-  the only page-visible message is a random-key registration (`hub.ts:15-28`, first registration wins).
-- Every incoming message is shape-checked and size-capped (`protocol.ts:143-220`, `sanitizeEvent`,
-  `sanitizeSnapshot`). Computed properties are whitelisted in `COMPUTED_PROPS` (`protocol.ts:106-109`).
-- The agent removes its listeners on deactivate (`agent.ts:334-346`).
-
-Rules when you touch the frame agent:
-
-1. A new field in a snapshot: add it to the interface, to `sanitizeSnapshot` with a type check and a
-   length cap, and to `shared/frameAgent/__tests__/protocol.test.ts`.
-2. A new computed property: add it to the whitelist source (`styleRulesList` or `CARD_COMPUTED_PROPS`).
-3. **Never** send page content through `window.postMessage`.
-
----
+Keep page content on extension messaging. Preserve the existing random-key registration mechanism and
+agent cleanup on deactivate. Inspect protocol, hub and relay definitions before changing that boundary.
 
 ## 13. TypeScript, imports, comments, errors, logging
 
-### 13.1 TypeScript
+- Give new code real types even though `noImplicitAny` is currently disabled. Use `unknown` and
+  narrowing at external boundaries, not casts that merely silence errors.
+- Prefer `interface` for object shapes, `type` for unions, and `as const` for fixed lookup objects.
+- Use `import type` or inline `type` for type-only imports.
+- Use `@entrypoints/...` across tool/folder boundaries and relative imports within the same tool.
+  Do not add `@/entrypoints/...` or long relative paths escaping the tool.
+- Omit `.ts`/`.tsx` import extensions. Order React, other packages, alias imports, then relative imports.
+- Use double quotes and semicolons; follow `.prettierrc` for formatting. Do not reformat unrelated code.
+- Comments explain intent or constraints in English. Add short JSDoc for exported helpers/components
+  and non-obvious contracts. Do not document obvious implementation steps.
 
-1. Type everything you write. `noImplicitAny` is off in `tsconfig.json`, but new code must not rely on it.
-2. **Never** write `any` in new code. Use a real type, `unknown` + a type guard, or `Record<string, unknown>`.
-3. **Never** add `// @ts-ignore` or `// @ts-nocheck`. If antd typing for `getPopupContainer` complains,
-   type the function as `() => HTMLElement`.
-4. Prefer `interface` for object shapes, `type` for unions (`type RowMenuAction = "view" | "rename" | ...`,
-   `SnapshotManager.tsx:227`).
-5. Use `as const` for fixed lookup objects (`tokens.ts:44`).
-6. Use `import type { X }` or `type X` inside the braces for type-only imports
-   (`AnalyzePageUI.tsx:15`: `type PaletteTab`).
+Error handling:
 
-### 13.2 Imports
+| Situation | Handling |
+| --- | --- |
+| Caller owns recovery | Return/propagate the error to that caller; ensure the async chain is handled |
+| User action fails | Explain with `toast.error(...)` or inline error text |
+| Failure needs diagnosis | `console.error("Failed to ...", error)`; prefix background logs with the area |
+| Expected recoverable problem | `console.warn(...)` when useful |
+| Explicitly best-effort preference/history write | Catching with `.catch(() => undefined)` is allowed only when silent loss is acceptable |
 
-1. Cross-folder imports use the alias `@entrypoints/...` (defined in `wxt.config.ts` and `vitest.config.ts`).
-   Example: `import { tokens } from "@entrypoints/shared/styles/tokens";`
-2. Imports inside the same tool folder use relative paths: `import { countWords } from "./utils/countWords";`.
-3. **Never** use `@/entrypoints/...` (a few old imports do). **Never** use `../../..` to leave a tool folder.
-4. Leave off the `.ts`/`.tsx` extension in new imports. Old files have both styles; both build.
-5. Order: React first, then third-party packages, then `@entrypoints/...`, then relative imports.
-6. Use double quotes and semicolons. Prettier: `printWidth: 120` (`.prettierrc`).
-
-### 13.3 Comments
-
-1. Write comments in English.
-2. Comment **why**, not what. One or two short lines. Examples from new code:
-
-   ```ts
-   // rem is relative to the page's root font size, which is not always 16px
-   // Kept in extension storage so it follows the user across sites and never touches the page's own localStorage
-   // The "more tabs" dropdown would otherwise render into the page's <body>, outside our styles
-   ```
-
-3. Put a `/** ... */` block above exported functions, components and non-obvious types. One sentence is
-   enough (`EmptyState.tsx:53`).
-4. **Never** leave commented-out code. Delete it; git keeps history.
-5. **Never** leave `debugger` or `console.log` in committed code.
-
-### 13.4 Errors and logging
-
-1. Async calls that can fail get `.catch(...)` or `try/catch`. **Never** leave a promise rejection
-   unhandled.
-2. Best-effort writes (preferences, history): `.catch(() => undefined)` (`UnitConverter.tsx:72`).
-3. Failures the developer needs to see: `console.error("Failed to load conversion history", e)`. Start the
-   message with what failed. In the background, prefix with the area: `` console.error(`[background] ${request.action} failed:`, error) ``
-   (`chromeActionsSlice.ts:33`).
-4. Failures the user must know about: `toast.error("Could not copy to the clipboard")`
-   (`ColorPicker.tsx:144`). Success feedback: `toast.success(..., { autoClose: 1500 })`.
-5. Inline error text in a view: a short sentence in `tokens.color.danger`.
-6. **Never** use `alert()`, `confirm()` or `prompt()`. Use a toast or an antd `Popconfirm`.
-7. Use `console.warn` for expected, recoverable problems (`background/index.ts:71`).
-
----
+Do not silently swallow user-authored data or successful-save claims. No unhandled rejections.
+Use toasts or antd confirmation controls, not `alert`, `confirm` or `prompt`.
+Do not add `console.log`, `debugger`, commented-out code or TypeScript suppression directives.
 
 ## 14. Legacy code: do not copy
 
-The repo grew over years. These patterns exist but are **wrong for new code**. When you edit a file that
-has them, do not spread them; fix them only if the task asks or the change is tiny and safe.
+Follow these replacements in the lines your task needs. Leave unrelated legacy code alone, even if its
+cleanup looks small. Report a relevant obstacle; do not expand the task into a migration.
 
-| Legacy pattern | Example | Write instead |
-| --- | --- | --- |
-| Hard-coded colours | `CSSSnapshotInspector.tsx:40-58` (`#d1d5db`, `#1f2937`, `#2563eb`); `PopupContainer.styled.ts:124-151` | `tokens.color.*` or matching Tailwind gray/blue classes |
-| `any` everywhere | `useSelector((state: any) => state.app?.preventDefault)` in `ElementInspectorPopup.tsx:26`; `icon: any` in `FeatureIcon.tsx:6` | Typed selectors, real types |
-| `@ts-ignore` / `@ts-nocheck` | `UnitConverter.tsx:245`, `LocalStorage.ts:1`, `shared/helpers.ts:1` | Correct types |
-| Commented-out code | `content/store/app/app.slice.ts:13-19`, `background/index.ts:17-18`, `content/app.tsx:31` | Delete it |
-| `debugger` statement | `CSSSnapshotInspector/.../ElementDiff/utils/cssTokens.tsx:106` | Never commit one |
-| `alert()` | `SnapshotManagerHeader.tsx:312`, `SnapshotViewerHeader.tsx:275` | `toast.error(...)` |
-| Ukrainian comments | `Tooltip.tsx:14-15`, `UnitConverter.tsx:102-148`, `sagaEnhancer.ts:1` | English comments |
-| Focus rings as classes | `focus:ring-2 focus:ring-blue-400` in `ConfirmationDialog.tsx:20`, `ScenarioItem.tsx:450` | Nothing: the global rule (8.4) handles focus |
-| Ring for selection | `ring-2 ring-indigo-200` in `NoteForm.tsx:547` | Tint (8.5) |
-| `dark:` classes | about 70 in `ScenarioItem.tsx`, `ElementDiff/components/subcomponents.tsx` | Light only |
-| Title Case labels | "Additional Settings", "Show All Borders" in `ElementInspectorPopup.tsx` | Sentence case |
-| Hand-made dropdown | `DropdownMenu` absolute `div` in `SnapshotManagerHeader.tsx:160` | antd `Popover` menu (8.3.6) |
-| Header portal id as a string | `NoteTakingToolsIntegration.tsx:15` | `HeaderPortalId` enum |
-| Wrong footer portal id | `PortalId.FUNCTIONS_TAB` in `PageNotes/components/NoteForm.tsx:813` | Your own tool's id |
-| Non-transient styled prop | `isMinimized` in `PopupContainer.styled.ts:124` | `$isMinimized` |
-| Duplicate old store files | `content/store/app.action.ts`, `content/store/app.constant.ts`, empty `content/store/app/app.action.ts` | Slices + saga actions |
-| Thunks via custom middleware | `closeSettingPopup` in `content/store/app.action.ts` | RTK slice actions or sagas |
-| `@/entrypoints/...` alias | 3 old imports (`grep -rn "from \"@/entrypoints" entrypoints`) | `@entrypoints/...` |
-| Single quotes, no semicolons | `CSSSnapshotInspector/hooks/useElementPicker.ts`, `Note Taking Tools/src/**` | Double quotes, semicolons |
-| Tests beside source | `background/services/notes.test.ts` | `__tests__/` folder |
-| Vendored code | `shared/components/git-diff-view/`, `shared/components/ReactRnd/`, `PopupContainer/Note Taking Tools/` (folder name with spaces, own `package.json`, shadcn-style `ui/`) | Do not copy their style; edit them only when the task targets them |
-| Storage helper `AUTOMATION_*_KEY` functions repeated seven times | `core/constants/automation.ts:9-72` | One helper for new keys |
+| Old pattern | New code |
+| --- | --- |
+| `any` selectors or suppressed typing | Typed selectors/props; `unknown` with validation at boundaries |
+| Custom untyped popup-container lookup | Shared `shadowBody` helper |
+| Hard-coded theme colors | Shared token or corresponding Tailwind class |
+| Button focus rings / selection rings | Global keyboard focus / selected background tint |
+| Dark-mode classes or orange primary palette | Current light theme |
+| Literal or another tool's portal id | Own `HeaderPortalId` value |
+| `ScenarioPortalHeaderButtons` header alias | `PortalModalHeader` |
+| Styling props forwarded to DOM | `$` transient styled props |
+| Old custom thunk middleware | Existing RTK slice/saga setup |
+| `@/entrypoints/...` imports | `@entrypoints/...` |
+| Tests beside source | New tests in adjacent `__tests__/` |
+| Hand-positioned dropdown div | antd Popover menu with keyboard handling |
 
----
+Vendored areas (`shared/components/git-diff-view/`, `shared/components/ReactRnd/`,
+`PopupContainer/Note Taking Tools/`) are not style references. Edit them only when targeted by the task.
 
 ## 15. Tests
 
-Setup: vitest 3 with `environment: "jsdom"` (`vitest.config.ts`). Aliases `@entrypoints` and `@` work in
-tests. WXT auto-imports (`browser`, `defineContentScript`) do **not** work in tests; import `browser`
-from `"wxt/browser"` in modules you test, or keep the tested module free of extension APIs.
+vitest uses jsdom and repository aliases. WXT auto-imports do not exist in tests; explicitly import
+extension APIs where needed or keep pure logic independent of them.
 
-What to test:
+- For a bug, reproduce the incorrect behavior before fixing it, then verify the fix.
+- Test meaningful parsing, calculation, matching and state transitions, including relevant edge cases.
+- Test message sanitizers with malformed/oversized input; test migrations against old saved shapes.
+- Do not extract trivial expressions or add tests that merely repeat implementation to satisfy a quota.
+- UI changes need the browser check in section 16. The existing suite focuses on logic rather than
+  component interaction; small markup helpers may use `renderToStaticMarkup`.
+- Import `describe`, `expect`, `it` from `vitest`. Name cases by behavior. Use fixed dates rather than
+  the live clock when testing date-dependent logic.
 
-1. Every pure function you add in `utils/` gets a test file. This is the main way logic is tested here.
-2. Message sanitisers and parsers get tests with bad input (`shared/frameAgent/__tests__/protocol.test.ts`).
-3. Data migrations and storage shape conversions get tests (`background/services/noteScope.test.ts`).
-4. React components are not unit-tested here. Check them in the browser (section 16). Small render
-   helpers can be tested with `renderToStaticMarkup` (`PageNotes/utils/__tests__/noteMarkup.test.tsx:1-5`).
+Examples to inspect: `shared/frameAgent/__tests__/protocol.test.ts`,
+`background/services/noteScope.test.ts`, and the tool's existing `utils/__tests__/`.
 
-How to make code testable: move the logic out of the component into a pure function that takes plain
-values and returns plain values. No DOM, no storage, no Redux inside it.
-
-Test file template (`<ToolName>/utils/__tests__/countWords.test.ts`):
-
-```ts
-import { describe, expect, it } from "vitest";
-import { countWords } from "../countWords";
-
-describe("countWords", () => {
-  it("returns zero for empty or blank text", () => {
-    expect(countWords("")).toEqual({ words: 0, characters: 0 });
-    expect(countWords("   \n ")).toEqual({ words: 0, characters: 0 });
-  });
-
-  it("counts words separated by any whitespace", () => {
-    expect(countWords(" Hello   big\nworld ")).toEqual({ words: 3, characters: 13 });
-  });
-});
-```
-
-Rules:
-
-1. Import `describe`, `expect`, `it` from `"vitest"` explicitly.
-2. `describe` names the unit; `it` says the behaviour in plain English ("drops the Element: prefix and
-   falls back to the address", `snapshotLabels.test.ts:18`).
-3. Use small factory helpers for fixtures (`const snapshot = (over = {}) => ({ ...defaults, ...over })`,
-   `protocol.test.ts:15`).
-4. Pass fixed dates into time-dependent functions instead of using the clock (`snapshotLabels.test.ts:32-36`).
-5. Run one folder: `yarn vitest run entrypoints/content/modules/PopupContainer/<ToolName>`.
-6. Run all: `yarn test`. All tests must pass (240 tests at the time of writing).
-
----
+Start with `yarn vitest run <relevant-path>`. Run the full suite and build as required by section 18.
+Do not quote a historic test count as evidence of passing tests.
 
 ## 16. Browser check with Playwright
 
-Unit tests do not show layout, focus or shadow-root bugs. Check every UI change in a real Chromium with
-the built extension. The ready script is `.claude/skills/verify-in-browser/check-panel.mjs`; the full
-recipe is in `.claude/skills/verify-in-browser/SKILL.md`.
+For visible behavior changes, use the built extension in Chromium. Read
+`.claude/skills/verify-in-browser/SKILL.md`; its runner is `check-panel.mjs` in that directory.
 
-How it works, in short:
+The runner uses a copy of `dist/chrome-mv3/`, exposing the toolbar handler in that test copy, and serves
+a local HTTP page. Follow its current invocation instead of modifying production background code to
+make a test possible. The standalone Vite page does not verify extension injection or messaging.
 
-1. `yarn build` creates `dist/chrome-mv3/`.
-2. The script copies that folder and patches `background.js` so the test can call the toolbar-button
-   handler (`self.__onClicked`). Headless Chromium has no toolbar to click.
-3. It launches Chromium with `--load-extension`, serves a small test page on `http://localhost:8765/`
-   (the extension does not run on `about:blank` or `file://`), and turns the extension on.
-4. It opens the tool from the launcher menu: button "More tools and settings", then the tool's title.
-5. Playwright locators pierce the open shadow root, so
-   `page.getByRole("button", { name: "Count again" })` finds buttons inside `<hover-inspector>`.
-   In `page.evaluate`, reach the UI with `document.querySelector("hover-inspector").shadowRoot`.
-6. It sets the panel width (320 or 440), takes a screenshot into `shots/` and prints page errors.
+Check the changed flow at panel widths **320px and 440px**:
 
-Always check: 320px and 440px width, keyboard Tab through the controls (ring visible), mouse clicks (no
-ring), no console errors, overlays open inside the panel.
+- No clipped controls, overlap or unwanted horizontal scrolling.
+- Tab navigation and visible keyboard focus; mouse clicks leave no focus outline.
+- Open menus, selects and confirmations remain inside the shadow root and fit the panel.
+- Expected user outcome and no new page/extension errors.
+- Deactivation cleans up any page effects changed by the task.
 
----
+Open the resulting screenshots and report their paths plus the interactions exercised. A screenshot
+alone does not prove keyboard, storage or messaging behavior. Report any unavailable check explicitly.
+
+Playwright locators can pierce the open shadow root. Inside page evaluation, use
+`document.querySelector("hover-inspector")?.shadowRoot` to reach the extension UI.
 
 ## 17. Git: branches, commits, pull requests
 
-Branches:
+Work on the assigned branch and checkout. Follow the session's branch/commit authorization; this guide
+does not itself authorize branch creation or a commit. Never push unless requested.
 
-- Work on the branch you are given. If you are on `master`, create a branch first.
-- Branch names in use: `claude/<topic>-<id>`, `work/<area>` (for example `work/c4-a`).
-- **Never** push unless the task says so.
+Commit subject: plain-English imperative, sentence case, about 72 characters or fewer, no final period
+or `feat:`/`fix:` prefix. An area prefix is optional: `Unit Converter: remember the last units`.
+The body explains why and what changes for the user. Include only attribution requested by the session;
+never invent author or session identifiers.
 
-Commit messages (from recent history, e.g. `f171d8a`, `8dec1bb`, `23084b6`):
-
-1. Subject: plain English, imperative, sentence case, no trailing period, no `feat:`/`fix:` prefix.
-   Often starts with the area and a colon:
-   - `Hover card: let people choose which properties it shows`
-   - `CSS Snapshot: fix false diffs, minimal saves and the missing-element message`
-   - `Draw focus outlines only during keyboard navigation`
-   - `Remove the "Become a sponsor" banner from the tool panel`
-2. Keep the subject under about 72 characters.
-3. Body: wrap at about 75 characters. Explain **why** and what the user sees, not the code diff. Use `-`
-   bullets for several changes. Mention tests added.
-4. End with the attribution lines the session asks for (for Claude sessions: `Co-Authored-By: ...` and
-   `Claude-Session: ...`).
-5. The older `feat: ...` / `refactor: ...` subjects in history are legacy; do not copy them.
-
-Example:
-
-```
-Unit Converter: remember the last units
-
-The units reset to px → rem every time the tool opened. They are now kept
-in browser.storage.local under unitConverterUnits and restored on open.
-Pure parsing moved to utils/units.ts with tests.
-
-Co-Authored-By: ...
-```
-
-Pull request body (from PR #6):
-
-```
-Before:
-- **Area:** what was wrong, in the user's words.
-
-After:
-- **Area:** what the user sees now.
-
-## Not done
-- What was left out and why (omit the section if nothing).
-
-## How
-- How the work was done (branches, approach).
-- `yarn test`: N tests pass.
-- `yarn build`: succeeds.
-- Browser checks: what was driven in Playwright Chromium, at 320/440px.
-```
-
----
+PR body: explain **Before**, **After**, and relevant validation. Include **Not done** only for material
+omissions. Name actual commands/results and browser interactions, not merely a claim that checks passed.
 
 ## 18. Checklist before you commit
 
-Run every item. Do not commit until all pass.
+### Before changing behavior
 
-Items 1-6 are automated: run `yarn verify` (`scripts/verify.sh`) in the repo root. It must end with
-`RESULT: all automatic checks passed`. The commands below show what it checks.
+Identify the relevant tests. For TypeScript changes, capture complete `yarn compile` output and exit
+status before editing. Preserve the output outside the source tree. Do not hide command/setup failures
+behind a filter. Keep the same checkout and compiler configuration for the after-change comparison.
 
-1. `yarn build` succeeds.
-2. `yarn test` passes.
-3. `yarn compile 2>&1 | grep -E "<each file you changed>"` prints nothing (no new TypeScript errors in your files).
-4. `git status` shows no `package-lock.json`, no `dist/`, no screenshots, no scratch files.
-5. No `any`, `@ts-ignore`, `console.log`, `debugger`, `alert(` or commented-out code in your diff:
-   `git diff | grep -nE "^\+.*(: any|as any|@ts-ignore|console\.log|debugger|alert\()"` prints nothing.
-6. No hard-coded hex colours in your diff that have a token:
-   `git diff | grep -nE "^\+.*#[0-9a-fA-F]{3,6}\b"` — every hit must be justified.
-7. Every new button has a name (text, `label` on `IconButton`, or `aria-label`).
-8. Every new label is sentence case.
-9. Overlays (Select, Popover, Popconfirm, Dropdown) open inside the panel (checked in the browser).
-10. The tool works at 320px and 440px panel width (checked in the browser).
-11. No focus outline after mouse clicks; a visible ring when tabbing.
-12. Every listener, observer, timer and injected style is removed in a cleanup.
-13. New pure logic has tests in `__tests__/`.
-14. Commit message follows section 17.
+### After the change
+
+1. Inspect the diff: every changed line serves the task. Check both tracked changes and new files.
+2. For code changes, run relevant tests, then `yarn verify` (which runs all tests and the build).
+   Read the output and exit status. Fix failures caused by the change; report unrelated blockers.
+3. For TypeScript changes, also run full `yarn compile` and compare diagnostics to the pre-change
+   baseline across **all files**, including unchanged consumers. Compare error code, file and message;
+   account for shifted line numbers. No new diagnostics may be introduced. If no baseline was captured,
+   report that limitation; filtered output is not a substitute.
+4. For UI changes, complete section 16. For page effects/messages/storage, check the corresponding
+   cleanup, validation or persistence behavior.
+5. Check additions for prohibited types/debug code, duplicated helpers, theme literals and unnecessary
+   architecture. Check accessible names, labels and cleanup where relevant.
+6. Ensure generated builds, screenshots, scratch files and other package managers' lockfiles are not
+   included in the proposed commit. Do not remove unrelated user files.
+7. Commit only when authorized. Report what changed, checks actually run, and any remaining limitation.
+
+For documentation-only edits, check referenced paths/commands, internal links, examples and the diff;
+application builds and browser checks are unnecessary unless the edit changes executable material.
+
+**Limits of `yarn verify`:** `scripts/verify.sh` filters TypeScript diagnostics to changed files. It does
+not prove the absence of errors in unchanged consumers and does not compare a full baseline. Its regex
+checks are partial and color matches may only warn. It also requires a Bash with `mapfile` support.
+A setup failure is a failed check, not a clean result. Do not claim that the script implements the
+additional review and full-diagnostic comparison described here.

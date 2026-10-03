@@ -6,7 +6,8 @@ Picker, Unit Converter, Color Palette & Typography, Automation Scenarios, CSS Sn
 Notes, Note Taking Tools. The whole UI lives in the open shadow root of a `<hover-inspector>` element on
 the user's page.
 
-Full guide: `docs/CODE_STYLE.md`. Read it before your first change. Skills: see the end of this file.
+Guide: `docs/CODE_STYLE.md`. Read its introduction, then only the sections selected by its task table.
+For code-style and verification details, that guide supersedes this summary. Skills: see the end of this file.
 
 ## Stack
 
@@ -31,17 +32,18 @@ yarn start     # standalone page, http://localhost:4400
 ```
 
 **Never** use npm, npx or pnpm in the repo. **Never** create or commit `package-lock.json`. `yarn.lock` is
-the only lockfile. `yarn compile` (tsc) has about 227 old errors: only check that your files add none.
+the only lockfile. `yarn compile` may have existing failures: compare full diagnostics before and after TypeScript changes,
+including unchanged consumers. The changed-file filter in `yarn verify` is not that comparison.
 
-## Definition of done (do all of it, every time)
+## Definition of done
 
-1. Run `yarn verify` in the repo root. Fix every `FAIL` line and run it again until it prints
-   `RESULT: all automatic checks passed`. It runs the forbidden-pattern checks, TypeScript on your
-   files, `yarn test` and `yarn build`.
+1. For code changes, run `yarn verify` in the repo root. Fix failures caused by your change and report
+   unrelated blockers. Also follow CODE_STYLE section 18 for full TypeScript comparison. For prose-only
+   edits, check links, examples and the diff; application tests/builds are unnecessary.
 2. If you changed anything visible, do the browser check (`.claude/skills/verify-in-browser/SKILL.md`)
    at 320px and 440px and open both screenshots. Not optional: unit tests do not see layout.
-3. Commit (message format in "Git" below).
-4. In your report, paste the last line of `yarn verify` and the screenshot paths.
+3. Commit only when authorized (message format in "Git" below).
+4. Report the checks actually run, their results, and screenshot paths when browser checks apply.
 
 ## Mistakes small models make here (check your diff for each)
 
@@ -99,17 +101,18 @@ docs/CODE_STYLE.md   the detailed guide
 13. Validate every message (`unknown` + type guards, check `sender.id`). Never trust `postMessage` data.
 14. No `any`, `@ts-ignore`, commented-out code, `console.log`, `debugger` or `alert()` in new code.
     English comments that explain why.
-15. Avoid prop drilling: use a context or Redux. Move pure logic to `utils/` and test it in `__tests__/`.
+15. Prefer local state and explicit props. Add context/Redux for actual sharing needs, not a depth limit.
+    Extract meaningful or reused pure logic for testing; keep trivial expressions local.
 
 Much old code breaks these rules (hard-coded colours, `any`, Ukrainian comments). Do not copy it; see
-`docs/CODE_STYLE.md` section 14. Prefer the newest code as a model.
+`docs/CODE_STYLE.md` section 14. Use its named references and inspect current APIs, not commit recency.
 
 ## Owner guidelines (`guidelines.md`)
 
 - Descriptive interfaces, types and enums in separate files; group many types in a folder.
 - When you write a `switch`, check whether an enum makes sense.
 - Use Tailwind for styling (antd and tokens-based styled-components as described above).
-- Avoid props drilling; refactor when you see it.
+- Avoid unnecessary prop relaying within the task scope; do not refactor unrelated code.
 - Ask a question when you are not sure about something.
 - `guidelines.md` asks for documentation and analysis in Ukrainian. The owner later asked for agent
   instruction files (`CLAUDE.md`, `docs/CODE_STYLE.md`, `.claude/skills/**`) in English. Write those in English.
