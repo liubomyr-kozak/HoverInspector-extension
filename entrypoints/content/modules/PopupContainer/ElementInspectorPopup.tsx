@@ -2,11 +2,12 @@ import React, { useEffect, useState } from "react";
 import { usePopoverFocus } from "@entrypoints/shared/utils/usePopoverFocus";
 import { useDispatch, useSelector } from "react-redux";
 import { Popover, Switch } from "antd";
-import { IconInfoCircle, IconSettings, IconPointer } from "@tabler/icons-react";
+import { IconInfoCircle, IconSettings, IconPointer, IconLayoutList } from "@tabler/icons-react";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
 
 import HoverSelectedInfo from "@entrypoints/content/modules/SettingsIconBox/HoverSelectedInfo.tsx";
+import HoverCardEditor from "@entrypoints/content/modules/SettingsIconBox/components/HoverCardEditor";
 import { onUpdateEventPreventDefaultWatcher } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
@@ -67,6 +68,8 @@ export const ElementInspectorPopup = () => {
   );
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Edit mode for the hover card's rows; replaces the panel body while it is on
+  const [editingCard, setEditingCard] = useState(false);
   const settingsFocus = usePopoverFocus(settingsOpen, setSettingsOpen);
 
   // Create the content for the settings popover
@@ -111,6 +114,16 @@ export const ElementInspectorPopup = () => {
           },
         )}
       </div>
+      <button
+        type="button"
+        className="mt-1 text-sm text-blue-600 underline hover:text-blue-700"
+        onClick={() => {
+          setSettingsOpen(false);
+          setEditingCard(true);
+        }}
+      >
+        Customize hover card…
+      </button>
     </div>
   );
 
@@ -122,6 +135,13 @@ export const ElementInspectorPopup = () => {
           <FeatureTitleText title={INSPECTOR.title}>{INSPECTOR.title}</FeatureTitleText>
 
           <PortalModalHeaderButtons>
+            <IconButton
+              label={editingCard ? "Close hover card editor" : "Customize hover card"}
+              active={editingCard}
+              onClick={() => setEditingCard((v) => !v)}
+            >
+              <IconLayoutList size={18} />
+            </IconButton>
             <Popover
               content={settingsContent}
               zIndex={1150}
@@ -146,6 +166,10 @@ export const ElementInspectorPopup = () => {
           </PortalModalHeaderButtons>
         </FeatureTitle>
       </PortalModalHeader>
+      {editingCard ? (
+        <HoverCardEditor onDone={() => setEditingCard(false)} />
+      ) : (
+      <>
       {/* Display active toggles directly in the UI */}
       <div className="mb-4">
         {preventDefault &&
@@ -182,6 +206,8 @@ export const ElementInspectorPopup = () => {
           )}
       </div>
       <HoverSelectedInfo />
+      </>
+      )}
     </div>
   );
 };
