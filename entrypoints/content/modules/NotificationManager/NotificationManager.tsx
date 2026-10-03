@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Badge, notification } from "antd";
 import {
   BellFilled,
@@ -45,43 +45,38 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({ children }) =
   const [messages, setMessages] = useState<NotificationMessageMap>({});
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  useEffect(() => {
-    const loadPreferences = async () => {
-      try {
-        const prefs = await getNotificationPreferencesFromLocalStorage();
-        setPreferences(prefs);
-      } catch (error) {
-        console.error("Error loading notification preferences:", error);
-      }
-    };
+  // Preferences and stored messages are read when notifications are first used, not in every tab on load
+  const loadedRef = useRef<Promise<NotificationPreference> | null>(null);
+  const ensureLoaded = useCallback(() => {
+    if (!loadedRef.current) {
+      loadedRef.current = (async () => {
+        let prefs = preferences;
+        try {
+          prefs = await getNotificationPreferencesFromLocalStorage();
+          setPreferences(prefs);
+        } catch (error) {
+          console.error("Error loading notification preferences:", error);
+        }
 
-    const loadMessages = async () => {
-      try {
-        const msgs = await getAllNotificationMessagesFromLocalStorage();
-        setMessages(msgs);
+        try {
+          const msgs = await getAllNotificationMessagesFromLocalStorage();
+          setMessages((prev) => ({ ...msgs, ...prev }));
+          setUnreadCount(Object.values({ ...msgs }).filter((msg) => !msg.read).length);
+        } catch (error) {
+          console.error("Error loading notification messages:", error);
+        }
 
-        // Count unread messages
-        const unread = Object.values(msgs).filter((msg) => !msg.read).length;
-        setUnreadCount(unread);
-      } catch (error) {
-        console.error("Error loading notification messages:", error);
-      }
-    };
-
-    loadPreferences();
-    loadMessages();
-
-    // Set up interval to refresh messages
-    const interval = setInterval(() => {
-      loadMessages();
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
+        return prefs;
+      })();
+    }
+    return loadedRef.current;
   }, []);
 
   // Show notification
   const showNotification = useCallback(
     async (type: NotificationType, title: string, message: string, scenarioId?: string, executionId?: string) => {
+      const preferences = await ensureLoaded();
+
       // Check if notifications are enabled
       if (!preferences.enabled) {
         return;
@@ -138,48 +133,13 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({ children }) =
 
         notification.open(notificationConfig);
 
-        // Show desktop notification if enabled
-        if (preferences.desktop && "Notification" in window) {
-          try {
-            // Check if we have permission
-            if (Notification.permission === "granted") {
-              new Notification(title, {
-                body: message,
-                icon: "/icon-128.png",
-              });
-            } else if (Notification.permission !== "denied") {
-              // Request permission
-              Notification.requestPermission().then((permission) => {
-                if (permission === "granted") {
-                  new Notification(title, {
-                    body: message,
-                    icon: "/icon-128.png",
-                  });
-                }
-              });
-            }
-          } catch (error) {
-            console.error("Error showing desktop notification:", error);
-          }
-        }
-
-        // Play sound if enabled
-        if (preferences.sound) {
-          try {
-            const audio = new Audio("/notification-sound.mp3");
-            audio.volume = preferences.soundVolume / 100;
-            audio.play().catch((error) => {
-              console.error("Error playing notification sound:", error);
-            });
-          } catch (error) {
-            console.error("Error playing notification sound:", error);
-          }
-        }
+        // Desktop notifications and sounds are not shown: from a content script they would ask the visited
+        // site for notification permission, and the extension ships no notification sound
       } catch (error) {
         console.error("Error saving notification message:", error);
       }
     },
-    [preferences],
+    [ensureLoaded],
   );
 
   // Mark notification as read
