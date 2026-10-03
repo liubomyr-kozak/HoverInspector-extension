@@ -303,8 +303,8 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
 
           <Select
             placeholder="Filter by status"
-            value={statusFilter}
-            onChange={(value) => setStatusFilter(value)}
+            value={statusFilter || undefined}
+            onChange={(value) => setStatusFilter(value || "")}
             style={{ width: 150 }}
             allowClear
             getPopupContainer={() =>
@@ -323,8 +323,8 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
 
           <Select
             placeholder="Filter by scenario"
-            value={scenarioFilter}
-            onChange={(value) => setScenarioFilter(value)}
+            value={scenarioFilter || undefined}
+            onChange={(value) => setScenarioFilter(value || "")}
             style={{ width: 200 }}
             allowClear
             showSearch
