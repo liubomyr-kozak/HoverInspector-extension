@@ -21,8 +21,9 @@ export const automationActions = {
     const result = await AppStorageService.saveAutomationScenario(data);
     const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncScenarios;
 
-    // After successful save to local storage, sync with backend
-    if (serverSyncEnabled && result.success && data.id && data.scenario) {
+    // After successful save to local storage, sync with backend.
+    // Only scenarios (sc_...) are synced, not internal records such as the server settings or the editing state.
+    if (serverSyncEnabled && result.success && typeof data.id === "string" && data.id.startsWith("sc_") && data.scenario) {
       await LocalAPIServer.syncScenario(data.id, data.scenario);
     }
 

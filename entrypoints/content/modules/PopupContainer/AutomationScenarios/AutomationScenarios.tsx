@@ -45,7 +45,7 @@ export const AutomationScenarios: React.FC = () => {
 
   const activeScenarioId = useSelector(selectActiveScenarioId);
   const executing = useSelector(selectExecuting);
-  const { isServerTabVisible } = useServerTabVisibility();
+  const { isServerTabVisible, setServerTabVisible } = useServerTabVisibility();
   const { syncFunctions } = useServerSettings();
 
   const { activeIcons = [], iconOrder = [] } = useSelector((state: any) => state?.app.launcher);
@@ -68,6 +68,18 @@ export const AutomationScenarios: React.FC = () => {
       dispatch(loadExecutionHistoryWatcher.getPayload());
     }
   }, [isActive, dispatch]);
+
+  const hideServerTab = () => {
+    setServerTabVisible(false);
+    setActiveTab("scenarios");
+  };
+
+  // Switch away from the server tab when it is hidden
+  useEffect(() => {
+    if (!isServerTabVisible && activeTab === "server") {
+      setActiveTab("scenarios");
+    }
+  }, [isServerTabVisible, activeTab]);
 
   // Switch away from functions tab if syncFunctions becomes false
   useEffect(() => {
@@ -197,7 +209,7 @@ export const AutomationScenarios: React.FC = () => {
                   ),
                   children: (
                     <div className="w-full">
-                      <ServerTab />
+                      <ServerTab onHide={hideServerTab} />
                     </div>
                   ),
                 },
