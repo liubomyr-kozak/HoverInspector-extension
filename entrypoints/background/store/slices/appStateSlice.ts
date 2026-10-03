@@ -17,6 +17,7 @@ export const {
   changeMinimizedFeatures,
   changeMinimizedFeaturesAndActiveIcons,
   changePreventDefault,
+  changeColorHistory,
   changeViewType,
   hideSponsorMessage,
 } = appStateSlice;

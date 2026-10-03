@@ -113,6 +113,13 @@ export const appStateActions = {
     }));
   },
 
+  changeColorHistory: async ({ data: colorHistory }) => {
+    await updateAppState((setting) => ({
+      ...setting,
+      colorHistory,
+    }));
+  },
+
   changePreventDefault: async ({ data: preventDefault }) => {
     await updateAppState((setting) => ({
       ...setting,

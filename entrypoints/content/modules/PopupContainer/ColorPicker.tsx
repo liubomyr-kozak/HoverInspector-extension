@@ -1,4 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
+import { IconCopy } from "@tabler/icons-react";
+import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
+import { targetColorStringToHex } from "@entrypoints/content/modules/Popup/helpers.tsx";
 import BestColorPicker from "react-best-gradient-color-picker";
 import styled from "styled-components";
 import { useDispatch, useSelector } from "react-redux";
@@ -75,6 +79,56 @@ const TitleRow = styled.div`
   margin-bottom: 8px;
 `;
 
+const CopyRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+`;
+
+const CurrentSwatch = styled.div<{ color: string }>`
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: ${(props) => props.color};
+`;
+
+const CopyButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-family: Monaco, "SF Mono", Consolas, monospace;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+`;
+
+const copyToClipboard = async (value: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(`Copied ${value}`, { autoClose: 1500 });
+  } catch (e) {
+    toast.error("Could not copy to the clipboard");
+  }
+};
+
+// Only remember a colour once the user stops dragging, not every intermediate value
+const HISTORY_COMMIT_DELAY = 700;
+
 const ColorPicker = () => {
   const [color, setColor] = useState("rgba(255,255,255,1)");
   const [showHistory, setShowHistory] = useState(false);
@@ -85,12 +139,30 @@ const ColorPicker = () => {
 
   const featurePopupPosition = useSelector((state: any) => state?.app.featurePopupPosition);
 
-  // Add color to history when it changes
+  const isFirstColor = useRef(true);
+
+  // Add the colour to history after the user settles on it, and keep the history across reloads
   useEffect(() => {
-    if (color) {
-      dispatch(addColorToHistory(color));
+    if (isFirstColor.current) {
+      isFirstColor.current = false;
+      return;
     }
+
+    const timer = setTimeout(() => dispatch(addColorToHistory(color)), HISTORY_COMMIT_DELAY);
+    return () => clearTimeout(timer);
   }, [color, dispatch]);
+
+  const historyLoaded = useRef(false);
+  useEffect(() => {
+    if (!historyLoaded.current) {
+      historyLoaded.current = true;
+      return;
+    }
+    ExtensionStorageManager.changeColorHistory(colorHistory);
+  }, [colorHistory]);
+
+  const isGradient = color.includes("gradient");
+  const hexValue = isGradient ? "" : targetColorStringToHex(color);
 
   // Handle selecting a color from history
   const handleSelectHistoryColor = useDebouncedCallback((historyColor: string) => {
@@ -154,11 +226,25 @@ const ColorPicker = () => {
         </>
       )}
 
+      <CopyRow>
+        <CurrentSwatch color={color} />
+        {hexValue && (
+          <CopyButton onClick={() => copyToClipboard(hexValue)} title="Copy HEX">
+            <IconCopy size={14} /> {hexValue}
+          </CopyButton>
+        )}
+        <CopyButton onClick={() => copyToClipboard(color)} title={isGradient ? "Copy CSS gradient" : "Copy RGBA"}>
+          <IconCopy size={14} /> {isGradient ? "gradient" : color.replace(/\s+/g, "")}
+        </CopyButton>
+      </CopyRow>
+
       <PickerWrapper>
         <BestColorPicker
           value={color}
           onChange={setColor}
-          width={featurePopupPosition.width - 32 /* padding */ - 15 /* something else */}
+          // Without the native EyeDropper the library falls back to screenshotting #root, which most pages don't have
+          hideEyeDrop={typeof window === "undefined" || !("EyeDropper" in window)}
+          width={Math.max(220, featurePopupPosition.width - 32 /* padding */ - 15 /* scrollbar */)}
           height={200}
         />
       </PickerWrapper>

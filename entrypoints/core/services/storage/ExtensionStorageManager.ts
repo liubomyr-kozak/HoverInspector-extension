@@ -8,6 +8,7 @@ import {
   changeMinimizedLauncherPosition,
   changeMinimizedFeaturesAndActiveIcons,
   changePreventDefault,
+  changeColorHistory,
   changeViewType,
   changeVisibleFeatures,
   deactivateAppInTab,
@@ -92,6 +93,10 @@ class ExtensionStorageManager {
   async changeCurrentWindowSize(viewportWidth: number) {
     const frameWidth = Math.max(0, window.outerWidth - window.innerWidth);
     return await changeCurrentWindowSize(viewportWidth + frameWidth);
+  }
+
+  async changeColorHistory(colorHistory: string[]) {
+    return await changeColorHistory(colorHistory);
   }
 
   async changePreventDefault(preventDefault) {

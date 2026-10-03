@@ -120,14 +120,10 @@ const appSlice = createSlice({
     },
 
     addColorToHistory(state, action: PayloadAction<string>) {
-      // Don't add duplicate colors
-      if (!state.colorHistory.includes(action.payload)) {
-        // Limit history to 10 colors (remove oldest if needed)
-        if (state.colorHistory.length >= 20) {
-          state.colorHistory = state.colorHistory.slice(1);
-        }
-        state.colorHistory.push(action.payload);
-      }
+      // Most recent last, no duplicates, at most 20 colors
+      const history = (state.colorHistory || []).filter((color) => color !== action.payload);
+      history.push(action.payload);
+      state.colorHistory = history.slice(-20);
     },
 
     setVisibleFeatures(state, action: PayloadAction<string[]>) {
