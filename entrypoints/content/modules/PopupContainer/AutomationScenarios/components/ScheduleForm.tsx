@@ -250,6 +250,8 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios,
                 (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
               }
               placeholder="Select a scenario"
+              style={{ width: "100%", minWidth: 0 }}
+              popupMatchSelectWidth
               options={scenarioOptions}
               showSearch
               optionFilterProp="label"
