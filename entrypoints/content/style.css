@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * WXT isolates the shadow root with `body { all: initial }`, which resets the
+ * font to the browser default (usually Times New Roman). Give the extension UI
+ * its own typography so it never depends on the host page or browser defaults.
+ */
+:host body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  color: #1f2937;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
 .hover-inspector-box-box-hover {
   background: #4ba5ff;
   box-shadow: 0 0 0 0.3px #4ba5ff;
