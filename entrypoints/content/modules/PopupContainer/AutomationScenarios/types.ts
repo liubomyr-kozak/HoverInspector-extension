@@ -188,23 +188,55 @@ export enum StepType {
  * Options for step types in the form
  */
 export const stepTypeOptions = [
-  { value: StepType.NOT_SET, label: "(not set)" },
-  { value: StepType.VALUE, label: "Change" },
+  { value: StepType.NOT_SET, label: "Choose a type" },
   { value: StepType.CLICK, label: "Click" },
   { value: StepType.HOVER, label: "Hover" },
-  { value: StepType.INPUT, label: "Input" },
-  { value: StepType.SELECT, label: "Select" },
+  { value: StepType.INPUT, label: "Type text" },
+  { value: StepType.VALUE, label: "Set value" },
+  { value: StepType.SELECT, label: "Select option" },
   { value: StepType.KEY_PRESS, label: "Key press" },
+  { value: StepType.GET_TEXT, label: "Get text" },
+  { value: StepType.WAIT_ELEMENT_VISIBLE, label: "Wait for element" },
+  { value: StepType.WAIT, label: "Wait" },
   { value: StepType.NAVIGATE, label: "Navigate" },
+  { value: StepType.REDIRECT, label: "Redirect" },
+  { value: StepType.UPDATE, label: "Reload page" },
   { value: StepType.CODE, label: "Code" },
   { value: StepType.FUNCTION, label: "Function" },
-  { value: StepType.REDIRECT, label: "Redirect" },
-  { value: StepType.UPDATE, label: "New page" },
-  { value: StepType.WAIT, label: "Timer" },
-  { value: StepType.WAIT_ELEMENT_VISIBLE, label: "Wait Element Visible" },
   { value: StepType.CONFIRMATION, label: "Confirmation" },
   { value: StepType.NOTIFICATION, label: "Notification" },
-  { value: StepType.GET_TEXT, label: "Get Text" },
+];
+
+/** One line on what each step type does, shown under the type in the step form */
+export const stepTypeHints: Record<StepType, string> = {
+  [StepType.NOT_SET]: "Pick what this step does.",
+  [StepType.CLICK]: "Clicks the element.",
+  [StepType.HOVER]: "Moves the pointer over the element, e.g. to open a menu.",
+  [StepType.INPUT]: "Types the text into the field, key by key, like a person.",
+  [StepType.VALUE]: "Sets the value of the field or the text of the element at once.",
+  [StepType.SELECT]: "Chooses an option of a dropdown.",
+  [StepType.KEY_PRESS]: "Presses a key on the element, or on whatever has the focus.",
+  [StepType.GET_TEXT]: "Saves the element's text so later steps can use it as ${key}.",
+  [StepType.WAIT_ELEMENT_VISIBLE]: "Waits until the element appears on the page.",
+  [StepType.WAIT]: "Pauses the scenario.",
+  [StepType.NAVIGATE]: "The page changed here while recording.",
+  [StepType.REDIRECT]: "Opens the address.",
+  [StepType.UPDATE]: "Reloads the page and waits until it has loaded.",
+  [StepType.CODE]: "Runs JavaScript on the page.",
+  [StepType.FUNCTION]: "Runs one of your saved functions.",
+  [StepType.CONFIRMATION]: "Asks you to confirm before the scenario continues.",
+  [StepType.NOTIFICATION]: "Shows a message while the scenario plays.",
+};
+
+/** Step types that act on an element of the page */
+export const ELEMENT_STEP_TYPES: StepType[] = [
+  StepType.CLICK,
+  StepType.HOVER,
+  StepType.VALUE,
+  StepType.INPUT,
+  StepType.SELECT,
+  StepType.GET_TEXT,
+  StepType.WAIT_ELEMENT_VISIBLE,
 ];
 
 /**

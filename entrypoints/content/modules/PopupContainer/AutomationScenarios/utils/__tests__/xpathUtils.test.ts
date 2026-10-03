@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { generateXPaths, isLikelyDynamicValue, xpathLiteral } from "../xpathUtils";
+import { generateXPaths, isLikelyDynamicValue, isStateClass, xpathLiteral } from "../xpathUtils";
 import {
   getActionableTarget,
   getCheckboxTargetState,
@@ -30,6 +30,20 @@ describe("xpathLiteral", () => {
     const literal = xpathLiteral(`It's "great"`);
     expect(literal.startsWith("concat(")).toBe(true);
     expect(resolve(`//button[normalize-space(.)=${literal}]`)).toHaveLength(1);
+  });
+});
+
+describe("isStateClass", () => {
+  it("flags classes that describe a passing state", () => {
+    for (const cls of ["selected", "active", "is-open", "has-error", "ng-touched", "Mui-selected", "menu-item--active", "ant-btn-loading", "hover:bg-blue", "w-[12px]"]) {
+      expect(isStateClass(cls)).toBe(true);
+    }
+  });
+
+  it("keeps classes that name what the element is", () => {
+    for (const cls of ["btn", "card", "menu-item", "v-btn", "selection-list", "MuiButton-root", "nav-link"]) {
+      expect(isStateClass(cls)).toBe(false);
+    }
   });
 });
 
@@ -120,6 +134,47 @@ describe("generateXPaths", () => {
     const { primaryXPath } = generateXPaths(shippingCity);
     expect(resolve(primaryXPath)).toEqual([shippingCity]);
     expect(primaryXPath).toContain("shipping");
+  });
+
+  it("never builds a locator on a state class like selected or active", () => {
+    document.body.innerHTML = `
+      <ul data-testid="results">
+        ${Array.from({ length: 6 }, (_, i) => `<li class="row${i === 4 ? " selected is-active" : ""}"><i></i></li>`).join("")}
+      </ul>`;
+    const fifth = document.querySelectorAll("li")[4];
+    const { primaryXPath, alternativeXpaths } = generateXPaths(fifth);
+    for (const xpath of [primaryXPath, ...alternativeXpaths]) {
+      expect(xpath).not.toMatch(/selected|is-active/);
+    }
+    // The page moves the selection: the step still finds the same row
+    fifth.classList.remove("selected", "is-active");
+    document.querySelectorAll("li")[0].classList.add("selected");
+    expect(resolve(primaryXPath)).toEqual([fifth]);
+  });
+
+  it("prefers a path from a stable ancestor to an indexed class list or the absolute path", () => {
+    document.body.innerHTML = `
+      <div class="wrapper"><div class="wrapper"></div></div>
+      <nav aria-label="Main menu"><div class="item"></div><div class="item"></div></nav>
+      <div class="item"></div>`;
+    const second = document.querySelectorAll("nav .item")[1];
+    const { primaryXPath, alternativeXpaths } = generateXPaths(second);
+    expect(primaryXPath).toContain("Main menu");
+    expect(resolve(primaryXPath)).toEqual([second]);
+    expect(alternativeXpaths[alternativeXpaths.length - 1]).toMatch(/^\/html/);
+  });
+
+  it("ranks text without digits above counters", () => {
+    document.body.innerHTML = `<div><button title="Inbox">Inbox 12</button></div>`;
+    const button = document.querySelector("button")!;
+    expect(generateXPaths(button).primaryXPath).toBe('//button[@title="Inbox"]');
+  });
+
+  it("uses the short text of a small container", () => {
+    document.body.innerHTML = `<div class="card"><b>Alpha</b></div><div class="card"><b>Beta</b></div>`;
+    const beta = document.querySelectorAll(".card")[1];
+    const { primaryXPath } = generateXPaths(beta);
+    expect(primaryXPath).toBe('//div[normalize-space(.)="Beta"]');
   });
 
   it("produces valid XPaths for values with quotes", () => {

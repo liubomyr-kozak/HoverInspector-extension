@@ -132,6 +132,8 @@ const AutomationUserActionsHandler: React.FC = () => {
     currentUrlRef.current = window.location.href;
 
     const isActive = () => recordingRef.current && !pausedRef.current;
+    // Picking an element for a step ("Pick on page"): that click, and the keys of the pick, are not the user's actions
+    const isPicking = () => HighlightOverlayManager.getInstance().isSelectionActive();
 
     // The recording continues on a new page (a link, a form submit, a reload): note the page change.
     // It also keeps typing on this page from being merged into the input step of the previous page.
@@ -180,8 +182,7 @@ const AutomationUserActionsHandler: React.FC = () => {
     };
 
     const onHover = (e: MouseEvent) => {
-      if (!isActive()) return;
-      if (HighlightOverlayManager.getInstance().isSelectionActive()) return;
+      if (!isActive() || isPicking()) return;
       const rawTarget = e.target as Element;
       if (hasAppClass(rawTarget)) return;
 
@@ -244,7 +245,7 @@ const AutomationUserActionsHandler: React.FC = () => {
     };
 
     const onClick = (e: MouseEvent) => {
-      if (!isActive() || e.button !== 0) return;
+      if (!isActive() || e.button !== 0 || isPicking()) return;
       const rawTarget = e.target as Element;
       // Inside a rich text editor the click only places the caret: the typing is recorded as one input step
       const target = getEditableRoot(rawTarget) || getActionableTarget(rawTarget);
@@ -284,7 +285,7 @@ const AutomationUserActionsHandler: React.FC = () => {
     };
 
     const onInput = (e: Event) => {
-      if (!isActive()) return;
+      if (!isActive() || isPicking()) return;
       const target = getEditableRoot(e.target as Element) || (e.target as Element);
       if (hasAppClass(target) || !isTextEntryElement(target)) return;
 
@@ -301,7 +302,7 @@ const AutomationUserActionsHandler: React.FC = () => {
     };
 
     const onChange = (e: Event) => {
-      if (!isActive()) return;
+      if (!isActive() || isPicking()) return;
       const target = e.target as Element;
       if (hasAppClass(target)) return;
 
@@ -347,7 +348,7 @@ const AutomationUserActionsHandler: React.FC = () => {
     // A form without a submit button submitted by Enter in its only field is recorded as that key press: playback
     // presses Enter there, which submits the form the same way (requestSubmit)
     const onSubmit = (e: SubmitEvent) => {
-      if (!isActive()) return;
+      if (!isActive() || isPicking()) return;
       const form = e.target as HTMLFormElement;
       if (hasAppClass(form)) return;
       const pendingEnter = pendingEnterRef.current;
@@ -391,7 +392,7 @@ const AutomationUserActionsHandler: React.FC = () => {
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!isActive()) return;
+      if (!isActive() || isPicking()) return;
       const target = e.target as Element;
       if (!(target instanceof Element) || hasAppClass(target)) return;
       lastKeyRef.current = { element: target, key: e.key, time: Date.now() };
@@ -417,7 +418,7 @@ const AutomationUserActionsHandler: React.FC = () => {
 
     // Enter / Space on a button or a link makes the browser fire a click without any mousedown: record it as a click
     const onKeyboardClick = (e: MouseEvent) => {
-      if (!isActive() || e.detail !== 0) return;
+      if (!isActive() || e.detail !== 0 || isPicking()) return;
       const last = lastKeyRef.current;
       if (!last || (last.key !== "Enter" && last.key !== " ") || Date.now() - last.time > KEY_EFFECT_WINDOW) return;
       const rawTarget = e.target as Element;

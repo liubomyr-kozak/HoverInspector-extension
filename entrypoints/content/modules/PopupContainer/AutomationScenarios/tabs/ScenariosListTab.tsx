@@ -31,6 +31,7 @@ import {
   PortalModalHeader,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { AutomationFooterContainer } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/styles.ts";
+import { LiveWatchToggle } from "../liveWatch/components/LiveWatchToggle";
 
 /**
  * ScenariosTab Component
@@ -112,6 +113,10 @@ const ScenariosListTab: React.FC = () => {
               </AutomationFooterContainer>
             </ScenarioPortalFooterButtons>
           )}
+        </div>
+
+        <div className="mt-4">
+          <LiveWatchToggle />
         </div>
       </div>
     );

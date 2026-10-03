@@ -100,26 +100,77 @@ export function getFullXPath(element: Element): string {
   return "/" + segments.join("/");
 }
 
+// Classes that describe a state the element is in right now (selected, open, hovered...): the page adds and
+// removes them as the user works, so a locator built on them finds another element, or none, on playback
+const STATE_CLASSES = new Set([
+  "active", "selected", "current", "open", "opened", "closed", "show", "shown", "showing", "hide", "hidden",
+  "visible", "invisible", "hover", "hovered", "focus", "focused", "focus-visible", "focus-within", "disabled",
+  "enabled", "checked", "unchecked", "expanded", "collapsed", "collapsing", "in", "fade", "loading", "loaded",
+  "highlight", "highlighted", "pressed", "dragging", "dropping", "error", "invalid", "valid", "dirty", "touched",
+  "pristine", "empty", "filled", "on", "off", "toggled", "pinned", "sticky", "stuck", "animated", "animating",
+]);
+
+/** Whether a class names a passing state of the element rather than what it is */
+export function isStateClass(cls: string): boolean {
+  const name = cls.toLowerCase();
+  if (STATE_CLASSES.has(name)) return true;
+  // is-active, has-error, ng-touched; and suffixes: Mui-selected, ant-btn-loading, item--active
+  if (/^(is|has|ng)-/.test(name)) return true;
+  if (/(^|[-_])(active|selected|current|open|opened|hover|hovered|focus|focused|disabled|checked|expanded|collapsed|hidden|visible|loading|highlighted|pressed|invalid|dirty|touched|animating)$/.test(name)) {
+    return true;
+  }
+  // Utility classes with variants or arbitrary values (hover:bg-x, w-[12px], w-1/2) say nothing about the element
+  return /[:[\]\/!@]/.test(name);
+}
+
+interface Candidate {
+  xpath: string;
+  /** How likely the locator still finds the element after the page changes: higher is more stable */
+  weight: number;
+}
+
+const WEIGHT = {
+  testAttribute: 100,
+  id: 90,
+  inputValue: 80,
+  semanticAttribute: 80,
+  text: 70,
+  textWithDigits: 45,
+  href: 60,
+  dataAttribute: 55,
+  classes: 35,
+  /** Penalties for the less stable forms of a candidate */
+  scoped: 5,
+  anchorPath: 25,
+  indexed: 50,
+  fullPath: -100,
+} as const;
+
+// The text and the elements inside it, short enough to be a label rather than a block of content
+const MAX_TEXT_DESCENDANTS = 3;
+
 /**
- * Builds locator candidates for an element (relative to `//`), most stable first.
+ * Builds locator candidates for an element (relative to `//`) with their stability weight.
+ * `forAnchor` leaves out the text: the text of a container changes with everything inside it.
  */
-function buildCandidates(element: Element): string[] {
+function buildCandidates(element: Element, forAnchor = false): Candidate[] {
   const tag = element.tagName.toLowerCase();
-  const candidates: string[] = [];
+  const candidates: Candidate[] = [];
+  const add = (xpath: string, weight: number) => candidates.push({ xpath, weight });
 
   for (const attr of TEST_ATTRIBUTES) {
     const value = element.getAttribute(attr);
-    if (value) candidates.push(`//*[@${attr}=${xpathLiteral(value)}]`);
+    if (value) add(`//*[@${attr}=${xpathLiteral(value)}]`, WEIGHT.testAttribute);
   }
 
   if (element.id && !isLikelyDynamicValue(element.id)) {
-    candidates.push(`//*[@id=${xpathLiteral(element.id)}]`);
+    add(`//*[@id=${xpathLiteral(element.id)}]`, WEIGHT.id);
   }
 
   for (const attr of SEMANTIC_ATTRIBUTES) {
     const value = element.getAttribute(attr);
     if (value && value.length <= MAX_TEXT_LENGTH && !isLikelyDynamicValue(value)) {
-      candidates.push(`//${tag}[@${attr}=${xpathLiteral(value)}]`);
+      add(`//${tag}[@${attr}=${xpathLiteral(value)}]`, WEIGHT.semanticAttribute);
     }
   }
 
@@ -127,85 +178,106 @@ function buildCandidates(element: Element): string[] {
     const type = element.getAttribute("type");
     const value = element.getAttribute("value");
     if (type && ["submit", "button", "reset"].includes(type) && value) {
-      candidates.push(`//input[@type=${xpathLiteral(type)} and @value=${xpathLiteral(value)}]`);
+      add(`//input[@type=${xpathLiteral(type)} and @value=${xpathLiteral(value)}]`, WEIGHT.inputValue);
     }
   }
 
   if (tag === "a") {
     const href = element.getAttribute("href");
     if (href && !href.startsWith("javascript:") && href !== "#" && href.length <= 150) {
-      candidates.push(`//a[@href=${xpathLiteral(href)}]`);
+      // Links carrying ids or query strings change with the data they point to
+      add(`//a[@href=${xpathLiteral(href)}]`, /\d{3,}|\?/.test(href) ? WEIGHT.dataAttribute - 10 : WEIGHT.href);
     }
   }
 
   // The text of an editor is what the user typed: it is not there yet when the scenario is played back
   const isEditor = !!element.closest('[contenteditable]:not([contenteditable="false"])');
-  const text = isEditor ? "" : normalizeText(element.textContent);
-  const role = element.getAttribute("role");
+  const text = forAnchor || isEditor ? "" : normalizeText(element.textContent);
   if (text && text.length <= MAX_TEXT_LENGTH) {
+    // Counters, prices and dates change between runs: a text with digits is a weaker locator
+    const weight = /\d/.test(text) ? WEIGHT.textWithDigits : WEIGHT.text;
+    const role = element.getAttribute("role");
     if (role) {
-      candidates.push(`//*[@role=${xpathLiteral(role)} and normalize-space(.)=${xpathLiteral(text)}]`);
+      add(`//*[@role=${xpathLiteral(role)} and normalize-space(.)=${xpathLiteral(text)}]`, weight);
     }
-    if (TEXT_LOCATOR_TAGS.includes(tag) || element.children.length === 0) {
-      candidates.push(`//${tag}[normalize-space(.)=${xpathLiteral(text)}]`);
+    if (TEXT_LOCATOR_TAGS.includes(tag) || element.querySelectorAll("*").length <= MAX_TEXT_DESCENDANTS) {
+      add(`//${tag}[normalize-space(.)=${xpathLiteral(text)}]`, weight - 1);
     }
   }
 
-  // Other non-dynamic data-* attributes (skip framework noise like data-v-xxxx / data-reactid)
+  // Other non-dynamic data-* attributes (skip framework noise like data-v-xxxx / data-reactid and state flags)
   for (const attr of Array.from(element.attributes)) {
     if (
       attr.name.startsWith("data-") &&
       !TEST_ATTRIBUTES.includes(attr.name) &&
-      !/^data-(v-|reactid|react|styled|emotion|radix|headlessui|state|active|focus|hover|open)/.test(attr.name) &&
+      !/^data-(v-|reactid|react|styled|emotion|radix|headlessui|state|active|selected|checked|focus|hover|open|expanded|disabled|highlighted|orientation|side|align)/.test(attr.name) &&
       attr.value &&
+      !["true", "false"].includes(attr.value) &&
       !isLikelyDynamicValue(attr.value)
     ) {
-      candidates.push(`//${tag}[@${attr.name}=${xpathLiteral(attr.value)}]`);
+      add(`//${tag}[@${attr.name}=${xpathLiteral(attr.value)}]`, WEIGHT.dataAttribute);
     }
   }
 
-  const stableClasses = Array.from(element.classList).filter((cls) => !isLikelyDynamicValue(cls));
+  const stableClasses = Array.from(element.classList).filter((cls) => !isLikelyDynamicValue(cls) && !isStateClass(cls));
   if (stableClasses.length > 0) {
     const classSelector = stableClasses
       .slice(0, 3)
       .map((cls) => `contains(concat(" ", normalize-space(@class), " "), ${xpathLiteral(` ${cls} `)})`)
       .join(" and ");
-    candidates.push(`//${tag}[${classSelector}]`);
+    add(`//${tag}[${classSelector}]`, WEIGHT.classes);
   }
 
   return candidates;
 }
 
+interface Anchor {
+  element: Element;
+  xpath: string;
+}
+
+// How far up the tree an anchor is looked for
+const MAX_ANCHOR_DEPTH = 8;
+
 /**
- * Finds the closest ancestor with a stable unique locator, to scope non-unique candidates.
+ * Finds the closest ancestor with a stable unique locator (test id, id, name, label, data attribute or
+ * classes), to scope candidates that are not unique on their own.
  */
-function getAnchorXPath(element: Element): string | null {
+function getAnchor(element: Element): Anchor | null {
   let parent = element.parentElement;
-  let depth = 0;
-  while (parent && parent !== document.body && depth < 6) {
-    for (const attr of TEST_ATTRIBUTES) {
-      const value = parent.getAttribute(attr);
-      if (value) {
-        const xp = `//*[@${attr}=${xpathLiteral(value)}]`;
-        if (countMatches(xp) === 1) return xp;
-      }
-    }
-    if (parent.id && !isLikelyDynamicValue(parent.id)) {
-      const xp = `//*[@id=${xpathLiteral(parent.id)}]`;
-      if (countMatches(xp) === 1) return xp;
-    }
+  for (let depth = 0; parent && parent !== document.body && parent !== document.documentElement && depth < MAX_ANCHOR_DEPTH; depth++) {
+    const best = buildCandidates(parent, true)
+      .sort((a, b) => b.weight - a.weight)
+      .find((candidate) => countMatches(candidate.xpath) === 1);
+    if (best) return { element: parent, xpath: best.xpath };
     parent = parent.parentElement;
-    depth++;
   }
   return null;
+}
+
+/** Positional path from an ancestor down to the element: `/div[2]/span[1]` */
+function getRelativePath(ancestor: Element, element: Element): string {
+  const segments: string[] = [];
+  let el: Element | null = element;
+  while (el && el !== ancestor) {
+    let pos = 1;
+    for (let sib = el.previousElementSibling; sib; sib = sib.previousElementSibling) {
+      if (sib.tagName === el.tagName) pos++;
+    }
+    segments.unshift(`${el.tagName.toLowerCase()}[${pos}]`);
+    el = el.parentElement;
+  }
+  return "/" + segments.join("/");
 }
 
 /**
  * Generates multiple XPath expressions for a DOM element based on priority.
  *
- * Candidates are ordered from the most stable (test ids, ids, names, labels, text) to the most brittle
- * (absolute path). Only candidates that actually resolve to the element are kept, and candidates that
- * uniquely identify the element are ranked first, so the primary XPath is stable AND unique whenever possible.
+ * Every candidate gets a stability weight: test ids, ids, names and labels first, then text, links and data
+ * attributes, then classes (state classes like "selected" or "active" are never used). A candidate that matches
+ * several elements is first scoped to the closest ancestor with a stable unique locator, and only then indexed.
+ * A positional path from that ancestor comes before indexed class lists, and the absolute path is the last resort.
+ * Only XPaths that actually resolve to the element are kept.
  *
  * @param element The DOM element to generate XPaths for
  * @returns An object containing the primary XPath and an array of alternative XPaths
@@ -213,35 +285,46 @@ function getAnchorXPath(element: Element): string | null {
 export function generateXPaths(element: Element): { primaryXPath: string; alternativeXpaths: string[] } {
   if (!element) return { primaryXPath: "", alternativeXpaths: [] };
 
-  const unique: string[] = [];
-  const nonUnique: string[] = [];
-  const anchor = getAnchorXPath(element);
+  const found: Candidate[] = [];
+  const anchor = getAnchor(element);
 
   for (const candidate of buildCandidates(element)) {
-    const count = countMatches(candidate);
-    if (count === 1 && matchesElement(candidate, element)) {
-      unique.push(candidate);
+    const count = countMatches(candidate.xpath);
+    if (count === 1 && matchesElement(candidate.xpath, element)) {
+      found.push(candidate);
       continue;
     }
-    if (count > 1) {
-      // Try to make it unique by scoping to a stable ancestor
-      if (anchor) {
-        const scoped = `${anchor}${candidate}`;
-        if (countMatches(scoped) === 1 && matchesElement(scoped, element)) {
-          unique.push(scoped);
+    if (count <= 1) continue;
+    if (anchor) {
+      const scoped = `${anchor.xpath}${candidate.xpath}`;
+      const scopedCount = countMatches(scoped);
+      if (scopedCount === 1 && matchesElement(scoped, element)) {
+        found.push({ xpath: scoped, weight: candidate.weight - WEIGHT.scoped });
+        continue;
+      }
+      if (scopedCount > 1) {
+        const scopedIndexed = `(${scoped})[${indexInMatches(scoped, element)}]`;
+        if (matchesElement(scopedIndexed, element)) {
+          found.push({ xpath: scopedIndexed, weight: candidate.weight - WEIGHT.indexed + WEIGHT.scoped });
           continue;
         }
       }
-      // Fall back to indexing within the matched set
-      const indexed = `(${candidate})[${indexInMatches(candidate, element)}]`;
-      if (indexed && matchesElement(indexed, element)) {
-        nonUnique.push(indexed);
-      }
+    }
+    // Fall back to indexing within the matched set
+    const indexed = `(${candidate.xpath})[${indexInMatches(candidate.xpath, element)}]`;
+    if (matchesElement(indexed, element)) {
+      found.push({ xpath: indexed, weight: candidate.weight - WEIGHT.indexed });
     }
   }
 
-  const fullXPath = getFullXPath(element);
-  const ordered = [...new Set([...unique, ...nonUnique, fullXPath])].filter(Boolean);
+  if (anchor) {
+    const anchorPath = `${anchor.xpath}${getRelativePath(anchor.element, element)}`;
+    if (matchesElement(anchorPath, element)) found.push({ xpath: anchorPath, weight: WEIGHT.anchorPath });
+  }
+  found.push({ xpath: getFullXPath(element), weight: WEIGHT.fullPath });
+
+  // Stable sort: candidates of the same weight keep their priority order
+  const ordered = [...new Set(found.sort((a, b) => b.weight - a.weight).map((candidate) => candidate.xpath))];
 
   return {
     primaryXPath: ordered[0],

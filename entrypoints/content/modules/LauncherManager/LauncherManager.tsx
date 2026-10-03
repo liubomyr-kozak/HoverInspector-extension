@@ -7,6 +7,7 @@ import { ElementDetailsPopup } from "../PopupContainer/CSSSnapshotInspector/comp
 import { NoteFormPopup } from "../PopupContainer/PageNotes/components/NoteFormPopup";
 import AutomationUserActionsHandler from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/AutomationUserActionsHandler.tsx";
 import { selectRecording } from "@entrypoints/content/store/automation/automation.slice";
+import { LiveWatcher } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/LiveWatcher";
 import { BodyPortal } from "@entrypoints/shared/components/BodyPortal";
 
 export const LauncherManager: React.FC = () => {
@@ -21,6 +22,7 @@ export const LauncherManager: React.FC = () => {
       {isMinimized ? <MinimizedLauncher /> : <Launcher />}
       <PopupContainer />
       {recording && <AutomationUserActionsHandler />}
+      <LiveWatcher />
 
       {/* ElementDetailsPopup rendered at same level as PopupContainer, outside container constraints */}
       <ElementDetailsPopup />

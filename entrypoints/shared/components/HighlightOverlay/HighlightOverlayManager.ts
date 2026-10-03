@@ -21,6 +21,9 @@ export const HIGHLIGHT_STYLES = {
   },
 } as const;
 
+// Pointer presses swallowed while an element is being picked (the click itself picks it)
+const PRESS_EVENTS = ["pointerdown", "mousedown", "pointerup", "mouseup", "touchstart", "touchend"] as const;
+
 export type HighlightStyleVariant = keyof typeof HIGHLIGHT_STYLES;
 
 export interface SelectionEvent {
@@ -278,6 +281,13 @@ class HighlightOverlayManager {
         finish("completed", { xpath: this.generateXPath(element), element });
       };
 
+      // The press that picks an element must not reach the page: no focus change, no menu opening on mousedown
+      const pressHandler = (e: Event) => {
+        if (this.isExtensionEvent(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+      };
+
       const escHandler = (e: KeyboardEvent) => {
         if (e.key === "Escape") {
           e.preventDefault();
@@ -290,6 +300,7 @@ class HighlightOverlayManager {
         document.removeEventListener("mousemove", mouseMoveHandler, true);
         document.removeEventListener("click", clickHandler, true);
         document.removeEventListener("keydown", escHandler, true);
+        PRESS_EVENTS.forEach((type) => window.removeEventListener(type, pressHandler, true));
         // Only reset the shared state if it still belongs to this stream
         if (this.clickHandler === clickHandler) {
           this.clickHandler = this.escHandler = this.mouseMoveHandler = undefined;
@@ -306,6 +317,7 @@ class HighlightOverlayManager {
       document.addEventListener("mousemove", mouseMoveHandler, true);
       document.addEventListener("click", clickHandler, true);
       document.addEventListener("keydown", escHandler, true);
+      PRESS_EVENTS.forEach((type) => window.addEventListener(type, pressHandler, { capture: true, passive: false }));
 
       subscriber.next({ type: "started" });
 
