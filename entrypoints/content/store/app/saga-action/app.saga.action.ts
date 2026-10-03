@@ -269,3 +269,14 @@ export const onChangeMinimizedLauncherPosition = sagaEnhancer(function* changeMi
   // Then persist to storage
   yield ExtensionStorageManager.changeMinimizedLauncherPosition(payload);
 });
+
+/** Closes a minimized tool's pill without opening the tool */
+export const onCloseMinimizedFeature = sagaEnhancer(function* onCloseMinimizedFeatureFn({ payload }) {
+  const { featureKey } = payload as { featureKey: string };
+  const current = yield select();
+  if (!current.app.minimizedFeatures?.includes(featureKey)) return;
+
+  yield put(toggleFeatureMinimized(featureKey));
+  const state = yield select();
+  yield ExtensionStorageManager.changeMinimizedFeatures(state.app.minimizedFeatures);
+});

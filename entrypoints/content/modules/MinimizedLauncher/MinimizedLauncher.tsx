@@ -19,9 +19,10 @@ export const MinimizedLauncher: React.FC = () => {
     // <BodyPortal containerId="hover-inspector-porta-minimized-launcher">
     <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 10000 }}>
       <Rnd
+        // A position saved in a wider window would leave the pill off-screen
         position={{
-          x: minimizedPosition.x,
-          y: minimizedPosition.y,
+          x: Math.max(0, Math.min(minimizedPosition.x, window.innerWidth - 160)),
+          y: Math.max(0, Math.min(minimizedPosition.y, window.innerHeight - 56)),
         }}
         size={{
           width: "auto",
