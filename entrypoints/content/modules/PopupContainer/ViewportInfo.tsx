@@ -1,8 +1,7 @@
-import { breakpoints } from "./ViewportRuler";
+import { breakpoints, describeResizeMiss, resizeViewportTo } from "./ViewportRuler";
 import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { Button as AntButton, Card as AntCard, Tabs, Tag } from "antd";
-import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import {
   PortalModalHeader,
@@ -54,6 +53,17 @@ const ButtonGroup = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+`;
+
+const ResizeNote = styled.div`
+  margin: -4px 0 10px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #874d00;
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 4px;
 `;
 
 type Breakpoint = {
@@ -129,8 +139,20 @@ export default function ViewportInfoPanel() {
   const activeBootstrap = useMemo(() => getActiveBreakpoint(bootstrapBreakpoints, windowWidth), [windowWidth]);
   const activeMaterial = useMemo(() => getActiveBreakpoint(materialBreakpoints, windowWidth), [windowWidth]);
 
-  const applyWidth = (width) => {
-    ExtensionStorageManager.changeCurrentWindowSize(width);
+  const [resizeMiss, setResizeMiss] = useState("");
+  const [pendingWidth, setPendingWidth] = useState<number | null>(null);
+
+  const applyWidth = async (width: number) => {
+    setPendingWidth(width);
+    setResizeMiss("");
+    try {
+      const actual = await resizeViewportTo(width);
+      setResizeMiss(describeResizeMiss(width, actual));
+    } catch (e) {
+      setResizeMiss("The window could not be resized.");
+    } finally {
+      setPendingWidth(null);
+    }
   };
 
   return (
@@ -180,9 +202,16 @@ export default function ViewportInfoPanel() {
 
       <AntCard>
         <Label>Resize Presets</Label>
+        {resizeMiss && <ResizeNote>{resizeMiss}</ResizeNote>}
         <ButtonGroup>
           {breakpoints.map((bp) => (
-            <AntButton key={bp.value} onClick={() => applyWidth(bp.value)} size="small">
+            <AntButton
+              key={bp.value}
+              onClick={() => applyWidth(bp.value)}
+              size="small"
+              type={windowWidth === bp.value ? "primary" : "default"}
+              loading={pendingWidth === bp.value}
+            >
               {bp.label}
             </AntButton>
           ))}

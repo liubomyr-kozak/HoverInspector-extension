@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { IconAlertTriangle, IconCheck, IconColorSwatch, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { evaluateReadability, getColorInAllFormats } from "@entrypoints/shared/utils/colorAnalysis";
+import { targetColorStringToHex } from "@entrypoints/content/modules/Popup/helpers.tsx";
 
 interface ContrastCheckerProps {
   initialForegroundColor: string;
@@ -44,6 +45,16 @@ const ContrastChecker: React.FC<ContrastCheckerProps> = ({ initialForegroundColo
     recommendation?: string;
   } | null>(null);
   const [colorFormat, setColorFormat] = useState<"rgb" | "hex" | "hsl">("hex");
+
+  // Follow the inspected element: a new hover/selection brings new starting colours
+  useEffect(() => setForegroundColor(initialForegroundColor), [initialForegroundColor]);
+  useEffect(() => setBackgroundColor(initialBackgroundColor), [initialBackgroundColor]);
+
+  // <input type="color"> only accepts #rrggbb
+  const toPickerValue = (color: string) => {
+    const hex = targetColorStringToHex(color);
+    return /^#[0-9a-f]{6}/i.test(hex) ? hex.slice(0, 7) : "#000000";
+  };
 
   // Calculate contrast when colors change
   useEffect(() => {
@@ -111,7 +122,7 @@ const ContrastChecker: React.FC<ContrastCheckerProps> = ({ initialForegroundColo
           <span className="w-24">Foreground:</span>
           <input
             type="color"
-            value={foregroundColor}
+            value={toPickerValue(foregroundColor)}
             onChange={(e) => setForegroundColor(e.target.value)}
             className="w-8 h-8 rounded cursor-pointer"
           />
@@ -127,7 +138,7 @@ const ContrastChecker: React.FC<ContrastCheckerProps> = ({ initialForegroundColo
           <span className="w-24">Background:</span>
           <input
             type="color"
-            value={backgroundColor}
+            value={toPickerValue(backgroundColor)}
             onChange={(e) => setBackgroundColor(e.target.value)}
             className="w-8 h-8 rounded cursor-pointer"
           />

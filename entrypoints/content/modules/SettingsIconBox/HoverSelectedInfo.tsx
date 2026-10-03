@@ -6,10 +6,13 @@ import Title from "antd/es/typography/Title";
 import PopupStyleInspector from "./components/PopupStyleInspector";
 import StyleVisualizer from "./components/StyleVisualizer";
 import { useDispatch, useSelector } from "react-redux";
-import { onUpdateInspectorViewTypeWatcher } from "@entrypoints/content/store/app/saga-action/app.saga.action";
+import {
+  onUpdateInspectorViewTypeWatcher,
+  unlockTarget,
+} from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import DomNodeManager from "@entrypoints/core/services/dom/DomNodeManager";
 import DomNodeManagerInstance from "@entrypoints/core/services/dom/DomNodeManager";
-import { setSelectedElementType } from "@entrypoints/content/store/app/app.slice";
+import { setSelectedElementType, setTargetLocked } from "@entrypoints/content/store/app/app.slice";
 
 const HoverSelectedInfo = () => {
   const dispatch = useDispatch();
@@ -18,6 +21,7 @@ const HoverSelectedInfo = () => {
   const viewType = app.viewType || "ui";
   const selectedElementType = app.selectedElementType;
   const isSingleSelect = app.isSingleSelect;
+  const isTargetLocked = !!app.isTargetLocked;
 
   const isElementWasSelected = DomNodeManagerInstance.isFirstNodeSelected;
   const activeElement = isElementWasSelected ? selectedElementType : "hoverElement";
@@ -29,6 +33,16 @@ const HoverSelectedInfo = () => {
     }
   }, [isSingleSelect, selectedElementType, dispatch]);
 
+  // Hover Only never selects, so a target locked before it was switched on would stay stuck
+  useEffect(() => {
+    if (isSingleSelect && isTargetLocked) handleUnlockTarget();
+  }, [isSingleSelect, isTargetLocked]);
+
+  const handleUnlockTarget = () => {
+    unlockTarget();
+    dispatch(setTargetLocked(false));
+  };
+
   const handleUpdateInspectorViewType = (data) => {
     dispatch(onUpdateInspectorViewTypeWatcher.getPayload(data));
   };
@@ -37,24 +51,16 @@ const HoverSelectedInfo = () => {
     dispatch(setSelectedElementType(elementType));
     const selectedNode = DomNodeManager.get(elementType);
 
-    if (selectedNode instanceof HTMLElement) {
-      const originalOutline = selectedNode.style.outline;
-      const originalTransition = selectedNode.style.transition;
-      const originalBoxShadow = selectedNode.style.boxShadow;
-      const originalBackground = selectedNode.style.background;
-
-      selectedNode.style.outline = "2px solid #f29d68";
-      selectedNode.style.outlineOffset = "2px";
-      selectedNode.style.transition = "all 0.25s ease-in-out";
-      selectedNode.style.boxShadow = "0 0 8px 2px rgba(242, 157, 104, 0.8)";
-      selectedNode.style.background = "#f29d68";
-
-      setTimeout(() => {
-        selectedNode.style.outline = originalOutline;
-        selectedNode.style.transition = originalTransition;
-        selectedNode.style.boxShadow = originalBoxShadow;
-        selectedNode.style.background = originalBackground;
-      }, 400);
+    // Flash the element so the user sees which one they switched to. A Web Animation on the outline leaves
+    // the element's own styles alone (changing its background used to show up in the tooltip and CSS output)
+    if (selectedNode instanceof Element && typeof (selectedNode as any).animate === "function") {
+      selectedNode.animate(
+        [
+          { outline: "3px solid rgba(242, 157, 104, 1)", outlineOffset: "2px" },
+          { outline: "3px solid rgba(242, 157, 104, 0)", outlineOffset: "6px" },
+        ],
+        { duration: 700, easing: "ease-out" },
+      );
     }
   };
 
@@ -106,6 +112,21 @@ const HoverSelectedInfo = () => {
               ]}
               inactiveClassName="bg-white text-gray-500 hover:bg-gray-100"
             />
+            <div className="-mt-3 mb-4 text-xs text-gray-500">
+              {isTargetLocked ? (
+                <>
+                  Target locked. Click on the page to pick a new source, or{" "}
+                  <button type="button" className="text-sky-600 hover:underline" onClick={handleUnlockTarget}>
+                    unlock it
+                  </button>
+                  .
+                </>
+              ) : isElementWasSelected ? (
+                "Hover to measure from the source. Click again to lock the target."
+              ) : (
+                "Click an element on the page to make it the source."
+              )}
+            </div>
           </>
         )}
       </SettingTabHeader>

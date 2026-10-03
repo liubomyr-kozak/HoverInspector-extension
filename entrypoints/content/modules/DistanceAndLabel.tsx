@@ -10,6 +10,10 @@ import {
 import DomNodeManager from "@entrypoints/core/services/dom/DomNodeManager.ts";
 import { isActionTypeHover, isActionTypeScroll, isActionTypeSelect } from "@entrypoints/content/store/app/app.slice";
 
+// Hidden until there is a source and a target to measure between; otherwise the empty lines showed
+// up as small orange marks on the left edge of the page
+const HIDDEN = { display: "none" } as const;
+
 const DistanceAndLabel = () => {
   const userAction = useSelector((state) => (state as any).app.userAction) || {};
 
@@ -52,16 +56,16 @@ const DistanceAndLabel = () => {
 
   return (
     <>
-      <div ref={topRef} className="hover-inspector-distance-line hover-inspector-top">
+      <div ref={topRef} className="hover-inspector-distance-line hover-inspector-top" style={HIDDEN}>
         <span className="hover-inspector-distance-line-label" />
       </div>
-      <div ref={bottomRef} className="hover-inspector-distance-line hover-inspector-bottom">
+      <div ref={bottomRef} className="hover-inspector-distance-line hover-inspector-bottom" style={HIDDEN}>
         <span className="hover-inspector-distance-line-label" />
       </div>
-      <div ref={leftRef} className="hover-inspector-distance-line hover-inspector-left">
+      <div ref={leftRef} className="hover-inspector-distance-line hover-inspector-left" style={HIDDEN}>
         <span className="hover-inspector-distance-line-label" />
       </div>
-      <div ref={rightRef} className="hover-inspector-distance-line hover-inspector-right">
+      <div ref={rightRef} className="hover-inspector-distance-line hover-inspector-right" style={HIDDEN}>
         <span className="hover-inspector-distance-line-label" />
       </div>
     </>

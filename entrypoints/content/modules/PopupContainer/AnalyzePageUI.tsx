@@ -45,11 +45,13 @@ const useLazyTokens = <T,>(extract: () => T[]) => {
   return { tokens, rescan: scan };
 };
 
-const TokenTabFrame: React.FC<{ loading: boolean; onRescan: () => void; children: React.ReactNode }> = ({
-  loading,
-  onRescan,
-  children,
-}) => (
+const TokenTabFrame: React.FC<{
+  loading: boolean;
+  empty: boolean;
+  emptyText: string;
+  onRescan: () => void;
+  children: React.ReactNode;
+}> = ({ loading, empty, emptyText, onRescan, children }) => (
   <div>
     <div className="flex justify-end mb-2">
       <button
@@ -61,13 +63,14 @@ const TokenTabFrame: React.FC<{ loading: boolean; onRescan: () => void; children
       </button>
     </div>
     {loading ? <p className="text-sm text-gray-500">Scanning the page...</p> : children}
+    {!loading && empty && <p className="text-sm text-gray-500 mt-3">{emptyText}</p>}
   </div>
 );
 
 const SpacingTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractSpacingTokens);
   return (
-    <TokenTabFrame loading={!tokens} onRescan={rescan}>
+    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No margin, padding or gap values found on this page." onRescan={rescan}>
       <SpacingTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -76,7 +79,7 @@ const SpacingTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({
 const BorderTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractBorderRadiusTokens);
   return (
-    <TokenTabFrame loading={!tokens} onRescan={rescan}>
+    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No rounded corners found on this page." onRescan={rescan}>
       <BorderTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -85,7 +88,7 @@ const BorderTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ 
 const ShadowTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractShadowTokens);
   return (
-    <TokenTabFrame loading={!tokens} onRescan={rescan}>
+    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No box shadows found on this page." onRescan={rescan}>
       <ShadowTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -177,6 +180,10 @@ export const AnalyzePageUI = () => {
           className="analyze-page-tabs"
           size="large"
           tabBarGutter={24}
+          // The "more tabs" dropdown would otherwise render into the page's <body>, outside our styles
+          getPopupContainer={(trigger) =>
+            (trigger.getRootNode() as ShadowRoot).querySelector?.("html > body") as HTMLElement ?? trigger.parentElement!
+          }
         />
       </div>
     </div>

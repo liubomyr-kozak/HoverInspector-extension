@@ -112,6 +112,11 @@ const appSlice = createSlice({
       state.selectedElementType = action.payload;
     },
 
+    // A second click locks the hovered (target) element until the next click
+    setTargetLocked(state: any, action: PayloadAction<boolean>) {
+      state.isTargetLocked = action.payload;
+    },
+
     hideSponsorMessage(state, action: PayloadAction<number>) {
       if (!state.sponsorMessage) {
         state.sponsorMessage = { hiddenUntil: 0 };
@@ -187,6 +192,7 @@ export const {
   setIsSingleSelect,
   setShowAllBorders,
   setSelectedElementType,
+  setTargetLocked,
   hideSponsorMessage,
   addColorToHistory,
   toggleFeatureVisibility,

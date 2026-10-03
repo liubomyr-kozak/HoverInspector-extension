@@ -7,7 +7,7 @@ export const cutPx = (styleValue): number => {
 
 export const getTagMeta = (tag, id, className) => {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '8px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '8px', minWidth: 0 }}>
       <span style={{
         ...tagStyle,
         fontSize: '10px',
@@ -16,6 +16,7 @@ export const getTagMeta = (tag, id, className) => {
         color: 'white',
         padding: '2px 6px',
         borderRadius: '4px',
+        flexShrink: 0,
         textTransform: 'uppercase',
         letterSpacing: '0.5px'
       }}>{tag}</span>
@@ -28,8 +29,13 @@ export const getTagMeta = (tag, id, className) => {
           color: '#1976d2',
           padding: '1px 5px',
           borderRadius: '3px',
-          border: '1px solid #bbdefb'
-        }}>{id.startsWith('#') ? id : `#${id}`}</span>
+          border: '1px solid #bbdefb',
+          minWidth: 0,
+          maxWidth: '140px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }} title={id.startsWith('#') ? id : `#${id}`}>{id.startsWith('#') ? id : `#${id}`}</span>
       )}
       {className && (
         <span style={{
@@ -41,11 +47,12 @@ export const getTagMeta = (tag, id, className) => {
           padding: '1px 5px',
           borderRadius: '3px',
           border: '1px solid #ffcc02',
+          minWidth: 0,
           maxWidth: '120px',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap'
-        }}>{className.startsWith('.') ? className : `.${className}`}</span>
+        }} title={className.startsWith('.') ? className : `.${className}`}>{className.startsWith('.') ? className : `.${className}`}</span>
       )}
     </div>
   );

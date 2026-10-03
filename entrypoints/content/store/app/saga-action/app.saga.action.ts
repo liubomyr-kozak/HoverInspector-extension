@@ -12,6 +12,7 @@ import {
   setLauncherIconOrder,
   setLocalAppSetting,
   setMinimizedLauncherPosition,
+  setTargetLocked,
   setViewType,
   syncSharedSettings,
   toggleFeatureMinimized,
@@ -25,6 +26,18 @@ import { closeElementCompare } from "@entrypoints/content/store/elementCompare/e
 import { closeElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 
 const freezeSelect = new FreezeSelect();
+
+/** Lets hover follow the pointer again; the next click picks a new source element. */
+export const unlockTarget = () => {
+  freezeSelect.reset();
+};
+
+/** Forget the source element and any locked target (the inspector was closed). */
+export const resetElementSelection = () => {
+  freezeSelect.reset();
+  DomNodeManager.setIsFirstNodeSelected(false);
+  DomNodeManager.remove("selectedElement");
+};
 
 export const onUpdateEventPreventDefaultWatcher = sagaEnhancer(function* updateEventPreventDefaultWatcher(data) {
   PopupSettingModel.setPreventDefault(data.payload.preventDefault);
@@ -53,8 +66,11 @@ export const onUserEventSelectWatcher = sagaEnhancer(function* userEventSelectWa
   freezeSelect.precessFreeze(true);
 
   if (freezeSelect.isFreeze) {
+    yield put(setTargetLocked(true));
     return;
   }
+
+  yield put(setTargetLocked(false));
 
   const oldSelectedElement = DomNodeManager.get("selectedElement");
   let selectedElement;
