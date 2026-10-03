@@ -272,6 +272,7 @@ export const UnitConverter: React.FC = () => {
         <Col flex="110px">
           <InputNumber
             min={1}
+            aria-label="Base size"
             value={baseSize}
             onChange={(v) => setBaseSize(v || 16)}
             addonAfter="px"
