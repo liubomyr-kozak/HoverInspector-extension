@@ -495,7 +495,9 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   // console.groupEnd()
 
   // Визначаємо left
-  let leftProposal = left - marginLeft;
+  // Align with the element itself: centred blocks (margin: auto) have huge left margins that
+  // pushed the card to the far left, under the docked panel
+  let leftProposal = left;
 
   // Якщо права межа попапа (leftProposal + ширина попапа) виходить за межу viewport (clientWindow.right)
   // То переміщаємо попап вліво так, щоб він повністю помістився у вікно,
@@ -506,6 +508,20 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   }
 
   if (leftProposal < 0) leftProposal = 10;
+
+  // Step around the open tool panel instead of sliding underneath it
+  const panelRect = document
+    .querySelector("hover-inspector")
+    ?.shadowRoot?.querySelector(".rnd-container")
+    ?.getBoundingClientRect();
+  if (panelRect && panelRect.width > 0) {
+    const overlapsVertically = topPositionProposal < panelRect.bottom && topPositionProposal + popupHeight > panelRect.top;
+    const overlapsHorizontally = leftProposal < panelRect.right && leftProposal + popupWidth > panelRect.left;
+    if (overlapsVertically && overlapsHorizontally) {
+      if (panelRect.right + 8 + popupWidth <= clientWindow.right - 10) leftProposal = panelRect.right + 8;
+      else if (panelRect.left - 8 - popupWidth >= 10) leftProposal = panelRect.left - 8 - popupWidth;
+    }
+  }
 
   // Обраховуємо фінальний left через getLeftPosition, якщо він є
   let finalLeft =
