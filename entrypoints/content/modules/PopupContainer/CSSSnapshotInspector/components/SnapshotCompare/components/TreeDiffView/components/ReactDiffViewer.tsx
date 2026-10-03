@@ -1,3 +1,4 @@
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { DOMTreeNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
@@ -419,8 +420,22 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
     return <ClickableTreeLines lines={oldValue} onLineClick={(index) => handleLineClick(`L${index + 1}`, oldValue[index].metadata)} />;
   }
 
+  // Two snapshots with the same tree: say so, and keep the listing keyboard-navigable like a single tree
+  const isIdentical =
+    oldValue.length === newValue.length && oldValue.every((line, index) => line.text === newValue[index].text);
+  if (isIdentical) {
+    return (
+      <div>
+        <p role="status" style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#15803d" }}>
+          No differences found
+        </p>
+        <ClickableTreeLines lines={oldValue} onLineClick={(index) => handleLineClick(`L${index + 1}`, oldValue[index].metadata)} />
+      </div>
+    );
+  }
+
   if (!cache || !shadowContainer) {
-    return <div>Loading diff viewer...</div>;
+    return <LoadingState inline label="Loading the diff…" />;
   }
 
   return (
@@ -448,8 +463,42 @@ const ClickableTreeLines: React.FC<{ lines: LineData[]; onLineClick: (index: num
   onLineClick,
 }) => {
   const [hovered, setHovered] = useState<number | null>(null);
+  // One tab stop for the whole tree; arrow keys move between lines, Enter or Space opens one
+  const [active, setActive] = useState(0);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const tabStop = Math.min(active, Math.max(0, lines.length - 1));
+
+  const focusLine = (index: number) => {
+    const next = Math.max(0, Math.min(lines.length - 1, index));
+    setActive(next);
+    containerRef.current?.querySelector<HTMLElement>(`[data-tree-line="${next}"]`)?.focus();
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const moves: Record<string, number> = {
+      ArrowDown: tabStop + 1,
+      ArrowUp: tabStop - 1,
+      PageDown: tabStop + 10,
+      PageUp: tabStop - 10,
+      Home: 0,
+      End: lines.length - 1,
+    };
+    if (event.key in moves) {
+      event.preventDefault();
+      focusLine(moves[event.key]);
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onLineClick(tabStop);
+    }
+  };
+
   return (
     <div
+      ref={containerRef}
+      role="toolbar"
+      aria-orientation="vertical"
+      aria-label="Snapshot elements. Use the arrow keys to move, Enter to show details"
+      onKeyDown={onKeyDown}
       style={{
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
         fontSize: 12,
@@ -465,9 +514,17 @@ const ClickableTreeLines: React.FC<{ lines: LineData[]; onLineClick: (index: num
           <div
             key={index}
             role="button"
-            tabIndex={-1}
+            data-tree-line={index}
+            tabIndex={index === tabStop ? 0 : -1}
             title={line.metadata?.displayName ? `Show details for ${line.metadata.displayName}` : undefined}
-            onClick={() => onLineClick(index)}
+            onClick={() => {
+              setActive(index);
+              onLineClick(index);
+            }}
+            onFocus={() => {
+              setActive(index);
+              setHovered(index);
+            }}
             onMouseEnter={() => setHovered(index)}
             style={{
               whiteSpace: "pre",
@@ -475,6 +532,8 @@ const ClickableTreeLines: React.FC<{ lines: LineData[]; onLineClick: (index: num
               cursor: "pointer",
               color: isClosing ? "#6b7280" : "#1f2937",
               background: hovered === index ? "#eef2ff" : "transparent",
+              // Inset, so the scroll container doesn't clip the ring
+              outlineOffset: -2,
             }}
           >
             {line.text}

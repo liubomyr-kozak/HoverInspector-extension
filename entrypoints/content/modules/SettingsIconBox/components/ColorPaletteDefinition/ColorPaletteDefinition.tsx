@@ -225,15 +225,14 @@ export const ColorPaletteDefinition: React.FC = () => {
   }, [selectedColorId]);
 
   return (
-    <div className="bg-white p-5 rounded-lg mb-6 shadow-sm border border-gray-100">
-      <div className="flex items-center gap-3 mb-6">
-        <IconPalette size={24} className="text-purple-600" />
-        <h3 className="text-xl font-semibold text-gray-800">Color Palette Definition</h3>
+    <div className="space-y-2">
+      {/* Same header scale as the other token tabs */}
+      <div className="flex items-center gap-2">
+        <IconPalette size={18} className="text-blue-500" aria-hidden />
+        <h4 className="m-0 text-base font-semibold text-gray-800">Colour tokens</h4>
       </div>
 
-      <p className="text-sm text-gray-600 mb-6">
-        Complete design token system including colors, typography, spacing, borders, and shadows.
-      </p>
+      <p className="m-0 text-sm text-gray-600">The colours used on this page, grouped by role.</p>
 
       {/* Import Section for Colors */}
       <ImportSection

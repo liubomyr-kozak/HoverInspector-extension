@@ -40,7 +40,6 @@ export const SpacingTokenTab: React.FC<SpacingTokenTabProps> = ({ tokens, naviga
 
   return (
     <div className="space-y-2">
-      <h4 className="text-base font-medium text-gray-800">Spacing Tokens</h4>
       
       {/* Import Section for Spacing */}
       <ImportSection
@@ -59,7 +58,7 @@ export const SpacingTokenTab: React.FC<SpacingTokenTabProps> = ({ tokens, naviga
         }}
         normalize={normalizeLength}
       />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))" }}>
         {tokens.map((token) => (
           <div key={token.id} className="p-2 border border-gray-200 rounded">
             <div className="flex flex-wrap justify-between items-baseline gap-x-1 mb-1">

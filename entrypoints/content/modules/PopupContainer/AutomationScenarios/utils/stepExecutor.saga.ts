@@ -24,6 +24,9 @@ import { toast } from "react-toastify";
 import { ConfirmationDialog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ConfirmationDialog.tsx";
 import { NotificationDialog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/NotificationDialog.tsx";
 import React from "react";
+import { parseSelectValues } from "./recordingUtils";
+import { describeKeyCombo, parseKeyCombo, pressKey } from "./keyboardUtils";
+import { resolveStoredValues } from "./storedValues";
 
 /**
  * Default delay between steps in milliseconds
@@ -222,7 +225,7 @@ function getElementByXPath(xpath: string, alternativeXpaths: string[] = []): Ele
 }
 
 // How long element-based steps wait for their target to appear (pages often render asynchronously)
-const ELEMENT_LOOKUP_TIMEOUT = 5000;
+export const ELEMENT_LOOKUP_TIMEOUT = 10000;
 const ELEMENT_LOOKUP_INTERVAL = 100;
 
 /**
@@ -237,9 +240,61 @@ function* findStepElement(step: ScenarioStep, stepLabel: string) {
     const element = getElementByXPath(step.xpath, step.alternativeXpaths);
     if (element) return element;
     if (Date.now() - startTime >= ELEMENT_LOOKUP_TIMEOUT) {
-      throw new Error(`Element not found with XPath: ${step.xpath}`);
+      const alternatives = (step.alternativeXpaths || []).filter(Boolean).length;
+      throw new Error(
+        `Element not found after ${ELEMENT_LOOKUP_TIMEOUT / 1000} s: ${step.xpath}` +
+          (alternatives ? ` (and ${alternatives} alternative XPath${alternatives === 1 ? "" : "s"})` : ""),
+      );
     }
     yield delay(ELEMENT_LOOKUP_INTERVAL);
+  }
+}
+
+/**
+ * Waits until a disabled control (a button the page enables once a form is valid...) can be used.
+ * Clicking a disabled control does nothing, and the step used to pass without having done anything.
+ */
+function* waitUntilEnabled(element: Element, step: ScenarioStep) {
+  const startTime = Date.now();
+  while (element.isConnected && element.matches(":disabled")) {
+    if (Date.now() - startTime >= ELEMENT_LOOKUP_TIMEOUT) {
+      throw new Error(`Element is still disabled after ${ELEMENT_LOOKUP_TIMEOUT / 1000} s: ${step.xpath}`);
+    }
+    yield delay(ELEMENT_LOOKUP_INTERVAL);
+  }
+}
+
+/**
+ * Brings an off-screen element into view before acting on it, like a user would scroll to it
+ */
+function scrollIntoViewIfNeeded(element: Element) {
+  const rect = element.getBoundingClientRect?.();
+  if (!rect) return;
+  const outside = rect.bottom < 0 || rect.right < 0 || rect.top > window.innerHeight || rect.left > window.innerWidth;
+  if (outside) (element as HTMLElement).scrollIntoView?.({ block: "center", inline: "nearest" });
+}
+
+/**
+ * Replaces the text of a contenteditable editor. execCommand goes through the browser's editing pipeline,
+ * so editors that listen to beforeinput/input (ProseMirror, Slate, Lexical...) update their own state.
+ */
+function setEditableText(element: HTMLElement, value: string) {
+  element.focus();
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  let inserted = false;
+  try {
+    inserted = value ? document.execCommand("insertText", false, value) : document.execCommand("delete");
+  } catch {
+    inserted = false;
+  }
+  const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+  if (!inserted || normalize(element.innerText ?? element.textContent ?? "") !== normalize(value)) {
+    element.innerText = value;
+    element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
   }
 }
 
@@ -262,6 +317,8 @@ function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSe
 export function getStepDescription(step: ScenarioStep): string {
   switch (step.type) {
     case StepType.CLICK:
+      if (step.value === "checked") return "Tick checkbox";
+      if (step.value === "unchecked") return "Untick checkbox";
       return `Click on element`;
     case StepType.HOVER:
       return `Hover over element`;
@@ -286,6 +343,12 @@ export function getStepDescription(step: ScenarioStep): string {
       return `Wait for confirmation: "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
     case StepType.NOTIFICATION:
       return `Show notification: "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
+    case StepType.KEY_PRESS:
+      return `Press ${describeKeyCombo(step.value) || "key"}`;
+    case StepType.GET_TEXT:
+      return step.value ? `Get text into "${step.value}"` : "Get text";
+    case StepType.WAIT_ELEMENT_VISIBLE:
+      return "Wait for element to be visible";
     default:
       return `Unknown step type: ${step.type}`;
   }
@@ -295,7 +358,22 @@ export function getStepDescription(step: ScenarioStep): string {
  * Executes a click step
  */
 export function* executeClickStep(step: ScenarioStep) {
-  const element: Element = yield call(findStepElement, step, "click");
+  let element: Element = yield call(findStepElement, step, "click");
+
+  // A recorded checkbox click knows the state it led to: don't flip a box that is already there
+  const isInTargetState = (target: Element) => {
+    if (step.value !== "checked" && step.value !== "unchecked") return false;
+    const box = target instanceof HTMLLabelElement ? target.control : target;
+    return box instanceof HTMLInputElement && box.type === "checkbox" && box.checked === (step.value === "checked");
+  };
+  if (isInTargetState(element)) return;
+
+  yield call(waitUntilEnabled, element, step);
+  // The page re-rendered the button while it was disabled: click the new one
+  if (!element.isConnected) {
+    element = yield call(findStepElement, step, "click");
+    if (isInTargetState(element)) return;
+  }
 
   (element as HTMLElement).scrollIntoView?.({ block: "center", inline: "nearest" });
 
@@ -313,6 +391,7 @@ export function* executeClickStep(step: ScenarioStep) {
  */
 export function* executeHoverStep(step: ScenarioStep) {
   const element: Element = yield call(findStepElement, step, "hover");
+  scrollIntoViewIfNeeded(element);
 
   // Trigger the pointer/mouse enter events on the element
   element.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
@@ -327,9 +406,15 @@ export function* executeHoverStep(step: ScenarioStep) {
  */
 export function* executeInputStep(step: ScenarioStep) {
   const element: Element = yield call(findStepElement, step, "input");
+  scrollIntoViewIfNeeded(element);
+
+  if (element instanceof HTMLElement && element.isContentEditable) {
+    setEditableText(element, step.value || "");
+    return;
+  }
 
   if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) {
-    throw new Error(`Element with XPath ${step.xpath} is not an input or textarea element`);
+    throw new Error(`Element with XPath ${step.xpath} is not a text field or an editable element`);
   }
 
   // Focus the element
@@ -341,6 +426,54 @@ export function* executeInputStep(step: ScenarioStep) {
   // Trigger input and change events
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+/**
+ * Executes a get text step: stores the text of the element (the value of a field) under the step's key,
+ * for the following steps to use as ${key}
+ */
+export function* executeGetTextStep(step: ScenarioStep) {
+  const element: Element = yield call(findStepElement, step, "get text");
+  const text =
+    element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement
+      ? element.value
+      : ((element as HTMLElement).innerText ?? element.textContent ?? "").trim();
+  const key = (step.value || "").trim() || `text_${Date.now().toString(36)}`;
+  yield put(automationActions.setStoredValue({ key, value: text }));
+}
+
+// Steps whose value may use stored values (${key}). Code steps are left alone: ${...} is JavaScript there.
+const STORED_VALUE_STEP_TYPES = [
+  StepType.INPUT,
+  StepType.VALUE,
+  StepType.SELECT,
+  StepType.NAVIGATE,
+  StepType.REDIRECT,
+  StepType.CONFIRMATION,
+  StepType.NOTIFICATION,
+];
+
+/**
+ * Executes a key press step: the key is pressed on the step's element (focused first), or, for a step
+ * without an element, on whatever has the focus
+ */
+export function* executeKeyPressStep(step: ScenarioStep) {
+  const combo = parseKeyCombo(step.value);
+  if (!combo) {
+    throw new Error(`Unknown key "${step.value || ""}"`);
+  }
+  let element: Element;
+  if (step.xpath) {
+    element = yield call(findStepElement, step, "key press");
+    scrollIntoViewIfNeeded(element);
+    if (element !== document.activeElement) {
+      (element as HTMLElement).focus?.({ preventScroll: true });
+    }
+  } else {
+    const active = document.activeElement;
+    element = active && active !== document.documentElement ? active : document.body;
+  }
+  pressKey(element, combo);
 }
 
 /**
@@ -540,9 +673,26 @@ export function* executeSelectStep(step: ScenarioStep) {
   if (!(element instanceof HTMLSelectElement)) {
     throw new Error(`Element with XPath ${step.xpath} is not a select element`);
   }
+  scrollIntoViewIfNeeded(element);
 
-  // Set the value
-  setNativeValue(element, step.value || "");
+  // Options are matched by value, then by their visible text (steps written by hand often use the label)
+  const options = Array.from(element.options);
+  const findOption = (value: string) =>
+    options.find((option) => option.value === value) ||
+    options.find((option) => option.text.replace(/\s+/g, " ").trim() === value.trim());
+
+  const wanted = element.multiple ? parseSelectValues(step.value, true) : step.value ? [step.value] : [];
+  const missing = wanted.filter((value) => !findOption(value));
+  if (missing.length) throw new Error(`Option not found: ${missing.join(", ")}`);
+
+  if (element.multiple) {
+    const chosen = wanted.map(findOption);
+    options.forEach((option) => {
+      option.selected = chosen.includes(option);
+    });
+  } else {
+    setNativeValue(element, wanted.length ? findOption(wanted[0])!.value : "");
+  }
 
   // Trigger input and change events
   element.dispatchEvent(new Event("input", { bubbles: true }));
@@ -648,6 +798,20 @@ export function* executeNotificationStep(step: ScenarioStep) {
 }
 
 /**
+ * Whether the element is rendered and visible. offsetParent can't tell: it is null for position: fixed
+ * elements (toasts, dialogs), which made the step wait for them until it timed out.
+ */
+function isElementVisible(element: HTMLElement): boolean {
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  if (typeof (element as any).checkVisibility === "function") {
+    return (element as any).checkVisibility({ visibilityProperty: true });
+  }
+  const style = window.getComputedStyle(element);
+  return style.visibility !== "hidden" && style.display !== "none";
+}
+
+/**
  * Executes a wait element visible step
  */
 export function* executeWaitElementVisibleStep(step: ScenarioStep) {
@@ -666,14 +830,7 @@ export function* executeWaitElementVisibleStep(step: ScenarioStep) {
     const element = getElementByXPath(step.xpath, step.alternativeXpaths) as HTMLElement | null;
 
     if (element) {
-      // Check if element is visible
-      const rect = element.getBoundingClientRect();
-      const isVisible = rect.width > 0 && rect.height > 0 && 
-                       element.offsetParent !== null &&
-                       window.getComputedStyle(element).visibility !== 'hidden' &&
-                       window.getComputedStyle(element).display !== 'none';
-      
-      if (isVisible) {
+      if (isElementVisible(element)) {
         // Element is visible, step completed
         return;
       }
@@ -736,6 +893,13 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
       }
     }
 
+    // Use the values stored by earlier get text steps
+    if (step.value && STORED_VALUE_STEP_TYPES.includes(step.type)) {
+      const storedValues = yield select((state) => state.automation.storedValues);
+      const resolved = resolveStoredValues(step.value, storedValues);
+      if (resolved !== step.value) step = { ...step, value: resolved };
+    }
+
     // Create a log entry for this step
     startTime = Date.now();
     const description = getStepDescription(step);
@@ -785,6 +949,12 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
         break;
       case StepType.NOTIFICATION:
         yield call(executeNotificationStep, step);
+        break;
+      case StepType.KEY_PRESS:
+        yield call(executeKeyPressStep, step);
+        break;
+      case StepType.GET_TEXT:
+        yield call(executeGetTextStep, step);
         break;
       default:
         throw new Error(`Unknown step type: ${step.type}`);

@@ -164,7 +164,7 @@ export const Note: React.FC<NoteProps> = ({
         {note.content ? renderNoteMarkup(note.content) : "No content"}
       </div>
 
-      <div className="clear-both mt-2 flex items-center justify-between text-[11px] text-gray-400">
+      <div className="clear-both mt-2 flex items-center justify-between text-[11px] text-gray-500">
         <span className="truncate mr-2" title={describeLocations(note)}>
           {describeLocations(note)}
           {note.isVisible === false ? " · hidden" : ""}

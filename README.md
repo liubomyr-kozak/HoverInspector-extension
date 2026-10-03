@@ -12,42 +12,39 @@ This project is a browser extension built with:
 
 ## Development
 
-### Extension Development
+The project uses **Yarn 1** (`packageManager` in `package.json`); `yarn.lock` is the only lockfile.
 
-To develop the extension, use the following commands:
+```bash
+yarn install   # also runs `wxt prepare`
+```
+
+### Extension Development
 
 ```bash
 # Start development server for all browsers
-npm run dev
+yarn dev
 
 # Start development server for specific browsers
-npm run dev:chrome
-npm run dev:firefox
-npm run dev:edge
+yarn dev:chrome
+yarn dev:firefox
+yarn dev:edge
 ```
 
 ### Standalone Development
 
-The project includes two configurations for standalone development:
-
-#### Webpack (Original)
-
 ```bash
-# Start standalone development server with Webpack
-npm run start
+# Start the standalone page with Vite (http://localhost:4400)
+yarn start
 ```
 
-#### Vite (New)
+It uses `vite.standalone.config.ts` and `tsconfig.standalone.json`, a less strict TypeScript configuration suitable for development.
+
+### Tests
 
 ```bash
-# Start standalone development server with Vite
-npm run start:vite
-
-# Build standalone version with Vite
-npm run build:vite
+yarn test         # run once
+yarn test:watch   # watch mode
 ```
-
-The Vite configuration provides the same functionality as the Webpack configuration but with faster build times and hot module replacement. Both standalone configurations use `tsconfig.standalone.json` for TypeScript compilation, which provides a less strict configuration suitable for development.
 
 ## TypeScript Configuration
 
@@ -64,13 +61,13 @@ To build the extension for production, use the following commands:
 
 ```bash
 # Build for all browsers
-npm run build
+yarn build
 
 # Build for specific browsers
-npm run build:chrome
-npm run build:firefox
-npm run build:edge
-npm run build:safari
+yarn build:chrome
+yarn build:firefox
+yarn build:edge
+yarn build:safari
 ```
 
 ## Packaging
@@ -79,12 +76,12 @@ To create a zip file for distribution, use the following commands:
 
 ```bash
 # Create zip for all browsers
-npm run zip
+yarn zip
 
 # Create zip for specific browsers
-npm run zip:chrome
-npm run zip:firefox
-npm run zip:edge
+yarn zip:chrome
+yarn zip:firefox
+yarn zip:edge
 ```
 
 ## Design Guidelines

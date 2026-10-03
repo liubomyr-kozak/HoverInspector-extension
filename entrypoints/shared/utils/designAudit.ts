@@ -43,9 +43,29 @@ export interface DesignIssue {
   elements: Element[];
 }
 
+export type SpacingGrid = 4 | 8;
+
+export interface AccessibilityFindings {
+  lowContrast: Array<{ fg: string; bg: string; ratio: number; required: number; elements: Element[] }>;
+  tinyText: Element[];
+  tightLines: Element[];
+  /** Headings whose line height is far from the usual 1.0-1.4x of their font size */
+  looseHeadings?: Element[];
+  tightHeadings?: Element[];
+}
+
 export interface DesignAudit {
   scannedElements: number;
   truncated: boolean;
+  /** Spacing grid the issues were computed for */
+  grid: SpacingGrid;
+  /**
+   * CSS custom properties defined on the root element, by the value they resolve to (#HEX for
+   * colours, `16px` for lengths), so a used value can be traced back to its token
+   */
+  variables: Record<string, string[]>;
+  /** What the issues are computed from, kept so they can be recomputed for another grid without a rescan */
+  findings: { rgbaByHex: Map<string, RGBA>; a11y: AccessibilityFindings };
   colors: { text: ValueUsage[]; background: ValueUsage[]; border: ValueUsage[] };
   typography: TypeStyle[];
   families: ValueUsage[];
@@ -58,11 +78,17 @@ export interface DesignAudit {
   score: number;
 }
 
-const MAX_ELEMENTS = 6000;
+/** Cap for the synchronous scan, which blocks the page while it runs */
+export const MAX_ELEMENTS = 6000;
+/** Cap for the chunked scan, which yields to the page between slices */
+export const MAX_ELEMENTS_ASYNC = 50000;
 const MAX_ELEMENTS_PER_VALUE = 50;
 const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "META", "LINK", "HEAD", "TITLE", "BR", "WBR"]);
-/** Spacing grid the page is checked against; most design systems use 4px or 8px steps */
-export const SPACING_GRID = 4;
+/** Default spacing grid the page is checked against; most design systems use 4px or 8px steps */
+export const SPACING_GRID: SpacingGrid = 4;
+
+/** Headings read best with a line height of about 1.0-1.4x their size (body text: ~1.5) */
+export const HEADING_LINE_HEIGHT = { min: 1, max: 1.4 } as const;
 
 // ---------------------------------------------------------------------------------------------
 // Pure helpers (exported for tests)
@@ -96,7 +122,7 @@ export const deltaE = (c1: RGBA, c2: RGBA) => {
   return Math.sqrt((a.l - b.l) ** 2 + (a.a - b.a) ** 2 + (a.b - b.b) ** 2 + alpha ** 2);
 };
 
-export const isOnGrid = (px: number, grid = SPACING_GRID) => {
+export const isOnGrid = (px: number, grid: number = SPACING_GRID) => {
   // 1px and 2px hairlines are normal next to a grid; sub-pixel rounding should not count
   if (px <= 2) return true;
   const remainder = px % grid;
@@ -127,6 +153,101 @@ export const findNearDuplicates = <T extends { count: number }>(
 };
 
 export const formatPx = (px: number) => `${Math.round(px * 100) / 100}px`;
+
+/**
+ * "loose" when a heading's line height is more than 1.4x its size (often body text's 1.5 inherited),
+ * "tight" when it is under 1x (wrapped lines overlap, descenders clip). `normal` is fine.
+ */
+export const classifyHeadingLineHeight = (fontSizePx: number, lineHeight: string): "loose" | "tight" | null => {
+  const lineHeightPx = parseFloat(lineHeight);
+  if (!fontSizePx || Number.isNaN(lineHeightPx) || !lineHeight.endsWith("px")) return null;
+  const ratio = lineHeightPx / fontSizePx;
+  if (ratio > HEADING_LINE_HEIGHT.max + 0.01) return "loose";
+  if (ratio < HEADING_LINE_HEIGHT.min - 0.01) return "tight";
+  return null;
+};
+
+const HEADING_TAGS = new Set(["H1", "H2", "H3", "H4", "H5", "H6"]);
+
+/** Semantic headings, plus large short text that is styled as one */
+export const isHeadingLike = (element: Element, fontSizePx: number) =>
+  HEADING_TAGS.has(element.tagName) ||
+  element.getAttribute("role") === "heading" ||
+  (fontSizePx >= 24 && (element.textContent || "").trim().length <= 120);
+
+/**
+ * Maps resolved values to the custom properties that hold them: `{ "#2563EB": ["--brand"], "16px": ["--space-4"] }`.
+ * Lengths in px or rem are indexed as px; anything `parseColor` understands as a colour, as #HEX.
+ */
+export const indexCssVariables = (
+  entries: Array<[name: string, raw: string]>,
+  rootFontSize = 16,
+  parseColor: (value: string) => RGBA | null = colorToRgb,
+): Record<string, string[]> => {
+  const index: Record<string, string[]> = {};
+  const add = (key: string, name: string) => {
+    (index[key] ||= []).includes(name) || index[key].push(name);
+  };
+  for (const [name, rawValue] of entries) {
+    const raw = rawValue.trim();
+    if (!raw || raw.length > 80) continue;
+    const length = raw.match(/^(-?\d*\.?\d+)(px|rem)$/);
+    if (length) {
+      const px = parseFloat(length[1]) * (length[2] === "rem" ? rootFontSize : 1);
+      if (px !== 0) add(formatPx(Math.abs(px)), name);
+      continue;
+    }
+    // Plain numbers and multi-part values (shadows, font stacks, transitions) are not colours
+    if (/^-?[\d.]+$/.test(raw) || /\s/.test(raw.replace(/\([^()]*\)/g, "()"))) continue;
+    const rgba = parseColor(raw);
+    if (rgba && rgba.a > 0) add(rgbToHex({ ...rgba, a: Math.round(rgba.a * 100) / 100 }), name);
+  }
+  return index;
+};
+
+/** Custom properties declared on the root element (computed, so values are resolved) */
+const readRootVariables = (): Record<string, string[]> => {
+  const rootElement = document.documentElement;
+  const computed = getComputedStyle(rootElement);
+  const names = new Set<string>();
+  for (let i = 0; i < computed.length; i++) {
+    if (computed[i].startsWith("--")) names.add(computed[i]);
+  }
+  // Not every browser lists custom properties in the computed style; read :root rules as well
+  if (!names.size) {
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules: CSSRuleList;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue; // cross-origin sheet
+      }
+      for (const rule of Array.from(rules)) {
+        if (rule instanceof CSSStyleRule && /(^|,)\s*(:root|html)\s*(,|$)/.test(rule.selectorText)) {
+          for (let i = 0; i < rule.style.length; i++) if (rule.style[i].startsWith("--")) names.add(rule.style[i]);
+        }
+      }
+    }
+  }
+  if (!names.size || names.size > 2000) return {};
+  const rootFontSize = parseFloat(computed.fontSize) || 16;
+  return indexCssVariables(
+    [...names].map((name) => [name, computed.getPropertyValue(name)]),
+    rootFontSize,
+  );
+};
+
+/** The most common class names on a set of elements, for "where does this value come from" hints */
+export const topClasses = (elements: Element[], limit = 3): string[] => {
+  const counts = new Map<string, number>();
+  for (const element of elements) {
+    for (const name of Array.from(element.classList)) counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name]) => name);
+};
 
 // ---------------------------------------------------------------------------------------------
 // Page scan
@@ -173,7 +294,15 @@ const familyName = (family: string) => family.split(",")[0].trim().replace(/^["'
 
 const GENERIC_FAMILIES = new Set(["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-monospace"]);
 
-export const auditPage = (root: Element = document.body): DesignAudit => {
+interface AuditOptions {
+  grid?: SpacingGrid;
+}
+
+/**
+ * Collects values element by element. `visit` is cheap enough per element that the async scan can
+ * call it in time slices; `finish` builds the audit and its issues.
+ */
+const createScanner = () => {
   const textColors = new UsageMap();
   const backgrounds = new UsageMap();
   const borders = new UsageMap();
@@ -188,22 +317,18 @@ export const auditPage = (root: Element = document.body): DesignAudit => {
   const lowContrast = new Map<string, { fg: string; bg: string; ratio: number; required: number; elements: Element[] }>();
   const tinyText: Element[] = [];
   const tightLines: Element[] = [];
-
-  const all = root.querySelectorAll("*");
+  const looseHeadings: Element[] = [];
+  const tightHeadings: Element[] = [];
   let scanned = 0;
-  let truncated = false;
 
-  for (const element of all) {
-    if (scanned >= MAX_ELEMENTS) {
-      truncated = true;
-      break;
-    }
-    if (SKIP_TAGS.has(element.tagName) || element.closest("hover-inspector")) continue;
+  /** Returns false when the element was skipped (hidden, ours, not drawn) */
+  const visit = (element: Element): boolean => {
+    if (SKIP_TAGS.has(element.tagName) || element.closest("hover-inspector")) return false;
     // SVG internals carry presentation attributes rather than design tokens
-    if (element instanceof SVGElement && element.tagName.toLowerCase() !== "svg") continue;
+    if (element instanceof SVGElement && element.tagName.toLowerCase() !== "svg") return false;
 
     const style = window.getComputedStyle(element);
-    if (!isVisible(element, style)) continue;
+    if (!isVisible(element, style)) return false;
     scanned++;
 
     // Colours
@@ -300,33 +425,119 @@ export const auditPage = (root: Element = document.body): DesignAudit => {
           lowContrast.set(pairKey, entry);
         }
       }
+
+      // Headings: line height outside 1.0-1.4x
+      if (isHeadingLike(element, size)) {
+        const verdict = classifyHeadingLineHeight(size, style.lineHeight);
+        if (verdict === "loose" && looseHeadings.length < MAX_ELEMENTS_PER_VALUE) looseHeadings.push(element);
+        if (verdict === "tight" && tightHeadings.length < MAX_ELEMENTS_PER_VALUE) tightHeadings.push(element);
+      }
     }
-  }
-
-  const byCount = (a: { count: number }, b: { count: number }) => b.count - a.count;
-  const bySize = (a: ValueUsage, b: ValueUsage) => (a.size ?? 0) - (b.size ?? 0);
-
-  const audit: DesignAudit = {
-    scannedElements: scanned,
-    truncated,
-    colors: {
-      text: textColors.list().sort(byCount),
-      background: backgrounds.list().sort(byCount),
-      border: borders.list().sort(byCount),
-    },
-    typography: [...typeStyles.values()].sort((a, b) => b.size - a.size || b.count - a.count),
-    families: families.list().sort(byCount),
-    fontSizes: fontSizes.list().sort(bySize),
-    spacing: spacing.list().sort(bySize),
-    radii: radii.list().sort(bySize),
-    shadows: shadows.list().sort(byCount),
-    issues: [],
-    score: 100,
+    return true;
   };
 
-  audit.issues = findIssues(audit, rgbaByHex, { lowContrast: [...lowContrast.values()], tinyText, tightLines });
-  audit.score = scoreIssues(audit.issues);
-  return audit;
+  const finish = (truncated: boolean, options: AuditOptions = {}): DesignAudit => {
+    const byCount = (a: { count: number }, b: { count: number }) => b.count - a.count;
+    const bySize = (a: ValueUsage, b: ValueUsage) => (a.size ?? 0) - (b.size ?? 0);
+    let variables: Record<string, string[]> = {};
+    try {
+      variables = readRootVariables();
+    } catch {
+      variables = {};
+    }
+
+    const audit: DesignAudit = {
+      scannedElements: scanned,
+      truncated,
+      grid: options.grid ?? SPACING_GRID,
+      variables,
+      findings: {
+        rgbaByHex,
+        a11y: { lowContrast: [...lowContrast.values()], tinyText, tightLines, looseHeadings, tightHeadings },
+      },
+      colors: {
+        text: textColors.list().sort(byCount),
+        background: backgrounds.list().sort(byCount),
+        border: borders.list().sort(byCount),
+      },
+      typography: [...typeStyles.values()].sort((a, b) => b.size - a.size || b.count - a.count),
+      families: families.list().sort(byCount),
+      fontSizes: fontSizes.list().sort(bySize),
+      spacing: spacing.list().sort(bySize),
+      radii: radii.list().sort(bySize),
+      shadows: shadows.list().sort(byCount),
+      issues: [],
+      score: 100,
+    };
+    return regradeAudit(audit, audit.grid);
+  };
+
+  return { visit, finish, scannedCount: () => scanned };
+};
+
+const scanTargets = (root: Element) => root.querySelectorAll("*");
+
+/** Synchronous scan of the first 6000 elements (blocks the page while it runs) */
+export const auditPage = (root: Element = document.body, options: AuditOptions = {}): DesignAudit => {
+  const scanner = createScanner();
+  let truncated = false;
+  for (const element of scanTargets(root)) {
+    if (scanner.scannedCount() >= MAX_ELEMENTS) {
+      truncated = true;
+      break;
+    }
+    scanner.visit(element);
+  }
+  return scanner.finish(truncated, options);
+};
+
+export interface AsyncAuditOptions extends AuditOptions {
+  maxElements?: number;
+  /** Longest stretch of work before yielding to the page, in ms */
+  sliceMs?: number;
+  onProgress?: (done: number, total: number) => void;
+  signal?: AbortSignal;
+}
+
+const yieldToPage = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * The same scan in time slices: the page stays responsive (input, animations) and large pages are
+ * scanned up to `maxElements` instead of the synchronous scan's 6000. Rejects with an AbortError
+ * when `signal` aborts.
+ */
+export const auditPageAsync = async (root: Element = document.body, options: AsyncAuditOptions = {}): Promise<DesignAudit> => {
+  const { maxElements = MAX_ELEMENTS_ASYNC, sliceMs = 12, onProgress, signal } = options;
+  const scanner = createScanner();
+  const targets = scanTargets(root);
+  const total = targets.length;
+  let truncated = false;
+  let sliceStart = performance.now();
+
+  for (let i = 0; i < total; i++) {
+    if (scanner.scannedCount() >= maxElements) {
+      truncated = true;
+      break;
+    }
+    const element = targets[i];
+    // The page can change between slices
+    if (element.isConnected) scanner.visit(element);
+
+    if ((i & 31) === 31 && performance.now() - sliceStart > sliceMs) {
+      onProgress?.(i + 1, total);
+      await yieldToPage();
+      if (signal?.aborted) throw new DOMException("Design audit cancelled", "AbortError");
+      sliceStart = performance.now();
+    }
+  }
+  onProgress?.(total, total);
+  return scanner.finish(truncated, options);
+};
+
+/** Recomputes the issues and score for another spacing grid, without scanning the page again */
+export const regradeAudit = (audit: DesignAudit, grid: SpacingGrid): DesignAudit => {
+  const issues = findIssues(audit, audit.findings.rgbaByHex, audit.findings.a11y, { grid });
+  return { ...audit, grid, issues, score: scoreIssues(issues) };
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -341,17 +552,13 @@ const elementsOf = (...usages: Array<{ elements: Element[] }>) => {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-interface AccessibilityFindings {
-  lowContrast: Array<{ fg: string; bg: string; ratio: number; required: number; elements: Element[] }>;
-  tinyText: Element[];
-  tightLines: Element[];
-}
-
 export const findIssues = (
   audit: Pick<DesignAudit, "colors" | "families" | "fontSizes" | "spacing" | "radii" | "shadows">,
   rgbaByHex: Map<string, RGBA>,
   a11y: AccessibilityFindings,
+  options: { grid?: SpacingGrid } = {},
 ): DesignIssue[] => {
+  const grid = options.grid ?? SPACING_GRID;
   const issues: DesignIssue[] = [];
   const push = (issue: Omit<DesignIssue, "id">) => issues.push({ ...issue, id: `${issue.category}-${issues.length}` });
 
@@ -363,7 +570,8 @@ export const findIssues = (
       push({
         severity: c.ratio < 3 ? "high" : "medium",
         category: "accessibility",
-        title: `Low text contrast ${c.ratio.toFixed(2)}:1`,
+        // Round down: 4.497 must not read as "4.50:1 needs at least 4.5:1"
+        title: `Low text contrast ${(Math.floor(c.ratio * 100) / 100).toFixed(2)}:1`,
         detail: `${c.fg} text on ${c.bg} needs at least ${c.required}:1 (WCAG AA). ${plural(c.elements.length, "element")}.`,
         values: [c.fg, c.bg],
         elements: c.elements,
@@ -389,6 +597,28 @@ export const findIssues = (
       detail: `${a11y.tightLines.length === 1 ? "1 text block has" : `${a11y.tightLines.length} text blocks have`} a line height under 1.2× the font size.`,
       values: [],
       elements: a11y.tightLines.slice(0, MAX_ELEMENTS_PER_VALUE),
+    });
+  }
+
+  if (a11y.looseHeadings?.length) {
+    push({
+      severity: "low",
+      category: "typography",
+      title: "Loose line height on headings",
+      detail: `${a11y.looseHeadings.length === 1 ? "1 heading has" : `${a11y.looseHeadings.length} headings have`} a line height over ${HEADING_LINE_HEIGHT.max}× the font size, often body text's line height inherited. Headings read better at 1.1–1.3.`,
+      values: [],
+      elements: a11y.looseHeadings.slice(0, MAX_ELEMENTS_PER_VALUE),
+    });
+  }
+
+  if (a11y.tightHeadings?.length) {
+    push({
+      severity: "medium",
+      category: "typography",
+      title: "Headings with line height under 1",
+      detail: `${a11y.tightHeadings.length === 1 ? "1 heading has" : `${a11y.tightHeadings.length} headings have`} a line height smaller than the font size: wrapped lines overlap and descenders can be clipped.`,
+      values: [],
+      elements: a11y.tightHeadings.slice(0, MAX_ELEMENTS_PER_VALUE),
     });
   }
 
@@ -434,7 +664,9 @@ export const findIssues = (
         severity: "low",
         category: "color",
         title: `${usages.length} different ${kind} colours`,
-        detail: `A consistent palette usually has ${limit} or fewer. ${rare.length} of them are used only once or twice.`,
+        detail: `A consistent palette usually has ${limit} or fewer.${
+          rare.length ? ` ${rare.length} of them ${rare.length === 1 ? "is" : "are"} used only once or twice.` : ""
+        }`,
         values: rare.slice(0, 10).map((u) => u.value),
         elements: elementsOf(...rare),
       });
@@ -491,7 +723,7 @@ export const findIssues = (
   }
 
   // Spacing
-  const offGrid = audit.spacing.filter((s) => s.size !== undefined && !isOnGrid(s.size));
+  const offGrid = audit.spacing.filter((s) => s.size !== undefined && !isOnGrid(s.size, grid));
   if (offGrid.length) {
     const offUses = offGrid.reduce((sum, s) => sum + s.count, 0);
     const allUses = audit.spacing.reduce((sum, s) => sum + s.count, 0) || 1;
@@ -499,8 +731,8 @@ export const findIssues = (
     push({
       severity: share > 0.25 ? "medium" : "low",
       category: "spacing",
-      title: `${plural(offGrid.length, "spacing value")} off the ${SPACING_GRID}px grid`,
-      detail: `${Math.round(share * 100)}% of margins, paddings and gaps aren't multiples of ${SPACING_GRID}px.`,
+      title: `${plural(offGrid.length, "spacing value")} off the ${grid}px grid`,
+      detail: `${Math.round(share * 100)}% of margins, paddings and gaps aren't multiples of ${grid}px.`,
       values: offGrid.map((s) => s.value),
       elements: elementsOf(...offGrid),
     });

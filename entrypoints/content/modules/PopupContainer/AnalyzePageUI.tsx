@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
-import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow, IconLayoutDashboard } from "@tabler/icons-react";
-import { Tabs } from "antd";
+import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow, IconLayoutDashboard, IconRefresh } from "@tabler/icons-react";
+import { Button, Tabs } from "antd";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import TypographyRules from "@entrypoints/content/modules/SettingsIconBox/components/TypographyRules.tsx";
@@ -47,23 +48,21 @@ const useLazyTokens = <T,>(extract: () => T[]) => {
 };
 
 const TokenTabFrame: React.FC<{
+  title: string;
   loading: boolean;
   empty: boolean;
   emptyText: string;
   onRescan: () => void;
   children: React.ReactNode;
-}> = ({ loading, empty, emptyText, onRescan, children }) => (
-  <div>
-    <div className="flex justify-end mb-2">
-      <button
-        className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-        onClick={onRescan}
-        disabled={loading}
-      >
-        {loading ? "Scanning..." : "Rescan page"}
-      </button>
+}> = ({ title, loading, empty, emptyText, onRescan, children }) => (
+  <div className="space-y-2">
+    <div className="flex items-center justify-between gap-2">
+      <h4 className="m-0 text-base font-semibold text-gray-800">{title}</h4>
+      <Button size="small" icon={<IconRefresh size={14} />} onClick={onRescan} loading={loading}>
+        Rescan
+      </Button>
     </div>
-    {loading ? <p className="text-sm text-gray-500">Scanning the page...</p> : children}
+    {loading ? <LoadingState inline label="Scanning the page…" /> : children}
     {!loading && empty && <p className="text-sm text-gray-500 mt-3">{emptyText}</p>}
   </div>
 );
@@ -71,7 +70,7 @@ const TokenTabFrame: React.FC<{
 const SpacingTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractSpacingTokens);
   return (
-    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No margin, padding or gap values found on this page." onRescan={rescan}>
+    <TokenTabFrame title="Spacing tokens" loading={!tokens} empty={tokens?.length === 0} emptyText="No margin, padding or gap values found on this page." onRescan={rescan}>
       <SpacingTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -80,7 +79,7 @@ const SpacingTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({
 const BorderTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractBorderRadiusTokens);
   return (
-    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No rounded corners found on this page." onRescan={rescan}>
+    <TokenTabFrame title="Border radius tokens" loading={!tokens} empty={tokens?.length === 0} emptyText="No rounded corners found on this page." onRescan={rescan}>
       <BorderTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -89,7 +88,7 @@ const BorderTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ 
 const ShadowTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ navigateToElement }) => {
   const { tokens, rescan } = useLazyTokens(extractShadowTokens);
   return (
-    <TokenTabFrame loading={!tokens} empty={tokens?.length === 0} emptyText="No box shadows found on this page." onRescan={rescan}>
+    <TokenTabFrame title="Shadow tokens" loading={!tokens} empty={tokens?.length === 0} emptyText="No box shadows found on this page." onRescan={rescan}>
       <ShadowTokenTab tokens={tokens || []} navigateToElement={navigateToElement} />
     </TokenTabFrame>
   );
@@ -108,70 +107,37 @@ export const AnalyzePageUI = () => {
     [highlightManager],
   );
 
+  // Same pattern as the Automation tabs: every tab shows its icon, only the selected one its name, so all
+  // six fit in the narrow panel instead of hiding behind a "more" menu
+  const tabLabel = (key: string, Icon: React.ComponentType<{ size?: number }>, title: string) => (
+    <span className="flex items-center gap-1.5" title={title} aria-label={title}>
+      <Icon size={18} />
+      {activeTab === key && <span className="font-medium">{title}</span>}
+    </span>
+  );
+
   const tabItems = useMemo(
     () => [
-      {
-        key: "overview",
-        label: (
-          <span className="flex items-center gap-2">
-            <IconLayoutDashboard size={18} className="text-blue-600" />
-            <span className="font-medium">Overview</span>
-          </span>
-        ),
-        children: <DesignOverview />,
-      },
-      {
-        key: "color-palette",
-        label: (
-          <span className="flex items-center gap-2">
-            <IconColorSwatch size={18} className="text-purple-500" />
-            <span className="font-medium">Colors</span>
-          </span>
-        ),
-        children: <ColorPaletteDefinition />,
-      },
-      {
-        key: "typography",
-        label: (
-          <span className="flex items-center gap-2">
-            <IconTypography size={18} className="text-green-600" />
-            <span className="font-medium">Type</span>
-          </span>
-        ),
-        children: <TypographyRules />,
-      },
+      { key: "overview", label: tabLabel("overview", IconLayoutDashboard, "Overview"), children: <DesignOverview /> },
+      { key: "color-palette", label: tabLabel("color-palette", IconColorSwatch, "Colors"), children: <ColorPaletteDefinition /> },
+      { key: "typography", label: tabLabel("typography", IconTypography, "Type"), children: <TypographyRules /> },
       {
         key: "spacing",
-        label: (
-          <span className="flex items-center gap-2">
-            <IconRuler size={18} className="text-blue-500" />
-            <span className="font-medium">Spacing</span>
-          </span>
-        ),
+        label: tabLabel("spacing", IconRuler, "Spacing"),
         children: <SpacingTokensPane navigateToElement={navigateToElement} />,
       },
       {
         key: "borders",
-        label: (
-          <span className="flex items-center gap-2">
-            <IconBorderRadius size={18} className="text-orange-500" />
-            <span className="font-medium">Radii</span>
-          </span>
-        ),
+        label: tabLabel("borders", IconBorderRadius, "Radii"),
         children: <BorderTokensPane navigateToElement={navigateToElement} />,
       },
       {
         key: "shadows",
-        label: (
-          <span className="flex items-center gap-2">
-            <IconShadow size={18} className="text-gray-500" />
-            <span className="font-medium">Shadows</span>
-          </span>
-        ),
+        label: tabLabel("shadows", IconShadow, "Shadows"),
         children: <ShadowTokensPane navigateToElement={navigateToElement} />,
       },
     ],
-    [navigateToElement],
+    [navigateToElement, activeTab],
   );
 
   return (
@@ -183,7 +149,7 @@ export const AnalyzePageUI = () => {
         </FeatureTitle>
       </PortalModalHeader>
 
-      <div className="py-4">
+      <div>
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}

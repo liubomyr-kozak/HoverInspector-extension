@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, ConfigProvider, Radio } from "antd";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import { toast } from "react-toastify";
 import {
   IconAlertTriangle,
@@ -11,11 +13,14 @@ import {
 } from "@tabler/icons-react";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import {
-  auditPage,
+  auditPageAsync,
   auditToCssVariables,
   isOnGrid,
+  regradeAudit,
   SPACING_GRID,
+  topClasses,
   type DesignAudit,
+  type SpacingGrid,
   type DesignIssue,
   type IssueCategory,
   type ValueUsage,
@@ -29,7 +34,7 @@ import {
 const SEVERITY_STYLE: Record<DesignIssue["severity"], { dot: string; label: string }> = {
   high: { dot: "bg-red-500", label: "High" },
   medium: { dot: "bg-amber-500", label: "Medium" },
-  low: { dot: "bg-sky-400", label: "Low" },
+  low: { dot: "bg-sky-500", label: "Low" },
 };
 
 const CATEGORY_LABEL: Record<IssueCategory, string> = {
@@ -42,6 +47,28 @@ const CATEGORY_LABEL: Record<IssueCategory, string> = {
 };
 
 const isColorValue = (value: string) => /^#[0-9A-F]{6,8}$/i.test(value);
+
+// The user's grid choice follows them across sites (extension storage, never the page's localStorage)
+const GRID_STORAGE_KEY = "designOverview.spacingGrid";
+const loadGrid = async (): Promise<SpacingGrid> => {
+  try {
+    const value = (await browser.storage.local.get(GRID_STORAGE_KEY))[GRID_STORAGE_KEY];
+    return value === 8 ? 8 : 4;
+  } catch {
+    return SPACING_GRID;
+  }
+};
+const saveGrid = (grid: SpacingGrid) => browser.storage.local.set({ [GRID_STORAGE_KEY]: grid }).catch(() => undefined);
+
+/** "Where does this value come from": the custom properties that resolve to it and the classes that use it */
+const sourceHint = (audit: DesignAudit, usage: { value: string; elements: Element[] }) => {
+  const variables = audit.variables[usage.value] || [];
+  const classes = topClasses(usage.elements);
+  const parts: string[] = [];
+  if (variables.length) parts.push(`Token: ${variables.map((v) => `var(${v})`).join(", ")}`);
+  if (classes.length) parts.push(`Used by: ${classes.map((c) => `.${c}`).join(", ")}`);
+  return { variables, title: parts.join("\n") };
+};
 
 const copy = async (text: string, what: string) => {
   try {
@@ -99,7 +126,8 @@ const Section: React.FC<{ title: string; count?: number; defaultOpen?: boolean; 
 };
 
 const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
-  const color = score >= 85 ? "#16a34a" : score >= 60 ? "#d97706" : "#dc2626";
+  // Darker green/amber than the usual status colours so the number keeps 4.5:1 on white
+  const color = score >= 85 ? "#15803d" : score >= 60 ? "#b45309" : "#dc2626";
   const deg = Math.round((score / 100) * 360);
   return (
     <div
@@ -118,12 +146,16 @@ const ScoreBadge: React.FC<{ score: number }> = ({ score }) => {
 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="text-center">
-    <div className="text-[15px] font-semibold text-gray-800">{value}</div>
-    <div className="text-[11px] text-gray-500 leading-tight">{label}</div>
+    <div className="text-[15px] font-semibold text-gray-800 tabular-nums">{value}</div>
+    <div className="text-[11px] text-gray-600 leading-tight">{label}</div>
   </div>
 );
 
-const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: number }> = ({ issue, onShow, position }) => {
+const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: number }> = ({
+  issue,
+  onShow,
+  position,
+}) => {
   const sev = SEVERITY_STYLE[issue.severity];
   return (
     <div className="border border-gray-200 rounded-md p-2.5 mb-2 bg-white">
@@ -131,8 +163,8 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
         <span className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${sev.dot}`} title={`${sev.label} severity`} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-medium text-gray-800 truncate">{issue.title}</span>
-            <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-gray-400">
+            <span className="text-[13px] font-medium text-gray-800 min-w-0">{issue.title}</span>
+            <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-gray-500">
               {CATEGORY_LABEL[issue.category]}
             </span>
           </div>
@@ -163,7 +195,7 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
                 <div key={`${keep}|${drop}`} className="flex items-center gap-1.5 text-[11px] font-mono text-gray-700">
                   {[keep, drop].map((value, i) => (
                     <React.Fragment key={value}>
-                      {i === 1 && <span className="text-gray-400">≈</span>}
+                      {i === 1 && <span className="text-gray-500">≈</span>}
                       <button
                         onClick={() => copy(value, value)}
                         title={`Copy ${value}`}
@@ -183,7 +215,7 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
           {issue.elements.length > 0 && (
             <button
               onClick={onShow}
-              className="mt-1.5 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+              className="mt-1.5 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 rounded"
             >
               <IconFocus2 size={13} />
               {position === undefined
@@ -198,53 +230,94 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
 };
 
 const SwatchGrid: React.FC<{
+  audit: DesignAudit;
   colors: ValueUsage[];
   onShow: (usage: ValueUsage) => void;
-}> = ({ colors, onShow }) => (
+}> = ({ audit, colors, onShow }) => (
   <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))" }}>
-    {colors.map((c) => (
-      <div key={c.value} className="rounded-md border border-gray-200 overflow-hidden bg-white">
-        <button
-          className="block w-full h-10"
-          style={{ background: c.value }}
-          onClick={() => onShow(c)}
-          title={`Show elements using ${c.value}`}
-          aria-label={`Show elements using ${c.value}`}
-        />
-        <button
-          className="w-full px-1.5 py-1 text-left hover:bg-gray-50"
-          onClick={() => copy(c.value, c.value)}
-          title="Copy"
-        >
-          <div className="text-[11px] font-mono text-gray-800 truncate">{c.value}</div>
-          <div className="text-[10px] text-gray-500">{c.count} {c.count === 1 ? "use" : "uses"}</div>
-        </button>
-      </div>
-    ))}
+    {colors.map((c) => {
+      const source = sourceHint(audit, c);
+      return (
+        <div key={c.value} className="rounded-md border border-gray-200 overflow-hidden bg-white">
+          <button
+            className="block w-full h-10"
+            style={{ background: c.value }}
+            onClick={() => onShow(c)}
+            title={`Show elements using ${c.value}${source.title ? `\n${source.title}` : ""}`}
+            aria-label={`Show elements using ${c.value}`}
+          />
+          <button
+            className="w-full px-1.5 py-1 text-left hover:bg-gray-50"
+            onClick={() => copy(c.value, c.value)}
+            title={`Copy ${c.value}${source.title ? `\n${source.title}` : ""}`}
+          >
+            <div className="text-[11px] font-mono text-gray-800 truncate">{c.value}</div>
+            {source.variables.length > 0 && (
+              <div className="text-[10px] font-mono text-blue-700 truncate">{source.variables[0]}</div>
+            )}
+            <div className="text-[10px] text-gray-600">
+              {c.count} {c.count === 1 ? "use" : "uses"}
+            </div>
+          </button>
+        </div>
+      );
+    })}
   </div>
 );
 
 export const DesignOverview: React.FC = () => {
   const [audit, setAudit] = useState<DesignAudit | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [filter, setFilter] = useState<IssueCategory | "all">("all");
+  const [grid, setGrid] = useState<SpacingGrid | null>(null);
   const cycler = useElementCycler();
+  const scanRef = useRef<AbortController | null>(null);
+  const gridRef = useRef<SpacingGrid>(SPACING_GRID);
 
+  // Chunked scan: the page stays responsive and large pages are scanned past the old 6000-element cap
   const scan = useCallback(() => {
+    scanRef.current?.abort();
+    const controller = new AbortController();
+    scanRef.current = controller;
     setAudit(null);
     setError(null);
-    // Let the loading state paint before the synchronous page scan
-    setTimeout(() => {
-      try {
-        setAudit(auditPage());
-      } catch (e) {
+    setProgress(null);
+    auditPageAsync(document.body, {
+      grid: gridRef.current,
+      signal: controller.signal,
+      onProgress: (done, total) => !controller.signal.aborted && setProgress({ done, total }),
+    })
+      .then((result) => !controller.signal.aborted && setAudit(result))
+      .catch((e) => {
+        if (controller.signal.aborted) return;
         console.error("Design audit failed:", e);
         setError("Couldn't analyse this page.");
-      }
-    }, 30);
+      });
   }, []);
 
-  useEffect(scan, [scan]);
+  // Load the remembered grid first, then scan with it
+  useEffect(() => {
+    let cancelled = false;
+    loadGrid().then((saved) => {
+      if (cancelled) return;
+      gridRef.current = saved;
+      setGrid(saved);
+      scan();
+    });
+    return () => {
+      cancelled = true;
+      scanRef.current?.abort();
+    };
+  }, [scan]);
+
+  const changeGrid = (value: SpacingGrid) => {
+    gridRef.current = value;
+    setGrid(value);
+    saveGrid(value);
+    // Only the issues depend on the grid: recompute them, no rescan
+    setAudit((current) => (current ? regradeAudit(current, value) : current));
+  };
 
   const categories = useMemo(() => {
     if (!audit) return [];
@@ -253,27 +326,36 @@ export const DesignOverview: React.FC = () => {
 
   if (error) {
     return (
-      <div className="text-sm text-red-600">
-        {error}{" "}
-        <button className="underline" onClick={scan}>
+      <div role="alert" className="flex items-center gap-2 text-sm text-red-700">
+        <IconAlertTriangle size={16} className="shrink-0" />
+        <span className="flex-1">{error}</span>
+        <Button size="small" onClick={scan}>
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
 
-  if (!audit) return <p className="text-sm text-gray-500">Analysing the page…</p>;
+  if (!audit) {
+    return <LoadingState inline label="Analysing the page…" progress={progress} progressUnit="elements" />;
+  }
 
   const issues = filter === "all" ? audit.issues : audit.issues.filter((i) => i.category === filter);
-  const colorCount = new Set([...audit.colors.text, ...audit.colors.background, ...audit.colors.border].map((c) => c.value)).size;
+  const colorCount = new Set(
+    [...audit.colors.text, ...audit.colors.background, ...audit.colors.border].map((c) => c.value),
+  ).size;
   const maxSpacing = Math.max(...audit.spacing.map((s) => s.size ?? 0), 1);
 
   return (
     <div className="text-gray-800">
       {/* Summary */}
-      <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 mb-4">
+      <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 mb-3">
         <ScoreBadge score={audit.score} />
-        <div className="flex-1 grid grid-cols-5 gap-1">
+        {/* Wraps to two rows in a narrow panel instead of breaking the labels */}
+        <div
+          className="flex-1 min-w-0 grid gap-x-1 gap-y-2"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(54px, 1fr))" }}
+        >
           <Stat label="Colours" value={colorCount} />
           <Stat label="Type styles" value={audit.typography.length} />
           <Stat label="Spacing" value={audit.spacing.length} />
@@ -281,24 +363,44 @@ export const DesignOverview: React.FC = () => {
           <Stat label="Shadows" value={audit.shadows.length} />
         </div>
       </div>
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-xs text-gray-500 flex-1">
-          {audit.scannedElements} elements scanned{audit.truncated ? " (first 6000 only)" : ""}
-        </span>
-        <button
-          onClick={() => copy(auditToCssVariables(audit), "CSS variables")}
-          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
-          title="Copy every value as CSS custom properties"
-        >
-          <IconCopy size={13} /> Copy as CSS variables
-        </button>
-        <button
-          onClick={scan}
-          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
-        >
-          <IconRefresh size={13} /> Rescan
-        </button>
-      </div>
+      {/* Compact controls (12px) to match the overview's small type */}
+      <ConfigProvider theme={{ token: { fontSize: 12 } }}>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs text-gray-600 flex-1 min-w-[9rem]">
+            {audit.scannedElements.toLocaleString()} elements scanned
+            {audit.truncated ? ` (first ${audit.scannedElements.toLocaleString()} only)` : ""}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-600" id="design-overview-grid-label">
+              Grid
+            </span>
+            {/* A radio group rather than antd's Segmented, which puts aria-selected on role-less divs */}
+            <Radio.Group
+              size="small"
+              optionType="button"
+              buttonStyle="solid"
+              aria-labelledby="design-overview-grid-label"
+              value={grid ?? audit.grid}
+              onChange={(e) => changeGrid(e.target.value as SpacingGrid)}
+              options={[
+                { label: "4px", value: 4 },
+                { label: "8px", value: 8 },
+              ]}
+            />
+          </div>
+          <Button
+            size="small"
+            icon={<IconCopy size={13} />}
+            onClick={() => copy(auditToCssVariables(audit), "CSS variables")}
+            title="Copy every value as CSS custom properties"
+          >
+            Copy as CSS variables
+          </Button>
+          <Button size="small" icon={<IconRefresh size={13} />} onClick={scan}>
+            Rescan
+          </Button>
+        </div>
+      </ConfigProvider>
 
       {/* Inconsistencies */}
       <Section title="Inconsistencies" count={audit.issues.length}>
@@ -313,11 +415,16 @@ export const DesignOverview: React.FC = () => {
                 <button
                   key={c}
                   onClick={() => setFilter(c)}
+                  aria-pressed={filter === c}
                   className={`text-[11px] px-2 py-0.5 rounded-full border ${
-                    filter === c ? "bg-blue-600 border-blue-600 text-white" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    filter === c
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  {c === "all" ? `All ${audit.issues.length}` : `${CATEGORY_LABEL[c]} ${audit.issues.filter((i) => i.category === c).length}`}
+                  {c === "all"
+                    ? `All ${audit.issues.length}`
+                    : `${CATEGORY_LABEL[c]} ${audit.issues.filter((i) => i.category === c).length}`}
                 </button>
               ))}
             </div>
@@ -344,8 +451,12 @@ export const DesignOverview: React.FC = () => {
         ).map(([label, colors]) =>
           colors.length ? (
             <div key={label} className="mb-3">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">{label}</div>
-              <SwatchGrid colors={colors} onShow={(c) => cycler.show(`${label}-${c.value}`, c.elements)} />
+              <div className="text-[11px] uppercase tracking-wide text-gray-600 mb-1">{label}</div>
+              <SwatchGrid
+                audit={audit}
+                colors={colors}
+                onShow={(c) => cycler.show(`${label}-${c.value}`, c.elements)}
+              />
             </div>
           ) : null,
         )}
@@ -387,28 +498,37 @@ export const DesignOverview: React.FC = () => {
 
       {/* Spacing */}
       <Section title="Spacing scale" count={audit.spacing.length}>
-        <p className="text-xs text-gray-500 mb-2">
-          Margins, paddings and gaps. Values off the {SPACING_GRID}px grid are marked orange.
+        <p className="text-xs text-gray-600 mb-2">
+          Margins, paddings and gaps. Values off the {audit.grid}px grid are marked orange; a token name shows where a
+          value matches a CSS variable on :root.
         </p>
         {audit.spacing.map((s) => {
-          const off = !isOnGrid(s.size ?? 0);
+          const off = !isOnGrid(s.size ?? 0, audit.grid);
+          const source = sourceHint(audit, s);
           return (
             <button
               key={s.value}
               onClick={() => cycler.show(`space-${s.value}`, s.elements)}
               className="w-full flex items-center gap-2 py-0.5 hover:bg-gray-50"
-              title="Show elements with this spacing"
+              title={`Show elements with this spacing${source.title ? `\n${source.title}` : ""}`}
             >
-              <span className={`w-14 shrink-0 text-right text-[11px] font-mono ${off ? "text-orange-600" : "text-gray-700"}`}>
+              <span
+                className={`w-14 shrink-0 text-right text-[11px] font-mono ${off ? "text-orange-700" : "text-gray-700"}`}
+              >
                 {s.value}
               </span>
+              {source.variables.length > 0 && (
+                <span className="max-w-[35%] shrink-0 truncate text-[10px] font-mono text-blue-700">
+                  {source.variables[0]}
+                </span>
+              )}
               <span className="flex-1 min-w-0">
                 <span
                   className={`block h-2.5 rounded-sm ${off ? "bg-orange-400" : "bg-blue-400"}`}
                   style={{ width: `${Math.max(2, ((s.size ?? 0) / maxSpacing) * 100)}%` }}
                 />
               </span>
-              <span className="w-12 shrink-0 text-right text-[10px] text-gray-500">{s.count}×</span>
+              <span className="w-10 shrink-0 text-right text-[10px] text-gray-600">{s.count}×</span>
             </button>
           );
         })}
@@ -423,7 +543,7 @@ export const DesignOverview: React.FC = () => {
               key={r.value}
               onClick={() => cycler.show(`radius-${r.value}`, r.elements)}
               className="text-center"
-              title="Show elements with this radius"
+              title={`Show elements with this radius${sourceHint(audit, r).title ? `\n${sourceHint(audit, r).title}` : ""}`}
             >
               <div
                 className="w-12 h-12 bg-blue-50 border-2 border-blue-400 mx-auto"

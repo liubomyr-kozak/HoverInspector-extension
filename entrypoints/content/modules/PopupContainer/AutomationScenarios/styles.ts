@@ -144,7 +144,7 @@ export const MenuItemButton = styled(ActionButton)`
 export const EmptyState = styled.div`
   text-align: center;
   padding: 24px;
-  color: #999;
+  color: #6b7280;
 `;
 
 export const AddButton = styled.button`

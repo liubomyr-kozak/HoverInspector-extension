@@ -1,6 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
+import { clickableProps } from "@entrypoints/shared/utils/a11y";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import copy from "copy-to-clipboard";
 import DomNodeManager, { useDomNodeObserver } from "@entrypoints/core/services/dom/DomNodeManager";
+import { getNodeComputedStyle, isRemoteFrameNode } from "@entrypoints/shared/frameAgent/remoteNode";
 import { IconCaretDownFilled, IconCaretRightFilled } from "@tabler/icons-react";
 import { isGradientValue } from "@entrypoints/shared/utils/isGradientValue";
 import { isColorValue } from "@entrypoints/shared/utils/isColorValue.ts";
@@ -171,10 +173,42 @@ const RenderLineWithColor = React.memo(function RenderLineWithColor({ lineValue 
   return <span className="text-wrap">{tokens.map(renderToken)}</span>;
 });
 
+/** Lines that copy on click (and so take part in the arrow-key navigation) */
+const isCopyableLine = (line, expanded) => {
+  if (line.type === "shorthand") return !!line.prop;
+  if (line.type === "detail") return !!(line.prop && expanded[line.prop]);
+  if (line.type === "comment" || line.type === "wrapper") return false;
+  return !line.value.trim().startsWith("/*");
+};
+
+const NAV_KEYS = ["ArrowDown", "ArrowUp", "Home", "End"];
+
+const CSS_OUTPUT_PREFS_KEY = "inspectorCssOutputPrefs";
+
 const PopupStyleInspector = ({ selectedElementType }) => {
   const selectedElement = useDomNodeObserver(selectedElementType);
   const [unit, setUnit] = useState("px");
   const [format, setFormat] = useState("css");
+
+  // Remember the chosen unit and output format across pages and reloads
+  const outputPrefsLoaded = useRef(false);
+  useEffect(() => {
+    browser.storage.local
+      .get(CSS_OUTPUT_PREFS_KEY)
+      .then((stored) => {
+        const saved = stored?.[CSS_OUTPUT_PREFS_KEY];
+        if (saved?.unit) setUnit(saved.unit);
+        if (saved?.format) setFormat(saved.format);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        outputPrefsLoaded.current = true;
+      });
+  }, []);
+  useEffect(() => {
+    if (!outputPrefsLoaded.current) return;
+    browser.storage.local.set({ [CSS_OUTPUT_PREFS_KEY]: { unit, format } }).catch(() => undefined);
+  }, [unit, format]);
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState({
     border: false,
@@ -182,12 +216,24 @@ const PopupStyleInspector = ({ selectedElementType }) => {
     padding: false,
   });
 
-  const blockRef = useRef(null);
+  const blockRef = useRef<HTMLPreElement>(null);
+  // Announced to screen readers after a line is copied
+  const [copyStatus, setCopyStatus] = useState("");
+  const [flashLine, setFlashLine] = useState<number | null>(null);
+  const flashTimer = useRef<number | undefined>(undefined);
+  const copyLine = (value: string, index: number) => {
+    copy(value);
+    setCopyStatus(`Copied ${value}`);
+    setFlashLine(index);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlashLine(null), 700);
+  };
 
   const processedLines = useMemo(() => {
-    if (!selectedElement || !(selectedElement instanceof Element)) return [];
+    if (!selectedElement || selectedElement.nodeType !== Node.ELEMENT_NODE) return [];
     const styles = { ...DomNodeManager.getStyleByNode(selectedElement) };
-    const computed = getComputedStyle(selectedElement);
+    const remote = isRemoteFrameNode(selectedElement) ? selectedElement : null;
+    const computed = getNodeComputedStyle(selectedElement as any);
     // The computed "background" shorthand only repeats background-color/-image in a long resolved form
     delete styles.background;
 
@@ -202,9 +248,14 @@ const PopupStyleInspector = ({ selectedElementType }) => {
     // rem is relative to the root font size; em to the element's own font size, except font-size itself,
     // which is relative to the parent's
     const px = (v) => parseFloat(v) || 16;
-    const rootSize = px(getComputedStyle(document.documentElement).fontSize);
+    // Inside a cross-origin frame, the frame's own root and the parent (reported by its agent)
+    const rootSize = remote ? remote.snapshot.rootFontSize : px(getComputedStyle(document.documentElement).fontSize);
     const ownSize = px(computed.fontSize);
-    const parentSize = selectedElement.parentElement ? px(getComputedStyle(selectedElement.parentElement).fontSize) : rootSize;
+    const parentSize = remote
+      ? remote.snapshot.parentFontSize
+      : selectedElement.parentElement
+        ? px(getComputedStyle(selectedElement.parentElement).fontSize)
+        : rootSize;
     const baseFor = (prop?: string) => (unit === "rem" ? rootSize : prop === "font-size" ? parentSize : ownSize);
     const convert = (val, prop?: string) => (!val || val === "false" ? "" : convertPx(val, unit, baseFor(prop)));
 
@@ -250,6 +301,34 @@ const PopupStyleInspector = ({ selectedElementType }) => {
     return generateStyleBlock(selectedElement, lines, format);
   }, [selectedElement, unit, expanded, format]);
 
+  // The output is one tab stop; arrow keys move between the lines inside it (roving tabindex)
+  const [activeLine, setActiveLine] = useState<number | null>(null);
+  const copyableIndexes = useMemo(
+    () => processedLines.flatMap((line, i) => (isCopyableLine(line, expanded) ? [i] : [])),
+    [processedLines, expanded],
+  );
+  const tabStop = activeLine !== null && copyableIndexes.includes(activeLine) ? activeLine : copyableIndexes[0];
+  const lineNav = (i: number) => ({
+    tabIndex: i === tabStop ? 0 : -1,
+    ...(flashLine === i ? { "data-copied": "" } : {}),
+    "data-css-line": i,
+    onFocus: () => setActiveLine(i),
+  });
+  const onOutputKeyDown = (event: React.KeyboardEvent<HTMLPreElement>) => {
+    if (!NAV_KEYS.includes(event.key) || !copyableIndexes.length) return;
+    event.preventDefault();
+    const at = copyableIndexes.indexOf(tabStop);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? copyableIndexes.length - 1
+          : Math.min(copyableIndexes.length - 1, Math.max(0, at + (event.key === "ArrowDown" ? 1 : -1)));
+    const target = copyableIndexes[next];
+    setActiveLine(target);
+    blockRef.current?.querySelector<HTMLElement>(`[data-css-line="${target}"]`)?.focus();
+  };
+
   const toggleExpand = (prop) => setExpanded((prev) => ({ ...prev, [prop]: !prev[prop] }));
   const renderIcon = (prop) =>
     expanded[prop] ? <IconCaretDownFilled size={12} /> : <IconCaretRightFilled size={12} />;
@@ -262,15 +341,26 @@ const PopupStyleInspector = ({ selectedElementType }) => {
 
   return (
     <div className="p-3 w-full bg-white rounded-md border border-gray-200 shadow">
-      <div className="flex justify-between items-center mb-2 flex-wrap">
-        <span className="text-sm font-semibold">CSS Output</span>
-        <div className="flex gap-1 ml-auto">
-          <select value={unit} onChange={(e) => setUnit(e.target.value)} className="text-xs border rounded px-1">
+      <div className="flex justify-between items-center gap-2 mb-2 flex-wrap">
+        <h3 className="m-0 text-sm font-semibold">CSS output</h3>
+        {/* Wraps under the heading in a narrow panel; the format select is the one that shrinks */}
+        <div className="flex gap-1 ml-auto min-w-0 max-w-full">
+          <select
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            aria-label="Unit"
+            className="h-6 text-xs bg-white border border-gray-300 rounded px-1"
+          >
             <option value="px">px</option>
             <option value="rem">rem</option>
             <option value="em">em</option>
           </select>
-          <select value={format} onChange={(e) => setFormat(e.target.value)} className="text-xs border rounded px-1">
+          <select
+            value={format}
+            onChange={(e) => setFormat(e.target.value)}
+            aria-label="Output format"
+            className="h-6 min-w-0 max-w-[9rem] text-xs bg-white border border-gray-300 rounded px-1"
+          >
             <option value="css">CSS</option>
             <option value="scss">SCSS</option>
             <option value="sass">SASS</option>
@@ -279,19 +369,27 @@ const PopupStyleInspector = ({ selectedElementType }) => {
           </select>
           <button
             onClick={copyAll}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            type="button"
+            className="h-6 whitespace-nowrap text-xs bg-white border border-gray-300 hover:border-blue-600 hover:text-blue-600 px-2 rounded"
             title="Copy all styles"
           >
             {copied ? "Copied!" : "Copy all"}
           </button>
         </div>
       </div>
+      <span className="sr-only" role="status" aria-live="polite">
+        {copyStatus}
+      </span>
       {processedLines.length === 0 ? (
-        <div className="text-xs text-gray-400 italic">Hover over or click an element on the page to see its CSS.</div>
+        <div className="text-xs text-gray-500">Hover over or click an element on the page to see its CSS.</div>
       ) : (
         <pre
           ref={blockRef}
-          className="bg-gray-50 text-xs font-mono p-2 rounded border border-gray-100 whitespace-pre-wrap break-words"
+          role="toolbar"
+          aria-orientation="vertical"
+          aria-label="CSS declarations. Use the arrow keys to move, Enter to copy"
+          onKeyDown={onOutputKeyDown}
+          className="bg-gray-50 text-xs font-mono p-2 rounded border border-gray-100 whitespace-pre-wrap break-words [&_[data-copied]]:!bg-green-100"
         >
           {processedLines.map((line, i) => {
             // Для shorthand (мають prop) рендеримо заголовок з кнопкою expand
@@ -301,11 +399,14 @@ const PopupStyleInspector = ({ selectedElementType }) => {
                   key={i}
                   className="ml-2 px-1 py-0.5 rounded cursor-pointer hover:bg-yellow-100 text-gray-800 flex items-center"
                   data-type="shorthand"
-                  onClick={(e) => {
+                  aria-expanded={!!expanded[line.prop]}
+                  title="Click to copy and show the longhand values"
+                  {...clickableProps((e) => {
                     e.stopPropagation();
-                    copy(line.value.trim());
+                    copyLine(line.value.trim(), i);
                     toggleExpand(line.prop);
-                  }}
+                  })}
+                  {...lineNav(i)}
                 >
                   <span
                     className="inline-block w-4 text-gray-500 mr-1"
@@ -328,9 +429,9 @@ const PopupStyleInspector = ({ selectedElementType }) => {
                   key={i}
                   data-type="detail"
                   className="ml-4 px-1 py-0.5 rounded text-gray-800 bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
-                  // detail копіювати теж можна!
-                  onClick={() => copy(line.value.trim())}
                   title="Click to copy"
+                  {...clickableProps(() => copyLine(line.value.trim(), i))}
+                  {...lineNav(i)}
                 >
                   <RenderLineWithColor lineValue={line.value} />
                 </div>
@@ -339,7 +440,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
 
             if (line.type === "comment") {
               return (
-                <div key={i} data-type="comment" className={`px-1 py-0.5 text-gray-400 cursor-default ${i > 1 ? "mt-2" : ""}`}>
+                <div key={i} data-type="comment" className={`px-1 py-0.5 text-gray-500 cursor-default ${i > 1 ? "mt-2" : ""}`}>
                   {line.value}
                 </div>
               );
@@ -358,15 +459,13 @@ const PopupStyleInspector = ({ selectedElementType }) => {
                 key={i}
                 className={`px-1 py-0.5 rounded flex items-center justify-between ${
                   line.value.trim().startsWith("/*")
-                    ? "text-gray-400 cursor-default"
+                    ? "text-gray-500 cursor-default"
                     : "ml-2 cursor-pointer hover:bg-yellow-100"
                 }`}
                 data-type="default"
-                onClick={() => {
-                  if (!line.value.trim().startsWith("/*")) {
-                    copy(line.value.trim());
-                  }
-                }}
+                {...(line.value.trim().startsWith("/*")
+                  ? {}
+                  : { ...clickableProps(() => copyLine(line.value.trim(), i)), ...lineNav(i) })}
                 title={line.value.trim().startsWith("/*") ? "" : "Click to copy"}
               >
                 <RenderLineWithColor lineValue={line.value} />

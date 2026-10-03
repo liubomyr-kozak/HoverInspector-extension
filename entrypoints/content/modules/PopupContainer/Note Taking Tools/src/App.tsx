@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Sidebar, ALL_NOTES, UNCATEGORIZED_ID } from './components/Sidebar';
 import { NoteEditor } from './components/NoteEditor';
-import { FloatingActionButton } from './components/FloatingActionButton';
+import { NewNoteMenu } from './components/NewNoteMenu';
 import { PortalContainerContext } from './components/ui/popover';
 import { useReduxNotes as useNotes, Note, NoteAttachment, NoteUpdates, UNCATEGORIZED } from './hooks/useReduxNotes';
 import nttStyles from './ntt.css?inline';
+import { LoadingState } from '@entrypoints/shared/components/LoadingState';
 
 // Id of the note being written before it is saved for the first time
 const DRAFT_ID = '__draft__';
@@ -163,7 +164,7 @@ export default function App() {
       <PortalContainerContext.Provider value={portalContainer}>
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-sm text-muted-foreground">Loading notes...</div>
+            <LoadingState label="Loading notes…" />
           </div>
         ) : activeNote ? (
           <NoteEditor
@@ -186,8 +187,8 @@ export default function App() {
               selectedCategory={selectedCategory}
               onCategorySelect={setSelectedCategory}
               onCreateCategory={handleCreateCategory}
+              newNoteMenu={<NewNoteMenu onNewNote={handleNewNote} selectedCategory={selectedCategory} groups={groups} />}
             />
-            <FloatingActionButton onNewNote={handleNewNote} selectedCategory={selectedCategory} groups={groups} />
           </>
         )}
       </PortalContainerContext.Provider>

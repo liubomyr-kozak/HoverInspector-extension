@@ -11,7 +11,9 @@ import {
   selectCurrentStepIndex,
   selectExecutionStatus,
   selectActiveScenarioId,
+  selectExecutionError,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
+import { IconAlertCircle, IconX } from "@tabler/icons-react";
 import { Tag } from "antd";
 import {
   CheckCircleOutlined,
@@ -51,6 +53,7 @@ const ScenarioHeader: React.FC<ScenarioHeaderProps> = ({
   const currentStepIndex = useSelector(selectCurrentStepIndex);
   const executionStatus = useSelector(selectExecutionStatus);
   const activeScenarioId = useSelector(selectActiveScenarioId);
+  const executionError = useSelector(selectExecutionError);
 
   // Only show execution status if this scenario is the currently active one
   const isActiveScenario = activeScenarioId === id;
@@ -118,6 +121,25 @@ const ScenarioHeader: React.FC<ScenarioHeaderProps> = ({
 
         <ScenarioMenu id={id} anyExecuting={anyExecuting} />
       </StyledScenarioItem>
+      {scenarioExecutionStatus === ExecutionStatus.ERROR && executionError && (
+        <div
+          role="alert"
+          className="flex items-start gap-1.5 mx-2 mb-1 px-2 py-1.5 rounded border border-red-200 bg-red-50 text-red-700 text-xs"
+          style={{ wordBreak: "break-word" }}
+        >
+          <IconAlertCircle size={14} className="shrink-0 mt-px" />
+          <span className="flex-1 min-w-0">{executionError}</span>
+          <button
+            type="button"
+            className="shrink-0 text-red-400 hover:text-red-700"
+            onClick={() => dispatch(automationActions.setExecutionError(null))}
+            aria-label="Dismiss error"
+            title="Dismiss"
+          >
+            <IconX size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

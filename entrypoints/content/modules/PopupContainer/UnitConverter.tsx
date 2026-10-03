@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Col, Divider, InputNumber, List, Row, Select } from "antd";
+import { Col, InputNumber, Row, Select, Space } from "antd";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import copy from "copy-to-clipboard";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
@@ -26,6 +27,9 @@ interface ConversionHistoryItem {
 
 // Kept in extension storage so it follows the user across sites and never touches the page's own localStorage
 const HISTORY_STORAGE_KEY = "unitConverterHistory";
+
+const getPopupContainer = () =>
+  (document.querySelector("hover-inspector")!.shadowRoot as unknown as HTMLElement)?.querySelector("html > body") as HTMLElement;
 
 // rem is relative to the page's root font size, which is not always 16px
 const getRootFontSize = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -222,40 +226,39 @@ export const UnitConverter: React.FC = () => {
         </FeatureTitle>
       </PortalModalHeader>
 
-      <Row gutter={12} style={{ marginBottom: 16 }}>
-        <Col span={10}>
-          <InputNumber
-            value={inputValue}
-            onChange={(v) => setInputValue(v ?? 0)}
-            style={{ width: "100%" }}
-            addonAfter={inputUnit}
-          />
+      {/* The value and its unit form one control; the unit is chosen in the select only, not repeated */}
+      <Row gutter={8} align="middle" wrap={false} style={{ marginBottom: 16 }}>
+        <Col flex="auto">
+          <Space.Compact block>
+            <InputNumber
+              value={inputValue}
+              onChange={(v) => setInputValue(v ?? 0)}
+              style={{ width: "100%" }}
+              aria-label="Value"
+            />
+            <Select
+              value={inputUnit}
+              onChange={setInputUnit}
+              options={unitOptions}
+              style={{ width: 84, flex: "none" }}
+              aria-label="From unit"
+              // @ts-ignore
+              getPopupContainer={getPopupContainer}
+            />
+          </Space.Compact>
         </Col>
-        <Col span={6}>
-          <Select
-            value={inputUnit}
-            onChange={setInputUnit}
-            options={unitOptions}
-            style={{ width: "100%" }}
-            // @ts-ignore
-            getPopupContainer={() =>
-              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")
-            }
-          />
-        </Col>
-        <Col span={2} style={{ textAlign: "center", lineHeight: "32px" }}>
+        <Col flex="none" className="text-gray-500" style={{ fontSize: 16, lineHeight: "32px" }} aria-hidden>
           =
         </Col>
-        <Col span={6}>
+        <Col flex="84px">
           <Select
             value={outputUnit}
             onChange={setOutputUnit}
             options={unitOptions}
             style={{ width: "100%" }}
+            aria-label="To unit"
             // @ts-ignore
-            getPopupContainer={() =>
-              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")
-            }
+            getPopupContainer={getPopupContainer}
           />
         </Col>
       </Row>
@@ -269,13 +272,14 @@ export const UnitConverter: React.FC = () => {
         <Col flex="110px">
           <InputNumber
             min={1}
+            aria-label="Base size"
             value={baseSize}
             onChange={(v) => setBaseSize(v || 16)}
             addonAfter="px"
             style={{ width: "100%" }}
           />
         </Col>
-        <Col flex="auto" className="text-right text-gray-400 text-xs">
+        <Col flex="auto" className="text-right text-gray-500 text-xs">
           viewport {viewport.width}×{viewport.height}
         </Col>
       </Row>
@@ -287,76 +291,67 @@ export const UnitConverter: React.FC = () => {
               {inputValue}
               {inputUnit} =
             </span>
-            <Tooltip placement="top" title="Click to Copy" clickTile={"Copied!"}>
-              <span
-                className="bg-blue-100 text-blue-800 font-semibold rounded-xs py-1 px-2 cursor-pointer"
+            <Tooltip placement="top" title="Click to copy" clickTile={"Copied!"}>
+              <button
+                type="button"
+                aria-label={`Copy ${outputValue}${outputUnit}`}
+                className="bg-blue-50 text-blue-800 border border-blue-200 font-semibold rounded py-0.5 px-2 cursor-pointer hover:bg-blue-100"
                 onClick={() => {
                   copy(`${outputValue}${outputUnit}`);
                 }}
               >
-                {outputValue} {outputUnit}
-              </span>
+                {outputValue}
+                {outputUnit}
+              </button>
             </Tooltip>
           </div>
         </Col>
       </Row>
 
-      {/* History Section */}
+      {/* History: each row is a button that restores the conversion, with a separate copy button */}
       {history.length > 0 && (
-        <>
-          <Divider orientation="left">
-            <div className="flex items-center">
-              <span>Conversion History</span>
-              <Button
-                type="text"
-                danger
-                icon={<IconTrash size={16} />}
-                size="small"
-                onClick={clearHistory}
-                style={{ marginLeft: "8px" }}
-              />
-            </div>
-          </Divider>
-
-          <List
-            size="small"
-            dataSource={history}
-            renderItem={(item) => (
-              <List.Item
-                key={item.id}
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => useHistoryItem(item)}
-                actions={[
-                  <Tooltip title="Copy Result" key="copy">
-                    <Button
-                      type="text"
-                      icon={<IconCopy size={16} />}
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copy(`${item.outputValue}${item.outputUnit}`);
-                      }}
-                    />
-                  </Tooltip>,
-                ]}
-              >
-                <div className="flex flex-col">
-                  <div>
-                    <span className="font-medium">
-                      {item.inputValue}
-                      {item.inputUnit}
-                    </span>
-                    <span className="mx-2">→</span>
-                    <span className="font-medium">
-                      {item.outputValue}
-                      {item.outputUnit}
-                    </span>
-                  </div>
-                </div>
-              </List.Item>
-            )}
-          />
-        </>
+        <section aria-labelledby="unit-converter-history-title" className="mt-2">
+          <div className="flex items-center justify-between gap-2 pb-1 mb-1 border-b border-gray-200">
+            <h3 id="unit-converter-history-title" className="m-0 text-sm font-semibold text-gray-800">
+              Conversion history
+            </h3>
+            <IconButton label="Clear conversion history" onClick={clearHistory} size={24}>
+              <IconTrash />
+            </IconButton>
+          </div>
+          <ul className="m-0 p-0 list-none">
+            {history.map((item) => (
+              <li key={item.id} className="flex items-center gap-1 min-w-0 border-b border-gray-100 last:border-b-0">
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 text-left bg-transparent border-0 rounded px-2 py-1.5 cursor-pointer hover:bg-gray-50 text-sm text-gray-800"
+                  title="Use this conversion"
+                  onClick={() => useHistoryItem(item)}
+                >
+                  <span className="font-medium inline-block max-w-full [overflow-wrap:anywhere]">
+                    {item.inputValue}
+                    {item.inputUnit}
+                  </span>
+                  <span className="mx-2 text-gray-500" aria-hidden>
+                    →
+                  </span>
+                  <span className="sr-only">to</span>
+                  <span className="font-medium inline-block max-w-full [overflow-wrap:anywhere]">
+                    {item.outputValue}
+                    {item.outputUnit}
+                  </span>
+                </button>
+                <IconButton
+                  label={`Copy ${item.outputValue}${item.outputUnit}`}
+                  size={24}
+                  onClick={() => copy(`${item.outputValue}${item.outputUnit}`)}
+                >
+                  <IconCopy />
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

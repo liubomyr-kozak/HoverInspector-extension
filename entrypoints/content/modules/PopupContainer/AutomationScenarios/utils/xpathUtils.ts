@@ -36,9 +36,23 @@ export function isLikelyDynamicValue(value: string): boolean {
   if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(value)) return true; // UUID
   if (/\d{5,}/.test(value)) return true; // long numeric sequences (timestamps, generated counters)
   if (/^(css|sc|jsx|emotion|styled)-[a-z0-9]+$/i.test(value)) return true; // CSS-in-JS hashes
-  if (/^[a-z0-9]{1,3}[-_][a-zA-Z0-9]{5,}$/.test(value) && /\d/.test(value)) return true; // e.g. "sc-a1b2c3"
-  if (/__[a-zA-Z0-9]{5,}$/.test(value) && /\d/.test(value)) return true; // CSS modules: "button__x7Fq2"
+  // Only the part after the separator tells a hash from a word: "sc-a1b2c3" and "button__x7Fq2" are generated,
+  // while "h2-title", "h1_heading" or "v2-header" are readable ids whose digit belongs to a word
+  const shortPrefixHash = value.match(/^[a-z0-9]{1,3}[-_]([a-zA-Z0-9]{5,})$/)?.[1];
+  if (shortPrefixHash && looksLikeHash(shortPrefixHash)) return true; // e.g. "sc-a1b2c3"
+  const cssModuleHash = value.match(/__([a-zA-Z0-9]{5,})$/)?.[1];
+  if (cssModuleHash && looksLikeHash(cssModuleHash)) return true; // CSS modules: "button__x7Fq2"
+  // Random suffix mixing letters and digits: "late-x3k9a", "field_a8f3k2", "row:9xk2f"
+  const suffix = value.match(/[-_:]([a-zA-Z0-9]{5,12})$/)?.[1];
+  if (suffix && looksLikeHash(suffix)) return true;
   return false;
+}
+
+/**
+ * A run of letters and digits that reads like a generated hash: it mixes letters with at least two digits
+ */
+function looksLikeHash(part: string): boolean {
+  return /[a-zA-Z]/.test(part) && (part.match(/\d/g) || []).length >= 2;
 }
 
 function normalizeText(text: string | null | undefined): string {
@@ -124,7 +138,9 @@ function buildCandidates(element: Element): string[] {
     }
   }
 
-  const text = normalizeText(element.textContent);
+  // The text of an editor is what the user typed: it is not there yet when the scenario is played back
+  const isEditor = !!element.closest('[contenteditable]:not([contenteditable="false"])');
+  const text = isEditor ? "" : normalizeText(element.textContent);
   const role = element.getAttribute("role");
   if (text && text.length <= MAX_TEXT_LENGTH) {
     if (role) {

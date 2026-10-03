@@ -36,6 +36,7 @@ import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { AUTOMATION } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { TbWindowMinimize } from "react-icons/tb";
 import { clearAllActiveIcons } from "@entrypoints/content/store/app/app.slice.ts";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 
 export const AutomationScenarios: React.FC = () => {
   const dispatch = useDispatch();
@@ -123,15 +124,11 @@ export const AutomationScenarios: React.FC = () => {
             </RecordingText>
           )}
           <PortalModalHeaderButtons>
-            <div
-              className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-              onClick={() => {
+            <IconButton label="Minimize Automation" onClick={() => {
                 handleToggleFeatureMinimized("automation");
-              }}
-              title={`Minimize Automation`}
-            >
-              <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-            </div>
+              }}>
+                <TbWindowMinimize />
+              </IconButton>
           </PortalModalHeaderButtons>
         </FeatureTitle>
       </PortalModalHeader>

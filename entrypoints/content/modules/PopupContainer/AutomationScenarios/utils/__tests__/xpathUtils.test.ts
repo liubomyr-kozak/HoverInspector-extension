@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { generateXPaths, isLikelyDynamicValue, xpathLiteral } from "../xpathUtils";
-import { getActionableTarget, isTextEntryElement, recordClick, recordInput } from "../recordingUtils";
+import {
+  getActionableTarget,
+  getCheckboxTargetState,
+  getEditableRoot,
+  getSelectValue,
+  getTypedValue,
+  isTextEntryElement,
+  parseSelectValues,
+  recordClick,
+  recordInput,
+} from "../recordingUtils";
 import automationReducer, { automationActions } from "../../../../../store/automation/automation.slice";
 import { StepType } from "../../types";
 
@@ -30,12 +40,36 @@ describe("isLikelyDynamicValue", () => {
     expect(isLikelyDynamicValue("css-1x2y3z4")).toBe(true);
     expect(isLikelyDynamicValue("item-1696262400000")).toBe(true);
     expect(isLikelyDynamicValue("3f2b8c1e-1234-4abc-9def-0123456789ab")).toBe(true);
+    expect(isLikelyDynamicValue("late-x3k9a")).toBe(true);
+    expect(isLikelyDynamicValue("dropdown_menu_a8f3k2")).toBe(true);
+    expect(isLikelyDynamicValue("sc-a1b2c3")).toBe(true);
+    expect(isLikelyDynamicValue("sc-bdVaJa")).toBe(true);
+    expect(isLikelyDynamicValue("button__x7Fq2")).toBe(true);
+    expect(isLikelyDynamicValue("jss-3k9x2")).toBe(true);
+  });
+
+  it("keeps readable ids whose short prefix contains a digit", () => {
+    expect(isLikelyDynamicValue("h2-title")).toBe(false);
+    expect(isLikelyDynamicValue("h1_heading")).toBe(false);
+    expect(isLikelyDynamicValue("v2-header")).toBe(false);
+    expect(isLikelyDynamicValue("h3-subtitle")).toBe(false);
+    expect(isLikelyDynamicValue("p1-summary")).toBe(false);
+    expect(isLikelyDynamicValue("card__title2")).toBe(false);
+    expect(isLikelyDynamicValue("ui-button1")).toBe(false);
+  });
+
+  it("uses readable ids with digits as locators", () => {
+    document.body.innerHTML = `<h2 id="h2-title">Welcome</h2><h2>Other</h2>`;
+    const { primaryXPath } = generateXPaths(document.getElementById("h2-title")!);
+    expect(primaryXPath).toBe(`//*[@id="h2-title"]`);
   });
 
   it("keeps human readable values", () => {
     expect(isLikelyDynamicValue("login-button")).toBe(false);
     expect(isLikelyDynamicValue("email")).toBe(false);
     expect(isLikelyDynamicValue("btn-primary")).toBe(false);
+    expect(isLikelyDynamicValue("step-2")).toBe(false);
+    expect(isLikelyDynamicValue("user-profile1")).toBe(false);
   });
 });
 
@@ -112,6 +146,56 @@ describe("recording helpers", () => {
     expect(isTextEntryElement(document.querySelector("textarea"))).toBe(true);
     expect(recordInput(checkbox, "on")).toBeNull();
     expect(recordInput(email, "a@b.c")).toMatchObject({ type: StepType.INPUT, value: "a@b.c" });
+  });
+
+  it("records typing into contenteditable editors on their outermost editable element", () => {
+    document.body.innerHTML = `<div id="ed" contenteditable="true"><p>Hello <b>world</b></p></div><div contenteditable="false">x</div>`;
+    const editor = document.getElementById("ed")!;
+    const bold = document.querySelector("b")!;
+    expect(getEditableRoot(bold)).toBe(editor);
+    expect(isTextEntryElement(editor)).toBe(true);
+    expect(isTextEntryElement(bold)).toBe(false);
+    expect(isTextEntryElement(document.querySelector('[contenteditable="false"]'))).toBe(false);
+    expect(getTypedValue(bold)).toBe("Hello world");
+    expect(recordInput(bold, "Hello world")).toMatchObject({ type: StepType.INPUT, xpath: '//*[@id="ed"]' });
+    // the typed text is no locator: it isn't there yet on playback
+    expect(generateXPaths(editor).alternativeXpaths.some((xpath) => xpath.includes("Hello"))).toBe(false);
+  });
+
+  it("records every chosen option of a multiple select", () => {
+    document.body.innerHTML = `<select multiple><option value="x" selected>X</option><option value="y">Y</option><option value="z" selected>Z</option></select><select><option value="a">A</option><option value="b" selected>B</option></select>`;
+    const [multi, single] = Array.from(document.querySelectorAll("select"));
+    expect(getSelectValue(multi)).toBe('["x","z"]');
+    expect(getSelectValue(single)).toBe("b");
+    expect(parseSelectValues('["x","z"]', true)).toEqual(["x", "z"]);
+    expect(parseSelectValues("x", true)).toEqual(["x"]);
+    expect(parseSelectValues('["x"]', false)).toEqual(['["x"]']);
+    expect(parseSelectValues("[not json", true)).toEqual(["[not json"]);
+  });
+
+  it("remembers the state a checkbox click leads to", () => {
+    document.body.innerHTML = `<label for="cb">Agree</label><input type="checkbox" id="cb" /><input type="radio" id="r" /><button>Go</button>`;
+    const box = document.getElementById("cb") as HTMLInputElement;
+    expect(getCheckboxTargetState(box)).toBe("checked");
+    expect(getCheckboxTargetState(document.querySelector("label")!)).toBe("checked");
+    box.checked = true;
+    expect(getCheckboxTargetState(box)).toBe("unchecked");
+    expect(recordClick(box)).toMatchObject({ type: StepType.CLICK, value: "unchecked" });
+    expect(getCheckboxTargetState(document.getElementById("r")!)).toBeNull();
+    expect(recordClick(document.querySelector("button")!)?.value).toBeUndefined();
+  });
+});
+
+describe("automation slice: upsertLastStep", () => {
+  it("replaces the last step on the same element and appends otherwise", () => {
+    let state = automationReducer(undefined, { type: "init" });
+    state = automationReducer(state, automationActions.upsertLastStep({ type: StepType.SELECT, xpath: "//s", value: '["x"]' }));
+    state = automationReducer(state, automationActions.upsertLastStep({ type: StepType.SELECT, xpath: "//s", value: '["x","z"]' }));
+    state = automationReducer(state, automationActions.upsertLastStep({ type: StepType.CLICK, xpath: "//s" }));
+    expect(state.currentSteps).toEqual([
+      { type: StepType.SELECT, xpath: "//s", value: '["x","z"]' },
+      { type: StepType.CLICK, xpath: "//s" },
+    ]);
   });
 });
 

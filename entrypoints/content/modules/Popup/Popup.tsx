@@ -6,6 +6,9 @@ import { cutPx, getLeftPosition, getTagMeta, isChildText, targetColorStringToHex
 import { colorBoxStyle, flexChildRightStyle, targetSizeStyle, targetTitleStyle } from "./PopupStyle.tsx";
 import { BoxLabelContainer, PopupWrapper } from "./Popup.styled.ts";
 import cx from "classnames";
+import { getNodeComputedStyle } from "@entrypoints/shared/frameAgent/remoteNode";
+import { describeFrameContext } from "@entrypoints/content/frameAgentHost";
+import { lastPointer } from "./pointer";
 
 // Label on the left, value pushed to the right edge, never touching each other
 const rowStyle: React.CSSProperties = {
@@ -33,20 +36,22 @@ const PopupContainer = ({ data, hoverElement }) => {
   const fontFamily = (data["font-family"] || "").split(",")[0].replace(/["']/g, "").trim();
 
   const hasText = !!isChildText(hoverElement?.childNodes);
+  // Not instanceof: elements inside same-origin iframes come from another realm
+  const isSvg = hoverElement?.namespaceURI === "http://www.w3.org/2000/svg";
   // SVG text is painted with fill, so its CSS color says nothing
-  const showTextColor = hasText && !!color && !(hoverElement instanceof SVGElement);
+  const showTextColor = hasText && !!color && !isSvg;
 
   // SVG shapes are painted with fill/stroke rather than background/color
   let svgFill = "";
   let svgStroke = "";
-  if (hoverElement instanceof SVGElement && hoverElement.localName !== "svg") {
-    const svgStyle = getComputedStyle(hoverElement);
+  if (isSvg && hoverElement.localName !== "svg") {
+    const svgStyle = getNodeComputedStyle(hoverElement);
     svgFill = svgStyle.fill && svgStyle.fill !== "none" ? svgStyle.fill : "";
     svgStroke = svgStyle.stroke && svgStyle.stroke !== "none" ? svgStyle.stroke : "";
   }
 
   // Images: the intrinsic size and alt text are what people usually check
-  const isImage = hoverElement instanceof HTMLImageElement;
+  const isImage = hoverElement?.localName === "img";
   const imageNatural = isImage && hoverElement.naturalWidth ? `${hoverElement.naturalWidth} × ${hoverElement.naturalHeight}px` : "";
   const imageAlt = isImage ? hoverElement.getAttribute("alt") : null;
 
@@ -54,7 +59,9 @@ const PopupContainer = ({ data, hoverElement }) => {
   const showColors = !!(backgroundColor || showTextColor || svgFill || svgStroke);
   const showTypography = hasText && !!font;
   const showImage = isImage && (!!imageNatural || imageAlt !== null);
-  const hasBody = showSpacing || showColors || showTypography || !!border || showImage;
+  // Cross-origin frames: say where the element is, or that the frame itself is all we can show
+  const frameContext = describeFrameContext(hoverElement);
+  const hasBody = showSpacing || showColors || showTypography || !!border || showImage || !!frameContext;
 
   const renderColorInfo = (label, colorValue, showLabel = true) => {
     if (!colorValue) return null;
@@ -110,7 +117,7 @@ const PopupContainer = ({ data, hoverElement }) => {
       return (
         <div style={{ ...rowStyle, marginBottom: '4px' }}>
           <span style={labelStyle}>{sideLabel}:</span>
-          <span style={{ fontSize: '11px', color: '#adb5bd' }}>none</span>
+          <span style={{ fontSize: '11px', color: '#6b7280' }}>none</span>
         </div>
       );
     }
@@ -129,7 +136,7 @@ const PopupContainer = ({ data, hoverElement }) => {
             border: '1px solid rgba(0,0,0,0.1)'
           }} />
           <span style={{ 
-            fontSize: '10px', 
+            fontSize: '11px', 
             fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
             color: '#666'
           }}>
@@ -167,6 +174,24 @@ const PopupContainer = ({ data, hoverElement }) => {
           {cutPx(width)} × {cutPx(height)}px
         </div>
       </div>
+
+      {frameContext && (
+        <div
+          style={{
+            marginBottom: '12px',
+            fontSize: '11px',
+            lineHeight: 1.4,
+            color: frameContext.limited ? '#8a4b00' : '#495057',
+            background: frameContext.limited ? '#fff4e0' : '#f1f3f5',
+            border: `1px solid ${frameContext.limited ? '#f5d2a0' : '#e9ecef'}`,
+            borderRadius: '4px',
+            padding: '4px 8px',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {frameContext.text}
+        </div>
+      )}
 
       {/* Spacing Section */}
       {showSpacing && (
@@ -298,7 +323,7 @@ const PopupContainer = ({ data, hoverElement }) => {
                     border: '1px solid rgba(0,0,0,0.1)'
                   }} />
                   <span style={{ 
-                    fontSize: '10px', 
+                    fontSize: '11px', 
                     fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
                     color: '#666'
                   }}>
@@ -324,18 +349,6 @@ const PopupContainer = ({ data, hoverElement }) => {
 const ARROW_HEIGHT = 8;
 const CURSOR_OFFSET = 16;
 
-// Last pointer position, for elements too tall to put the tooltip above or below them
-const lastPointer = { x: -1, y: -1 };
-if (typeof window !== "undefined") {
-  window.addEventListener(
-    "mousemove",
-    (e) => {
-      lastPointer.x = e.clientX;
-      lastPointer.y = e.clientY;
-    },
-    { capture: true, passive: true },
-  );
-}
 
 // // Додаю виправлення без зміни стилю функції
 // const getPopupPosition = (hoverNodeParams, popupRef) => {
@@ -493,7 +506,9 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   // console.groupEnd()
 
   // Визначаємо left
-  let leftProposal = left - marginLeft;
+  // Align with the element itself: centred blocks (margin: auto) have huge left margins that
+  // pushed the card to the far left, under the docked panel
+  let leftProposal = left;
 
   // Якщо права межа попапа (leftProposal + ширина попапа) виходить за межу viewport (clientWindow.right)
   // То переміщаємо попап вліво так, щоб він повністю помістився у вікно,
@@ -504,6 +519,20 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   }
 
   if (leftProposal < 0) leftProposal = 10;
+
+  // Step around the open tool panel instead of sliding underneath it
+  const panelRect = document
+    .querySelector("hover-inspector")
+    ?.shadowRoot?.querySelector(".rnd-container")
+    ?.getBoundingClientRect();
+  if (panelRect && panelRect.width > 0) {
+    const overlapsVertically = topPositionProposal < panelRect.bottom && topPositionProposal + popupHeight > panelRect.top;
+    const overlapsHorizontally = leftProposal < panelRect.right && leftProposal + popupWidth > panelRect.left;
+    if (overlapsVertically && overlapsHorizontally) {
+      if (panelRect.right + 8 + popupWidth <= clientWindow.right - 10) leftProposal = panelRect.right + 8;
+      else if (panelRect.left - 8 - popupWidth >= 10) leftProposal = panelRect.left - 8 - popupWidth;
+    }
+  }
 
   // Обраховуємо фінальний left через getLeftPosition, якщо він є
   let finalLeft =

@@ -17,7 +17,8 @@ const CompareContainer = styled.div.attrs({
   backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(229, 231, 235, 0.6);
-  height: 100%;
+  /* Grow with the diff; a fixed 100% let long diffs spill out of the card */
+  min-height: 100%;
 `;
 
 const BackButton = styled.button`
@@ -156,7 +157,7 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
                   gap: "8px",
                 }}
               >
-                <IconFileText size={18} color="#6366f1" />
+                <IconFileText size={18} color="#2563eb" />
                 Element Analysis
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -209,7 +210,7 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
                   gap: "8px",
                 }}
               >
-                <IconActivity size={18} color="#8b5cf6" />
+                <IconActivity size={18} color="#1d4ed8" />
                 Performance Impact
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

@@ -1,4 +1,4 @@
-import { ExecutionHistoryEntry, ExecutionLog, ExecutionStatus } from "../types";
+import { ExecutionHistoryEntry, ExecutionLog, ExecutionLogEntry, ExecutionStatus, stepTypeOptions } from "../types";
 
 /**
  * How many execution history entries are kept; older ones are deleted when a run is recorded
@@ -17,12 +17,26 @@ const emptyLog = (time: string, status: ExecutionStatus): ExecutionLog => ({
 });
 
 /**
+ * Says which step failed and why, e.g. 'Step 4 (Click) failed: Element not found after 10 s: //button[...]'
+ *
+ * @param entry - The failed step's log entry; its stepIndex is the step's index in the scenario
+ */
+export function formatStepError(entry: Pick<ExecutionLogEntry, "stepIndex" | "stepType" | "error">): string {
+  const label = stepTypeOptions.find((option) => option.value && option.value === entry.stepType)?.label;
+  const reason = entry.error || "Unknown error";
+  if (!(entry.stepIndex >= 0)) return reason;
+  return `Step ${entry.stepIndex + 1}${label ? ` (${label})` : ""} failed: ${reason}`;
+}
+
+/**
  * Builds the execution history entry of a finished playback
  *
  * @param id - The history entry's key (ex_hist_...)
- * @param log - The execution log of the playback
+ * @param log - The execution log of the playback, with the steps of every page it played on
  * @param totalSteps - The number of steps of the scenario
- * @param stepsBefore - Steps run before the log started (on previous pages)
+ * @param startedFromStep - The first step played, when the playback started further in the scenario (retry or
+ *                          play from a step). Only the steps that ran count as completed.
+ * @param retry - The playback is a retry from the failed step
  */
 export function createExecutionHistoryEntry({
   id,
@@ -30,21 +44,29 @@ export function createExecutionHistoryEntry({
   scenarioTitle,
   log,
   totalSteps,
-  stepsBefore = 0,
+  startedFromStep = 0,
+  retry = false,
   triggerType,
+  triggerId,
 }: {
   id: string;
   scenarioId: string;
   scenarioTitle: string;
   log: ExecutionLog;
   totalSteps: number;
-  stepsBefore?: number;
+  startedFromStep?: number;
+  retry?: boolean;
   triggerType?: string;
+  triggerId?: string;
 }): ExecutionHistoryEntry {
   const status = log.status;
-  const completedInLog = (log.entries || []).filter((entry) => COMPLETED_STATUSES.includes(entry.status)).length;
+  // A step that may leave the page is logged before it runs and again once it ran: count it once
+  const completedInLog = new Set(
+    (log.entries || []).filter((entry) => COMPLETED_STATUSES.includes(entry.status)).map((entry) => entry.stepIndex),
+  ).size;
+  const partial = startedFromStep > 0;
   const stepsCompleted =
-    status === ExecutionStatus.SUCCESS ? totalSteps : Math.min(totalSteps, stepsBefore + completedInLog);
+    status === ExecutionStatus.SUCCESS && !partial ? totalSteps : Math.min(totalSteps, completedInLog);
   const errorEntry = (log.entries || []).find((entry) => entry.status === ExecutionStatus.ERROR);
 
   return {
@@ -56,10 +78,20 @@ export function createExecutionHistoryEntry({
     status,
     stepsCompleted,
     totalSteps,
-    ...(errorEntry?.error ? { error: errorEntry.error } : {}),
+    ...(partial ? { startedFromStep, ...(retry ? { retry: true } : {}) } : {}),
+    ...(errorEntry ? { error: formatStepError(errorEntry) } : {}),
     ...(triggerType ? { triggerType } : {}),
+    ...(triggerId ? { triggerId } : {}),
     log,
   };
+}
+
+/**
+ * How a playback that did not start at the first step is labelled in the history, e.g. "Retry from step 4"
+ */
+export function describeExecutionStart(entry: Pick<ExecutionHistoryEntry, "startedFromStep" | "retry">): string | null {
+  if (!entry.startedFromStep || entry.startedFromStep <= 0) return null;
+  return `${entry.retry ? "Retry" : "Started"} from step ${entry.startedFromStep + 1}`;
 }
 
 /**

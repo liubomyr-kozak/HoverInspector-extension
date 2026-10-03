@@ -90,7 +90,7 @@ const CompareButton = styled.button<{ disabled?: boolean }>`
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: #15803d;
   border: none;
   border-radius: 8px;
   font-size: 13px;
@@ -98,7 +98,7 @@ const CompareButton = styled.button<{ disabled?: boolean }>`
   color: white;
   cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
   transition: all 200ms ease;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.25);
 
   ${(props) =>
     props.disabled
@@ -109,8 +109,8 @@ const CompareButton = styled.button<{ disabled?: boolean }>`
   `
       : `
     &:hover {
-      background: linear-gradient(135deg, #059669, #047857);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      background: #166534;
+      box-shadow: 0 4px 12px rgba(21, 128, 61, 0.3);
       transform: scale(1.02);
     }
 
@@ -158,8 +158,8 @@ const TitleInput = styled.input`
   transition: border-color 200ms ease;
 
   &:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 `;
 
@@ -318,6 +318,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                               value={title}
                               onChange={(e) => setTitle(e.target.value)}
                               autoFocus
+                              aria-label="Snapshot name"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   saveSnapshotTitle(title);
@@ -327,10 +328,12 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                                 }
                               }}
                             />
-                            <ActionButton onClick={() => saveSnapshotTitle(title)}>
+                            <ActionButton aria-label="Save name" title="Save name" onClick={() => saveSnapshotTitle(title)}>
                               <IconCheck size={18} color="#10b981" />
                             </ActionButton>
                             <ActionButton
+                              aria-label="Cancel renaming"
+                              title="Cancel renaming"
                               onClick={() => {
                                 setTitle(selectedSnapshot.title);
                                 setEditingTitle(false);
@@ -342,7 +345,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                         ) : (
                           <TitleEditContainer>
                             <TitleText>{title}</TitleText>
-                            <ActionButton onClick={() => setEditingTitle(true)}>
+                            <ActionButton aria-label="Rename snapshot" title="Rename snapshot" onClick={() => setEditingTitle(true)}>
                               <IconEdit size={16} color="#6b7280" />
                             </ActionButton>
                           </TitleEditContainer>
@@ -382,7 +385,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                     ) : (
                       <>
                         <MdOutlineCompare size={16} />
-                        <span>Compare with Current</span>
+                        <span>Compare with current page</span>
                       </>
                     )}
                   </CompareButton>

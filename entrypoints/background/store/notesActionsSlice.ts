@@ -24,6 +24,7 @@ import {
   createNewColorPalette,
   normalizeNoteGroups,
   normalizeColorPalettes,
+  mergeImportedNotes,
 } from "@entrypoints/background/services/notes.ts";
 
 const notesInitialState: NotesState & { version: number } = {
@@ -106,34 +107,17 @@ export const notesActionsSlice = createChromeSlice({
     },
 
     // Adds notes/groups from an export file. Entries with an existing id are replaced.
-    importNotes: async (payload: ImportNotesPayload, { getState, setState }): Promise<{ imported: number }> => {
-      const { notes: importedNotes = [], groups: importedGroups = [] } = unwrap(payload) || ({} as any);
-      const state = getState();
+    /** Adds new notes and replaces stored ones with the same id; reports how many of each. */
+    importNotes: async (
+      payload: ImportNotesPayload,
+      { getState, setState },
+    ): Promise<{ added: number; updated: number }> => {
+      const { notes = [], groups = [] } = unwrap(payload) || ({} as any);
+      const merged = mergeImportedNotes(getState(), { notes, groups });
 
-      const validNotes = (Array.isArray(importedNotes) ? importedNotes : []).filter(
-        (note) => note && typeof note.id === "string" && typeof note.content === "string",
-      );
-      const validGroups = normalizeNoteGroups(Array.isArray(importedGroups) ? importedGroups : []);
+      setState({ notes: merged.notes, groups: merged.groups });
 
-      const mergeById = <T extends { id: string }>(current: T[] = [], incoming: T[]) => {
-        const incomingIds = new Set(incoming.map((item) => item.id));
-        return [...current.filter((item) => !incomingIds.has(item.id)), ...incoming];
-      };
-
-      setState({
-        notes: mergeById(
-          state.notes,
-          validNotes.map((note) => ({
-            ...note,
-            title: note.title ?? "",
-            locations: Array.isArray(note.locations) ? note.locations : [],
-            isVisible: note.isVisible !== false,
-          })),
-        ),
-        groups: mergeById(state.groups, validGroups),
-      });
-
-      return { imported: validNotes.length };
+      return { added: merged.added, updated: merged.updated };
     },
 
     updateNotesSearchQuery: async (searchQuery: string, { setState }): Promise<void> => {

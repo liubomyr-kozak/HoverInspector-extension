@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { usePopoverFocus } from "@entrypoints/shared/utils/usePopoverFocus";
 import { useDispatch, useSelector } from "react-redux";
 import { Popover, Switch } from "antd";
 import { IconInfoCircle, IconSettings, IconPointer } from "@tabler/icons-react";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 
 import HoverSelectedInfo from "@entrypoints/content/modules/SettingsIconBox/HoverSelectedInfo.tsx";
 import { onUpdateEventPreventDefaultWatcher } from "@entrypoints/content/store/app/saga-action/app.saga.action";
@@ -60,13 +62,23 @@ export const ElementInspectorPopup = () => {
           </span>
         </Tooltip>
       </span>
-      <Switch checkedChildren={"Yes"} unCheckedChildren={"No"} value={value} onChange={onChange} />
+      <Switch checkedChildren={"Yes"} unCheckedChildren={"No"} value={value} onChange={onChange} aria-label={title} />
     </div>
   );
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsFocus = usePopoverFocus(settingsOpen, setSettingsOpen);
+
   // Create the content for the settings popover
   const settingsContent = (
-    <div className="p-2" style={{ minWidth: "250px" }}>
+    <div
+      ref={settingsFocus.contentRef}
+      onBlur={settingsFocus.onContentBlur}
+      role="dialog"
+      aria-label="Inspector settings"
+      className="p-2"
+      style={{ minWidth: "250px" }}
+    >
       <div className="font-medium mb-2">Additional Settings</div>
       <div>
         {renderToggle(
@@ -114,13 +126,22 @@ export const ElementInspectorPopup = () => {
               content={settingsContent}
               zIndex={1150}
               placement="topRight"
-              trigger="hover"
+              // Click as well as hover, so the settings also open from the keyboard
+              trigger={["hover", "click"]}
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
               // @ts-ignore
               getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
             >
-              <span className={`cursor-pointer text-gray-500 hover:text-gray-700 transition-colors ml-auto`}>
+              <IconButton
+                ref={settingsFocus.triggerRef as React.Ref<HTMLButtonElement>}
+                label="Inspector settings"
+                title=""
+                aria-haspopup="dialog"
+                aria-expanded={settingsOpen}
+              >
                 <IconSettings size={18} />
-              </span>
+              </IconButton>
             </Popover>
           </PortalModalHeaderButtons>
         </FeatureTitle>

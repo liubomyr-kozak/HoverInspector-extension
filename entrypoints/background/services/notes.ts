@@ -308,3 +308,43 @@ export function getVisibleNotesForPage(
 export function removeNotesFromGroup(notes: Note[], groupId: string): Note[] {
   return notes.map((note) => (note.groupId === groupId ? { ...note, groupId: undefined } : note));
 }
+
+/**
+ * Merges imported notes and groups into the stored ones. An imported note whose id is already stored
+ * replaces that note (counted as updated), any other valid note is added. Within the file, the last
+ * note with a given id wins. Entries without a string id and content are skipped.
+ */
+export function mergeImportedNotes(
+  current: { notes?: Note[]; groups?: NoteGroup[] },
+  incoming: { notes?: unknown; groups?: unknown },
+): { notes: Note[]; groups: NoteGroup[]; added: number; updated: number } {
+  const byId = new Map<string, Note>();
+  for (const note of Array.isArray(incoming.notes) ? incoming.notes : []) {
+    if (!note || typeof note.id !== "string" || typeof note.content !== "string") continue;
+    byId.delete(note.id); // keep file order for the last occurrence
+    byId.set(note.id, {
+      ...note,
+      title: note.title ?? "",
+      locations: Array.isArray(note.locations) ? note.locations : [],
+      isVisible: note.isVisible !== false,
+    });
+  }
+  const validNotes = [...byId.values()];
+  const validGroups = normalizeNoteGroups(Array.isArray(incoming.groups) ? incoming.groups : []);
+
+  const currentNotes = current.notes || [];
+  const existingIds = new Set(currentNotes.map((note) => note.id));
+  const updated = validNotes.filter((note) => existingIds.has(note.id)).length;
+
+  const mergeById = <T extends { id: string }>(items: T[] = [], replacements: T[]) => {
+    const replacementIds = new Set(replacements.map((item) => item.id));
+    return [...items.filter((item) => !replacementIds.has(item.id)), ...replacements];
+  };
+
+  return {
+    notes: mergeById(currentNotes, validNotes),
+    groups: mergeById(current.groups || [], validGroups),
+    added: validNotes.length - updated,
+    updated,
+  };
+}

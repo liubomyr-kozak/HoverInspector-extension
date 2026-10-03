@@ -30,6 +30,8 @@ import { PAGE_NOTES } from "@entrypoints/content/modules/Launcher/LauncherIcons.
 import { TbWindowMinimize } from "react-icons/tb";
 import { FiGlobe, FiMap, FiTarget, FiX } from "react-icons/fi";
 import { AttachmentTypeEnum } from "@entrypoints/shared/types/notes";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
 const Container = styled.div`
   display: flex;
@@ -38,14 +40,6 @@ const Container = styled.div`
   background: white;
   border-radius: 8px;
   overflow: hidden;
-`;
-
-const LoadingState = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  color: #9ca3af;
 `;
 
 const ErrorState = styled.div`
@@ -236,17 +230,13 @@ export const PageNotes: React.FC = () => {
         if (!Array.isArray(notes)) throw new Error(`No notes found in ${file.name}`);
 
         // Notes with an id that is already stored replace that note instead of adding a copy
-        const existingIds = new Set(notesState.notes.map((note) => note.id));
-        const { imported } = await importNotes({ data: { notes, groups: parsed?.groups || [] } });
-        const updated = notes.filter(
-          (note: any) => note && typeof note.content === "string" && existingIds.has(note.id),
-        ).length;
-        const added = Math.max(0, imported - updated);
+        const { added, updated } = await importNotes({ data: { notes, groups: parsed?.groups || [] } });
         const plural = (count: number) => `${count} note${count === 1 ? "" : "s"}`;
-        if (imported === 0) toast.info("The file has no notes to import");
+        const alreadyHere = `${updated === 1 ? "that was" : "that were"} already here`;
+        if (added + updated === 0) toast.info("The file has no notes to import");
         else if (updated === 0) toast.success(`Imported ${plural(added)}`);
-        else if (added === 0) toast.success(`Updated ${plural(updated)} that were already here`);
-        else toast.success(`Imported ${plural(added)}, updated ${plural(updated)} that were already here`);
+        else if (added === 0) toast.success(`Updated ${plural(updated)} ${alreadyHere}`);
+        else toast.success(`Imported ${plural(added)}, updated ${plural(updated)} ${alreadyHere}`);
         await loadNotesData();
         dispatch(triggerRefresh());
       } catch (err) {
@@ -254,7 +244,7 @@ export const PageNotes: React.FC = () => {
         toast.error(`Failed to import notes: ${(err as Error)?.message || err}`);
       }
     },
-    [loadNotesData, dispatch, notesState.notes],
+    [loadNotesData, dispatch],
   );
 
   const handleSelectNote = useCallback(async (noteId: string) => {
@@ -369,20 +359,16 @@ export const PageNotes: React.FC = () => {
             <FeatureIcon icon={PAGE_NOTES.icon} />
             <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
             <PortalModalHeaderButtons>
-              <div
-                className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-                onClick={() => {
+              <IconButton label="Minimize Page Notes" onClick={() => {
                   handleToggleFeatureMinimized("pageNotes");
-                }}
-                title={`Minimize Page Notes`}
-              >
-                <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-              </div>
+                }}>
+                <TbWindowMinimize />
+              </IconButton>
             </PortalModalHeaderButtons>
           </FeatureTitle>
         </PortalModalHeader>
         <Container>
-          <LoadingState>Loading notes...</LoadingState>
+          <LoadingState label="Loading notes…" />
         </Container>
       </div>
     );
@@ -396,15 +382,11 @@ export const PageNotes: React.FC = () => {
             <FeatureIcon icon={PAGE_NOTES.icon} />
             <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
             <PortalModalHeaderButtons>
-              <div
-                className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-                onClick={() => {
+              <IconButton label="Minimize Page Notes" onClick={() => {
                   handleToggleFeatureMinimized("pageNotes");
-                }}
-                title={`Minimize Page Notes`}
-              >
-                <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-              </div>
+                }}>
+                <TbWindowMinimize />
+              </IconButton>
             </PortalModalHeaderButtons>
           </FeatureTitle>
         </PortalModalHeader>
@@ -439,51 +421,35 @@ export const PageNotes: React.FC = () => {
           <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
             {/* Note Visibility & Attachment buttons */}
-            <div className="flex items-center gap-1 mr-2">
-              <button
-                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
-                  selectedAttachmentType === "global"
-                    ? "bg-blue-100 text-blue-600"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}
+            <div className="flex items-center gap-1">
+              <IconButton
+                label="Filter: notes shown on all pages"
+                active={selectedAttachmentType === "global"}
                 onClick={() => handleAttachmentTypeClick("global")}
-                title="Filter: notes shown on all pages"
               >
                 <FiGlobe className="w-4 h-4" />
-              </button>
-              <button
-                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
-                  selectedAttachmentType === "route"
-                    ? "bg-blue-100 text-blue-600"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}
+              </IconButton>
+              <IconButton
+                label="Filter: notes attached to routes or domains"
+                active={selectedAttachmentType === "route"}
                 onClick={() => handleAttachmentTypeClick("route")}
-                title="Filter: notes attached to routes or domains"
               >
                 <FiMap className="w-4 h-4" />
-              </button>
-              <button
-                className={`cursor-pointer p-1.5 rounded-md transition-colors duration-200 flex items-center justify-center ${
-                  selectedAttachmentType === "element"
-                    ? "bg-blue-100 text-blue-600"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}
+              </IconButton>
+              <IconButton
+                label="Filter: notes attached to page elements"
+                active={selectedAttachmentType === "element"}
                 onClick={() => handleAttachmentTypeClick("element")}
-                title="Filter: notes attached to page elements"
               >
                 <FiTarget className="w-4 h-4" />
-              </button>
+              </IconButton>
             </div>
 
-            <div
-              className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-              onClick={() => {
+            <IconButton label="Minimize Page Notes" onClick={() => {
                 handleToggleFeatureMinimized("pageNotes");
-              }}
-              title={`Minimize Page Notes`}
-            >
-              <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-            </div>
+              }}>
+                <TbWindowMinimize />
+              </IconButton>
           </PortalModalHeaderButtons>
         </FeatureTitle>
       </PortalModalHeader>

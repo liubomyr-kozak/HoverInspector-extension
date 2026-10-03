@@ -78,10 +78,9 @@ export const BecomeASponsor = styled.a`
     color: #fff;
   }
 
-  &:active,
-  &:focus {
-    outline: 2px solid #999;
-    outline-offset: 2px;
+  &:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
   }
 `;
 
@@ -152,11 +151,12 @@ export const HideButton = styled.button`
   }
 `;
 
-export const FeatureTitle = styled.div`
+export const FeatureTitle = styled.div.attrs({ className: "hi-feature-title" })`
   font-size: 13px;
   font-weight: bold;
   letter-spacing: 0.02em;
-  color: #888;
+  /* #888 was 3.5:1 on white; gray-500 meets AA */
+  color: #6b7280;
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -167,7 +167,7 @@ export const FeatureTitle = styled.div`
 
 // Single-line tool name in the panel header; long names end in an ellipsis
 // instead of pushing the header to three lines
-export const FeatureTitleText = styled.span`
+export const FeatureTitleText = styled.span.attrs({ className: "hi-feature-title-text" })`
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -192,6 +192,19 @@ export const HeaderContainer = styled.div`
   width: 100%;
   min-width: 0;
   gap: 16px;
+  container-type: inline-size;
+  container-name: hi-panel-header;
+
+  /*
+   * In a narrow panel a tool with three or more header actions has room for only two or three letters of
+   * its name ("CS…"). Show just the tool icon then (its name is in the toolbar button's tooltip).
+   */
+  @container hi-panel-header (max-width: 300px) {
+    .hi-feature-title:has(.hi-header-buttons > :nth-child(3), .hi-header-buttons > * > :nth-child(3))
+      .hi-feature-title-text {
+      display: none;
+    }
+  }
 `;
 
 // Tool buttons (Save, Cancel, Compare...) on their own row above the sponsor strip,

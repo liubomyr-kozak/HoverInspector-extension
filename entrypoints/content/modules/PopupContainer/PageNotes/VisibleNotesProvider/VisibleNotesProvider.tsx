@@ -18,6 +18,14 @@ const getContainingBlock = (element: HTMLElement): Element | null => {
   return null;
 };
 
+// Whether the element or one of its positioned ancestors is position: fixed (laid out against the viewport)
+const isInsideFixedBox = (element: Element | null): boolean => {
+  for (let current = element; current; current = getContainingBlock(current as HTMLElement)) {
+    if (getComputedStyle(current).position === "fixed") return true;
+  }
+  return false;
+};
+
 /**
  * Notes store page coordinates, but the extension's host element is positioned after the page
  * content. Returns the offset that moves the notes layer back to the document origin.
@@ -26,6 +34,10 @@ const useDocumentOrigin = (layerRef: React.RefObject<HTMLDivElement | null>, cur
   const [origin, setOrigin] = useState({ top: 0, left: 0 });
 
   useLayoutEffect(() => {
+    // On pages where the UI is shown in the top layer (see keepUiOutOfContainingBlocks), the layer is
+    // inside a position: fixed host and doesn't scroll with the page by itself: follow the scroll then.
+    let followScroll = false;
+
     const update = () => {
       const layer = layerRef.current;
       if (!layer) return;
@@ -33,7 +45,11 @@ const useDocumentOrigin = (layerRef: React.RefObject<HTMLDivElement | null>, cur
       const rect = containingBlock?.getBoundingClientRect();
       const top = rect ? -(rect.top + window.scrollY) : 0;
       const left = rect ? -(rect.left + window.scrollX) : 0;
+      followScroll = isInsideFixedBox(containingBlock);
       setOrigin((prev) => (prev.top === top && prev.left === left ? prev : { top, left }));
+    };
+    const onScroll = () => {
+      if (followScroll) update();
     };
 
     update();
@@ -41,10 +57,16 @@ const useDocumentOrigin = (layerRef: React.RefObject<HTMLDivElement | null>, cur
     resizeObserver.observe(document.documentElement);
     if (document.body) resizeObserver.observe(document.body);
     window.addEventListener("resize", update);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    // The host switching in or out of the top layer
+    const host = layerRef.current?.getRootNode() instanceof ShadowRoot ? (layerRef.current.getRootNode() as ShadowRoot).host : null;
+    host?.addEventListener("toggle", update);
 
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", onScroll);
+      host?.removeEventListener("toggle", update);
     };
   }, [layerRef, currentUrl]);
 

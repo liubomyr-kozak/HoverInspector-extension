@@ -4,8 +4,15 @@ import {
   automationActions,
   selectExecutionStatus,
   selectActiveScenarioId,
+  selectStepStatuses,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
-import { IconPlayerPause, IconPlayerPlay, IconPlayerTrackNext, IconPlayerStop } from "@tabler/icons-react";
+import {
+  IconPlayerPause,
+  IconPlayerPlay,
+  IconPlayerTrackNext,
+  IconPlayerStop,
+  IconRotateClockwise,
+} from "@tabler/icons-react";
 import { PauseResumeButton, NextStepButton, StopButton, PlayButton } from "../../styles.ts";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { ExecutionStatus } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types.ts";
@@ -25,6 +32,7 @@ const ExecutionControls: React.FC<ExecutionControlsProps> = ({ currentStepIndex,
   const dispatch = useDispatch();
   const executionStatus = useSelector(selectExecutionStatus);
   const activeScenarioId = useSelector(selectActiveScenarioId);
+  const stepStatuses = useSelector(selectStepStatuses);
   const { playScenario, runSingleStep } = useScenarioActions();
 
   // Only show execution controls if this scenario is the currently active one
@@ -41,9 +49,13 @@ const ExecutionControls: React.FC<ExecutionControlsProps> = ({ currentStepIndex,
     scenarioExecutionStatus === ExecutionStatus.RUNNING || scenarioExecutionStatus === ExecutionStatus.PENDING;
 
   const showResumeAndStop =
-    scenarioExecutionStatus === ExecutionStatus.PAUSED ||
-    scenarioExecutionStatus === ExecutionStatus.ERROR ||
-    scenarioExecutionStatus === ExecutionStatus.WARNING;
+    scenarioExecutionStatus === ExecutionStatus.PAUSED || scenarioExecutionStatus === ExecutionStatus.WARNING;
+
+  // A failed run has ended: it can be retried from the failed step or played again from the start
+  const failed = scenarioExecutionStatus === ExecutionStatus.ERROR;
+  const failedStepIndex = failed
+    ? Number(Object.keys(stepStatuses).find((index) => stepStatuses[Number(index)] === ExecutionStatus.ERROR) ?? 0)
+    : 0;
 
   return (
     <div className="flex flex-wrap gap-1 justify-center w-full max-w-[400px] mx-auto">
@@ -58,6 +70,21 @@ const ExecutionControls: React.FC<ExecutionControlsProps> = ({ currentStepIndex,
             <IconPlayerPlay size={18} color="#1890ff" />
           </PlayButton>
         </Tooltip>
+      )}
+
+      {failed && (
+        <>
+          <Tooltip title={`Retry from step ${failedStepIndex + 1}`}>
+            <PauseResumeButton paused={true} onClick={() => playScenario(scenarioId, failedStepIndex, true)}>
+              <IconRotateClockwise size={14} color="white" />
+            </PauseResumeButton>
+          </Tooltip>
+          <Tooltip title="Play from the start">
+            <PlayButton onClick={() => playScenario(scenarioId)}>
+              <IconPlayerPlay size={18} color="#1890ff" />
+            </PlayButton>
+          </Tooltip>
+        </>
       )}
 
       {/* Show pause button when running */}

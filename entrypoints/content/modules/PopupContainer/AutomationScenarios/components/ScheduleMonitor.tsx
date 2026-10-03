@@ -69,7 +69,7 @@ export const ScheduleMonitor: React.FC = () => {
           draggable: true,
         });
 
-        dispatch(playScenarioWatcher.getPayload({ id: schedule.scenarioId }));
+        dispatch(playScenarioWatcher.getPayload({ id: schedule.scenarioId, triggerType: "scheduled", triggerId: scheduleId }));
       } catch (error) {
         console.error(`Error processing schedule ${scheduleId}:`, error);
       } finally {

@@ -5,6 +5,7 @@ import { eventChannel, END } from "redux-saga";
 import {
   generateUniqueId,
   getAllExecutionHistoryFromLocalStorage,
+  getAllFoldersFromLocalStorage,
   getAllFunctionsFromLocalStorage,
   getAllScenariosFromLocalStorage,
   getAllSchedulesFromLocalStorage,
@@ -41,7 +42,7 @@ import {
   shouldResumeSession,
   startExecutionSession,
 } from "../../modules/PopupContainer/AutomationScenarios/utils/executionSession.ts";
-import { createExecutionHistoryEntry } from "../../modules/PopupContainer/AutomationScenarios/utils/executionHistory.ts";
+import { createExecutionHistoryEntry, formatStepError } from "../../modules/PopupContainer/AutomationScenarios/utils/executionHistory.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
@@ -51,6 +52,8 @@ export const loadScenariosWatcher = sagaEnhancer(function* loadScenariosWatcherE
     yield put(automationActions.setLoading(true));
     const scenarios = yield call(getAllScenariosFromLocalStorage);
     yield put(automationActions.setScenarios(scenarios));
+    const folders = yield call(getAllFoldersFromLocalStorage);
+    yield put(automationActions.setFolders(folders));
 
     // Automatically restore editing state after scenarios are loaded
     yield put({ type: restoreEditingStateWatcher.actionType });
@@ -505,10 +508,19 @@ export const stopRecordingWatcher = sagaEnhancer(function* stopRecordingWatcherF
 
 // Play Scenario
 export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(action: {
-  payload: { id: string; startFromStep?: number; singleStep?: boolean };
+  payload: {
+    id: string;
+    startFromStep?: number;
+    singleStep?: boolean;
+    triggerType?: string;
+    triggerId?: string;
+    // "Retry from step N" after a failure (for the history)
+    retry?: boolean;
+  };
 }) {
   try {
-    const { id, startFromStep = 0, singleStep = false } = action.payload;
+    const { id, startFromStep = 0, singleStep = false, triggerId } = action.payload;
+    const triggerType = action.payload.triggerType || "manual";
 
     // Get the scenario from state
     const scenarios = yield select((state) => state.automation.scenarios);
@@ -552,6 +564,9 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
     // or in the tab a step opens (see executionSession.ts). Single step runs stay on this page.
     const tabId: number | null = singleStep ? null : yield call(getCurrentTabId);
     let handedOff = false;
+    // Where this playback started: a playback continued after a page load keeps the start of the first page
+    let startedFromStep = singleStep ? 0 : startFromStep;
+    let retry = !!action.payload.retry;
 
     // Set active scenario ID
     yield put(automationActions.setActiveScenarioId(id));
@@ -593,6 +608,10 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         const previous = startFromStep > 0 ? yield call(loadExecutionSession) : null;
         const previousHandoff = previous ? yield call(loadExecutionHandoff) : null;
         const resumed = previous?.scenarioId === id && shouldResumeSession(previous, tabId, previousHandoff);
+        if (resumed) {
+          startedFromStep = previous.startedFromStep || 0;
+          retry = !!previous.retry;
+        }
         yield call(startExecutionSession, {
           scenarioId: id,
           nextStepIndex: startFromStep,
@@ -601,6 +620,9 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
           startedAt: (resumed && previous.startedAt) || Date.now(),
           // Keep the log of the steps played on the previous pages
           entries: resumed ? (previous.entries || []).filter((entry) => entry.stepIndex < startFromStep) : [],
+          triggerType,
+          ...(triggerId ? { triggerId } : {}),
+          ...(startedFromStep > 0 ? { startedFromStep, ...(retry ? { retry } : {}) } : {}),
         });
       }
 
@@ -687,15 +709,13 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
           }
 
           if (nowPaused) {
-            // Update the status of the current step to PAUSED
+            // Update the status of the current step to PAUSED. executeSteps waits before the next step until
+            // the playback is resumed or stopped (signalling a stop here made "Resume" cancel the playback)
             if (actualStepIndex + 1 < totalSteps) {
               yield put(
                 automationActions.setStepStatus({ index: actualStepIndex + 1, status: ExecutionStatus.PAUSED }),
               );
             }
-
-            // Signal to stop execution
-            yield call(stopExecution);
             return;
           }
         },
@@ -799,7 +819,13 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
       } else if (executionLog.status === ExecutionStatus.ERROR) {
         // If there was an error, set the error message and update step status
         const errorEntry = executionLog.entries.find((entry) => entry.status === ExecutionStatus.ERROR);
-        yield put(automationActions.setExecutionError(errorEntry?.error || "An error occurred during execution"));
+        yield put(
+          automationActions.setExecutionError(
+            errorEntry
+              ? formatStepError({ ...errorEntry, stepIndex: startFromStep + errorEntry.stepIndex })
+              : "An error occurred during execution",
+          ),
+        );
 
         // Update the status of the failed step
         if (errorEntry && errorEntry.stepIndex >= 0) {
@@ -840,7 +866,11 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         scenarioTitle: scenario.title,
         log: { ...historyLog, status: executionLog.status },
         totalSteps: singleStep ? 1 : totalStepsInScenario,
-        stepsBefore: singleStep ? 0 : startFromStep,
+        // The log holds the steps of every page of this playback: only those count as completed
+        startedFromStep: singleStep ? 0 : startedFromStep,
+        retry,
+        triggerType,
+        triggerId,
       });
 
       // Save the execution history entry
@@ -864,10 +894,8 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         yield put(automationActions.setCurrentStepIndex(-1));
         yield put(automationActions.setPendingSteps([]));
 
-        // Don't collapse scenarios that were manually stopped (CANCELLED status)
-        if (activeScenarioId && executionLog.status !== ExecutionStatus.CANCELLED) {
-          yield put(automationActions.setScenarioExpanded({ id: activeScenarioId, expanded: false }));
-        }
+        // Keep the scenario open: a failed run shows which step failed, a stopped one where it stopped
+        yield put(automationActions.setScenarioExpanded({ id, expanded: true }));
       }
     }
   } catch (error) {
@@ -939,6 +967,10 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
               status: ExecutionStatus.SUCCESS,
             },
             totalSteps: scenario.data?.length || 0,
+            startedFromStep: session.startedFromStep,
+            retry: session.retry,
+            triggerType: session.triggerType,
+            triggerId: session.triggerId,
           }),
         }),
       );
@@ -956,7 +988,14 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
       );
     }
 
-    yield put(playScenarioWatcher.getPayload({ id: session.scenarioId, startFromStep: session.nextStepIndex }));
+    yield put(
+      playScenarioWatcher.getPayload({
+        id: session.scenarioId,
+        startFromStep: session.nextStepIndex,
+        triggerType: session.triggerType,
+        triggerId: session.triggerId,
+      }),
+    );
   } catch (error) {
     console.error("Error resuming scenario execution:", error);
   }
@@ -998,16 +1037,17 @@ export const restoreEditingStateWatcher = sagaEnhancer(function* restoreEditingS
     const editingState = yield call(ExtensionStorageManager.getAutomationScenario, SCENARIO_EDITING_STATE_KEY);
 
     if (editingState && editingState.status && editingState.status !== ScenarioStatus.IDLE) {
-      // Restore the unified status
-      yield put(automationActions.setStatus(editingState.status));
+      // Steps first: the recorder looks at them as soon as the status says it is recording
+      if (editingState.currentSteps && editingState.currentSteps.length > 0) {
+        yield put(automationActions.setCurrentSteps(editingState.currentSteps));
+      }
 
       if (editingState.activeScenarioId) {
         yield put(automationActions.setActiveScenarioId(editingState.activeScenarioId));
       }
 
-      if (editingState.currentSteps && editingState.currentSteps.length > 0) {
-        yield put(automationActions.setCurrentSteps(editingState.currentSteps));
-      }
+      // Restore the unified status
+      yield put(automationActions.setStatus(editingState.status));
     }
   } catch (error) {
     console.error("Error restoring scenario editing state:", error);

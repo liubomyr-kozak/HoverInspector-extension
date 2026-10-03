@@ -1,8 +1,9 @@
 import React from "react";
-import { Button, Empty, List, Switch, Tag, Tooltip } from "antd";
+import { Button, Empty, List, Popconfirm, Switch, Tag, Tooltip } from "antd";
 import { IconCalendar, IconClock, IconEdit, IconTrash } from "@tabler/icons-react";
 import { ScheduleConfig, ScheduleFrequency, ScheduleMap } from "../types.ts";
 import { formatDistanceToNow } from "date-fns";
+import { shadowBody } from "../utils/popupContainer";
 
 interface ScheduleListProps {
   schedules: ScheduleMap;
@@ -87,9 +88,23 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
               <Tooltip title="Edit Schedule" key="edit">
                 <Button type="text" icon={<IconEdit size={18} />} onClick={() => onEdit(key)} />
               </Tooltip>,
-              <Tooltip title="Delete Schedule" key="delete">
-                <Button type="text" danger icon={<IconTrash size={18} />} onClick={() => onDelete(key)} />
-              </Tooltip>,
+              <Popconfirm
+                key="delete"
+                title="Delete this schedule?"
+                description={`"${schedule.title}" will be removed. This can't be undone.`}
+                okText="Delete"
+                okButtonProps={{ danger: true }}
+                cancelText="Cancel"
+                placement="bottomRight"
+                getPopupContainer={shadowBody}
+                onConfirm={() => onDelete(key)}
+              >
+                <span>
+                  <Tooltip title="Delete Schedule">
+                    <Button type="text" danger icon={<IconTrash size={18} />} aria-label={`Delete ${schedule.title}`} />
+                  </Tooltip>
+                </span>
+              </Popconfirm>,
             ]}
           >
             <List.Item.Meta

@@ -29,6 +29,13 @@ export interface ExecutionSession {
   // Log entries of the steps already played, by their index in the scenario, so the history of a
   // playback that spans several pages lists every step and not only the ones of the last page
   entries?: ExecutionLogEntry[];
+  // What started the playback ("manual", "scheduled", "triggered") and the schedule / trigger id, for the history
+  triggerType?: string;
+  triggerId?: string;
+  // The first step of the playback when it did not start at the first step, and whether it is a retry after a
+  // failure: the history then counts only the steps that ran
+  startedFromStep?: number;
+  retry?: boolean;
 }
 
 export interface ExecutionHandoff {
@@ -168,6 +175,8 @@ export function canLeavePage(step: ScenarioStep | undefined): boolean {
     StepType.UPDATE,
     StepType.CODE,
     StepType.FUNCTION,
+    // Enter may submit a form
+    StepType.KEY_PRESS,
   ].includes(step.type as StepType);
 }
 
