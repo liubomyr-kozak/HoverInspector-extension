@@ -251,6 +251,20 @@ function* findStepElement(step: ScenarioStep, stepLabel: string) {
 }
 
 /**
+ * Waits until a disabled control (a button the page enables once a form is valid...) can be used.
+ * Clicking a disabled control does nothing, and the step used to pass without having done anything.
+ */
+function* waitUntilEnabled(element: Element, step: ScenarioStep) {
+  const startTime = Date.now();
+  while (element.isConnected && element.matches(":disabled")) {
+    if (Date.now() - startTime >= ELEMENT_LOOKUP_TIMEOUT) {
+      throw new Error(`Element is still disabled after ${ELEMENT_LOOKUP_TIMEOUT / 1000} s: ${step.xpath}`);
+    }
+    yield delay(ELEMENT_LOOKUP_INTERVAL);
+  }
+}
+
+/**
  * Brings an off-screen element into view before acting on it, like a user would scroll to it
  */
 function scrollIntoViewIfNeeded(element: Element) {
@@ -344,14 +358,21 @@ export function getStepDescription(step: ScenarioStep): string {
  * Executes a click step
  */
 export function* executeClickStep(step: ScenarioStep) {
-  const element: Element = yield call(findStepElement, step, "click");
+  let element: Element = yield call(findStepElement, step, "click");
 
   // A recorded checkbox click knows the state it led to: don't flip a box that is already there
-  if (step.value === "checked" || step.value === "unchecked") {
-    const box = element instanceof HTMLLabelElement ? element.control : element;
-    if (box instanceof HTMLInputElement && box.type === "checkbox" && box.checked === (step.value === "checked")) {
-      return;
-    }
+  const isInTargetState = (target: Element) => {
+    if (step.value !== "checked" && step.value !== "unchecked") return false;
+    const box = target instanceof HTMLLabelElement ? target.control : target;
+    return box instanceof HTMLInputElement && box.type === "checkbox" && box.checked === (step.value === "checked");
+  };
+  if (isInTargetState(element)) return;
+
+  yield call(waitUntilEnabled, element, step);
+  // The page re-rendered the button while it was disabled: click the new one
+  if (!element.isConnected) {
+    element = yield call(findStepElement, step, "click");
+    if (isInTargetState(element)) return;
   }
 
   (element as HTMLElement).scrollIntoView?.({ block: "center", inline: "nearest" });
