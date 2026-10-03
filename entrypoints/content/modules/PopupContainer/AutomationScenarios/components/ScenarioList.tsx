@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { ExecutionHistoryEntry, ScenarioMap, ScenarioStep, ExecutionStatus } from "../types.ts";
-import { EmptyState, ScenarioList as StyledScenarioList } from "../styles.ts";
+import { ScenarioList as StyledScenarioList } from "../styles.ts";
 import { ScenarioItem } from "./ScenarioItem";
 import { useSelector } from "react-redux";
 import { useModalOverlayOptional } from "@entrypoints/shared/components/FloatingModal/ModalOverlayContext";
@@ -13,6 +13,8 @@ import {
   selectExecutionStatus,
   selectPaused,
 } from "@entrypoints/content/store/automation/automation.slice.ts";
+import { EmptyState as SharedEmptyState } from "@entrypoints/shared/components/EmptyState";
+import { IconRobot } from "@tabler/icons-react";
 
 interface ScenarioListProps {
   // Additional props for execution steps display
@@ -106,7 +108,13 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
       return <StyledScenarioList ref={listContainerRef} />;
     }
 
-    return <EmptyState>No scenarios found. Create a new one to get started.</EmptyState>;
+    return (
+      <SharedEmptyState
+        icon={<IconRobot />}
+        title="No scenarios yet"
+        description="Record your clicks and typing on this page to replay them later."
+      />
+    );
   }
 
   return (
