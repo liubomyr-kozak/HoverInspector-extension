@@ -93,6 +93,34 @@ export const setMargin = (
   }
 };
 
+/**
+ * Cuts a fixed overlay box down to `clip` (viewport px) with clip-path, e.g. so the margin of an
+ * element inside an iframe doesn't spill over the page around the frame. Null removes the clipping.
+ */
+export const clipOverlayTo = (
+  overlay: HTMLElement | null,
+  clip: { left: number; top: number; width: number; height: number } | null,
+) => {
+  if (!overlay) return;
+  if (!clip) {
+    if (overlay.style.clipPath) overlay.style.clipPath = "";
+    return;
+  }
+  const left = parseFloat(overlay.style.left) || 0;
+  const top = parseFloat(overlay.style.top) || 0;
+  // The laid-out size includes borders also on content-box overlays
+  const right = left + (overlay.offsetWidth || parseFloat(overlay.style.width) || 0);
+  const bottom = top + (overlay.offsetHeight || parseFloat(overlay.style.height) || 0);
+  const insetTop = Math.max(0, clip.top - top);
+  const insetLeft = Math.max(0, clip.left - left);
+  const insetRight = Math.max(0, right - (clip.left + clip.width));
+  const insetBottom = Math.max(0, bottom - (clip.top + clip.height));
+  overlay.style.clipPath =
+    insetTop || insetLeft || insetRight || insetBottom
+      ? `inset(${insetTop}px ${insetRight}px ${insetBottom}px ${insetLeft}px)`
+      : "";
+};
+
 export const setElementBorder = (borderBox: any, style: any) => {
   borderBox.style.top = `${style.top}px`;
   borderBox.style.left = `${style.left}px`;

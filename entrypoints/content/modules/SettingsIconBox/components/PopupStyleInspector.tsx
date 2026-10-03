@@ -2,6 +2,7 @@ import { clickableProps } from "@entrypoints/shared/utils/a11y";
 import React, { useMemo, useRef, useState } from "react";
 import copy from "copy-to-clipboard";
 import DomNodeManager, { useDomNodeObserver } from "@entrypoints/core/services/dom/DomNodeManager";
+import { getNodeComputedStyle, isRemoteFrameNode } from "@entrypoints/shared/frameAgent/remoteNode";
 import { IconCaretDownFilled, IconCaretRightFilled } from "@tabler/icons-react";
 import { isGradientValue } from "@entrypoints/shared/utils/isGradientValue";
 import { isColorValue } from "@entrypoints/shared/utils/isColorValue.ts";
@@ -188,7 +189,8 @@ const PopupStyleInspector = ({ selectedElementType }) => {
   const processedLines = useMemo(() => {
     if (!selectedElement || selectedElement.nodeType !== Node.ELEMENT_NODE) return [];
     const styles = { ...DomNodeManager.getStyleByNode(selectedElement) };
-    const computed = getComputedStyle(selectedElement);
+    const remote = isRemoteFrameNode(selectedElement) ? selectedElement : null;
+    const computed = getNodeComputedStyle(selectedElement as any);
     // The computed "background" shorthand only repeats background-color/-image in a long resolved form
     delete styles.background;
 
@@ -203,9 +205,14 @@ const PopupStyleInspector = ({ selectedElementType }) => {
     // rem is relative to the root font size; em to the element's own font size, except font-size itself,
     // which is relative to the parent's
     const px = (v) => parseFloat(v) || 16;
-    const rootSize = px(getComputedStyle(document.documentElement).fontSize);
+    // Inside a cross-origin frame, the frame's own root and the parent (reported by its agent)
+    const rootSize = remote ? remote.snapshot.rootFontSize : px(getComputedStyle(document.documentElement).fontSize);
     const ownSize = px(computed.fontSize);
-    const parentSize = selectedElement.parentElement ? px(getComputedStyle(selectedElement.parentElement).fontSize) : rootSize;
+    const parentSize = remote
+      ? remote.snapshot.parentFontSize
+      : selectedElement.parentElement
+        ? px(getComputedStyle(selectedElement.parentElement).fontSize)
+        : rootSize;
     const baseFor = (prop?: string) => (unit === "rem" ? rootSize : prop === "font-size" ? parentSize : ownSize);
     const convert = (val, prop?: string) => (!val || val === "false" ? "" : convertPx(val, unit, baseFor(prop)));
 

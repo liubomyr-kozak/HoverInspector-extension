@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import DomNodeManagerInstance, { useDomNodeObserver } from "@entrypoints/core/services/dom/DomNodeManager";
+import { isRemoteFrameNode } from "@entrypoints/shared/frameAgent/remoteNode";
 import {
   IconArrowsDiagonal2,
   IconBorderStyle,
@@ -57,7 +58,8 @@ export const BoxModelVisualizer: React.FC<Props> = ({ selectedElementType }) => 
     return <div className="text-xs text-gray-400 italic">Hover over or click an element on the page to see its details.</div>;
 
   const style = DomNodeManagerInstance.getStyleByNode(selectedElement) as any;
-  const rect = selectedElement.getBoundingClientRect();
+  // The element's own size, not scaled by the iframe it is in
+  const rect = isRemoteFrameNode(selectedElement) ? selectedElement.snapshot.rect : selectedElement.getBoundingClientRect();
 
   const padding = parseSideValues(style.padding || "0");
   const margin = parseSideValues(style.margin || "0");
@@ -76,7 +78,9 @@ export const BoxModelVisualizer: React.FC<Props> = ({ selectedElementType }) => 
   const backgroundImage = style["background-image"] || NON_VALUE;
 
   // rem is relative to the root font size, em to the element's own font size
-  const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const rootFontSize = isRemoteFrameNode(selectedElement)
+    ? selectedElement.snapshot.rootFontSize
+    : parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
   const ownFontSize = parseFloat(style["font-size"]) || rootFontSize;
   const trim = (n: number, digits: number) => String(Number(n.toFixed(digits)));
 

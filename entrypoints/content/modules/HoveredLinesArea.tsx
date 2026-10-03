@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
 
-import { setParamsToNode, use4SideNodeRef } from "@entrypoints/core/utils";
+import { clipOverlayTo, setParamsToNode, use4SideNodeRef } from "@entrypoints/core/utils";
 import DomNodeManager from "@entrypoints/core/services/dom/DomNodeManager.ts";
 
 const HoveredLinesArea = () => {
@@ -17,6 +17,10 @@ const HoveredLinesArea = () => {
     if (!clientRectHoveredNode) return;
 
     setParamsToNode(sideNodeRef, clientRectHoveredNode);
+
+    // Inside an iframe, stop at the frame's edges like the element does
+    const clip = DomNodeManager.getOverlayClipRect("hoverElement");
+    [topRef, bottomRef, leftRef, rightRef].forEach((ref) => clipOverlayTo(ref.current, clip));
   }, [userAction]);
 
   return (
