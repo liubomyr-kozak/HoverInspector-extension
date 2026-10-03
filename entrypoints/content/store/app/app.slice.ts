@@ -156,6 +156,15 @@ const appSlice = createSlice({
       state.launcher.activeIcons = [];
     },
 
+    /** Toolbar preferences changed in another tab */
+    syncSharedSettings(state, action: PayloadAction<any>) {
+      const stored = migrateAppSettings(action.payload);
+      state.launcher.iconOrder = stored.launcher.iconOrder;
+      state.visibleFeatures = stored.visibleFeatures;
+      state.sponsorMessage = stored.sponsorMessage;
+      state.colorHistory = stored.colorHistory;
+    },
+
     setMinimizedLauncherPosition(state, action: PayloadAction<{ x: number; y: number }>) {
       state.launcher.minimizedPosition = action.payload;
     },
@@ -184,6 +193,7 @@ export const {
   clearAllActiveIcons,
   toggleFeatureMinimized,
   setMinimizedLauncherPosition,
+  syncSharedSettings,
 } = appSlice.actions;
 
 export default appSlice.reducer;

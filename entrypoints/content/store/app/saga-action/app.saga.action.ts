@@ -13,6 +13,7 @@ import {
   setLocalAppSetting,
   setMinimizedLauncherPosition,
   setViewType,
+  syncSharedSettings,
   toggleFeatureMinimized,
   toggleFeatureVisibility,
   toggleLauncherActiveIcon,
@@ -279,4 +280,14 @@ export const onCloseMinimizedFeature = sagaEnhancer(function* onCloseMinimizedFe
   yield put(toggleFeatureMinimized(featureKey));
   const state = yield select();
   yield ExtensionStorageManager.changeMinimizedFeatures(state.app.minimizedFeatures);
+});
+
+/**
+ * Settings are one shared object, but each tab keeps its own copy. When a tab comes back into view,
+ * pick up toolbar changes made in another tab; otherwise the next toggle here would write the stale
+ * list back and undo them.
+ */
+export const onSyncSharedSettings = sagaEnhancer(function* onSyncSharedSettingsFn() {
+  const stored = yield ExtensionStorageManager.getState();
+  if (stored) yield put(syncSharedSettings(stored));
 });
