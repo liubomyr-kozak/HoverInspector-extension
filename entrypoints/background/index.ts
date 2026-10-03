@@ -59,6 +59,18 @@ export default defineBackground({
       }
     });
 
+    // Prerendered or instant pages swap in a new tab id; carry the active state over to it
+    chrome.tabs.onReplaced?.addListener(async (addedTabId, removedTabId) => {
+      await Ext.session.ready;
+      if (!Ext.session.isActive(removedTabId)) return;
+      Ext.session.clear(removedTabId);
+      try {
+        await Ext.session.activate(addedTabId);
+      } catch (error) {
+        console.warn("Could not re-activate replaced tab", error);
+      }
+    });
+
     browser.runtime.onSuspend.addListener(() => {
       for (const [tabId] of Ext.session.getActivePorts()) {
         Ext.session.deactivate(tabId);
