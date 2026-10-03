@@ -313,6 +313,20 @@ const PopupContainer = ({ data, hoverElement }) => {
 };
 
 const ARROW_HEIGHT = 8;
+const CURSOR_OFFSET = 16;
+
+// Last pointer position, for elements too tall to put the tooltip above or below them
+const lastPointer = { x: -1, y: -1 };
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "mousemove",
+    (e) => {
+      lastPointer.x = e.clientX;
+      lastPointer.y = e.clientY;
+    },
+    { capture: true, passive: true },
+  );
+}
 
 // // Додаю виправлення без зміни стилю функції
 // const getPopupPosition = (hoverNodeParams, popupRef) => {
@@ -445,9 +459,25 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   } else if (canShowTop) {
     topPositionProposal = popupTopPosition;
   } else {
-    // fallback — коли не влазить ні зверху, ні знизу
-    topPositionProposal = 10;
+    // Fits neither above nor below (a section taller than the viewport): follow the pointer instead of
+    // pinning the tooltip to the top-left corner, where the inspector panel usually sits
     visibleIn = { top: false, bottom: false };
+    if (lastPointer.x >= 0) {
+      let cursorLeft = lastPointer.x + CURSOR_OFFSET;
+      let cursorTop = lastPointer.y + CURSOR_OFFSET;
+      if (cursorLeft + popupWidth > clientWindow.right - 10) cursorLeft = lastPointer.x - CURSOR_OFFSET - popupWidth;
+      if (cursorTop + popupHeight > clientWindow.bottom - 10) cursorTop = lastPointer.y - CURSOR_OFFSET - popupHeight;
+      return {
+        css: {
+          top: Math.max(10, Math.min(cursorTop, clientWindow.bottom - popupHeight - 10)),
+          left: Math.max(10, Math.min(cursorLeft, clientWindow.right - popupWidth - 10)),
+        },
+        visibleIn,
+        isVisible: true,
+        data: null,
+      };
+    }
+    topPositionProposal = 10;
   }
 
   // console.group()
