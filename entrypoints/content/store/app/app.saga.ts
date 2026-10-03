@@ -6,7 +6,9 @@ import {
   onChangeMinimizedLauncherPosition,
   onChangeVisibleFeatures,
   onClearAllActiveIcons,
+  onCloseMinimizedFeature,
   onInitAppSetting,
+  onSyncSharedSettings,
   onToggleFeatureMinimized,
   onToggleFeatureVisibility,
   onToggleLauncherActiveIcon,
@@ -35,4 +37,6 @@ export function* appInit() {
   yield takeLatest(onToggleFeatureVisibility.actionType, onToggleFeatureVisibility);
   yield takeLatest(onChangeMinimizedFeatures.actionType, onChangeMinimizedFeatures);
   yield takeLatest(onToggleFeatureMinimized.actionType, onToggleFeatureMinimized);
+  yield takeLatest(onCloseMinimizedFeature.actionType, onCloseMinimizedFeature);
+  yield takeLatest(onSyncSharedSettings.actionType, onSyncSharedSettings);
 }

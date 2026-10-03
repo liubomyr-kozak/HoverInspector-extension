@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Rnd } from "../ReactRnd";
 import { TbGripVertical } from "react-icons/tb";
 import { IoCloseSharp } from "react-icons/io5";
@@ -19,7 +19,12 @@ interface ResizableModalProps {
   onSizeChange?: (width: number, height: number) => void;
   position: "fixed" | "absolute";
   viewSourceType?: string;
+  minWidth?: number;
+  minHeight?: number;
 }
+
+// Keep at least this much of the header on screen so the panel can always be dragged back
+const VISIBLE_HEADER = 48;
 
 export function ResizableModal({
   isOpen,
@@ -33,12 +38,14 @@ export function ResizableModal({
   onClose,
   position,
   viewSourceType,
+  minWidth = 40,
+  minHeight = 24,
 }: ResizableModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  // rAF throttling refs
-  const dragFrame = useRef<number | null>(null);
-  const resizeFrame = useRef<number | null>(null);
+  const rndRef = useRef<Rnd | null>(null);
+  const currentPosition = useRef(initialPosition);
+  const currentSize = useRef(initialSize);
 
   // Validate and constrain initial position within viewport bounds
   const getValidatedPosition = (pos: { x: number; y: number }, size: { width: number; height: number }) => {
@@ -65,6 +72,79 @@ export function ResizableModal({
     return { x: validatedX, y: validatedY };
   };
 
+  // Where the user put the panel and how big they made it. The window can be smaller than that for a
+  // while; the panel is then shown smaller/moved but these are kept, so it comes back when the window grows.
+  const preferred = useRef({ position: initialPosition, size: initialSize });
+
+  const applyLayout = (position: { x: number; y: number }, size: { width: number; height: number }) => {
+    if (size.width !== currentSize.current.width || size.height !== currentSize.current.height) {
+      currentSize.current = size;
+      rndRef.current?.updateSize(size);
+    }
+    if (position.x !== currentPosition.current.x || position.y !== currentPosition.current.y) {
+      currentPosition.current = position;
+      rndRef.current?.updatePosition(position);
+    }
+  };
+
+  // On open and on window resize: show the whole panel, shrinking it when the window is smaller, so the
+  // close button at the right of the header is never off-screen
+  const fitToWindow = () => {
+    const size = {
+      width: Math.max(minWidth, Math.min(preferred.current.size.width, window.innerWidth)),
+      height: Math.max(minHeight, Math.min(preferred.current.size.height, window.innerHeight)),
+    };
+    const position = {
+      x: Math.max(0, Math.min(preferred.current.position.x, window.innerWidth - size.width)),
+      y: Math.max(0, Math.min(preferred.current.position.y, window.innerHeight - size.height)),
+    };
+    applyLayout(position, size);
+  };
+
+  // After a drag it is enough that part of the header can still be grabbed
+  const clampIntoView = () => {
+    const { x, y } = currentPosition.current;
+    const clamped = {
+      x: Math.min(Math.max(x, 0), window.innerWidth - VISIBLE_HEADER * 3),
+      y: Math.min(Math.max(y, 0), window.innerHeight - VISIBLE_HEADER),
+    };
+
+    if (clamped.x !== x || clamped.y !== y) {
+      applyLayout(clamped, currentSize.current);
+      preferred.current = { ...preferred.current, position: clamped };
+      onPositionChange?.(clamped.x, clamped.y);
+    }
+  };
+
+  // The saved size can be larger than this window (or tiny from an older version)
+  const startSize = useMemo(
+    () => ({
+      width: Math.max(minWidth, Math.min(initialSize.width, window.innerWidth)),
+      height: Math.max(minHeight, Math.min(initialSize.height, window.innerHeight)),
+    }),
+    [isOpen],
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    currentPosition.current = initialPosition;
+    currentSize.current = startSize;
+    const size = {
+      width: Math.max(minWidth, initialSize.width),
+      height: Math.max(minHeight, initialSize.height),
+    };
+    preferred.current = { position: initialPosition, size };
+    // A size saved below the minimum (older versions) is corrected for good
+    if (size.width !== initialSize.width || size.height !== initialSize.height) {
+      onSizeChange?.(size.width, size.height);
+    }
+    fitToWindow();
+
+    window.addEventListener("resize", fitToWindow);
+    return () => window.removeEventListener("resize", fitToWindow);
+  }, [isOpen]);
+
   // Close functionality removed since minimize feature is deprecated
   const handleCloseClick = (e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation();
@@ -79,42 +159,46 @@ export function ResizableModal({
   return (
     <ModalOverlay>
       <Rnd
+        ref={rndRef}
         default={{
           x: initialPosition.x,
           y: initialPosition.y,
-          width: initialSize.width,
-          height: initialSize.height,
+          width: startSize.width,
+          height: startSize.height,
         }}
         style={{ position: position, zIndex: ZINDEX_MODAL }}
-        minWidth={10}
-        minHeight={10}
-        maxHeight={800}
+        minWidth={minWidth}
+        minHeight={minHeight}
+        maxHeight={window.innerHeight}
+        maxWidth={window.innerWidth}
         scale={1}
-        enableUserSelectHack={false}
+        // Without this, dragging by the title selects its text and the next drag starts a native
+        // text drag-and-drop instead of moving the panel
+        enableUserSelectHack={true}
         dragHandleClassName="modal-drag-handle"
         onDragStart={() => setIsDragging(true)}
         onDragStop={(e, d) => {
           setIsDragging(false);
-          if (dragFrame.current) cancelAnimationFrame(dragFrame.current);
-
+          currentPosition.current = { x: d.x, y: d.y };
+          preferred.current = { ...preferred.current, position: { x: d.x, y: d.y } };
           onPositionChange?.(d.x, d.y);
+          // After react-draggable has finished its own stop handling
+          setTimeout(clampIntoView, 0);
         }}
         onResizeStart={() => setIsResizing(true)}
-        onResize={(e, direction, ref, delta, position) => {
-          if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
-
-          const width = parseInt(ref.style.width);
-          const height = parseInt(ref.style.height);
-
-          resizeFrame.current = requestAnimationFrame(() => {
-            onSizeChange?.(width, height);
-            // onPositionChange?.(position.x, position.y);
-          });
-        }}
         positionOffset={{ x: 0, y: 0 }}
-        onResizeStop={() => {
+        onResizeStop={(e, direction, ref, delta, resizePosition) => {
           setIsResizing(false);
-          if (resizeFrame.current) cancelAnimationFrame(resizeFrame.current);
+
+          // Saved once per gesture; resizing from the top/left edge also moves the panel
+          currentSize.current = { width: ref.offsetWidth, height: ref.offsetHeight };
+          preferred.current = { position: currentPosition.current, size: currentSize.current };
+          onSizeChange?.(ref.offsetWidth, ref.offsetHeight);
+          if (resizePosition && (resizePosition.x !== currentPosition.current.x || resizePosition.y !== currentPosition.current.y)) {
+            currentPosition.current = { x: resizePosition.x, y: resizePosition.y };
+            preferred.current = { ...preferred.current, position: currentPosition.current };
+            onPositionChange?.(resizePosition.x, resizePosition.y);
+          }
         }}
         enableResizing={{
           top: true,
@@ -137,22 +221,25 @@ export function ResizableModal({
           topLeft: "resize-handle resize-handle-corner resize-handle-top-left",
         }}
         resizeHandleStyles={RESIZE_HANDLE_STYLES}
-        className={`pointer-events-auto bg-white bg-card border border-gray-200 rounded-lg shadow-xl overflow-hidden ${
+        className={`pointer-events-auto bg-white bg-card border border-gray-200 rounded-lg shadow-xl ${
           isDragging ? "cursor-grabbing" : ""
         } ${isResizing ? "resizing" : ""} rnd-container`}
       >
-        <div className={"flex flex-col h-full"}>
+        {/* Clip here, not on the Rnd box: the resize handles reach a few px outside the panel's edge */}
+        <div className={"flex flex-col h-full overflow-hidden rounded-lg"}>
           {/*<div className={"flex flex-col h-full" + (!title ? " modal-drag-handle" : "")}>*/}
           {/* Header - Drag Handle */}
           {title && (
-            <div className="modal-drag-handle flex items-center justify-between p-4 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
-              <div className="flex items-center gap-2 w-full">
-                <TbGripVertical className="w-4 h-4 text-muted-foreground" />
+            <div className="modal-drag-handle select-none flex items-center justify-between gap-1 px-3 py-3 border-b border-gray-200 bg-white bg-card cursor-grab active:cursor-grabbing">
+              <div className="flex items-center gap-2 w-full min-w-0">
+                <TbGripVertical className="w-4 h-4 shrink-0 text-muted-foreground" />
                 {title}
               </div>
               <button
                 onClick={handleCloseClick}
-                className="modal-drag-handle-close-button h-8 w-8 p-0 hover:bg-accent z-10 relative"
+                title="Close"
+                aria-label="Close"
+                className="modal-drag-handle-close-button shrink-0 flex items-center justify-center h-8 w-8 p-0 hover:bg-accent z-10 relative"
                 style={{ pointerEvents: "auto", cursor: "pointer" }}
               >
                 <IoCloseSharp size={"20px"} />

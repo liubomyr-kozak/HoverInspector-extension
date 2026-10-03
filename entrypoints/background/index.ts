@@ -5,7 +5,6 @@ import { skipTab } from "./shared/utils.ts";
 import { actionsContextSlice } from "./store/backgroundSlice.ts";
 import { appBackgroundSlice } from "./store/appBackgroundSlice.ts";
 import { handleAutomationTabPort, registerAutomationTabListeners } from "./automationTabs.ts";
-import { AUTOMATION_TAB_PORT } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/executionSession.ts";
 
 let lastBrowserAction;
 
@@ -30,31 +29,46 @@ export default defineBackground({
         return;
       }
 
-      if (skipTab(tab)) {
+      lastBrowserAction = Date.now();
+
+      // A tab that is still loading can be activated: the script is injected once the document is idle
+      if (skipTab(tab, { allowLoading: true })) {
         return;
       }
+
+      await Ext.session.ready;
 
       if (Ext.session.isActive(tab.id as number)) {
         await Ext.session.deactivate(tab.id as number);
       } else {
         await Ext.session.activate(tab.id as number);
       }
-
-      lastBrowserAction = Date.now();
     });
 
-    browser.runtime.onConnect.addListener((port) => {
-      if (!port.sender?.tab?.id) return;
-      // Tab id request from a playing scenario, not the extension instance port
-      if (port.name === AUTOMATION_TAB_PORT) return;
-
-      Ext.session.initializePort(port);
-    });
-
+    // browser.runtime and chrome.runtime are the same object in Chrome, so one listener handles every port
     chrome.runtime.onConnect.addListener(function (port) {
       if (handleAutomationTabPort(port)) return;
-      // tabs[port.sender.tab.id].initialize(port);
+      if (!port.sender?.tab?.id) return;
+
       Ext.session.initializePort(port);
+    });
+
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      if (Ext.session.isActive(tabId)) {
+        Ext.session.clear(tabId);
+      }
+    });
+
+    // Prerendered or instant pages swap in a new tab id; carry the active state over to it
+    chrome.tabs.onReplaced?.addListener(async (addedTabId, removedTabId) => {
+      await Ext.session.ready;
+      if (!Ext.session.isActive(removedTabId)) return;
+      Ext.session.clear(removedTabId);
+      try {
+        await Ext.session.activate(addedTabId);
+      } catch (error) {
+        console.warn("Could not re-activate replaced tab", error);
+      }
     });
 
     browser.runtime.onSuspend.addListener(() => {
@@ -81,9 +95,10 @@ export default defineBackground({
           clearTimeout(debounceMap[tabId]);
         }
 
-        debounceMap[tabId] = setTimeout(() => {
+        debounceMap[tabId] = setTimeout(async () => {
           delete debounceMap[tabId];
 
+          await Ext.session.ready;
           if (Ext.session.isActive(tabId)) {
             Ext.session.activate(tabId);
           }

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 
 import DomNodeManager from "@entrypoints/core/services/dom/DomNodeManager.ts";
-import { setMargin, setPadding } from "@entrypoints/core/utils";
+import { getCssZoom, setMargin, setPadding } from "@entrypoints/core/utils";
 
 import { isActionTypeHover, isActionTypeScroll } from "@entrypoints/content/store/app/app.slice";
 
@@ -18,8 +18,8 @@ const HoveredBox = () => {
       const hoverNodeParams = DomNodeManager.getStyleByNode(hoverElement);
       const clientRectHoveredNode = DomNodeManager.getBoundingClientRec(hoverElement);
 
-      setPadding(paddingRef.current, clientRectHoveredNode, hoverNodeParams);
-      setMargin(marginRef.current, clientRectHoveredNode, hoverNodeParams);
+      setPadding(paddingRef.current, clientRectHoveredNode, hoverNodeParams, getCssZoom(hoverElement));
+      setMargin(marginRef.current, clientRectHoveredNode, hoverNodeParams, getCssZoom(hoverElement));
     }
 
     if (isActionTypeScroll(userAction.type)) {
@@ -28,8 +28,8 @@ const HoveredBox = () => {
       const hoverNodeParams = DomNodeManager.getStyleByNode(hoverElement);
       const clientRectHoveredNode = DomNodeManager.getBoundingClientRec(hoverElement);
 
-      setPadding(paddingRef.current, clientRectHoveredNode, hoverNodeParams);
-      setMargin(marginRef.current, clientRectHoveredNode, hoverNodeParams);
+      setPadding(paddingRef.current, clientRectHoveredNode, hoverNodeParams, getCssZoom(hoverElement));
+      setMargin(marginRef.current, clientRectHoveredNode, hoverNodeParams, getCssZoom(hoverElement));
     }
   }, [userAction]);
 

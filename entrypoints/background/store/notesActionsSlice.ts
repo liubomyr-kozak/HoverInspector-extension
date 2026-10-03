@@ -1,16 +1,15 @@
 import { createChromeSlice } from "@entrypoints/core/libs/createChromeSlice.ts";
 import {
   Note,
-  NoteLocation,
   NotesState,
-  NoteViewType,
   NoteGroup,
   ColorPalette,
-  AttachmentType,
   CreateNotePayload,
   UpdateNotePayload,
   CreateNoteGroupPayload,
   UpdateNoteGroupPayload,
+  DeleteNoteGroupPayload,
+  ImportNotesPayload,
   CreateColorPalettePayload,
   UpdateColorPalettePayload,
   DeleteColorPalettePayload,
@@ -23,6 +22,8 @@ import {
   updateNoteGroupData,
   removeNotesFromGroup,
   createNewColorPalette,
+  normalizeNoteGroups,
+  normalizeColorPalettes,
 } from "@entrypoints/background/services/notes.ts";
 
 const notesInitialState: NotesState & { version: number } = {
@@ -31,9 +32,12 @@ const notesInitialState: NotesState & { version: number } = {
   groups: [],
   searchQuery: "",
   selectedNoteId: undefined,
+  colorPalettes: [],
 };
 
-// Type definitions for action payloads
+// Accepts both the wrapped ({ data }) and the plain payload shape
+const unwrap = <T,>(payload: { data: T } | T): T =>
+  payload && typeof payload === "object" && "data" in (payload as any) ? (payload as any).data : (payload as T);
 
 export const notesActionsSlice = createChromeSlice({
   name: "notes",
@@ -42,143 +46,161 @@ export const notesActionsSlice = createChromeSlice({
   storage: "localStorage",
   actions: {
     getNoteFormPanelPosition: async (_: void, { getState }): Promise<any> => {
-      return await getState().position;
+      return getState().position;
     },
 
-    saveNoteFormPanelPosition: async (data: any, { getState, setState }): Promise<any> => {
+    saveNoteFormPanelPosition: async (data: any, { setState }): Promise<any> => {
       return setState({ position: data });
     },
 
     // Notes Management Actions
-    getAllNotes: async (_: void, { getState }): Promise<NotesState> => {
-      debugger;
+    getAllNotes: async (_: void, { getState, setState }): Promise<NotesState> => {
+      const state = getState();
+      const groups = normalizeNoteGroups(state.groups);
+      const colorPalettes = normalizeColorPalettes(state.colorPalettes);
+
+      // Persist repairs of data written by older versions
+      if (
+        groups.length !== (state.groups || []).length ||
+        groups.some((group, index) => group !== state.groups[index]) ||
+        colorPalettes.length !== (state.colorPalettes || []).length ||
+        colorPalettes.some((palette, index) => palette !== state.colorPalettes[index])
+      ) {
+        setState({ groups, colorPalettes });
+      }
+
       return getState();
     },
 
     createNote: async (data: CreateNotePayload, { getState, setState }): Promise<Note> => {
-      const state = await getState();
-      const notes = state.notes;
-
-      debugger;
       const newNote = createNewNote(data);
-      notes.push(newNote);
-
-      setState({ notes });
+      setState({ notes: [...(getState().notes || []), newNote] });
 
       return newNote;
     },
 
     updateNote: async (payload: UpdateNotePayload, { getState, setState }): Promise<Note | null> => {
       const { id, updates } = payload;
-
-      const notes = await getState().notes;
+      const notes: Note[] = getState().notes || [];
 
       const noteIndex = notes.findIndex((note) => note.id === id);
-      if (noteIndex !== -1) {
-        const existingNote = notes[noteIndex];
+      if (noteIndex === -1) return null;
 
-        // Use centralized function to update note data
-        const updatedNote = updateNoteData(existingNote, updates);
-        notes[noteIndex] = updatedNote;
+      // Use centralized function to update note data
+      const updatedNote = updateNoteData(notes[noteIndex], updates);
+      setState({ notes: notes.map((note, index) => (index === noteIndex ? updatedNote : note)) });
 
-        setState({ notes });
-        return updatedNote;
-      }
-      return null;
+      return updatedNote;
     },
 
     deleteNote: async (id: string, { getState, setState }): Promise<{ success: boolean }> => {
-      let notes = await getState().notes;
-      debugger;
+      const notes: Note[] = getState().notes || [];
+      const remaining = notes.filter((note) => note.id !== id);
 
-      notes = notes.filter((note) => note.id !== id);
-      setState({ notes });
+      setState({
+        notes: remaining,
+        ...(getState().selectedNoteId === id ? { selectedNoteId: undefined } : {}),
+      });
 
-      return { success: true };
+      return { success: remaining.length !== notes.length };
     },
 
-    updateNotesSearchQuery: async (searchQuery: string, { getState, setState }): Promise<void> => {
+    // Adds notes/groups from an export file. Entries with an existing id are replaced.
+    importNotes: async (payload: ImportNotesPayload, { getState, setState }): Promise<{ imported: number }> => {
+      const { notes: importedNotes = [], groups: importedGroups = [] } = unwrap(payload) || ({} as any);
+      const state = getState();
+
+      const validNotes = (Array.isArray(importedNotes) ? importedNotes : []).filter(
+        (note) => note && typeof note.id === "string" && typeof note.content === "string",
+      );
+      const validGroups = normalizeNoteGroups(Array.isArray(importedGroups) ? importedGroups : []);
+
+      const mergeById = <T extends { id: string }>(current: T[] = [], incoming: T[]) => {
+        const incomingIds = new Set(incoming.map((item) => item.id));
+        return [...current.filter((item) => !incomingIds.has(item.id)), ...incoming];
+      };
+
+      setState({
+        notes: mergeById(
+          state.notes,
+          validNotes.map((note) => ({
+            ...note,
+            title: note.title ?? "",
+            locations: Array.isArray(note.locations) ? note.locations : [],
+            isVisible: note.isVisible !== false,
+          })),
+        ),
+        groups: mergeById(state.groups, validGroups),
+      });
+
+      return { imported: validNotes.length };
+    },
+
+    updateNotesSearchQuery: async (searchQuery: string, { setState }): Promise<void> => {
       setState({ searchQuery });
     },
 
     createNoteGroup: async (payload: CreateNoteGroupPayload, { setState, getState }): Promise<NoteGroup> => {
-      const state = await getState();
-
-      debugger;
-
       // Use centralized function to create new group
-      const newGroup = createNewNoteGroup(payload);
+      const newGroup = createNewNoteGroup(unwrap(payload));
 
-      state.groups.push(newGroup);
-      setState({ groups: state.groups });
+      setState({ groups: [...normalizeNoteGroups(getState().groups), newGroup] });
       return newGroup;
     },
 
     updateNoteGroup: async (payload: UpdateNoteGroupPayload, { getState, setState }): Promise<NoteGroup | null> => {
-      const state = await getState();
-      const { id, updates } = payload;
+      const { id, updates } = unwrap(payload);
+      const groups = normalizeNoteGroups(getState().groups);
 
-      const groupIndex = state.groups.findIndex((group) => group.id === id);
-      if (groupIndex !== -1) {
-        const existingGroup = state.groups[groupIndex];
+      const groupIndex = groups.findIndex((group) => group.id === id);
+      if (groupIndex === -1) return null;
 
-        // Use centralized function to update group data
-        const updatedGroup = updateNoteGroupData(existingGroup, updates);
-        state.groups[groupIndex] = updatedGroup;
+      // Use centralized function to update group data
+      const updatedGroup = updateNoteGroupData(groups[groupIndex], updates);
+      setState({ groups: groups.map((group, index) => (index === groupIndex ? updatedGroup : group)) });
 
-        setState({ groups: state.groups });
-        return updatedGroup;
-      }
-      return null;
+      return updatedGroup;
     },
 
-    deleteNoteGroup: async (id: string, { getState, setState }): Promise<{ success: boolean }> => {
-      const state = await getState();
+    deleteNoteGroup: async (payload: DeleteNoteGroupPayload | string, { getState, setState }): Promise<{ success: boolean }> => {
+      const id = unwrap(payload);
+      const state = getState();
 
       // Remove group and use centralized function to unassign notes from this group
-      const updatedGroups = state.groups.filter((group) => group.id !== id);
-      const updatedNotes = removeNotesFromGroup(state.notes, id);
-
       setState({
-        groups: updatedGroups,
-        notes: updatedNotes,
+        groups: normalizeNoteGroups(state.groups).filter((group) => group.id !== id),
+        notes: removeNotesFromGroup(state.notes || [], id),
       });
       return { success: true };
     },
 
-    setSelectedNote: async (selectedNoteId: string | undefined, { getState, setState }): Promise<void> => {
-      const notes = await getState().notes;
-
-      notes.selectedNoteId = selectedNoteId;
-      setState({ notes });
+    setSelectedNote: async (selectedNoteId: string | undefined, { setState }): Promise<void> => {
+      setState({ selectedNoteId });
     },
 
     // Color Palette Management Actions
     getColorPalettes: async (_: void, { getState, setState }): Promise<ColorPalette[]> => {
-      return getState().colorPalettes || [];
+      const current = getState().colorPalettes || [];
+      const colorPalettes = normalizeColorPalettes(current);
+
+      if (colorPalettes.length !== current.length || colorPalettes.some((p, i) => p !== current[i])) {
+        setState({ colorPalettes });
+      }
+      return colorPalettes;
     },
 
-    setColorPalettes: async (payload: SetColorPalettesPayload, { getState, setState }): Promise<void> => {
-      const state = await getState();
-      setState({
-        ...state,
-        payload,
-      });
+    setColorPalettes: async (payload: SetColorPalettesPayload, { setState }): Promise<void> => {
+      setState({ colorPalettes: normalizeColorPalettes(unwrap(payload)) });
     },
 
     createColorPalette: async (payload: CreateColorPalettePayload, { getState, setState }): Promise<ColorPalette> => {
-      const state = await getState();
-
       // Use centralized function to create new color palette
-      const newColorPalette = createNewColorPalette(payload);
+      const newColorPalette = createNewColorPalette(unwrap(payload));
+      const colorPalettes = normalizeColorPalettes(getState().colorPalettes).filter(
+        (palette) => palette.id !== newColorPalette.id,
+      );
 
-      const colorPalettes = state.colorPalettes || [];
-      colorPalettes.push(newColorPalette);
-
-      setState({
-        ...state,
-        colorPalettes,
-      });
+      setState({ colorPalettes: [...colorPalettes, newColorPalette] });
 
       return newColorPalette;
     },
@@ -187,49 +209,36 @@ export const notesActionsSlice = createChromeSlice({
       payload: UpdateColorPalettePayload,
       { getState, setState },
     ): Promise<ColorPalette | null> => {
-      const {
-        data: { id, updates },
-      } = payload;
-      const state = await getState();
-      const colorPalettes = state.colorPalettes || [];
+      const { id, updates } = unwrap(payload);
+      const colorPalettes = normalizeColorPalettes(getState().colorPalettes);
 
       const paletteIndex = colorPalettes.findIndex((palette) => palette.id === id);
-      if (paletteIndex !== -1) {
-        colorPalettes[paletteIndex] = {
-          ...colorPalettes[paletteIndex],
-          ...updates,
-        };
+      if (paletteIndex === -1) return null;
 
-        setState({
-          ...state,
-          colorPalettes,
-        });
+      const updatedPalette = { ...colorPalettes[paletteIndex], ...updates, id };
+      setState({
+        colorPalettes: colorPalettes.map((palette, index) => (index === paletteIndex ? updatedPalette : palette)),
+      });
 
-        return colorPalettes[paletteIndex];
-      }
-      return null;
+      return updatedPalette;
     },
 
     deleteColorPalette: async (
-      id: DeleteColorPalettePayload,
+      payload: DeleteColorPalettePayload,
       { getState, setState },
     ): Promise<{ success: boolean }> => {
-      const state = await getState();
-      const colorPalettes = state.colorPalettes || [];
+      const id = unwrap(payload);
+      const colorPalettes = normalizeColorPalettes(getState().colorPalettes);
 
-      const updatedColorPalettes = colorPalettes.filter((palette) => palette.id !== id);
+      // Default colors can't be removed
+      const updatedColorPalettes = colorPalettes.filter((palette) => palette.id !== id || palette.isDefault);
 
-      setState({
-        ...state,
-        colorPalettes: updatedColorPalettes,
-      });
+      setState({ colorPalettes: updatedColorPalettes });
 
-      return { success: true };
+      return { success: updatedColorPalettes.length !== colorPalettes.length };
     },
   },
 });
-
-console.log("😂😂😂 :: -> notesActionsSlice", notesActionsSlice);
 
 // Backward-compatible named exports for existing imports across the codebase
 export const {
@@ -241,6 +250,7 @@ export const {
   createNote,
   updateNote,
   deleteNote,
+  importNotes,
   updateNotesSearchQuery,
   // Groups
   createNoteGroup,
@@ -249,6 +259,7 @@ export const {
   setSelectedNote,
   // Color Palettes
   getColorPalettes,
+  setColorPalettes,
   createColorPalette,
   updateColorPalette,
   deleteColorPalette,

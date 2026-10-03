@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { IconCheck, IconCalendar, IconGlobe, IconStack3, IconCopy, IconExternalLink } from "@tabler/icons-react";
 import { SnapshotViewerProps } from "./types";
-import { saveSnapshots, loadSnapshots } from "../../utils/snapshotStorage";
+import { saveSnapshots, loadSnapshots, getSnapshotHostname } from "../../utils/snapshotStorage";
 import { SnapshotDetails } from "./components/SnapshotDetails";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 
@@ -296,7 +296,7 @@ export const SnapshotViewer: React.FC<SnapshotViewerProps> = ({ snapshot, onBack
   const [copied, setCopied] = useState<boolean>(false);
 
   const date = new Date(snapshot.timestamp);
-  const domain = new URL(snapshot.url).hostname;
+  const domain = getSnapshotHostname(snapshot.url);
   const compactDate = date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",

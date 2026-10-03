@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
+import { appSettingsInitial, migrateAppSettings } from "@entrypoints/core/initialData/app.ts";
 import { ICON_ITEMS } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
 const USER_EVENT_SCROLL_CONFIRM = "USER_EVENT_SCROLL_CONFIRM";
@@ -37,7 +37,7 @@ const appSlice = createSlice({
     },
     setLocalAppSetting(state, action: PayloadAction<any>) {
       return {
-        ...action.payload,
+        ...migrateAppSettings(action.payload),
         isActive: true,
       };
     },
@@ -112,6 +112,11 @@ const appSlice = createSlice({
       state.selectedElementType = action.payload;
     },
 
+    // A second click locks the hovered (target) element until the next click
+    setTargetLocked(state: any, action: PayloadAction<boolean>) {
+      state.isTargetLocked = action.payload;
+    },
+
     hideSponsorMessage(state, action: PayloadAction<number>) {
       if (!state.sponsorMessage) {
         state.sponsorMessage = { hiddenUntil: 0 };
@@ -120,14 +125,10 @@ const appSlice = createSlice({
     },
 
     addColorToHistory(state, action: PayloadAction<string>) {
-      // Don't add duplicate colors
-      if (!state.colorHistory.includes(action.payload)) {
-        // Limit history to 10 colors (remove oldest if needed)
-        if (state.colorHistory.length >= 20) {
-          state.colorHistory = state.colorHistory.slice(1);
-        }
-        state.colorHistory.push(action.payload);
-      }
+      // Most recent last, no duplicates, at most 20 colors
+      const history = (state.colorHistory || []).filter((color) => color !== action.payload);
+      history.push(action.payload);
+      state.colorHistory = history.slice(-20);
     },
 
     setVisibleFeatures(state, action: PayloadAction<string[]>) {
@@ -160,6 +161,15 @@ const appSlice = createSlice({
       state.launcher.activeIcons = [];
     },
 
+    /** Toolbar preferences changed in another tab */
+    syncSharedSettings(state, action: PayloadAction<any>) {
+      const stored = migrateAppSettings(action.payload);
+      state.launcher.iconOrder = stored.launcher.iconOrder;
+      state.visibleFeatures = stored.visibleFeatures;
+      state.sponsorMessage = stored.sponsorMessage;
+      state.colorHistory = stored.colorHistory;
+    },
+
     setMinimizedLauncherPosition(state, action: PayloadAction<{ x: number; y: number }>) {
       state.launcher.minimizedPosition = action.payload;
     },
@@ -182,12 +192,14 @@ export const {
   setIsSingleSelect,
   setShowAllBorders,
   setSelectedElementType,
+  setTargetLocked,
   hideSponsorMessage,
   addColorToHistory,
   toggleFeatureVisibility,
   clearAllActiveIcons,
   toggleFeatureMinimized,
   setMinimizedLauncherPosition,
+  syncSharedSettings,
 } = appSlice.actions;
 
 export default appSlice.reducer;

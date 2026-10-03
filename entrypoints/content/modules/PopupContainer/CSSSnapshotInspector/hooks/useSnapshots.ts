@@ -6,7 +6,12 @@ import { useSelector, useDispatch } from "react-redux";
 import { CSSSnapshot, SnapshotOptions } from "../types";
 import { PERFORMANCE_LIMITS } from "../constants";
 import { createCSSSnapshot } from "../utils/snapshotBuilder";
-import { loadSnapshots, saveSnapshots, deleteSnapshot as deleteSnapshotUtil } from "../utils/snapshotStorage";
+import {
+  loadSnapshots,
+  trimAndSaveSnapshots,
+  isValidSnapshot,
+  deleteSnapshot as deleteSnapshotUtil,
+} from "../utils/snapshotStorage";
 import { RootState } from "@entrypoints/content/store/createStore";
 import {
   selectSnapshots,
@@ -87,7 +92,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
       }
 
       setIsCapturing(true);
-      setError(null);
+      dispatch(setError(null));
 
       try {
         const snapshot = await createCSSSnapshot(title, {
@@ -97,27 +102,25 @@ export const useSnapshots = (): UseSnapshotsReturn => {
           ...options,
         });
 
-        const updatedSnapshots = [...snapshots, snapshot];
-        const limitedSnapshots = updatedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
-
         try {
-          await saveSnapshots(limitedSnapshots);
+          // saveSnapshots also puts the list into Redux, even when persisting fails
+          await trimAndSaveSnapshots([...snapshots, snapshot]);
         } catch (saveError) {
           console.warn("Failed to save snapshots to storage:", saveError);
           // Продовжуємо з знімком у пам'яті навіть якщо збереження не вдалося
+          dispatch(setError("Snapshot captured but could not be saved to extension storage"));
         }
 
-        setSnapshots(limitedSnapshots);
         return snapshot;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to capture snapshot";
-        setError(errorMessage);
+        dispatch(setError(errorMessage));
         throw new Error(errorMessage);
       } finally {
         setIsCapturing(false);
       }
     },
-    [snapshots, isCapturing],
+    [snapshots, isCapturing, dispatch],
   );
 
   // Видалення знімка
@@ -159,12 +162,13 @@ export const useSnapshots = (): UseSnapshotsReturn => {
 
       try {
         const text = await file.text();
-        let snapshot = JSON.parse(text) as CSSSnapshot;
+        const parsed: unknown = JSON.parse(text);
 
         // Валідуємо структуру знімка
-        if (!snapshot.id || !snapshot.timestamp || !snapshot.root) {
+        if (!isValidSnapshot(parsed)) {
           throw new Error("Invalid snapshot format");
         }
+        let snapshot: CSSSnapshot = parsed;
 
         // Перевіряємо чи знімок вже існує
         const existingIds = snapshots.map((s) => s.id);
@@ -176,32 +180,31 @@ export const useSnapshots = (): UseSnapshotsReturn => {
           };
         }
 
-        const updatedSnapshots = [...snapshots, snapshot];
-        const limitedSnapshots = updatedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
-
         try {
-          await saveSnapshots(limitedSnapshots);
+          await trimAndSaveSnapshots([...snapshots, snapshot]);
+          dispatch(setError(null));
         } catch (saveError) {
           console.warn("Failed to save imported snapshot:", saveError);
+          dispatch(setError("Snapshot imported but could not be saved to extension storage"));
         }
-
-        setSnapshots(limitedSnapshots);
-        setError(null);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to import snapshot";
-        setError(errorMessage);
+        dispatch(setError(errorMessage));
         alert(`Import failed: ${errorMessage}`);
       }
     };
 
     input.click();
-  }, [snapshots]);
+  }, [snapshots, dispatch]);
 
   // Вибір знімка
-  const selectSnapshot = useCallback((snapshot: CSSSnapshot | null) => {
-    setSelectedSnapshot(snapshot);
-    setError(null);
-  }, []);
+  const selectSnapshot = useCallback(
+    (snapshot: CSSSnapshot | null) => {
+      setSelectedSnapshot(snapshot);
+      dispatch(setError(null));
+    },
+    [dispatch],
+  );
 
   // Переключення знімка для порівняння
   const toggleCompare = useCallback((snapshot: CSSSnapshot) => {
@@ -220,24 +223,21 @@ export const useSnapshots = (): UseSnapshotsReturn => {
         }
       }
     });
-    setError(null);
-  }, []);
+    dispatch(setError(null));
+  }, [dispatch]);
 
   // Очищення списку порівняння
   const clearCompare = useCallback(() => {
     setCompareSnapshots([]);
-    setError(null);
-  }, []);
+    dispatch(setError(null));
+  }, [dispatch]);
 
   // Додавання знімка напряму в стейт (для element selection)
   const addSnapshot = useCallback(
     async (snapshot: CSSSnapshot) => {
       try {
-        const updatedSnapshots = [...snapshots, snapshot];
-        const limitedSnapshots = updatedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
-
         try {
-          await saveSnapshots(limitedSnapshots);
+          await trimAndSaveSnapshots([...snapshots, snapshot]);
         } catch (saveError) {
           console.warn("Failed to save added snapshot:", saveError);
         }

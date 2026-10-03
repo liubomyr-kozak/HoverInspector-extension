@@ -2,6 +2,7 @@ import React, { useMemo, useEffect } from "react";
 import { EmotionShadowRoot } from "./components/EmotionShadowRoot";
 import { StyleSheetManager } from "styled-components";
 import { StyleProvider } from "@ant-design/cssinjs";
+import { ConfigProvider } from "antd";
 import { ToastContainer } from "react-toastify";
 import toastifyStyles from "react-toastify/dist/ReactToastify.css?inline";
 
@@ -53,46 +54,56 @@ export const App = ({ shadowRoot }) => {
       if (!existingStyle) {
         const styleElement = document.createElement("style");
         styleElement.id = "react-toastify-styles";
-        styleElement.textContent = toastifyStyles;
+        // `:root` never matches inside a shadow root; the toast colour variables have to sit on the host
+        styleElement.textContent = toastifyStyles.replace(/:root\b/g, ":host");
         shadowRoot.appendChild(styleElement);
       }
     }
   }, [shadowRoot]);
 
+  // antd overlays (selects, popovers, dropdowns) default to document.body, where the page's CSS
+  // applies and the shadow root's antd styles don't; keep them inside the UI
+  const getPopupContainer = React.useCallback(
+    () => (shadowRoot?.querySelector("body") as HTMLElement) || (shadowRoot as unknown as HTMLElement),
+    [shadowRoot],
+  );
+
   return (
     <StyleSheetManager target={shadowRoot}>
       <StyleProvider container={shadowRoot}>
-        <EmotionShadowRoot shadowRoot={shadowRoot}>
-          <AppController>
-            <HighlightOverlayProvider>
-              <FloatingModalProvider>
-                <VisibleNotesProvider>
-                  <NotificationManager />
-                  <TriggerScenarioEvaluator />
-                  <ScheduleMonitor />
-                  {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
-                  {activeIcons.includes(RULER.id) && <ViewportRuler />}
-                  <LauncherManager />
-                  <ToastContainer
-                    position="top-center"
-                    autoClose={5000}
-                    hideProgressBar={false}
-                    newestOnTop={false}
-                    closeOnClick={true}
-                    rtl={false}
-                    pauseOnFocusLoss={true}
-                    draggable={true}
-                    pauseOnHover={true}
-                    theme="light"
-                    style={{
-                      zIndex: 9999999,
-                    }}
-                  />
-                </VisibleNotesProvider>
-              </FloatingModalProvider>
-            </HighlightOverlayProvider>
-          </AppController>
-        </EmotionShadowRoot>
+        <ConfigProvider getPopupContainer={getPopupContainer}>
+          <EmotionShadowRoot shadowRoot={shadowRoot}>
+            <AppController>
+              <HighlightOverlayProvider>
+                <FloatingModalProvider>
+                  <VisibleNotesProvider>
+                    <NotificationManager />
+                    <TriggerScenarioEvaluator />
+                    <ScheduleMonitor />
+                    {activeIcons.includes(INSPECTOR.id) && <ElementInspector />}
+                    {activeIcons.includes(RULER.id) && <ViewportRuler />}
+                    <LauncherManager />
+                    <ToastContainer
+                      position="top-center"
+                      autoClose={5000}
+                      hideProgressBar={false}
+                      newestOnTop={false}
+                      closeOnClick={true}
+                      rtl={false}
+                      pauseOnFocusLoss={true}
+                      draggable={true}
+                      pauseOnHover={true}
+                      theme="light"
+                      style={{
+                        zIndex: 9999999,
+                      }}
+                    />
+                  </VisibleNotesProvider>
+                </FloatingModalProvider>
+              </HighlightOverlayProvider>
+            </AppController>
+          </EmotionShadowRoot>
+        </ConfigProvider>
       </StyleProvider>
     </StyleSheetManager>
   );

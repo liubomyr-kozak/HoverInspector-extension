@@ -118,16 +118,81 @@ export const categorizeTypographyElement = (element: Element): TypographyCategor
 };
 
 /**
+ * Stylesheet rules that declare a font-size, collected once per scan.
+ * Computed font sizes are always in px, so the authored unit has to be read from
+ * the inline style or from the rules that match the element.
+ */
+let fontSizeRules: CSSStyleRule[] | null = null;
+
+const collectFontSizeRules = (rules: CSSRuleList, out: CSSStyleRule[]) => {
+  for (const rule of Array.from(rules)) {
+    if (rule instanceof CSSStyleRule) {
+      if (rule.style.getPropertyValue('font-size')) out.push(rule);
+    } else if (rule instanceof CSSMediaRule) {
+      if (window.matchMedia(rule.media.mediaText).matches) collectFontSizeRules(rule.cssRules, out);
+    } else if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
+      collectFontSizeRules((rule as CSSGroupingRule).cssRules, out);
+    }
+  }
+};
+
+const getFontSizeRules = (): CSSStyleRule[] => {
+  if (!fontSizeRules) {
+    fontSizeRules = [];
+    for (const sheet of Array.from(document.styleSheets)) {
+      try {
+        collectFontSizeRules(sheet.cssRules, fontSizeRules);
+      } catch {
+        // Cross-origin stylesheet: rules are not readable
+      }
+    }
+  }
+  return fontSizeRules;
+};
+
+/** Call before scanning the page so stylesheet changes are picked up */
+const resetFontSizeRuleCache = () => {
+  fontSizeRules = null;
+};
+
+/**
+ * Returns the font-size value as authored for this element (inline style or the
+ * last matching stylesheet rule, ignoring specificity), or null when it is inherited.
+ */
+export const getAuthoredFontSize = (element: Element): string | null => {
+  const inline = (element as HTMLElement).style?.getPropertyValue('font-size');
+  if (inline) return inline;
+
+  // Same size as the parent: almost always inherited, skip the (costly) rule matching
+  const parent = element.parentElement;
+  if (parent && window.getComputedStyle(parent).fontSize === window.getComputedStyle(element).fontSize) {
+    return null;
+  }
+
+  let authored: string | null = null;
+  for (const rule of getFontSizeRules()) {
+    try {
+      if (element.matches(rule.selectorText)) authored = rule.style.getPropertyValue('font-size');
+    } catch {
+      // Selector not supported by matches()
+    }
+  }
+  return authored;
+};
+
+const isAbsoluteFontSize = (value: string | null) => !!value && /\d(px|pt|pc|cm|mm|in|q)\b/i.test(value);
+
+/**
  * Checks if an element has typography issues
  * 
  * This function examines an element for various typography issues:
- * - Inconsistent type scale
- * - Use of absolute units (px) instead of relative units (rem, em)
- * - Too many font families
  * - Inappropriate font weights
  * - Line height issues
  * - Spacing issues
- * - Readability issues
+ * - Use of absolute units (px) instead of relative units (rem, em)
+ * 
+ * The most important issue is reported first; absolute units are only reported
+ * when nothing else is wrong.
  * 
  * @param element The element to check
  * @param computedStyle The computed style of the element
@@ -135,18 +200,12 @@ export const categorizeTypographyElement = (element: Element): TypographyCategor
  */
 export const checkTypographyIssues = (
   element: Element, 
-  computedStyle: CSSStyleDeclaration
+  computedStyle: CSSStyleDeclaration,
+  authoredFontSize: string | null = getAuthoredFontSize(element),
 ): { category: TypographyCategory, details: string } | null => {
   if (!element || !computedStyle) return null;
-  
-  // Check for absolute units in font size
-  const fontSize = computedStyle.fontSize;
-  if (fontSize && fontSize.endsWith('px')) {
-    return {
-      category: 'typography-absolute-units',
-      details: `Font size uses absolute units (${fontSize}) instead of relative units (rem/em)`
-    };
-  }
+
+  const fontSizePx = parseFloat(computedStyle.fontSize) || 0;
   
   // Check for inappropriate font weights based on element type
   const fontWeight = computedStyle.fontWeight;
@@ -172,24 +231,38 @@ export const checkTypographyIssues = (
     }
   }
   
-  // Check for line height issues
+  // Check for line height issues. The computed line-height is in px (or "normal",
+  // which is about 1.2), so compare it relative to the font size.
   const lineHeight = computedStyle.lineHeight;
-  if (lineHeight === 'normal' || (lineHeight && parseFloat(lineHeight) < 1.2)) {
-    return {
-      category: 'typography-line-height-issue',
-      details: `Line height (${lineHeight}) is too tight for good readability, should be at least 1.2`
-    };
-  }
-  
-  // Check for letter spacing issues in headings
-  if (category && category.startsWith('heading-')) {
-    const letterSpacing = computedStyle.letterSpacing;
-    if (letterSpacing === 'normal' || (letterSpacing && parseFloat(letterSpacing) < 0)) {
+  const lineHeightPx = parseFloat(lineHeight);
+  if (lineHeight !== 'normal' && fontSizePx > 0 && !Number.isNaN(lineHeightPx)) {
+    const ratio = lineHeightPx / fontSizePx;
+    if (ratio < 1.2 - 0.005) {
       return {
-        category: 'typography-spacing-issue',
-        details: `Heading has tight letter spacing (${letterSpacing}), consider adding positive letter spacing for better readability`
+        category: 'typography-line-height-issue',
+        details: `Line height (${lineHeight}, ${ratio.toFixed(2)}x the font size) is too tight for good readability, should be at least 1.2`
       };
     }
+  }
+  
+  // Check for overly tight letter spacing in headings ("normal" is fine)
+  if (category && category.startsWith('heading-') && fontSizePx > 0) {
+    const letterSpacing = computedStyle.letterSpacing;
+    const spacingPx = parseFloat(letterSpacing);
+    if (letterSpacing !== 'normal' && !Number.isNaN(spacingPx) && spacingPx / fontSizePx < -0.05) {
+      return {
+        category: 'typography-spacing-issue',
+        details: `Heading has tight letter spacing (${letterSpacing}), consider less negative letter spacing for better readability`
+      };
+    }
+  }
+
+  // Check for absolute units in the authored font size (computed values are always px)
+  if (isAbsoluteFontSize(authoredFontSize)) {
+    return {
+      category: 'typography-absolute-units',
+      details: `Font size uses absolute units (${authoredFontSize}) instead of relative units (rem/em)`
+    };
   }
   
   return null;
@@ -200,6 +273,7 @@ export const checkTypographyIssues = (
  * @returns Array of typography elements with their properties
  */
 export const getAllTypographyElements = (): TypographyElement[] => {
+  resetFontSizeRuleCache();
   const allElements = document.querySelectorAll('*');
   const typographyElements: TypographyElement[] = [];
   
@@ -210,7 +284,9 @@ export const getAllTypographyElements = (): TypographyElement[] => {
       
       // Check if this element has any text content
       if (element.textContent?.trim()) {
-        const usesRelativeUnits = !computedStyle.fontSize.endsWith('px');
+        // Inherited sizes follow the parent, so only an authored absolute size counts
+        const authoredFontSize = getAuthoredFontSize(element);
+        const usesRelativeUnits = !isAbsoluteFontSize(authoredFontSize);
         
         // Create typography element object
         const typographyElement: TypographyElement = {
@@ -227,7 +303,7 @@ export const getAllTypographyElements = (): TypographyElement[] => {
         };
         
         // Check for issues
-        const issues = checkTypographyIssues(element, computedStyle);
+        const issues = checkTypographyIssues(element, computedStyle, authoredFontSize);
         if (issues) {
           typographyElement.issueDetails = issues.details;
         }
@@ -245,6 +321,7 @@ export const getAllTypographyElements = (): TypographyElement[] => {
  * @returns Array of elements with typography issues
  */
 export const getElementsWithTypographyIssues = (): CategorizedElement[] => {
+  resetFontSizeRuleCache();
   const allElements = document.querySelectorAll('*');
   const elementsWithIssues: CategorizedElement[] = [];
   
@@ -271,8 +348,9 @@ export const getElementsWithTypographyIssues = (): CategorizedElement[] => {
  * Aggregates typography properties from all typography elements
  * @returns Aggregated typography properties
  */
-export const aggregateTypographyProperties = (): AggregatedTypographyProperties => {
-  const typographyElements = getAllTypographyElements();
+export const aggregateTypographyProperties = (
+  typographyElements: TypographyElement[] = getAllTypographyElements(),
+): AggregatedTypographyProperties => {
   
   const fontFamilies = new Map<string, number>();
   const fontSizes = new Map<string, number>();

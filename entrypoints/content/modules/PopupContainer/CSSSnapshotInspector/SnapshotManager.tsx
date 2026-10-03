@@ -22,6 +22,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
+import { getSnapshotHostname } from "./utils/snapshotStorage";
 
 // Styled Components
 const ManagerContainer = styled.div``;
@@ -31,40 +32,40 @@ const EmptyStateContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
   background: linear-gradient(135deg, #f8fafc, rgba(99, 102, 241, 0.03));
   border-radius: 16px;
   margin: 16px;
-  padding: 32px;
+  padding: 24px 16px;
 `;
 
 const EmptyStateIcon = styled.div`
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(8px);
   border-radius: 50%;
-  padding: 32px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  margin-bottom: 32px;
+  padding: 20px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
   border: 1px solid rgba(229, 231, 235, 0.5);
 `;
 
 const EmptyStateTitle = styled.h3`
-  font-size: 32px;
+  font-size: 20px;
   font-weight: 700;
+  text-align: center;
   background: linear-gradient(135deg, #1f2937, #6b7280);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 `;
 
 const EmptyStateDescription = styled.p`
   color: #6b7280;
   text-align: center;
-  margin-bottom: 32px;
+  margin: 0;
   max-width: 500px;
-  line-height: 1.6;
-  font-size: 18px;
+  line-height: 1.5;
+  font-size: 14px;
 `;
 
 const FeatureGrid = styled.div`
@@ -304,12 +305,26 @@ interface SnapshotManagerProps {
   readonly onExport: (snapshot: CSSSnapshot) => void;
   readonly onToggleCompare: (snapshot: CSSSnapshot) => void;
   readonly onStartComparison?: () => void;
+  readonly onCompareWithCurrentPage?: (snapshot: CSSSnapshot) => void;
+  /** True when the list is filtered by search (changes the empty state text) */
+  readonly isFiltered?: boolean;
 }
 
 export const SnapshotManager = memo<SnapshotManagerProps>(
-  ({ snapshots, compareSnapshots, onView, onDelete, onExport, onToggleCompare, onStartComparison }) => {
+  ({
+    snapshots,
+    compareSnapshots,
+    onView,
+    onDelete,
+    onExport,
+    onToggleCompare,
+    onStartComparison,
+    onCompareWithCurrentPage,
+    isFiltered = false,
+  }) => {
     const [hoveredSnapshot, setHoveredSnapshot] = useState<string | null>(null);
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     if (snapshots.length === 0) {
       return (
@@ -317,11 +332,13 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
           <ManagerContainer>
             <EmptyStateContainer>
               <EmptyStateIcon>
-                <IconPhotoPlus size={72} color="#9ca3af" />
+                <IconPhotoPlus size={48} color="#9ca3af" />
               </EmptyStateIcon>
-              <EmptyStateTitle>No Snapshots Yet</EmptyStateTitle>
+              <EmptyStateTitle>{isFiltered ? "No Matching Snapshots" : "No Snapshots Yet"}</EmptyStateTitle>
               <EmptyStateDescription>
-                Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time.
+                {isFiltered
+                  ? "No snapshot title, URL or date matches your search."
+                  : "Start by capturing your first CSS snapshot to analyze DOM structure and track visual changes over time."}
               </EmptyStateDescription>
             </EmptyStateContainer>
           </ManagerContainer>
@@ -379,11 +396,14 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                           Selected
                         </SelectionBadge>
                       )}
-                      <div className="text">Snapshot #{snapshot.title}</div>
+                      <div className="text" title={snapshot.title}>
+                        {snapshot.title || "Untitled snapshot"}
+                      </div>
                     </CardTitle>
                     <OptionsButton
                       onClick={(e) => {
                         e.stopPropagation();
+                        setConfirmDeleteId(null);
                         setMenuOpenId((id) => (id === snapshot.id ? null : snapshot.id));
                       }}
                       aria-label="More actions"
@@ -402,13 +422,18 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                         </MenuItem>
                         <MenuItem
                           onClick={() => {
+                            // Two-step delete: first click asks for confirmation, second deletes
+                            if (confirmDeleteId !== snapshot.id) {
+                              setConfirmDeleteId(snapshot.id);
+                              return;
+                            }
+                            setConfirmDeleteId(null);
                             setMenuOpenId(null);
-                            // if (confirm("Are you sure you want to delete this snapshot?")) {
                             onDelete(snapshot.id);
-                            // }
                           }}
+                          style={confirmDeleteId === snapshot.id ? { color: "#dc2626", fontWeight: 600 } : undefined}
                         >
-                          <IconTrash size={16} /> Delete
+                          <IconTrash size={16} /> {confirmDeleteId === snapshot.id ? "Click again to delete" : "Delete"}
                         </MenuItem>
                       </DropdownMenu>
                     )}
@@ -428,7 +453,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
 
                     <MetadataItem title={snapshot.url || ""}>
                       <IconGlobe size={14} className="icon" />
-                      <span className="value">{snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}</span>
+                      <span className="value">{getSnapshotHostname(snapshot.url)}</span>
                     </MetadataItem>
                   </MetadataGrid>
 
@@ -439,8 +464,8 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                         e.stopPropagation();
                         const isSelected = compareSnapshots.some((s) => s.id === snapshot.id);
 
-                        if (!isSelected && compareSnapshots.length === 0) {
-                          // No snapshots selected - show view details
+                        if (!isSelected && compareSnapshots.length !== 1) {
+                          // Not picking a second snapshot to compare - show view details
                           onView(snapshot);
                         } else if (!isSelected && compareSnapshots.length === 1) {
                           // One snapshot selected - select this one to compare
@@ -511,8 +536,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                       variant="secondary"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Compare with current page logic
-                        window.postMessage({ type: "COMPARE_SNAPSHOTS", snapshots: [snapshot, "CURRENT_PAGE"] }, "*");
+                        onCompareWithCurrentPage?.(snapshot);
                       }}
                       style={{ minWidth: 120 }}
                       aria-label="Compare with current page"

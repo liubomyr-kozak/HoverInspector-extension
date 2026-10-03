@@ -11,13 +11,15 @@ import { SnapshotViewer } from "./components/SnapshotViewer";
 import { useSnapshots, useSnapshotFilter } from "./hooks/useSnapshots";
 import { useViewMode } from "./hooks/useViewMode";
 import { exportSnapshot } from "./utils/snapshotStorage";
-import { createCSSSnapshot } from "./utils/snapshotBuilder";
+import { createCurrentSnapshotFor } from "./utils/snapshotBuilder";
 import { SnapshotManagerHeader } from "./components/SnapshotManagerHeader";
 import { SnapshotViewerHeader } from "./components/SnapshotViewerHeader";
 import { SnapshotCompareHeader } from "./components/SnapshotCompareHeader";
 import { ViewMode } from "./constants";
 import { CSSSnapshot } from "./types";
 import { useElementPicker } from "./hooks/useElementPicker";
+import { useDispatch } from "react-redux";
+import { setError } from "@entrypoints/content/store/snapshot/snapshotSlice";
 
 // Styled Components
 const MainContainer = styled.div`
@@ -30,7 +32,7 @@ const MainContainer = styled.div`
 const FilterContainer = styled.div`
   background: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(12px);
-  padding: 20px 24px;
+  padding: 12px 16px;
   border-bottom: 1px solid rgba(229, 231, 235, 0.6);
 `;
 
@@ -108,6 +110,7 @@ const ContentWrapper = styled.div`
  * Головний компонент CSS Snapshot Inspector з оптимізацією продуктивності
  */
 export const CSSSnapshotInspector: React.FC = () => {
+  const dispatch = useDispatch();
   // Використовуємо оптимізовані хуки
 
   const {
@@ -125,7 +128,7 @@ export const CSSSnapshotInspector: React.FC = () => {
   } = useSnapshots();
 
   // Хук для фільтрації з дебаунсом
-  const { filter: filterSnapshot, setFilter, filteredSnapshots } = useSnapshotFilter(snapshots);
+  const { filter, setFilter, filteredSnapshots } = useSnapshotFilter(snapshots);
 
   // State for search visibility
   const [isSearchVisible, setIsSearchVisible] = React.useState(false);
@@ -147,7 +150,16 @@ export const CSSSnapshotInspector: React.FC = () => {
 
   // State for comparison view controls
   const [activeCompareView, setActiveCompareView] = React.useState<"diff" | "tree" | "stats">("diff");
-  const [splitView, setSplitView] = React.useState(true);
+  const [splitView, setSplitView] = React.useState(false); // unified diff reads better in the narrow panel; split is one click away
+
+  // Back to the list. A comparison with the current page selected an unsaved capture of the page:
+  // drop it, else its card stays "Selected" and Compare reuses the stale capture
+  const handleBackToList = useCallback(() => {
+    if (compareSnapshots.some((compared) => !snapshots.some((saved) => saved.id === compared.id))) {
+      clearCompare();
+    }
+    backToList();
+  }, [compareSnapshots, snapshots, clearCompare, backToList]);
 
   // Обробник для перегляду знімка
   const handleViewSnapshot = (snapshot: typeof selectedSnapshot) => {
@@ -158,11 +170,13 @@ export const CSSSnapshotInspector: React.FC = () => {
   };
 
   // Handler for comparing the selected snapshot with the current page
-  const handleCompareWithCurrentPage = async () => {
-    let firstSnapshot: CSSSnapshot | null = null;
+  const handleCompareWithCurrentPage = async (snapshotToCompare?: CSSSnapshot) => {
+    let firstSnapshot: CSSSnapshot | null = snapshotToCompare ?? null;
 
     // Determine which snapshot to compare with based on the current view mode
-    if (viewMode === ViewMode.DETAIL && selectedSnapshot) {
+    if (firstSnapshot) {
+      // Explicit snapshot passed (e.g. from a list card)
+    } else if (viewMode === ViewMode.DETAIL && selectedSnapshot) {
       firstSnapshot = selectedSnapshot;
     } else if (viewMode === ViewMode.COMPARE && compareSnapshots.length > 0) {
       // Use the first snapshot from the comparison
@@ -176,8 +190,8 @@ export const CSSSnapshotInspector: React.FC = () => {
 
 
     try {
-      // Create a snapshot of the current page
-      const currentPageSnapshot = await createCSSSnapshot("Current Page");
+      // Capture the current page (or the same element, for element snapshots)
+      const currentPageSnapshot = await createCurrentSnapshotFor(firstSnapshot);
 
       // Clear existing comparison snapshots
       clearCompare();
@@ -186,12 +200,13 @@ export const CSSSnapshotInspector: React.FC = () => {
       toggleCompare(firstSnapshot);
       toggleCompare(currentPageSnapshot);
 
-      // Start comparison view
-      startComparison();
+      // Start comparison view. compareSnapshots in this closure is still the old
+      // value, so skip the canCompare check: both snapshots were just queued.
+      startComparison(true);
 
     } catch (error) {
       console.error("Failed to create current page snapshot:", error);
-      // Handle error state if needed
+      dispatch(setError(error instanceof Error ? error.message : "Could not capture the current page"));
     }
   };
 
@@ -208,8 +223,8 @@ export const CSSSnapshotInspector: React.FC = () => {
         return (
           <SnapshotViewer
             snapshot={selectedSnapshot}
-            onBack={backToList}
-            onCompareWithCurrentPage={handleCompareWithCurrentPage}
+            onBack={handleBackToList}
+            onCompareWithCurrentPage={() => handleCompareWithCurrentPage()}
           />
         );
 
@@ -218,7 +233,7 @@ export const CSSSnapshotInspector: React.FC = () => {
           <SnapshotCompare
             snapshotA={compareSnapshots[0]}
             snapshotB={compareSnapshots[1]}
-            onBack={backToList}
+            onBack={handleBackToList}
             activeView={activeCompareView}
             setActiveView={setActiveCompareView}
             splitView={splitView}
@@ -237,6 +252,8 @@ export const CSSSnapshotInspector: React.FC = () => {
             onExport={exportSnapshot}
             onToggleCompare={toggleCompare}
             onStartComparison={handleStartComparison}
+            onCompareWithCurrentPage={handleCompareWithCurrentPage}
+            isFiltered={snapshots.length > 0 && filteredSnapshots.length !== snapshots.length}
           />
         );
     }
@@ -245,7 +262,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     selectedSnapshot,
     compareSnapshots,
     filteredSnapshots,
-    backToList,
+    handleBackToList,
     handleViewSnapshot,
     deleteSnapshot,
     exportSnapshot,
@@ -323,14 +340,14 @@ export const CSSSnapshotInspector: React.FC = () => {
       {viewMode === ViewMode.DETAIL && (
         <SnapshotViewerHeader
           selectedSnapshot={selectedSnapshot}
-          onBackToList={backToList}
+          onBackToList={handleBackToList}
           error={error}
-          onCompareWithCurrentPage={handleCompareWithCurrentPage}
+          onCompareWithCurrentPage={() => handleCompareWithCurrentPage()}
         />
       )}
       {viewMode === ViewMode.COMPARE && (
         <SnapshotCompareHeader
-          onBackToList={backToList}
+          onBackToList={handleBackToList}
           error={error}
           activeCompareView={activeCompareView}
           onChangeCompareView={(view) => setActiveCompareView(view as "diff" | "tree" | "stats")}
@@ -349,11 +366,15 @@ export const CSSSnapshotInspector: React.FC = () => {
               placeholder="🔍 Search snapshots by title, URL, or date..."
               autoFocus
             />
-            {filter && <ClearButton onClick={() => setFilter("")}>×</ClearButton>}
+            {filter && (
+              <ClearButton aria-label="Clear search" title="Clear search" style={{ right: 44 }} onClick={() => setFilter("")}>
+                ×
+              </ClearButton>
+            )}
             <ClearButton
               aria-label="Hide search"
               title="Hide search"
-              style={{ fontSize: 18, marginLeft: 2 }}
+              style={{ fontSize: 18, marginLeft: 2, position: "static", transform: "none", flexShrink: 0 }}
               onClick={handleToggleSearch}
             >
               ×

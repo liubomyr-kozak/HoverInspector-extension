@@ -21,8 +21,9 @@ export const automationActions = {
     const result = await AppStorageService.saveAutomationScenario(data);
     const serverSyncEnabled = settings?.serverUrl && settings?.saveToBackend && settings?.syncScenarios;
 
-    // After successful save to local storage, sync with backend
-    if (serverSyncEnabled && result.success && data.id && data.scenario) {
+    // After successful save to local storage, sync with backend.
+    // Only scenarios (sc_...) are synced, not internal records such as the server settings or the editing state.
+    if (serverSyncEnabled && result.success && typeof data.id === "string" && data.id.startsWith("sc_") && data.scenario) {
       await LocalAPIServer.syncScenario(data.id, data.scenario);
     }
 
@@ -108,7 +109,13 @@ export const automationActions = {
     return await AppStorageService.saveExecutionHistory(data);
   },
 
-  removeAutomationScenario: async ({ data: { id } }) => {
+  removeAutomationScenario: async ({ data }) => {
+    // The id is the full prefixed key (sc_..., sch_..., tr_...), sent as { id }
+    const id = typeof data === "string" ? data : data?.id;
+    if (!id || typeof id !== "string") {
+      return { success: false, error: "Missing id" };
+    }
+
     const settings = await AppStorageService.getAutomationScenario({
       data: "automation_server_settings",
     });

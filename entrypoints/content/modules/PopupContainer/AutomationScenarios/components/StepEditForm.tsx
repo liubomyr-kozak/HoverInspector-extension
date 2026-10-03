@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Subscription } from "rxjs";
 import { filter as rxFilter } from "rxjs/operators";
 import { Button, Checkbox, Divider, Dropdown, Input, Select, Space } from "antd";
@@ -14,10 +14,25 @@ import { selectFunctions, selectStoredValues } from "@entrypoints/content/store/
 import { generateXPaths } from "../utils/xpathUtils";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 
+// Steps that act on an element of the page
+const ELEMENT_STEP_TYPES = [
+  StepType.CLICK,
+  StepType.HOVER,
+  StepType.VALUE,
+  StepType.INPUT,
+  StepType.SELECT,
+  StepType.GET_TEXT,
+  StepType.WAIT_ELEMENT_VISIBLE,
+];
+
 // Yup validation schema matching ScenarioStep interface
 const validationSchema = yup.object().shape({
   type: yup.string().required("Please select a step type"),
-  xpath: yup.string().notRequired(),
+  xpath: yup.string().when("type", {
+    is: (type: string) => ELEMENT_STEP_TYPES.includes(type as StepType),
+    then: (schema) => schema.trim().required("Please enter the XPath of the element"),
+    otherwise: (schema) => schema.notRequired(),
+  }),
   alternativeXpaths: yup.array().of(yup.string()).notRequired(),
   value: yup.string().when("type", {
     is: (type: string) =>
@@ -30,6 +45,9 @@ const validationSchema = yup.object().shape({
         StepType.WAIT_ELEMENT_VISIBLE,
         StepType.FUNCTION,
         StepType.NAVIGATE,
+        StepType.GET_TEXT,
+        StepType.CONFIRMATION,
+        StepType.NOTIFICATION,
       ].includes(type as StepType),
     then: (schema) => schema.required("Please enter a value"),
     otherwise: (schema) => schema.notRequired(),
@@ -48,14 +66,38 @@ interface StepEditFormProps {
   stepIndex?: number;
   totalSteps?: number;
   isSingleItem?: boolean;
+  // Show the errors of every field, not only of the edited ones (the parent tried to save)
+  showErrors?: boolean;
 }
+
+type StepFormErrors = Partial<Record<keyof ScenarioStep, { message: string }>>;
+
+// Validates the step; returns the error of each invalid field
+export const validateStep = (values: ScenarioStep): StepFormErrors => {
+  try {
+    validationSchema.validateSync(values, { abortEarly: false });
+    return {};
+  } catch (error) {
+    const errors: StepFormErrors = {};
+    ((error as yup.ValidationError).inner || []).forEach((inner) => {
+      const field = inner.path as keyof ScenarioStep;
+      if (field && !errors[field]) {
+        errors[field] = { message: inner.message };
+      }
+    });
+    return errors;
+  }
+};
+
+// Used when no step is given (e.g. while a new scenario renders): one shared object, so effects
+// depending on the step don't run on every render
+const EMPTY_STEP = {} as ScenarioStep;
 
 /**
  * Form a component for editing a step in a scenario
  */
-// step = {} додав, виникає коли новий ценарій був доданий, і він перемальовується.. тимчасово постійне рішення
 const StepEditForm: React.FC<StepEditFormProps> = ({
-  step = {} as ScenarioStep,
+  step = EMPTY_STEP,
   onClose,
   onSave,
   onChange,
@@ -65,6 +107,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   stepIndex = 0,
   totalSteps = 1,
   isSingleItem,
+  showErrors = false,
 }) => {
   const functions = useSelector(selectFunctions);
   const storedValues = useSelector(selectStoredValues);
@@ -73,10 +116,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
   const highlightManager = useHighlightOverlay();
 
   // Initialize React Hook Form
-  const {
-    control,
-    formState: { errors },
-  } = useForm<ScenarioStep>({
+  const { control } = useForm<ScenarioStep>({
     resolver: yupResolver(validationSchema),
     defaultValues: {
       type: step?.type || StepType.CLICK,
@@ -217,10 +257,24 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
 
   const [formValues, setFormValues] = useState<ScenarioStep>(() => toFormValues(step));
 
-  // Update local state when the step prop changes
+  // Update local state when the step changes (compared by content: parents may pass a new object each render)
+  const stepKey = JSON.stringify(step);
   useEffect(() => {
     setFormValues(toFormValues(step));
-  }, [step]);
+  }, [stepKey]);
+
+  // Errors are shown for the fields the user changed, and for all fields once they tried to save
+  const [touchedFields, setTouchedFields] = useState<Set<keyof ScenarioStep>>(() => new Set());
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const validationErrors = useMemo(() => validateStep(formValues), [formValues]);
+  const errors: StepFormErrors = useMemo(() => {
+    if (submitAttempted || showErrors) return validationErrors;
+    const visible: StepFormErrors = {};
+    (Object.keys(validationErrors) as (keyof ScenarioStep)[]).forEach((field) => {
+      if (touchedFields.has(field)) visible[field] = validationErrors[field];
+    });
+    return visible;
+  }, [validationErrors, touchedFields, submitAttempted, showErrors]);
 
   // Live mode: report every user edit to the parent (used where the form has no own Save button)
   useEffect(() => {
@@ -241,6 +295,7 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
 
   // Handle form field changes
   const handleChange = (field: keyof ScenarioStep, value: string | boolean) => {
+    setTouchedFields((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
     setFormValues((prev) => ({
       ...prev,
       [field]: value,
@@ -257,6 +312,8 @@ const StepEditForm: React.FC<StepEditFormProps> = ({
 
   // Handle form submission
   const handleFormSubmit = () => {
+    setSubmitAttempted(true);
+    if (Object.keys(validationErrors).length > 0) return;
     onSave(formValues);
   };
 

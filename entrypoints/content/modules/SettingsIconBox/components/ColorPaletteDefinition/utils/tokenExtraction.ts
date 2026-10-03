@@ -23,6 +23,22 @@ const normalizeCSSValue = (value: string): string => {
   return value;
 };
 
+/**
+ * Several values fall into the same size bucket (16px and 19.92px are both "Large"): number the
+ * tokens of a bucket from the smallest value up ("Large", "Large 2") so every token has its own name
+ */
+const withUniqueNames = <T extends { name: string }>(tokens: T[], sizeOf: (token: T) => number): T[] => {
+  const byName = new Map<string, T[]>();
+  tokens.forEach((token) => byName.set(token.name, [...(byName.get(token.name) || []), token]));
+  const names = new Map<T, string>();
+  byName.forEach((group, name) => {
+    [...group]
+      .sort((a, b) => sizeOf(a) - sizeOf(b))
+      .forEach((token, index) => names.set(token, index === 0 ? name : `${name} ${index + 1}`));
+  });
+  return tokens.map((token) => ({ ...token, name: names.get(token) || token.name }));
+};
+
 // Extract typography tokens from page elements
 export const extractTypographyTokens = (): TypographyToken[] => {
   const elements = Array.from(document.querySelectorAll('*')).filter(el => {
@@ -75,11 +91,14 @@ export const extractTypographyTokens = (): TypographyToken[] => {
     }
   });
 
-  return Array.from(tokenMap.values()).map(({ token, elements }) => ({
-    ...token,
-    sourceElements: elements,
-    frequency: elements.length
-  })).sort((a, b) => b.frequency! - a.frequency!);
+  return withUniqueNames(
+    Array.from(tokenMap.values()).map(({ token, elements }) => ({
+      ...token,
+      sourceElements: elements,
+      frequency: elements.length
+    })).sort((a, b) => b.frequency! - a.frequency!),
+    (token) => parseFloat(token.fontSize) * 1000 + (parseFloat(String(token.fontWeight)) || 0),
+  );
 };
 
 // Extract spacing tokens from page elements
@@ -117,7 +136,7 @@ export const extractSpacingTokens = (): SpacingToken[] => {
             spacingMap.get(key)!.elements.push(element);
           }
         } else {
-          const pixelValue = parseInt(normalizedValue);
+          const pixelValue = parseFloat(normalizedValue);
           let name = 'Medium';
           if (pixelValue <= 4) name = 'Extra Small';
           else if (pixelValue <= 8) name = 'Small';
@@ -144,11 +163,14 @@ export const extractSpacingTokens = (): SpacingToken[] => {
     });
   });
 
-  return Array.from(spacingMap.values()).map(({ token, elements }) => ({
-    ...token,
-    sourceElements: elements,
-    frequency: elements.length
-  })).sort((a, b) => b.frequency! - a.frequency!);
+  return withUniqueNames(
+    Array.from(spacingMap.values()).map(({ token, elements }) => ({
+      ...token,
+      sourceElements: elements,
+      frequency: elements.length
+    })).sort((a, b) => b.frequency! - a.frequency!),
+    (token) => token.pixelValue,
+  );
 };
 
 // Extract border radius tokens from page elements
@@ -205,11 +227,14 @@ export const extractBorderRadiusTokens = (): BorderRadiusToken[] => {
     }
   });
 
-  return Array.from(borderMap.values()).map(({ token, elements }) => ({
-    ...token,
-    sourceElements: elements,
-    frequency: elements.length
-  })).sort((a, b) => b.frequency! - a.frequency!);
+  return withUniqueNames(
+    Array.from(borderMap.values()).map(({ token, elements }) => ({
+      ...token,
+      sourceElements: elements,
+      frequency: elements.length
+    })).sort((a, b) => b.frequency! - a.frequency!),
+    (token) => parseFloat(token.value) || 0,
+  );
 };
 
 // Extract shadow tokens from page elements
@@ -237,10 +262,13 @@ export const extractShadowTokens = (): ShadowToken[] => {
         let name = 'Medium';
         const tagName = element.tagName.toLowerCase();
         
-        // Analyze shadow properties to determine size
-        const shadowParts = boxShadow.split(' ');
-        const offsetY = Math.abs(parseInt(shadowParts[1] || '0'));
-        const blurRadius = parseInt(shadowParts[2] || '0');
+        // Analyze shadow properties to determine size. The computed value starts with
+        // the colour ("rgba(0, 0, 0, 0.1) 0px 2px 6px 0px"), so read the lengths of the
+        // first shadow instead of splitting on spaces.
+        const firstShadow = boxShadow.replace(/\([^)]*\)/g, '()').split(',')[0];
+        const lengths = (firstShadow.match(/-?\d*\.?\d+px/g) || []).map((v) => parseFloat(v));
+        const offsetY = Math.abs(lengths[1] || 0);
+        const blurRadius = lengths[2] || 0;
         
         if (offsetY <= 1 && blurRadius <= 2) name = 'Small';
         else if (offsetY <= 4 && blurRadius <= 6) name = 'Medium';
@@ -266,9 +294,15 @@ export const extractShadowTokens = (): ShadowToken[] => {
     }
   });
 
-  return Array.from(shadowMap.values()).map(({ token, elements }) => ({
-    ...token,
-    sourceElements: elements,
-    frequency: elements.length
-  })).sort((a, b) => b.frequency! - a.frequency!);
+  return withUniqueNames(
+    Array.from(shadowMap.values()).map(({ token, elements }) => ({
+      ...token,
+      sourceElements: elements,
+      frequency: elements.length
+    })).sort((a, b) => b.frequency! - a.frequency!),
+    (token) => {
+      const lengths = (token.value.replace(/\([^)]*\)/g, '()').match(/-?\d*\.?\d+px/g) || []).map((v) => parseFloat(v));
+      return Math.abs(lengths[1] || 0) * 1000 + (lengths[2] || 0);
+    },
+  );
 };

@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { arrayMove, rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 import {
@@ -52,6 +52,7 @@ const UsefulLinks = ({ category }: { category?: string }) => {
 
 const Launcher: React.FC = () => {
   const dispatch = useDispatch();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { iconOrder = POPUP_SUPPORT_TOOLS, activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
   const { visibleFeatures = [] } = useSelector((state: any) => state?.app);
 
@@ -63,6 +64,45 @@ const Launcher: React.FC = () => {
   const handleToggleFeatureVisibility = (id: string) => {
     dispatch(onToggleFeatureVisibility.getPayload(id));
   };
+
+  const toggleFeature = (id: string) => {
+    const item = ICON_ITEMS.find((i) => i.id === id);
+    if (!item?.activatable) return;
+
+    dispatch(
+      onChangeLauncherActiveFeature.getPayload({
+        id: item.id,
+        title: item.title,
+        activatable: item.activatable,
+        multipleView: item.multipleView,
+        isActive: activeIcons.includes(id),
+      }),
+    );
+  };
+
+  // Clicking a tool in the menu opens it, and pins it to the toolbar so it can be closed again there
+  const handleOpenFromMenu = (id: string) => {
+    if (!visibleFeatures.includes(id)) {
+      dispatch(onToggleFeatureVisibility.getPayload(id));
+    }
+    if (!activeIcons.includes(id)) {
+      toggleFeature(id);
+    }
+    setMenuOpen(false);
+  };
+
+  // Esc closes the open menu first; marking the event handled keeps the global Esc shortcut from
+  // switching the whole extension off at the same time
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [menuOpen]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -91,7 +131,7 @@ const Launcher: React.FC = () => {
           <SectionTitle>Features List</SectionTitle>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/*//@ts-ignore*/}
-            <SortableContext items={normalizedIconOrder} strategy={verticalListSortingStrategy}>
+            <SortableContext items={normalizedIconOrder} strategy={rectSortingStrategy}>
               <FeaturesGrid>
                 {normalizedIconOrder.map((id) => {
                   const item = ICON_ITEMS.find((i) => i.id === id);
@@ -105,7 +145,9 @@ const Launcher: React.FC = () => {
                       title={item.title}
                       icon={item.icon}
                       isVisible={isVisible}
+                      isActive={activeIcons.includes(id)}
                       onToggleVisibility={handleToggleFeatureVisibility}
+                      onOpen={handleOpenFromMenu}
                     />
                   );
                 })}
@@ -182,18 +224,9 @@ const Launcher: React.FC = () => {
                 <IconButton
                   key={id}
                   $active={isActive}
-                  onClick={() => {
-                    const payload = {
-                      id: item.id,
-                      title: item.title,
-                      activatable: item.activatable,
-                      multipleView: item.multipleView,
-                      isActive,
-                    };
-
-                    // Always use normal feature activation since minimize functionality is removed
-                    item.activatable && dispatch(onChangeLauncherActiveFeature.getPayload(payload));
-                  }}
+                  aria-label={item.title}
+                  aria-pressed={isActive}
+                  onClick={() => toggleFeature(id)}
                 >
                   <Icon />
                 </IconButton>
@@ -204,11 +237,15 @@ const Launcher: React.FC = () => {
           content={content}
           zIndex={1150}
           placement="topRight"
+          // Shift the menu sideways to keep it inside narrow windows
+          align={{ overflow: { adjustY: true, shiftX: true } }}
           trigger="click"
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
           // @ts-ignore
           getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
         >
-          <IconButton $active={false} onClick={(e) => e.stopPropagation()}>
+          <IconButton $active={false} aria-label="More tools and settings" onClick={(e) => e.stopPropagation()}>
             <IconDotsVertical />
           </IconButton>
         </Popover>

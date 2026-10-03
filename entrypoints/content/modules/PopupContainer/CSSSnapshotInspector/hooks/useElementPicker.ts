@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Subscription } from 'rxjs';
 import { filter as rxFilter } from 'rxjs/operators';
 import { useHighlightOverlay } from '@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext';
 import { CSSSnapshot } from '../types';
 import { buildSnapshotTree } from '../utils/snapshotBuilder';
-import { saveSnapshots } from '../utils/snapshotStorage';
+import { trimAndSaveSnapshots } from '../utils/snapshotStorage';
 
 interface ElementPickerConfig {
   highlightStyles?: {
@@ -37,6 +37,11 @@ export function useElementPicker(
     onSuccess,
     onError
   } = config;
+
+  // Keep the latest callbacks/snapshots in a ref so the selection stream below is not
+  // torn down and re-created on every render (callers usually pass inline callbacks)
+  const latestRef = useRef({ snapshots, onSuccess, onError });
+  latestRef.current = { snapshots, onSuccess, onError };
 
   // Clear any error after a delay
   useEffect(() => {
@@ -75,21 +80,21 @@ export function useElementPicker(
       });
 
       // Save the snapshot
-      await saveElementSnapshot(snapshot, snapshots);
+      await saveElementSnapshot(snapshot, latestRef.current.snapshots);
 
       // Notify success
-      onSuccess?.(snapshot);
+      latestRef.current.onSuccess?.(snapshot);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setState(prev => ({ ...prev, error: `Failed to capture element: ${errorMessage}` }));
-      onError?.(error instanceof Error ? error : new Error(errorMessage));
+      latestRef.current.onError?.(error instanceof Error ? error : new Error(errorMessage));
       console.error('Failed to capture element snapshot:', error);
     } finally {
       setState(prev => ({ ...prev, isProcessing: false }));
       stopPicking();
     }
-  }, [highlightManager, snapshots, onSuccess, onError]);
+  }, [highlightManager]);
 
   // Set up element selection stream when active
   useEffect(() => {
@@ -115,7 +120,7 @@ export function useElementPicker(
               isActive: false,
               isProcessing: false 
             }));
-            onError?.(error instanceof Error ? error : new Error('Element selection failed'));
+            latestRef.current.onError?.(error instanceof Error ? error : new Error('Element selection failed'));
             console.error('Element selection stream error:', error);
           },
           complete: () => {
@@ -131,14 +136,14 @@ export function useElementPicker(
         error: 'Failed to start element picker',
         isActive: false 
       }));
-      onError?.(error instanceof Error ? error : new Error('Failed to start element picker'));
+      latestRef.current.onError?.(error instanceof Error ? error : new Error('Failed to start element picker'));
     }
 
     return () => {
       subscription?.unsubscribe();
       highlightManager.stopMouseMoveHighlight();
     };
-  }, [state.isActive, highlightManager, handleElementSelection, onError]);
+  }, [state.isActive, highlightManager, handleElementSelection]);
 
   // Start element picking
   const startPicking = useCallback(() => {
@@ -205,11 +210,8 @@ function createElementSnapshot({
 }
 
 async function saveElementSnapshot(snapshot: CSSSnapshot, existingSnapshots: CSSSnapshot[]): Promise<void> {
-  const updatedSnapshots = [...existingSnapshots, snapshot];
-  const limitedSnapshots = updatedSnapshots.slice(-50); // Keep last 50 snapshots
-  
   try {
-    await saveSnapshots(limitedSnapshots);
+    await trimAndSaveSnapshots([...existingSnapshots, snapshot]);
   } catch (error) {
     console.warn('Failed to save element snapshot:', error);
     throw new Error('Failed to save snapshot to storage');

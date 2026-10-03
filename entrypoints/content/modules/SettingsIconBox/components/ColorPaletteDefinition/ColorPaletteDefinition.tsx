@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { IconX } from "@tabler/icons-react";
 import { IconPalette } from "@tabler/icons-react";
 import ColorDetails from "./ColorDetails.tsx";
 import { getColorInAllFormats } from "@entrypoints/shared/utils/colorAnalysis.ts";
@@ -7,8 +8,6 @@ import {
   PaletteColor,
   ColorSystem,
   ColorExtractionStats,
-  TokenTabType,
-  TypographyToken,
 } from "./paletteTypes";
 import {
   extractCategorizedColorMaps,
@@ -18,24 +17,37 @@ import {
 import { useDispatch } from "react-redux";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import ColorCategorySection from "./ColorCategorySection.tsx";
-import { TabContainer, Tabs, Tab, TabContent } from "./ColorPaletteDefinition.styled";
-import { TypographyTokenTab } from "./TypographyTokenTab";
-import { extractTypographyTokens } from "./utils/tokenExtraction";
 import { ImportSection } from "./ImportSection";
 
-const defaultPalette: ColorPalette = {
+let colorContext: CanvasRenderingContext2D | null = null;
+
+/**
+ * Canonical form of a CSS colour ("#fff", "white" and "rgb(255,255,255)" all give "#ffffff"), null when
+ * the value isn't a colour. The canvas only accepts valid colours into fillStyle.
+ */
+const normalizeColor = (value: string): string | null => {
+  colorContext = colorContext || document.createElement("canvas").getContext("2d");
+  if (!colorContext) return value.toLowerCase();
+  colorContext.fillStyle = "#000001";
+  colorContext.fillStyle = value;
+  const first = String(colorContext.fillStyle);
+  colorContext.fillStyle = "#000002";
+  colorContext.fillStyle = value;
+  // Unchanged sentinel: the browser rejected the value
+  return first === "#000001" && String(colorContext.fillStyle) === "#000002" ? null : first;
+};
+
+// Start empty: the palette is filled from the page, never from placeholder colours
+const emptyPalette: ColorPalette = {
   // Role-based categories
-  primary: [{ id: "p1", color: "#15803d", name: "Primary Green" }],
-  secondary: [{ id: "s1", color: "#3aca70", name: "Secondary Green" }],
+  primary: [],
+  secondary: [],
   tertiary: [],
-  neutral: [
-    { id: "n1", color: "#374151", name: "Text Gray" },
-    { id: "n2", color: "#ffffff", name: "Background White" },
-  ],
+  neutral: [],
 
   // Usage-based categories
-  element: [{ id: "e1", color: "#15803d", name: "Element Green" }],
-  text: [{ id: "t1", color: "#374151", name: "Text Gray" }],
+  element: [],
+  text: [],
   border: [],
 };
 
@@ -54,19 +66,11 @@ export const ColorPaletteDefinition: React.FC = () => {
   // Default palette with some initial colors based on design guidelines
 
   // State for the color palette
-  const [colorPalette, setColorPalette] = useState<ColorPalette>(defaultPalette);
+  const [colorPalette, setColorPalette] = useState<ColorPalette>(emptyPalette);
 
-  // State for extracted tokens
-  const [typographyTokens, setTypographyTokens] = useState<TypographyToken[]>([
-    { id: "t1", name: "Heading Large", fontSize: "2rem", fontWeight: "600", lineHeight: "1.2" },
-    { id: "t2", name: "Heading Medium", fontSize: "1.5rem", fontWeight: "600", lineHeight: "1.3" },
-    { id: "t3", name: "Body Text", fontSize: "1rem", fontWeight: "400", lineHeight: "1.5" },
-    { id: "t4", name: "Small Text", fontSize: "0.875rem", fontWeight: "400", lineHeight: "1.4" },
-  ]);
-
-  // State for extraction status
+  // State for extraction status (extraction starts right after mount)
   const [extractionStatus, setExtractionStatus] = useState<ColorExtractionStats>({
-    isExtracting: false,
+    isExtracting: true,
     lastExtracted: null,
     totalElementsAnalyzed: 0,
     totalColorsFound: 0,
@@ -85,47 +89,29 @@ export const ColorPaletteDefinition: React.FC = () => {
   const extractColorsFromPage = useCallback(() => {
     setExtractionStatus((prev) => ({ ...prev, isExtracting: true }));
 
-    try {
-      const { categorizedElements, backgroundColors, textColors, borderColors } = extractCategorizedColorMaps();
-      const newPalette = categorizeColorsIntoPalette(backgroundColors, textColors, borderColors);
-
-      // Extract design tokens
-      const extractedTypographyTokens = extractTypographyTokens();
-
-      // Update state
-      setColorPalette(newPalette);
-      setTypographyTokens(extractedTypographyTokens);
-
-      const totalTokensFound = extractedTypographyTokens.length;
-
-      setExtractionStatus({
-        isExtracting: false,
-        lastExtracted: new Date(),
-        totalElementsAnalyzed: categorizedElements.length,
-        totalColorsFound: backgroundColors.size + textColors.size + borderColors.size + totalTokensFound,
-      });
-    } catch (error) {
-      console.error("Error extracting colors and tokens from page:", error);
-      setExtractionStatus((prev) => ({ ...prev, isExtracting: false }));
-    }
-  }, []);
-
-  // Load palette from localStorage on component mount
-  useEffect(() => {
-    const savedPalette = localStorage.getItem("colorPalette");
-    if (savedPalette) {
+    // Let the "Extracting..." state paint before the synchronous page scan
+    setTimeout(() => {
       try {
-        setColorPalette(JSON.parse(savedPalette));
+        const { categorizedElements, backgroundColors, textColors, borderColors } = extractCategorizedColorMaps();
+        const newPalette = categorizeColorsIntoPalette(backgroundColors, textColors, borderColors);
+
+        setColorPalette(newPalette);
+        setSelectedColorId(null);
+        setExtractionStatus({
+          isExtracting: false,
+          lastExtracted: new Date(),
+          totalElementsAnalyzed: categorizedElements.length,
+          totalColorsFound: backgroundColors.size + textColors.size + borderColors.size,
+        });
       } catch (error) {
-        console.error("Error loading saved color palette:", error);
+        console.error("Error extracting colors from page:", error);
+        setExtractionStatus((prev) => ({ ...prev, isExtracting: false }));
       }
-    }
+    }, 0);
   }, []);
 
-  // Save palette to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("colorPalette", JSON.stringify(colorPalette));
-  }, [colorPalette]);
+  // The palette lives only in component state: it holds live DOM references
+  // (sourceElements), so it is not persisted (and never to the host page's localStorage).
 
   /**
    * Formats a color string based on the selected color system
@@ -220,6 +206,24 @@ export const ColorPaletteDefinition: React.FC = () => {
 
   const selectedColor = useMemo(() => selectedColorId && getSelectedColor(), [selectedColorId, colorPalette]);
 
+  // In the narrow panel the details wrap above the swatches: bring them into view when a colour is picked
+  const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const details = detailsRef.current;
+    if (!selectedColorId || !details) return;
+    let scrollParent = details.parentElement;
+    while (scrollParent) {
+      const { overflowY } = window.getComputedStyle(scrollParent);
+      if ((overflowY === "auto" || overflowY === "scroll") && scrollParent.scrollHeight > scrollParent.clientHeight) break;
+      scrollParent = scrollParent.parentElement;
+    }
+    if (!scrollParent) return;
+    const offset = details.getBoundingClientRect().top - scrollParent.getBoundingClientRect().top;
+    if (offset < 0 || offset > scrollParent.clientHeight - 80) {
+      scrollParent.scrollTo({ top: scrollParent.scrollTop + offset - 12, behavior: "smooth" });
+    }
+  }, [selectedColorId]);
+
   return (
     <div className="bg-white p-5 rounded-lg mb-6 shadow-sm border border-gray-100">
       <div className="flex items-center gap-3 mb-6">
@@ -254,40 +258,34 @@ export const ColorPaletteDefinition: React.FC = () => {
           // For named colors, return as-is
           return trimmed;
         }}
+        normalize={normalizeColor}
       />
 
-      <div className="flex gap-6">
-        <div className="flex-1">
+      {/* Side by side when there is room; otherwise wrap-reverse puts the details above the swatches */}
+      <div className="flex flex-wrap-reverse gap-6">
+        <div style={{ flex: "1 1 240px", minWidth: 0 }}>
           <div className="space-y-6">
-            {/* Consolidated Text Colors Section */}
-            <ColorCategorySection
-              key="consolidated-text"
-              title="Text Colors"
-              type="Text"
-              colors={[
-                ...colorPalette.primary,
-                ...colorPalette.secondary,
-                ...colorPalette.tertiary,
-                ...colorPalette.neutral,
-                ...colorPalette.text,
-              ]}
-              selectedColorId={selectedColorId}
-              formatColor={formatColor}
-              onSelect={setSelectedColorId}
-            />
+            {extractionStatus.isExtracting && !extractionStatus.lastExtracted && (
+              <p className="text-sm text-gray-500">Extracting colors from the page...</p>
+            )}
+            {!extractionStatus.isExtracting && extractionStatus.lastExtracted && extractionStatus.totalColorsFound === 0 && (
+              <p className="text-sm text-gray-500">No colors found on this page.</p>
+            )}
 
-            {/* Other color categories */}
             {(
               [
-                { key: "element", title: "Element Colors", type: "Element" },
-                { key: "border", title: "Border Colors", type: "Border" },
+                // Backgrounds of buttons, containers and navigation, picked by role
+                { key: "brand", title: "Brand Colors", type: "Brand", colors: [...colorPalette.primary, ...colorPalette.secondary, ...colorPalette.tertiary] },
+                { key: "text", title: "Text Colors", type: "Text", colors: colorPalette.text },
+                { key: "element", title: "Background Colors", type: "Element", colors: colorPalette.element },
+                { key: "border", title: "Border Colors", type: "Border", colors: colorPalette.border },
               ] as const
             ).map((cfg) => (
               <ColorCategorySection
                 key={cfg.key}
                 title={cfg.title}
                 type={cfg.type}
-                colors={(colorPalette as any)[cfg.key]}
+                colors={[...cfg.colors]}
                 selectedColorId={selectedColorId}
                 formatColor={formatColor}
                 onSelect={setSelectedColorId}
@@ -306,15 +304,28 @@ export const ColorPaletteDefinition: React.FC = () => {
             </button>
             {extractionStatus.lastExtracted && (
               <p className="text-sm text-gray-600 mt-2">
-                Last extracted: {extractionStatus.lastExtracted.toLocaleTimeString()}(
+                Last extracted: {extractionStatus.lastExtracted.toLocaleTimeString()} (
                 {extractionStatus.totalColorsFound} colors from {extractionStatus.totalElementsAnalyzed} elements)
               </p>
             )}
           </div>
         </div>
 
-        {selectedColorId && (
-          <div className="pl-6 border-l border-gray-200">
+        {selectedColorId && selectedColor && (
+          <div
+            ref={detailsRef}
+            className="relative"
+            style={{ flex: "1 1 240px", minWidth: 0 }}
+          >
+            <button
+              type="button"
+              aria-label="Close color details"
+              title="Close"
+              onClick={() => setSelectedColorId(null)}
+              className="absolute top-2 right-2 z-10 p-1 rounded text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            >
+              <IconX size={14} />
+            </button>
             <ColorDetails
               color={selectedColor as any}
               formatColor={formatColor}

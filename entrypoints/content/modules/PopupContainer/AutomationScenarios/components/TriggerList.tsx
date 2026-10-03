@@ -61,19 +61,19 @@ const TriggerList: React.FC<TriggerListProps> = ({ triggers, activeTriggerID, on
     }
   };
 
-  // Helper function to format the trigger condition for display
+  // Helper function to format the trigger condition for display (shown after the trigger type)
   const formatTriggerCondition = (trigger: TriggerConfig): string => {
     switch (trigger.type) {
       case TriggerType.DOMAIN:
-        return `Domain: ${trigger.condition.domainPattern || "Any"}${trigger.condition.exactMatch ? " (Exact match)" : ""}`;
+        return `${trigger.condition.domainPattern || "Any"}${trigger.condition.useRegex ? " (Regex)" : ""}${trigger.condition.exactMatch ? " (Exact match)" : ""}`;
       case TriggerType.PAGE_LOAD:
-        return "On page load";
+        return "";
       case TriggerType.ELEMENT_PRESENT:
-        return `Element: ${trigger.condition.elementXPath || "Not specified"}`;
+        return trigger.condition.elementXPath || "Not specified";
       case TriggerType.CUSTOM_EVENT:
-        return `Event: ${trigger.condition.eventName || "Not specified"}`;
+        return trigger.condition.eventName || "Not specified";
       default:
-        return "Unknown condition";
+        return "";
     }
   };
 
@@ -142,10 +142,14 @@ const TriggerList: React.FC<TriggerListProps> = ({ triggers, activeTriggerID, on
               }
               description={
                 <div>
-                  <div className="flex items-center" style={{ marginBottom: "4px" }}>
-                    {getTriggerTypeIcon(trigger.type)}
-                    <span style={{ marginLeft: "4px", marginRight: "8px" }}>{formatTriggerType(trigger.type)}</span>
-                    <span>{formatTriggerCondition(trigger)}</span>
+                  <div className="flex items-center" style={{ marginBottom: "4px", minWidth: 0 }}>
+                    <span style={{ flexShrink: 0, display: "inline-flex" }}>{getTriggerTypeIcon(trigger.type)}</span>
+                    <span style={{ marginLeft: "4px", flexShrink: 0 }}>{formatTriggerType(trigger.type)}</span>
+                    {formatTriggerCondition(trigger) && (
+                      <span style={{ marginLeft: "6px", minWidth: 0, wordBreak: "break-all" }}>
+                        · {formatTriggerCondition(trigger)}
+                      </span>
+                    )}
                   </div>
                   {trigger.description && <div style={{ marginTop: "4px" }}>{trigger.description}</div>}
                 </div>

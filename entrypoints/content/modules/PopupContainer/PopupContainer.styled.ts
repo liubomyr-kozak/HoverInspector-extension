@@ -51,12 +51,12 @@ export const BecomeASponsor = styled.a`
   text-decoration: none;
   cursor: pointer;
   //mask: linear-gradient(to top, #000 1%, 0%, #0000 8%, 0%, #000 10%, 0%, #0000 16%, 0%, #000 19%, 0%, #0000 24%, 0%, #000 28%, 0%, #0000 32%, 0%, #000 37%, 0%, #0000 40%, 0%, #000 46%, 0%, #0000 48%, 0%, #000 55%, 0%, #0000 56%, 0%, #000 57%);
-  padding: 16px;
-  inline-size: 5rem;
+  padding: 8px 32px;
+  inline-size: 80px;
   aspect-ratio: 1;
   justify-self: center;
   width: 100%;
-  height: 75px;
+  height: 44px;
   position: relative;
   overflow: hidden;
   color: #333;
@@ -85,15 +85,20 @@ export const BecomeASponsor = styled.a`
   }
 `;
 
+// One line so the footer takes 44px of the panel instead of 75px
 export const BecomeASponsorText = styled.div`
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
+  min-width: 0;
   height: 100%;
 
   h3 {
     margin: 0;
-    font-size: 17px;
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 14px;
     position: relative;
     z-index: 1;
     transition: color 0.3s ease;
@@ -102,7 +107,11 @@ export const BecomeASponsorText = styled.div`
 
   p {
     margin: 0;
-    font-size: 15px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
     position: relative;
     z-index: 1;
     transition: color 0.3s ease;
@@ -144,14 +153,26 @@ export const HideButton = styled.button`
 `;
 
 export const FeatureTitle = styled.div`
-  font-size: 15px;
+  font-size: 13px;
   font-weight: bold;
+  letter-spacing: 0.02em;
   color: #888;
   text-transform: uppercase;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-width: 0;
+`;
+
+// Single-line tool name in the panel header; long names end in an ellipsis
+// instead of pushing the header to three lines
+export const FeatureTitleText = styled.span`
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 export const FeatureContainer = styled.div.attrs({
@@ -169,13 +190,15 @@ export const HeaderContainer = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-width: 0;
   gap: 16px;
 `;
 
+// Tool buttons (Save, Cancel, Compare...) on their own row above the sponsor strip,
+// so the strip never squeezes them out of the panel
 export const FooterContainer = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column-reverse;
   width: 100%;
 `;
 
@@ -183,12 +206,17 @@ export const ButtonsContainer = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
+
+  &:empty {
+    display: none;
+  }
 `;
 
 export const HeaderButtonsContainer = styled.div`
   display: flex;
   align-items: center;
   width: 100%;
+  min-width: 0;
 `;
 
 export const MinimizeButton = styled.button<{ isMinimized?: boolean }>`

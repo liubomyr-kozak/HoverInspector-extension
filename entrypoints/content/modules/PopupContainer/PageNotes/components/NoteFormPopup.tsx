@@ -12,7 +12,6 @@ import { NoteForm } from "./NoteForm";
 import NoteFormPopupStyles from "./NoteFormPopup.css?inline";
 import { ButtonsContainer } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";
-import { NoteLocation, NoteLocationCoordinates } from "@entrypoints/shared/types/notes.ts";
 import {
   getNoteFormPanelPosition,
   saveNoteFormPanelPosition,
@@ -65,7 +64,7 @@ export const NoteFormPopup: React.FC = () => {
   }, []);
 
   // Handle position/size changes
-  const handleModalStateChange = async (newState: NoteLocationCoordinates) => {
+  const handleModalStateChange = async (newState: typeof defaultPosition) => {
     setPanelPosition(newState);
     try {
       await saveNoteFormPanelPosition(newState);

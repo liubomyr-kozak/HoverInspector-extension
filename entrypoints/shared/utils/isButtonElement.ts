@@ -24,51 +24,38 @@ export const isButtonElement = (element: Element | null): boolean => {
     }
   }
 
-  // Check if it's an anchor tag with href and has button-like styling
-  if (element.tagName.toLowerCase() === 'a' && element.hasAttribute('href')) {
-    const computedStyle = window.getComputedStyle(element);
-    
-    // Check for common button characteristics
-    const hasBackgroundColor = computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)';
-    const hasBorder = computedStyle.border !== 'none' && computedStyle.border !== '';
-    const hasPadding = computedStyle.padding !== '0px';
-    const hasButtonLikeCursor = computedStyle.cursor === 'pointer';
-    const hasRoundedCorners = computedStyle.borderRadius !== '0px';
-    
-    // If it has at least 3 of these characteristics, it's likely a button
-    let buttonCharacteristics = 0;
-    if (hasBackgroundColor) buttonCharacteristics++;
-    if (hasBorder) buttonCharacteristics++;
-    if (hasPadding) buttonCharacteristics++;
-    if (hasButtonLikeCursor) buttonCharacteristics++;
-    if (hasRoundedCorners) buttonCharacteristics++;
-    
-    return buttonCharacteristics >= 3;
-  }
+  const tag = element.tagName.toLowerCase();
+  if (tag !== 'a' && tag !== 'div' && tag !== 'span') return false;
 
-  // Check for div or span with button-like characteristics
-  if (element.tagName.toLowerCase() === 'div' || element.tagName.toLowerCase() === 'span') {
-    const computedStyle = window.getComputedStyle(element);
-    
-    // Check for common button characteristics
-    const hasBackgroundColor = computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)';
-    const hasBorder = computedStyle.border !== 'none' && computedStyle.border !== '';
-    const hasPadding = computedStyle.padding !== '0px';
-    const hasButtonLikeCursor = computedStyle.cursor === 'pointer';
-    const hasRoundedCorners = computedStyle.borderRadius !== '0px';
-    const hasClickHandler = element.hasAttribute('onclick') || element.hasAttribute('data-click');
-    
-    // If it has at least 4 of these characteristics, it's likely a button
-    let buttonCharacteristics = 0;
-    if (hasBackgroundColor) buttonCharacteristics++;
-    if (hasBorder) buttonCharacteristics++;
-    if (hasPadding) buttonCharacteristics++;
-    if (hasButtonLikeCursor) buttonCharacteristics++;
-    if (hasRoundedCorners) buttonCharacteristics++;
-    if (hasClickHandler) buttonCharacteristics++;
-    
-    return buttonCharacteristics >= 4;
-  }
+  const computedStyle = window.getComputedStyle(element);
+  const isClickable =
+    computedStyle.cursor === 'pointer' ||
+    element.hasAttribute('onclick') ||
+    element.hasAttribute('data-click');
+  // A link with href is clickable by nature; a div or span must look clickable
+  // before its box styling counts, otherwise every card or panel would be a "button"
+  if (tag !== 'a' && !isClickable) return false;
+  if (tag === 'a' && !element.hasAttribute('href')) return false;
 
-  return false;
+  const hasBackgroundColor = !/^(transparent|rgba\(0, 0, 0, 0\))$/.test(computedStyle.backgroundColor);
+  const hasBorder = ['Top', 'Right', 'Bottom', 'Left'].some(
+    (side) =>
+      computedStyle[`border${side}Style` as any] !== 'none' &&
+      parseFloat(computedStyle[`border${side}Width` as any]) > 0
+  );
+  const hasPadding = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'].some(
+    (prop) => parseFloat(computedStyle[prop as any]) > 0
+  );
+  const hasRoundedCorners = parseFloat(computedStyle.borderTopLeftRadius) > 0;
+  // Buttons are compact; large boxes are cards or sections even when clickable
+  const rect = element.getBoundingClientRect();
+  const isCompact = rect.height > 0 && rect.height <= 80 && rect.width <= 400;
+
+  let buttonCharacteristics = 0;
+  if (hasBackgroundColor) buttonCharacteristics++;
+  if (hasBorder) buttonCharacteristics++;
+  if (hasPadding) buttonCharacteristics++;
+  if (hasRoundedCorners) buttonCharacteristics++;
+
+  return isCompact && buttonCharacteristics >= (tag === 'a' ? 2 : 3);
 };

@@ -7,16 +7,62 @@ import { colorBoxStyle, flexChildRightStyle, targetSizeStyle, targetTitleStyle }
 import { BoxLabelContainer, PopupWrapper } from "./Popup.styled.ts";
 import cx from "classnames";
 
+// Label on the left, value pushed to the right edge, never touching each other
+const rowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '12px',
+  minWidth: 0,
+};
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: '11px',
+  fontWeight: 600,
+  color: '#495057',
+  marginBottom: '6px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+};
+const labelStyle: React.CSSProperties = { fontSize: '11px', color: '#666', whiteSpace: 'nowrap', flexShrink: 0 };
+
 const PopupContainer = ({ data, hoverElement }) => {
   const { height, width, tag, className, id, padding, margin, border, color, backgroundColor, font } = data;
+  const fontSize = data["font-size"];
+  const fontWeight = data["font-weight"];
+  const lineHeight = data["line-height"];
+  const fontFamily = (data["font-family"] || "").split(",")[0].replace(/["']/g, "").trim();
+
+  const hasText = !!isChildText(hoverElement?.childNodes);
+  // SVG text is painted with fill, so its CSS color says nothing
+  const showTextColor = hasText && !!color && !(hoverElement instanceof SVGElement);
+
+  // SVG shapes are painted with fill/stroke rather than background/color
+  let svgFill = "";
+  let svgStroke = "";
+  if (hoverElement instanceof SVGElement && hoverElement.localName !== "svg") {
+    const svgStyle = getComputedStyle(hoverElement);
+    svgFill = svgStyle.fill && svgStyle.fill !== "none" ? svgStyle.fill : "";
+    svgStroke = svgStyle.stroke && svgStyle.stroke !== "none" ? svgStyle.stroke : "";
+  }
+
+  // Images: the intrinsic size and alt text are what people usually check
+  const isImage = hoverElement instanceof HTMLImageElement;
+  const imageNatural = isImage && hoverElement.naturalWidth ? `${hoverElement.naturalWidth} × ${hoverElement.naturalHeight}px` : "";
+  const imageAlt = isImage ? hoverElement.getAttribute("alt") : null;
+
+  const showSpacing = !!(padding || margin);
+  const showColors = !!(backgroundColor || showTextColor || svgFill || svgStroke);
+  const showTypography = hasText && !!font;
+  const showImage = isImage && (!!imageNatural || imageAlt !== null);
+  const hasBody = showSpacing || showColors || showTypography || !!border || showImage;
 
   const renderColorInfo = (label, colorValue, showLabel = true) => {
     if (!colorValue) return null;
     
     const hexValue = targetColorStringToHex(colorValue);
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {showLabel && <span style={{ fontSize: '11px', color: '#666', minWidth: '50px' }}>{label}:</span>}
+      <div style={rowStyle}>
+        {showLabel && <span style={labelStyle}>{label}:</span>}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{
             ...colorBoxStyle(colorValue),
@@ -40,10 +86,11 @@ const PopupContainer = ({ data, hoverElement }) => {
     );
   };
 
-  const renderSpacingValue = (value) => {
+  const renderSpacingValue = (value, truncate = false) => {
     if (!value) return null;
     return (
-      <span style={{ 
+      <span title={truncate ? value : undefined} style={{
+        ...(truncate ? { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }),
         fontSize: '11px', 
         fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
         color: '#495057',
@@ -59,9 +106,17 @@ const PopupContainer = ({ data, hoverElement }) => {
 
   const renderBorderSide = (sideLabel, borderData) => {
     if (!borderData) return null;
+    if (borderData.style === 'none' || borderData.style === 'hidden' || parseFloat(borderData.width) === 0) {
+      return (
+        <div style={{ ...rowStyle, marginBottom: '4px' }}>
+          <span style={labelStyle}>{sideLabel}:</span>
+          <span style={{ fontSize: '11px', color: '#adb5bd' }}>none</span>
+        </div>
+      );
+    }
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-        <span style={{ fontSize: '11px', color: '#666', minWidth: '60px' }}>{sideLabel}:</span>
+      <div style={{ ...rowStyle, marginBottom: '4px' }}>
+        <span style={labelStyle}>{sideLabel}:</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '11px', color: '#495057' }}>
             {borderData.width} {borderData.style}
@@ -92,14 +147,15 @@ const PopupContainer = ({ data, hoverElement }) => {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between',
-        marginBottom: '12px',
-        paddingBottom: '8px',
-        borderBottom: '1px solid #e9ecef'
+        gap: '8px',
+        ...(hasBody ? { marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e9ecef' } : {}),
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
           {getTagMeta(tag, id, className)}
         </div>
         <div style={{
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
           fontSize: '12px',
           fontWeight: '600',
           color: '#495057',
@@ -113,7 +169,7 @@ const PopupContainer = ({ data, hoverElement }) => {
       </div>
 
       {/* Spacing Section */}
-      {(padding || margin) && (
+      {showSpacing && (
         <div style={{ marginBottom: '12px' }}>
           <div style={{ 
             fontSize: '11px', 
@@ -127,14 +183,14 @@ const PopupContainer = ({ data, hoverElement }) => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
             {padding && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', color: '#666' }}>Padding:</span>
+              <div style={rowStyle}>
+                <span style={labelStyle}>Padding:</span>
                 {renderSpacingValue(padding)}
               </div>
             )}
             {margin && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', color: '#666' }}>Margin:</span>
+              <div style={rowStyle}>
+                <span style={labelStyle}>Margin:</span>
                 {renderSpacingValue(margin)}
               </div>
             )}
@@ -143,7 +199,7 @@ const PopupContainer = ({ data, hoverElement }) => {
       )}
 
       {/* Colors Section */}
-      {(backgroundColor || (isChildText(hoverElement.childNodes) && color)) && (
+      {showColors && (
         <div style={{ marginBottom: '12px' }}>
           <div style={{ 
             fontSize: '11px', 
@@ -157,13 +213,15 @@ const PopupContainer = ({ data, hoverElement }) => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
             {backgroundColor && renderColorInfo('Background', backgroundColor)}
-            {isChildText(hoverElement.childNodes) && color && renderColorInfo('Text', color)}
+            {showTextColor && renderColorInfo('Text', color)}
+            {svgFill && renderColorInfo('Fill', svgFill)}
+            {svgStroke && renderColorInfo('Stroke', svgStroke)}
           </div>
         </div>
       )}
 
       {/* Typography Section */}
-      {isChildText(hoverElement.childNodes) && font && (
+      {showTypography && (
         <div style={{ marginBottom: '12px' }}>
           <div style={{ 
             fontSize: '11px', 
@@ -176,10 +234,37 @@ const PopupContainer = ({ data, hoverElement }) => {
             Typography
           </div>
           <div style={{ paddingLeft: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', color: '#666' }}>Font Size:</span>
-              {renderSpacingValue(font)}
+            <div style={{ ...rowStyle, marginBottom: '4px' }}>
+              <span style={labelStyle}>Size / Weight:</span>
+              {renderSpacingValue(`${fontSize}${lineHeight && lineHeight !== "normal" ? ` / ${lineHeight}` : ""} · ${fontWeight}`)}
             </div>
+            {fontFamily && (
+              <div style={rowStyle}>
+                <span style={labelStyle}>Family:</span>
+                {renderSpacingValue(fontFamily, true)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Image Section */}
+      {showImage && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={sectionTitleStyle}>Image</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
+            {imageNatural && (
+              <div style={rowStyle}>
+                <span style={labelStyle}>Natural size:</span>
+                {renderSpacingValue(imageNatural)}
+              </div>
+            )}
+            {imageAlt !== null && (
+              <div style={rowStyle}>
+                <span style={labelStyle}>Alt:</span>
+                {renderSpacingValue(imageAlt || '""', true)}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -199,8 +284,8 @@ const PopupContainer = ({ data, hoverElement }) => {
           </div>
           <div style={{ paddingLeft: '8px' }}>
             {border.type === "single" ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', color: '#666' }}>All sides:</span>
+              <div style={rowStyle}>
+                <span style={labelStyle}>All sides:</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '11px', color: '#495057' }}>
                     {border.width} {border.style}
@@ -237,6 +322,20 @@ const PopupContainer = ({ data, hoverElement }) => {
 };
 
 const ARROW_HEIGHT = 8;
+const CURSOR_OFFSET = 16;
+
+// Last pointer position, for elements too tall to put the tooltip above or below them
+const lastPointer = { x: -1, y: -1 };
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "mousemove",
+    (e) => {
+      lastPointer.x = e.clientX;
+      lastPointer.y = e.clientY;
+    },
+    { capture: true, passive: true },
+  );
+}
 
 // // Додаю виправлення без зміни стилю функції
 // const getPopupPosition = (hoverNodeParams, popupRef) => {
@@ -369,9 +468,25 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   } else if (canShowTop) {
     topPositionProposal = popupTopPosition;
   } else {
-    // fallback — коли не влазить ні зверху, ні знизу
-    topPositionProposal = 10;
+    // Fits neither above nor below (a section taller than the viewport): follow the pointer instead of
+    // pinning the tooltip to the top-left corner, where the inspector panel usually sits
     visibleIn = { top: false, bottom: false };
+    if (lastPointer.x >= 0) {
+      let cursorLeft = lastPointer.x + CURSOR_OFFSET;
+      let cursorTop = lastPointer.y + CURSOR_OFFSET;
+      if (cursorLeft + popupWidth > clientWindow.right - 10) cursorLeft = lastPointer.x - CURSOR_OFFSET - popupWidth;
+      if (cursorTop + popupHeight > clientWindow.bottom - 10) cursorTop = lastPointer.y - CURSOR_OFFSET - popupHeight;
+      return {
+        css: {
+          top: Math.max(10, Math.min(cursorTop, clientWindow.bottom - popupHeight - 10)),
+          left: Math.max(10, Math.min(cursorLeft, clientWindow.right - popupWidth - 10)),
+        },
+        visibleIn,
+        isVisible: true,
+        data: null,
+      };
+    }
+    topPositionProposal = 10;
   }
 
   // console.group()
@@ -449,6 +564,8 @@ const Popup = React.memo(() => {
   const listenChangeUserAction = useSelector((state) => (state as any).app.userAction);
   const popupRef = useRef<any>(null);
   const lockRerender = useRef(false);
+  // Hover/scroll that arrived while the popup was being measured; replayed on unlock so the last one wins
+  const pendingUpdate = useRef<string | null>(null);
   const [popup, setPopup] = useState({
     isVisible: false,
     visibleIn: {} as any,
@@ -457,7 +574,10 @@ const Popup = React.memo(() => {
   });
 
   const updatePopup = useCallback((activeElementType) => {
-    if (lockRerender.current) return;
+    if (lockRerender.current) {
+      pendingUpdate.current = activeElementType;
+      return;
+    }
 
     const hoverNodeParams = DomNodeManager.getStyleByNode(activeElementType);
 
@@ -489,9 +609,17 @@ const Popup = React.memo(() => {
       // Розблокуємо ререндер через ще одну "подію"
       setTimeout(() => {
         lockRerender.current = false;
+
+        if (pendingUpdate.current) {
+          const next = pendingUpdate.current;
+          pendingUpdate.current = null;
+          updatePopupRef.current(next);
+        }
       }, 0);
     }, 0);
   }, []);
+  const updatePopupRef = useRef(updatePopup);
+  updatePopupRef.current = updatePopup;
 
   useEffect(() => {
     updatePopup("hoverElement");

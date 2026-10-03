@@ -15,7 +15,26 @@ export const formatBorder = (styles, convert, showRaw) => {
       styles[`border-${side}-color`] === base.color,
   );
 
-  if (!allSame || !isValid(base.width)) return [];
+  if (!isValid(base.width)) return [];
+
+  const sideValue = (side) => {
+    const width = styles[`border-${side}-width`];
+    const style = styles[`border-${side}-style`];
+    return style === "none" || style === "hidden" || parseFloat(width) === 0
+      ? "none"
+      : `${convert(width)} ${style} ${styles[`border-${side}-color`]}`;
+  };
+
+  // Sides differ (e.g. only a bottom border): one line per side instead of dropping them all
+  if (!allSame) {
+    const lines = sides.map((side) => ({ type: "line", value: `border-${side}: ${sideValue(side)}` }));
+    sides.forEach((side) => {
+      delete styles[`border-${side}-width`];
+      delete styles[`border-${side}-style`];
+      delete styles[`border-${side}-color`];
+    });
+    return lines;
+  }
 
   sides.forEach((side) => {
     delete styles[`border-${side}-width`];
@@ -23,18 +42,18 @@ export const formatBorder = (styles, convert, showRaw) => {
     delete styles[`border-${side}-color`];
   });
 
-  const result = [
-    { type: "shorthand", value: `border: ${convert(base.width)} ${base.style} ${base.color};`, prop: "border" },
-  ];
+  // No visible border: "border: none" says it without the meaningless width and colour
+  const isNone = base.style === "none" || base.style === "hidden" || parseFloat(base.width) === 0;
+  const shorthandValue = isNone ? "none" : `${convert(base.width)} ${base.style} ${base.color}`;
+
+  // Lines carry no trailing ";" - the output format adds its own terminator
+  const result = [{ type: "shorthand", value: `border: ${shorthandValue}`, prop: "border" }];
 
   if (showRaw) {
     result.push(
       ...sides.map((side) => ({
         type: "detail",
-        value:
-          `border-${side}-width: ${convert(base.width)}; ` +
-          `border-${side}-style: ${base.style}; ` +
-          `border-${side}-color: ${base.color};`,
+        value: `border-${side}: ${shorthandValue}`,
         prop: "border",
       })),
     );

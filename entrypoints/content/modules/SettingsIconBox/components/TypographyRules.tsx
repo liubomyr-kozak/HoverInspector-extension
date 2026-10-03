@@ -11,7 +11,7 @@
  * and display relevant information.
  */
 import React, { useEffect, useState } from "react";
-import { IconEye, IconLetterCase, IconRuler, IconBorderRadius, IconShadow } from "@tabler/icons-react";
+import { IconEye, IconLetterCase, IconRuler } from "@tabler/icons-react";
 
 import {
   AggregatedTypographyProperties,
@@ -19,91 +19,81 @@ import {
   getAllTypographyElements,
   TypographyElement,
 } from "@entrypoints/shared/utils/typographyAnalysis";
+import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 
-import { SpacingToken, BorderRadiusToken, ShadowToken } from "./ColorPaletteDefinition/paletteTypes";
-import {
-  extractSpacingTokens,
-  extractBorderRadiusTokens,
-  extractShadowTokens,
-} from "./ColorPaletteDefinition/utils/tokenExtraction";
+/** Quiet period after the last DOM change before the page is re-analysed */
+const RESCAN_DEBOUNCE_MS = 750;
 
 const TypographyRules: React.FC = () => {
   // State for typography elements and properties
   const [typographyElements, setTypographyElements] = useState<TypographyElement[]>([]);
   const [aggregatedProperties, setAggregatedProperties] = useState<AggregatedTypographyProperties | null>(null);
+  // Only true until the first analysis finishes; later rescans update in place without flashing
   const [isLoading, setIsLoading] = useState(true);
-
-  // State for design tokens
-  const [spacingTokens, setSpacingTokens] = useState<SpacingToken[]>([]);
-  const [borderTokens, setBorderTokens] = useState<BorderRadiusToken[]>([]);
-  const [shadowTokens, setShadowTokens] = useState<ShadowToken[]>([]);
+  // Element lists opened with "+N more"
+  const [expandedLists, setExpandedLists] = useState<Set<string>>(() => new Set());
+  const toggleList = (key: string) =>
+    setExpandedLists((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const visibleElements = <T,>(key: string, elements: T[]) => (expandedLists.has(key) ? elements : elements.slice(0, 5));
+  const moreButton = (key: string, total: number, className: string) =>
+    total > 5 && (
+      <button type="button" onClick={() => toggleList(key)} className={className}>
+        {expandedLists.has(key) ? "Show less" : `+${total - 5} more`}
+      </button>
+    );
+  const highlightManager = useHighlightOverlay();
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchTypographyData = () => {
-      setIsLoading(true);
       try {
         const elements = getAllTypographyElements();
+        if (cancelled) return;
         setTypographyElements(elements);
-
-        const properties = aggregateTypographyProperties();
-        setAggregatedProperties(properties);
-
-        // Extract design tokens
-        const extractedSpacingTokens = extractSpacingTokens();
-        const extractedBorderTokens = extractBorderRadiusTokens();
-        const extractedShadowTokens = extractShadowTokens();
-
-        setSpacingTokens(extractedSpacingTokens);
-        setBorderTokens(extractedBorderTokens);
-        setShadowTokens(extractedShadowTokens);
+        setAggregatedProperties(aggregateTypographyProperties(elements));
       } catch (error) {
-        console.error("Error fetching typography and token data:", error);
+        console.error("Error fetching typography data:", error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
-    fetchTypographyData();
+    // Let the loading state paint before the first synchronous scan
+    let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(fetchTypographyData, 0);
 
-    // Set up a mutation observer to detect DOM changes and update the analysis
-    const observer = new MutationObserver(() => {
-      fetchTypographyData();
+    // Re-analyse when elements are added/removed. Attribute and text changes are
+    // ignored: they fire constantly (and for our own highlight overlay).
+    const observer = new MutationObserver((mutations) => {
+      const relevant = mutations.some((mutation) =>
+        [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)].some(
+          (node) => node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() !== "hover-inspector",
+        ),
+      );
+      if (!relevant) return;
+      clearTimeout(timer);
+      timer = setTimeout(fetchTypographyData, RESCAN_DEBOUNCE_MS);
     });
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      characterData: true,
-    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      cancelled = true;
+      clearTimeout(timer);
       observer.disconnect();
     };
   }, []);
 
-  // Handle element click to highlight it on the page
+  // Handle element click: scroll to it and highlight it with the shared overlay
+  // (no inline style writes on the page element)
   const handleElementClick = (element: Element) => {
-    // Default behavior: highlight the element
-    const el = element as HTMLElement;
-    const originalOutline = el.style.outline;
-    const originalTransition = el.style.transition;
-    const originalBoxShadow = el.style.boxShadow;
-
-    el.style.outline = "2px solid #15803d";
-    el.style.outlineOffset = "2px";
-    el.style.transition = "all 0.25s ease-in-out";
-    el.style.boxShadow = "0 0 8px 2px rgba(21, 128, 61, 0.8)";
-
-    // Scroll the element into view
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    // Reset styles after a delay
-    setTimeout(() => {
-      el.style.outline = originalOutline;
-      el.style.transition = originalTransition;
-      el.style.boxShadow = originalBoxShadow;
-    }, 2000);
+    if (!document.contains(element)) return;
+    highlightManager.startHighlight(highlightManager.generateXPath(element));
   };
 
   // Find elements with a specific font family
@@ -192,7 +182,7 @@ const TypographyRules: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {elementsWithFamily.slice(0, 5).map((typographyEl, idx) => {
+                          {visibleElements(`family:${family}`, elementsWithFamily).map((typographyEl, idx) => {
                             const displayName = getElementDisplayName(typographyEl.element);
 
                             return (
@@ -207,10 +197,10 @@ const TypographyRules: React.FC = () => {
                               </button>
                             );
                           })}
-                          {elementsWithFamily.length > 5 && (
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200">
-                              +{elementsWithFamily.length - 5} more
-                            </span>
+                          {moreButton(
+                            `family:${family}`,
+                            elementsWithFamily.length,
+                            "text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-md text-gray-600 border border-gray-200",
                           )}
                         </div>
                       </div>
@@ -254,7 +244,7 @@ const TypographyRules: React.FC = () => {
                       <div className="mt-3 pt-3 border-t border-gray-100">
                         <div className="text-xs text-gray-500 mb-1">Found in {elementsWithSize.length} elements:</div>
                         <div className="flex flex-wrap gap-1">
-                          {elementsWithSize.slice(0, 5).map((typographyEl, idx) => {
+                          {visibleElements(`size:${size}`, elementsWithSize).map((typographyEl, idx) => {
                             const displayName = getElementDisplayName(typographyEl.element);
 
                             return (
@@ -268,9 +258,7 @@ const TypographyRules: React.FC = () => {
                               </button>
                             );
                           })}
-                          {elementsWithSize.length > 5 && (
-                            <span className="text-xs text-gray-500">+{elementsWithSize.length - 5} more</span>
-                          )}
+                          {moreButton(`size:${size}`, elementsWithSize.length, "text-xs text-gray-500 hover:text-blue-600 px-1")}
                         </div>
                       </div>
                     );
@@ -319,7 +307,7 @@ const TypographyRules: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {elementsWithWeight.slice(0, 5).map((typographyEl, idx) => {
+                          {visibleElements(`weight:${weight}`, elementsWithWeight).map((typographyEl, idx) => {
                             const displayName = getElementDisplayName(typographyEl.element);
 
                             return (
@@ -334,10 +322,10 @@ const TypographyRules: React.FC = () => {
                               </button>
                             );
                           })}
-                          {elementsWithWeight.length > 5 && (
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 border border-gray-200">
-                              +{elementsWithWeight.length - 5} more
-                            </span>
+                          {moreButton(
+                            `weight:${weight}`,
+                            elementsWithWeight.length,
+                            "text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-md text-gray-600 border border-gray-200",
                           )}
                         </div>
                       </div>

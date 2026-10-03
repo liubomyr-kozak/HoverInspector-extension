@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import type { Subscription } from "rxjs";
+import { toast } from "react-toastify";
 import { HexColorPicker } from "react-colorful";
 import { Button, Checkbox, Input, Popover, Select, Space } from "antd";
 import {
   NotesState,
   Note,
+  NoteLocation,
   ColorPalette,
   NoteViewType,
   AttachmentType,
@@ -18,8 +21,13 @@ import {
   createColorPalette,
   updateColorPalette,
   deleteColorPalette,
-  notesActionsSlice,
 } from "@entrypoints/background/store/notesActionsSlice.ts";
+import { DEFAULT_NOTE_COLORS } from "@entrypoints/background/services/notes.ts";
+import {
+  DEFAULT_NOTE_HEIGHT,
+  DEFAULT_NOTE_WIDTH,
+  getDefaultNotePosition,
+} from "../VisibleNotesProvider/notePosition";
 import {
   PortalId,
   ScenarioPortalFooterButtons,
@@ -35,16 +43,23 @@ import { BsRegex } from "react-icons/bs";
 import { TbWorldWww } from "react-icons/tb";
 
 // Default color palette with IDs
-const DEFAULT_COLORS: ColorPalette[] = [
-  { id: "blue", name: "Blue", value: "#3B82F6", isDefault: true, createdAt: Date.now() },
-  { id: "red", name: "Red", value: "#EF4444", isDefault: true, createdAt: Date.now() },
-  { id: "green", name: "Green", value: "#10B981", isDefault: true, createdAt: Date.now() },
-  { id: "yellow", name: "Yellow", value: "#F59E0B", isDefault: true, createdAt: Date.now() },
-  { id: "purple", name: "Purple", value: "#8B5CF6", isDefault: true, createdAt: Date.now() },
-  { id: "orange", name: "Orange", value: "#F97316", isDefault: true, createdAt: Date.now() },
-  { id: "pink", name: "Pink", value: "#EC4899", isDefault: true, createdAt: Date.now() },
-  { id: "cyan", name: "Cyan", value: "#06B6D4", isDefault: true, createdAt: Date.now() },
-];
+const DEFAULT_COLORS: ColorPalette[] = DEFAULT_NOTE_COLORS;
+
+// A location being edited in the form; isMain marks the location for the current page
+type FormLocation = Omit<NoteLocation, "domain" | "url"> & { domain?: string; url?: string; isMain?: boolean };
+
+// Location of the current page with the given extra fields
+const createCurrentPageLocation = (overrides: Partial<FormLocation> = {}): FormLocation => ({
+  attachmentType: AttachmentTypeEnum.ROUTE,
+  domain: window.location.hostname,
+  url: window.location.href,
+  routePattern: window.location.pathname,
+  patternType: "url",
+  ...overrides,
+});
+
+// Time after which an unfinished element selection is cancelled
+const ELEMENT_SELECTION_TIMEOUT = 30000;
 
 interface NoteFormProps {
   editingNote?: any;
@@ -85,15 +100,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const [routeInputValue, setRouteInputValue] = useState<string>("");
 
   // Locations array state for multi-location support
-  const [locations, setLocations] = useState<
-    Array<{
-      attachmentType: "element" | "route" | "domain" | "global";
-      elementXPath?: string;
-      routePattern?: string;
-      isMain?: boolean;
-      patternType?: "url" | "regex";
-    }>
-  >([]);
+  const [locations, setLocations] = useState<FormLocation[]>([]);
 
   // Domain checkbox state
   const [useDomainRule, setUseDomainRule] = useState(false);
@@ -107,6 +114,14 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   // Color management state
   const [colorPalettes, setColorPalettes] = useState<ColorPalette[]>(DEFAULT_COLORS);
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
+
+  // New group input (Organization tab)
+  const [newGroupName, setNewGroupName] = useState("");
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+
+  // Active element selection (picker) and its auto-cancel timer
+  const selectionRef = useRef<Subscription | null>(null);
+  const selectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Notes data state
   const [notesData, setNotesData] = useState<NotesState>({
@@ -122,78 +137,56 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     loadColorPalettes();
 
     // Initialize form with editing note data or initial data
-    const initialData = editingNote
-      ? {
-          title: editingNote.title,
-          content: editingNote.content,
-          groupId: editingNote.groupId,
-          colorId: editingNote.colorId,
-          elementXPath: editingNote.elementXPath,
-          attachmentType: editingNote.attachmentType,
-          routePattern: editingNote.routePattern,
-          locations: editingNote.locations,
-        }
-      : initialFormData;
+    const initialData: Partial<Note> & Record<string, any> = editingNote || initialFormData || {};
 
-    setTitle(initialData?.title || "");
-    setContent(initialData?.content || "");
-    setGroupId(initialData?.groupId);
+    setTitle(initialData.title || "");
+    setContent(initialData.content || "");
+    setGroupId(initialData.groupId);
+    setViewType(initialData.viewType || NoteViewType.NOTE);
 
-    // Initialize locations array from existing data or create default current page location
-    if (initialData?.locations && initialData.locations.length > 0) {
-      const formattedLocations = initialData.locations.map((loc, index) => ({
-        attachmentType: loc.attachmentType,
-        elementXPath: loc.elementXPath,
-        routePattern: loc.routePattern,
-        isMain: index === 0, // First location is considered main
-      }));
-      setLocations(formattedLocations);
+    // Initialize locations array from existing data (kept as-is, incl. domain, coordinates and
+    // patternType) or create a default location for the current page
+    if (initialData.locations && initialData.locations.length > 0) {
+      const isGlobal = initialData.locations.every((loc) => loc.attachmentType === AttachmentTypeEnum.GLOBAL);
+      setAttachmentType(isGlobal ? AttachmentTypeEnum.GLOBAL : AttachmentTypeEnum.ROUTE);
+      setLocations(initialData.locations.map((loc, index) => ({ ...loc, isMain: index === 0 })));
 
-      // Set form fields from main location (first one)
       const mainLocation = initialData.locations[0];
-      setAttachmentType(mainLocation.attachmentType);
       setElementXPath(mainLocation.elementXPath);
       setRoutePattern(mainLocation.routePattern || "");
-      setRouteInputValue(
-        mainLocation.routePattern
-          ? `${window.location.hostname}${mainLocation.routePattern}`
-          : `${window.location.hostname}/`,
-      );
     } else {
       // Create default location from legacy fields or current page
-      const defaultLocation = {
-        attachmentType: initialData?.attachmentType || AttachmentTypeEnum.ROUTE,
-        elementXPath: initialData?.elementXPath,
-        routePattern: initialData?.routePattern || window.location.pathname,
-        isMain: true,
-      };
-      setLocations([defaultLocation]);
-
-      setRouteInputValue(
-        initialData?.routePattern
-          ? `${window.location.hostname}${initialData.routePattern}`
-          : `${window.location.hostname}${window.location.pathname}`,
-      );
+      const legacyAttachmentType =
+        initialData.attachmentType === AttachmentTypeEnum.GLOBAL ? AttachmentTypeEnum.GLOBAL : AttachmentTypeEnum.ROUTE;
+      setAttachmentType(legacyAttachmentType);
+      setLocations([
+        createCurrentPageLocation({
+          attachmentType: legacyAttachmentType,
+          elementXPath: initialData.elementXPath,
+          routePattern: initialData.routePattern || window.location.pathname,
+          isMain: true,
+        }),
+      ]);
+      setElementXPath(initialData.elementXPath);
+      setRoutePattern(initialData.routePattern || window.location.pathname);
     }
 
-    setElementPaths(initialData?.elementXPath ? [initialData.elementXPath] : []);
+    setElementPaths(initialData.elementXPath ? [initialData.elementXPath] : []);
 
-    const initialColorId = initialData?.colorId || "blue";
-    setSelectedColorId(initialColorId);
+    setSelectedColorId(initialData.colorId || "blue");
 
     // Check if domain rule exists for current hostname
     const currentHostname = window.location.hostname;
     const hasDomainRule =
-      initialData?.locations?.some((loc) => loc.attachmentType === "domain" && loc.domain === currentHostname) || false;
+      initialData.locations?.some((loc) => loc.attachmentType === "domain" && loc.domain === currentHostname) || false;
     setUseDomainRule(hasDomainRule);
 
     // Show title field if editing note or if title exists
-    onShowTitleFieldChange(!!editingNote || !!initialData?.title);
+    onShowTitleFieldChange(!!editingNote || !!initialData.title);
   }, [editingNote, initialFormData]);
 
   const loadNotesData = useCallback(async () => {
     try {
-      debugger;
       const data = await getAllNotes();
       setNotesData(data);
     } catch (err) {
@@ -203,85 +196,111 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   const loadColorPalettes = useCallback(async () => {
     try {
+      // The background seeds the default colors (with fixed ids) when none are stored
       const savedColors = await getColorPalettes();
-      if (savedColors.length > 0) {
-        setColorPalettes(savedColors);
-      } else {
-        // Initialize with default colors if none exist
-        setColorPalettes(DEFAULT_COLORS);
-        // Save default colors to localStorage
-        for (const color of DEFAULT_COLORS) {
-          await createColorPalette({ data: color });
-        }
-      }
+      setColorPalettes(savedColors?.length ? savedColors : DEFAULT_COLORS);
     } catch (err) {
       console.error("Failed to load color palettes:", err);
       setColorPalettes(DEFAULT_COLORS);
     }
   }, []);
 
-  const handleElementSelection = useCallback(() => {
-    if (isSelectingElement) {
-      // Cancel selection
-      setIsSelectingElement(false);
-      highlightOverlay.stopSelectionMode();
-      return;
+  // Ends the element picker on every exit path (selected, Esc, error, timeout, cancel, unmount)
+  const finishElementSelection = useCallback(() => {
+    if (selectionTimeoutRef.current) {
+      clearTimeout(selectionTimeoutRef.current);
+      selectionTimeoutRef.current = null;
     }
+    const subscription = selectionRef.current;
+    selectionRef.current = null;
+    subscription?.unsubscribe();
+    highlightOverlay.stopMouseMoveHighlight();
+    setIsSelectingElement(false);
+  }, [highlightOverlay]);
 
-    setIsSelectingElement(true);
-    const subscription = highlightOverlay.streamSelectionMode().subscribe({
-      next: (event) => {
-        if (event.type === "selected") {
-          // Generate XPath for the selected element
-          const xpath = highlightOverlay.generateXPath(event.element as Element);
-          // Add to list and keep legacy field for first path
-          setElementPaths((prev) => [...prev, xpath]);
-          setElementXPath((prev) => prev || xpath);
+  useEffect(() => () => finishElementSelection(), [finishElementSelection]);
 
-          // Update the main location's elementXPath
-          const mainLocationIndex = locations.findIndex((loc) => loc.isMain);
-          if (mainLocationIndex !== -1) {
-            updateLocation(mainLocationIndex, { elementXPath: xpath });
+  const handleElementSelection = useCallback(
+    (locationIndex: number) => {
+      if (selectionRef.current) {
+        // Cancel selection
+        finishElementSelection();
+        return;
+      }
+
+      setIsSelectingElement(true);
+      selectionRef.current = highlightOverlay.streamSelectionMode().subscribe({
+        next: (event) => {
+          if (event.type === "selected" && event.element) {
+            // Generate XPath for the selected element
+            const xpath = event.xpath || highlightOverlay.generateXPath(event.element as Element);
+            // Add to list and keep legacy field for first path
+            setElementPaths((prev) => [...prev, xpath]);
+            setElementXPath((prev) => prev || xpath);
+
+            // Attach the location to the element; its old position no longer applies
+            setLocations((prev) =>
+              prev.map((loc, i) => {
+                if (i !== locationIndex) return loc;
+                const { coordinates, ...rest } = loc;
+                return {
+                  ...rest,
+                  elementXPath: xpath,
+                  ...(coordinates?.width ? { coordinates: { x: 0, y: 0, width: coordinates.width, height: coordinates.height } } : {}),
+                };
+              }),
+            );
           }
 
-          setIsSelectingElement(false);
-          subscription.unsubscribe();
-          highlightOverlay.stopMouseMoveHighlight();
-        }
-      },
-      error: (err) => {
-        console.error("Element selection failed:", err);
-        setIsSelectingElement(false);
-        subscription.unsubscribe();
-        highlightOverlay.stopMouseMoveHighlight();
-      },
-    });
+          if (event.type === "selected" || event.type === "stopped") {
+            finishElementSelection();
+          }
+        },
+        error: (err) => {
+          console.error("Element selection failed:", err);
+          finishElementSelection();
+        },
+        complete: () => finishElementSelection(),
+      });
 
-    // Auto-cancel after 10 seconds
-    setTimeout(() => {
-      if (!subscription.closed) {
-        setIsSelectingElement(false);
-        subscription.unsubscribe();
-      }
-    }, 10000);
-  }, [isSelectingElement, highlightOverlay]);
+      // Auto-cancel when nothing was picked
+      selectionTimeoutRef.current = setTimeout(finishElementSelection, ELEMENT_SELECTION_TIMEOUT);
+    },
+    [highlightOverlay, finishElementSelection],
+  );
 
   // Scope toggle helpers - refactored to use enum
   const toggleToPageOnly = () => {
     setAttachmentType(AttachmentTypeEnum.ROUTE);
     if (!routePattern) setRoutePattern(window.location.pathname);
+    // A note that was global has no page location yet: start with the current page
+    setLocations((prev) =>
+      prev.some((loc) => loc.attachmentType !== AttachmentTypeEnum.GLOBAL)
+        ? prev
+        : [
+            createCurrentPageLocation({
+              coordinates: prev[0]?.coordinates,
+              isMain: true,
+            }),
+          ],
+    );
   };
 
   const toggleToGlobal = () => {
     setAttachmentType(AttachmentTypeEnum.GLOBAL);
   };
 
-  const handleAddCurrentUrl = (index) => {
+  const handleAddCurrentUrl = (index: number) => {
     try {
       const currentUrl = window.location.href;
       setRouteInputValue(currentUrl);
 
-      updateLocation(index, { routePattern: window.location.pathname });
+      updateLocation(index, {
+        routePattern: window.location.pathname,
+        patternType: "url",
+        domain: window.location.hostname,
+        url: currentUrl,
+      });
     } catch (error) {
       console.error("Failed to get current URL:", error);
     }
@@ -289,17 +308,16 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
   // Location management functions
   const addNewLocation = () => {
-    const newLocation = {
-      attachmentType: AttachmentTypeEnum.ROUTE,
-      routePattern: window.location.pathname,
-      isMain: false,
-      patternType: "url" as const,
-    };
-    setLocations((prev) => [...prev, newLocation]);
+    setLocations((prev) => [...prev, createCurrentPageLocation({ isMain: false })]);
   };
 
   const removeLocation = (index: number) => {
-    setLocations((prev) => prev.filter((_, i) => i !== index));
+    setLocations((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      // Keep one main location
+      if (next.length > 0 && !next.some((loc) => loc.isMain)) next[0] = { ...next[0], isMain: true };
+      return next;
+    });
   };
 
   const updateLocation = (index: number, updates: Partial<(typeof locations)[0]>) => {
@@ -314,26 +332,33 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const handleDomainCheckboxChange = (checked: boolean) => {
     const currentHostname = window.location.hostname;
 
+    const isCurrentDomainLocation = (loc: FormLocation) =>
+      loc.attachmentType === AttachmentTypeEnum.DOMAIN &&
+      (loc.domain === currentHostname || loc.routePattern === currentHostname);
+
     if (checked) {
       // Add domain location if it doesn't exist
-      const existingDomainIndex = locations.findIndex(
-        (loc) => loc.attachmentType === "domain" && loc.routePattern === currentHostname,
+      setLocations((prev) =>
+        prev.some(isCurrentDomainLocation)
+          ? prev
+          : [
+              ...prev,
+              {
+                attachmentType: AttachmentTypeEnum.DOMAIN,
+                domain: currentHostname,
+                url: window.location.href,
+                routePattern: currentHostname,
+                isMain: false,
+              },
+            ],
       );
-
-      if (existingDomainIndex === -1) {
-        const domainLocation = {
-          attachmentType: "domain" as const,
-          routePattern: currentHostname,
-          isMain: false,
-          patternType: "url" as const,
-        };
-        setLocations((prev) => [...prev, domainLocation]);
-      }
     } else {
       // Remove domain location for current hostname
-      setLocations((prev) =>
-        prev.filter((loc) => !(loc.attachmentType === "domain" && loc.routePattern === currentHostname)),
-      );
+      setLocations((prev) => {
+        const next = prev.filter((loc) => !isCurrentDomainLocation(loc));
+        if (next.length > 0 && !next.some((loc) => loc.isMain)) next[0] = { ...next[0], isMain: true };
+        return next;
+      });
     }
 
     setUseDomainRule(checked);
@@ -354,29 +379,60 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     setSubmitError("");
 
     try {
-      // Create locations array from the form data
-      const noteLocations = locations.map((location) => ({
-        attachmentType: location.attachmentType,
-        domain: window.location.hostname,
-        elementXPath: location.elementXPath,
-        routePattern: location.routePattern,
-        url: window.location.href,
-        patternType: location.patternType || "url", // Add pattern type for filtering
-      }));
+      // Create locations array from the form data; existing locations keep their own
+      // domain, url, coordinates and pattern type
+      const toNoteLocation = ({ isMain, ...location }: FormLocation): NoteLocation => ({
+        ...location,
+        domain: location.domain || window.location.hostname,
+        url: location.url || window.location.href,
+        ...(location.attachmentType === AttachmentTypeEnum.ROUTE ? { patternType: location.patternType || "url" } : {}),
+      });
 
-      // Ensure we have at least one location
-      if (noteLocations.length === 0) {
-        noteLocations.push({
-          attachmentType: attachmentType,
-          domain: window.location.hostname,
-          elementXPath: elementXPath,
-          routePattern: routeInputValue,
-          url: window.location.href,
-          patternType: "url",
+      const mainFirst = [...locations].sort((a, b) => Number(!!b.isMain) - Number(!!a.isMain));
+      let noteLocations: NoteLocation[];
+
+      if (attachmentType === AttachmentTypeEnum.GLOBAL) {
+        // Global view: one location shown on every page (keeps the saved position/size)
+        const main = mainFirst[0];
+        noteLocations = [
+          {
+            attachmentType: AttachmentTypeEnum.GLOBAL,
+            domain: main?.domain || window.location.hostname,
+            url: main?.url || window.location.href,
+            ...(main?.coordinates && !main.coordinates.relativeToElement ? { coordinates: main.coordinates } : {}),
+          },
+        ];
+      } else {
+        noteLocations = mainFirst.map(toNoteLocation);
+
+        // Ensure we have at least one location
+        if (noteLocations.length === 0) {
+          noteLocations.push(toNoteLocation(createCurrentPageLocation({ elementXPath })));
+        }
+
+        const invalidLocation = noteLocations.find((location) => {
+          if (location.attachmentType !== AttachmentTypeEnum.ROUTE) return false;
+          if (!location.routePattern?.trim()) return true;
+          if (location.patternType !== "regex") return false;
+          try {
+            new RegExp(location.routePattern);
+            return false;
+          } catch {
+            return true;
+          }
         });
+        if (invalidLocation) {
+          setSubmitError(
+            invalidLocation.routePattern?.trim()
+              ? `Invalid regular expression: ${invalidLocation.routePattern}`
+              : "Every page location needs a URL pattern",
+          );
+          setActiveTab(SettingsTabEnum.VISIBILITY);
+          return;
+        }
       }
 
-      const formData: Partial<Note> = {
+      const formData = {
         title: title.trim(),
         content: content.trim(),
         groupId,
@@ -387,15 +443,22 @@ export const NoteForm: React.FC<NoteFormProps> = ({
 
       if (editingNote) {
         // Update existing note
-        await updateNote({
+        const updated = await updateNote({
           id: editingNote.id,
           updates: formData,
         });
+        if (!updated) throw new Error("The note no longer exists");
       } else {
-        // Create new note with current domain and URL
-        notesActionsSlice.createNote({
-          ...formData,
-        });
+        // Place a new free-floating note in view, where it stays until moved
+        const position = getDefaultNotePosition(Math.random().toString(36));
+        formData.locations = formData.locations.map((location) =>
+          location.coordinates || location.elementXPath
+            ? location
+            : { ...location, coordinates: { ...position, width: DEFAULT_NOTE_WIDTH, height: DEFAULT_NOTE_HEIGHT } },
+        );
+
+        // Create new note with its page locations
+        await createNote(formData);
       }
 
       // Trigger refresh in other components
@@ -404,6 +467,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     } catch (error) {
       console.error("Failed to save note:", error);
       setSubmitError("Failed to save note. Please try again.");
+      toast.error(`Failed to save note: ${(error as Error)?.message || error}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -419,17 +483,26 @@ export const NoteForm: React.FC<NoteFormProps> = ({
     }
   };
 
-  const handleCreateGroup = async (name: string, color: string) => {
+  const handleCreateGroup = async () => {
+    const name = newGroupName.trim();
+    if (!name || isCreatingGroup) return;
+
+    setIsCreatingGroup(true);
     try {
+      const color = colorPalettes.find((palette) => palette.id === selectedColorId)?.value || "#6B7280";
       const newGroup = await createNoteGroup({
         data: { name, color },
       });
       // Reload notes data to get updated groups
       await loadNotesData();
-      return newGroup;
+      setGroupId(newGroup.id);
+      setNewGroupName("");
+      dispatch(triggerRefresh());
     } catch (error) {
       console.error("Failed to create group:", error);
-      throw error;
+      toast.error("Failed to create group");
+    } finally {
+      setIsCreatingGroup(false);
     }
   };
 
@@ -449,6 +522,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
   const handleDeleteColor = async (colorId: string) => {
     try {
       await deleteColorPalette({ data: colorId });
+      dispatch(triggerRefresh());
       if (selectedColorId === colorId) {
         setSelectedColorId("blue"); // Default to blue
       }
@@ -562,7 +636,7 @@ export const NoteForm: React.FC<NoteFormProps> = ({
           <div className="mb-5 p-4 border border-gray-200 rounded-lg bg-gray-50">
             {/* Organization Tab Content */}
             {activeTab === SettingsTabEnum.ORGANIZATION && (
-              <div className="space-y-3">
+              <div className="space-y-3 relative">
                 <select
                   id="group"
                   value={groupId || ""}
@@ -576,8 +650,31 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                <div className="absolute top-0 right-0 h-[46px] flex items-center px-3 pointer-events-none">
                   <FiChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCreateGroup();
+                      }
+                    }}
+                    placeholder="New group name"
+                    aria-label="New group name"
+                  />
+                  <Button
+                    icon={<FiPlus />}
+                    onClick={handleCreateGroup}
+                    disabled={!newGroupName.trim()}
+                    loading={isCreatingGroup}
+                  >
+                    New group
+                  </Button>
                 </div>
               </div>
             )}
@@ -719,19 +816,18 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                                   <Select
                                     value={location.patternType || "url"}
                                     onChange={(value: "url" | "regex") => updateLocation(index, { patternType: value })}
-                                    // @ts-ignore
                                     getPopupContainer={() =>
-                                      (
-                                        document.querySelector("hover-inspector")!.shadowRoot as HTMLElement
-                                      )?.querySelector("html > body")
+                                      (document
+                                        .querySelector("hover-inspector")
+                                        ?.shadowRoot?.querySelector("html > body") as HTMLElement) || document.body
                                     }
                                   >
-                                    <Option value="url">
+                                    <Select.Option value="url">
                                       <TbWorldWww />
-                                    </Option>
-                                    <Option value="regex">
+                                    </Select.Option>
+                                    <Select.Option value="regex">
                                       <BsRegex />
-                                    </Option>
+                                    </Select.Option>
                                   </Select>
                                 }
                                 addonAfter={
@@ -764,16 +860,16 @@ export const NoteForm: React.FC<NoteFormProps> = ({
                                         disabled={!location.elementXPath}
                                       />
                                     </Tooltip>
-                                    {location.isMain && (
-                                      <Tooltip title="Select element from page">
-                                        <Button
-                                          type="text"
-                                          size="small"
-                                          icon={<SelectOutlined style={{ color: "#52c41a" }} />}
-                                          onClick={() => handleElementSelection()}
-                                        />
-                                      </Tooltip>
-                                    )}
+                                    <Tooltip
+                                      title={isSelectingElement ? "Cancel selection (Esc)" : "Select element from page"}
+                                    >
+                                      <Button
+                                        type={isSelectingElement ? "primary" : "text"}
+                                        size="small"
+                                        icon={<SelectOutlined style={{ color: isSelectingElement ? undefined : "#52c41a" }} />}
+                                        onClick={() => handleElementSelection(index)}
+                                      />
+                                    </Tooltip>
                                   </Space>
                                 }
                               />

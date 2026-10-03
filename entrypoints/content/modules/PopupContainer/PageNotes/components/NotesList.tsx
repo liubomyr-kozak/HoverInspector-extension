@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   IconSearch,
   IconX,
@@ -15,17 +15,10 @@ import styled from "styled-components";
 import { Note as NoteComponent } from "./Note";
 import { Note as NoteType, NoteGroup, NotesState, ColorPalette } from "@entrypoints/shared/types/notes";
 
+import { DEFAULT_NOTE_COLORS } from "@entrypoints/background/services/notes.ts";
+
 // Default color palette with IDs
-const DEFAULT_COLORS: ColorPalette[] = [
-  { id: "blue", name: "Blue", value: "#3B82F6", isDefault: true, createdAt: Date.now() },
-  { id: "red", name: "Red", value: "#EF4444", isDefault: true, createdAt: Date.now() },
-  { id: "green", name: "Green", value: "#10B981", isDefault: true, createdAt: Date.now() },
-  { id: "yellow", name: "Yellow", value: "#F59E0B", isDefault: true, createdAt: Date.now() },
-  { id: "purple", name: "Purple", value: "#8B5CF6", isDefault: true, createdAt: Date.now() },
-  { id: "orange", name: "Orange", value: "#F97316", isDefault: true, createdAt: Date.now() },
-  { id: "pink", name: "Pink", value: "#EC4899", isDefault: true, createdAt: Date.now() },
-  { id: "cyan", name: "Cyan", value: "#06B6D4", isDefault: true, createdAt: Date.now() },
-];
+const DEFAULT_COLORS: ColorPalette[] = DEFAULT_NOTE_COLORS;
 
 const Container = styled.div`
   display: flex;
@@ -201,6 +194,37 @@ const ExportButton = styled.button`
   }
 `;
 
+const ScopeToggle = styled.div`
+  display: inline-flex;
+  margin-top: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+`;
+
+const ScopeButton = styled.button<{ $active: boolean }>`
+  padding: 4px 10px;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  background: ${(props) => (props.$active ? "#3b82f6" : "white")};
+  color: ${(props) => (props.$active ? "white" : "#6b7280")};
+
+  & + & {
+    border-left: 1px solid #d1d5db;
+  }
+`;
+
+const LinkButton = styled.button`
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: #3b82f6;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+`;
+
 const ButtonGroup = styled.div`
   display: flex;
   align-items: center;
@@ -283,6 +307,11 @@ const EmptyDescription = styled.p`
 
 interface NotesListProps {
   notesState: NotesState;
+  // Number of notes before the page filter is applied
+  totalNotesCount: number;
+  showAllPages: boolean;
+  onShowAllPagesChange: (showAll: boolean) => void;
+  onToggleVisibility: (id: string) => void;
   onCreateNote: () => void;
   onEditNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
@@ -295,6 +324,10 @@ interface NotesListProps {
 
 export const NotesList: React.FC<NotesListProps> = ({
   notesState,
+  totalNotesCount,
+  showAllPages,
+  onShowAllPagesChange,
+  onToggleVisibility,
   onCreateNote,
   onEditNote,
   onDeleteNote,
@@ -304,18 +337,20 @@ export const NotesList: React.FC<NotesListProps> = ({
   onImportNotes,
   onExportNotes,
 }) => {
-  const [noteColorPalettes, setNoteColorPalettes] = useState<any>([]);
+  const noteColorPalettes = useMemo(
+    () => (notesState.colorPalettes?.length ? notesState.colorPalettes : DEFAULT_COLORS),
+    [notesState.colorPalettes],
+  );
 
   const filteredNotes = useMemo(() => {
     let notes = notesState.notes;
 
-    setNoteColorPalettes(notesState.colorPalettes || DEFAULT_COLORS);
-
     // Filter by search query
-    if (notesState.searchQuery.trim()) {
+    if (notesState.searchQuery?.trim()) {
       const query = notesState.searchQuery.toLowerCase();
       notes = notes.filter(
-        (note) => note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query),
+        (note) =>
+          (note.title || "").toLowerCase().includes(query) || (note.content || "").toLowerCase().includes(query),
       );
     }
 
@@ -361,7 +396,8 @@ export const NotesList: React.FC<NotesListProps> = ({
   }, [filteredNotes, notesState.groups]);
 
   const totalNotes = filteredNotes.length;
-  const hasNotes = notesState.notes.length > 0;
+  const hasNotes = totalNotesCount > 0;
+  const hasNotesInScope = notesState.notes.length > 0;
 
   return (
     <Container>
@@ -373,7 +409,7 @@ export const NotesList: React.FC<NotesListProps> = ({
           <SearchInput
             type="text"
             placeholder="Search notes..."
-            value={notesState.searchQuery}
+            value={notesState.searchQuery || ""}
             onChange={(e) => onUpdateSearchQuery(e.target.value)}
           />
           {notesState.searchQuery && (
@@ -399,6 +435,15 @@ export const NotesList: React.FC<NotesListProps> = ({
             Add Note
           </AddNoteButton>
         </FilterControls>
+
+        <ScopeToggle role="group" aria-label="Which notes to show">
+          <ScopeButton type="button" $active={!showAllPages} onClick={() => onShowAllPagesChange(false)}>
+            This page
+          </ScopeButton>
+          <ScopeButton type="button" $active={showAllPages} onClick={() => onShowAllPagesChange(true)}>
+            All pages ({totalNotesCount})
+          </ScopeButton>
+        </ScopeToggle>
       </Header>
 
       <Content>
@@ -409,6 +454,17 @@ export const NotesList: React.FC<NotesListProps> = ({
             </EmptyIcon>
             <EmptyTitle>No notes yet</EmptyTitle>
             <EmptyDescription>Create your first note by clicking the "Add Note" button above.</EmptyDescription>
+          </EmptyState>
+        ) : !hasNotesInScope ? (
+          <EmptyState>
+            <EmptyIcon>
+              <IconFolder />
+            </EmptyIcon>
+            <EmptyTitle>No notes on this page</EmptyTitle>
+            <EmptyDescription>Notes attached to other pages are hidden here.</EmptyDescription>
+            <LinkButton type="button" onClick={() => onShowAllPagesChange(true)}>
+              Show notes from all pages
+            </LinkButton>
           </EmptyState>
         ) : totalNotes === 0 ? (
           <EmptyState>
@@ -438,6 +494,7 @@ export const NotesList: React.FC<NotesListProps> = ({
                       onEdit={onEditNote}
                       onDelete={onDeleteNote}
                       onSelect={onSelectNote}
+                      onToggleVisibility={onToggleVisibility}
                     />
                   ))}
                 </GroupContent>
@@ -456,6 +513,7 @@ export const NotesList: React.FC<NotesListProps> = ({
                     onEdit={onEditNote}
                     onDelete={onDeleteNote}
                     onSelect={onSelectNote}
+                    onToggleVisibility={onToggleVisibility}
                   />
                 ))}
               </div>

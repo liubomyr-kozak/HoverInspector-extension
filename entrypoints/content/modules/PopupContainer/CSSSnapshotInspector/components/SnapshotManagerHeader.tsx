@@ -12,7 +12,10 @@ import {
   IconAnalyze,
   IconArrowLeft,
   IconCamera,
+  IconX,
 } from "@tabler/icons-react";
+import { useDispatch } from "react-redux";
+import { setError } from "@entrypoints/content/store/snapshot/snapshotSlice";
 import { MdOutlineCompare } from "react-icons/md";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import {
@@ -22,7 +25,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import {
   PortalId,
   ScenarioPortalFooterButtons,
@@ -79,16 +82,39 @@ const ErrorContainer = styled.div`
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(8px);
+  width: 100%;
+  box-sizing: border-box;
 
-  div:first-child {
+  .error-text {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .error-text div:first-child {
     font-size: 14px;
     font-weight: 600;
     color: #991b1b;
   }
 
-  div:last-child {
+  .error-text div:last-child {
     font-size: 12px;
     color: #dc2626;
+  }
+
+  button {
+    display: flex;
+    flex-shrink: 0;
+    padding: 4px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #991b1b;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: rgba(248, 113, 113, 0.2);
   }
 `;
 
@@ -98,14 +124,16 @@ const ActionsSection = styled.div`
   gap: 12px;
 `;
 
+// Compact square icon button: the header shares one row with the title and close button in a 350px panel
 const PrimaryButton = styled.button<{ disabled?: boolean }>`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 8px;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
   border: none;
   cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
   transition: all 300ms ease;
@@ -161,6 +189,7 @@ const CompareButton = styled.button`
 `;
 
 const MoreButton = styled.button`
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,6 +342,7 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
     onCaptureFromPickedElement,
     isSelectingElement = false,
   }) => {
+    const dispatch = useDispatch();
     const [menuOpen, setMenuOpen] = useState(false);
     const [isCapturingFromElement, setIsCapturingFromElement] = useState<boolean>(false);
 
@@ -343,67 +373,50 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
         <PortalModalHeader portalId={HeaderPortalId.CSS_SNAPSHOT}>
           <FeatureTitle>
             <FeatureIcon icon={CSS_SNAPSHOT.icon} isBetta />
-            {CSS_SNAPSHOT.title}
+            <FeatureTitleText title={CSS_SNAPSHOT.title}>{CSS_SNAPSHOT.title}</FeatureTitleText>
 
             <PortalModalHeaderButtons>
               <div className="flex gap-2">
-                <PrimaryButton
-                  onClick={handleCapture}
-                  disabled={isCapturing}
-                  aria-label={isCapturing ? "Capturing snapshot..." : "Capture new snapshot"}
-                >
-                  {isCapturing ? (
-                    <>
-                      <LoadingSpinner />
-                      <span>Capturing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <IconSparkles size={16} />
-                      <span>Capture Snapshot</span>
-                    </>
-                  )}
-                </PrimaryButton>
+                {/* Tooltip keeps its first title, so remount it when the state changes */}
+                <Tooltip key={String(isCapturing)} title={isCapturing ? "Capturing snapshot..." : "Capture snapshot of the page"}>
+                  <PrimaryButton
+                    onClick={handleCapture}
+                    disabled={isCapturing}
+                    aria-label={isCapturing ? "Capturing snapshot..." : "Capture new snapshot"}
+                  >
+                    {isCapturing ? <LoadingSpinner /> : <IconSparkles size={18} />}
+                  </PrimaryButton>
+                </Tooltip>
 
                 {onCaptureFromPickedElement && (
-                  <PrimaryButton
-                    onClick={handleCaptureFromPickedElement}
-                    disabled={isCapturingFromElement}
-                    style={{
-                      background: isSelectingElement 
-                        ? "linear-gradient(135deg, #ef4444, #dc2626)" 
-                        : undefined
-                    }}
-                    aria-label={
-                      isCapturingFromElement 
-                        ? "Creating element snapshot..." 
-                        : isSelectingElement 
-                        ? "Click to stop element selection (or press ESC)" 
-                        : "Make snapshot from picked element"
-                    }
+                  <Tooltip
+                    key={`${isCapturingFromElement}-${isSelectingElement}`}
                     title={
-                      isSelectingElement 
-                        ? "Element selection active - Click to stop or press ESC" 
-                        : "Click to pick an element and create a snapshot from it"
+                      isCapturingFromElement
+                        ? "Creating element snapshot..."
+                        : isSelectingElement
+                          ? "Stop element selection (or press Esc)"
+                          : "Pick an element and snapshot it"
                     }
                   >
-                    {isCapturingFromElement ? (
-                      <>
-                        <LoadingSpinner />
-                        <span>Creating...</span>
-                      </>
-                    ) : isSelectingElement ? (
-                      <>
-                        <IconCamera size={16} />
-                        <span>Stop Selection</span>
-                      </>
-                    ) : (
-                      <>
-                        <IconCamera size={16} />
-                        <span>Pick Element</span>
-                      </>
-                    )}
-                  </PrimaryButton>
+                    <PrimaryButton
+                      onClick={handleCaptureFromPickedElement}
+                      disabled={isCapturingFromElement}
+                      style={{
+                        background: isSelectingElement ? "linear-gradient(135deg, #ef4444, #dc2626)" : undefined,
+                      }}
+                      aria-label={
+                        isCapturingFromElement
+                          ? "Creating element snapshot..."
+                          : isSelectingElement
+                            ? "Stop element selection"
+                            : "Pick element to snapshot"
+                      }
+                      aria-pressed={isSelectingElement}
+                    >
+                      {isCapturingFromElement ? <LoadingSpinner /> : <IconCamera size={18} />}
+                    </PrimaryButton>
+                  </Tooltip>
                 )}
 
                 <MenuContainer>
@@ -464,12 +477,15 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
 
         <HeaderContent>
           {error && (
-            <ErrorContainer>
-              <IconExclamationCircle size={22} />
-              <div>
+            <ErrorContainer role="alert">
+              <IconExclamationCircle size={22} style={{ flexShrink: 0 }} />
+              <div className="error-text">
                 <div>Error occurred</div>
                 <div>{error}</div>
               </div>
+              <button type="button" aria-label="Dismiss error" onClick={() => dispatch(setError(null))}>
+                <IconX size={16} />
+              </button>
             </ErrorContainer>
           )}
         </HeaderContent>

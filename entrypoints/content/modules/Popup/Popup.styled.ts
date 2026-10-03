@@ -21,6 +21,11 @@ export const BoxLabelContainer = styled.div`
   line-height: 1.4;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
+  /* The last section needs no gap below it */
+  & > div:last-child {
+    margin-bottom: 0 !important;
+  }
+
   /* Remove the old flex class styling */
   .flex {
     display: flex;
@@ -37,6 +42,8 @@ export const PopupWrapper = styled.div<{
 }>`
   box-sizing: border-box;
   position: fixed;
+  /* The tooltip often sits over the next element the user moves to; it must never catch the pointer */
+  pointer-events: none;
   z-index: ${ZINDEX_POPUP_WRAPPER};
   background: #ffffff;
   border-radius: 8px;

@@ -11,7 +11,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { ScenarioPortalFooterButtons } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalFooterButtons.tsx";
 import { AutomationFooterContainer } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/styles.ts";
@@ -253,8 +253,16 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
       }
     }, [selectedSnapshot]);
 
-    const saveSnapshotTitle = async (newTitle: string) => {
+    const saveSnapshotTitle = async (rawTitle: string) => {
       if (!selectedSnapshot) return;
+      const newTitle = rawTitle.trim();
+      // An empty title is not allowed: revert to the previous one
+      if (!newTitle) {
+        setTitle(selectedSnapshot.title);
+        setEditingTitle(false);
+        return;
+      }
+      setTitle(newTitle);
       try {
         const updatedSnapshot = {
           ...selectedSnapshot,
@@ -291,7 +299,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
             <Tooltip title={"Back to list"}>
               <FeatureIcon icon={IconArrowLeft} onClick={onBackToList} />
             </Tooltip>
-            {CSS_SNAPSHOT.title} (Page Details)
+            <FeatureTitleText title={`${CSS_SNAPSHOT.title} (Page Details)`}>{CSS_SNAPSHOT.title} (Page Details)</FeatureTitleText>
           </FeatureTitle>
         </PortalModalHeader>
 

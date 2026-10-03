@@ -95,19 +95,25 @@ export const validateDomainPattern = (
 };
 
 /**
+ * Whether the trigger is an enabled domain trigger that matches the URL
+ */
+export function isDomainTriggerMatch(trigger: TriggerConfig | null | undefined, url: string): boolean {
+  return (
+    !!trigger?.enabled &&
+    trigger.type === TriggerType.DOMAIN &&
+    !!trigger.condition?.domainPattern &&
+    validateDomainPattern(
+      trigger.condition.domainPattern,
+      !!trigger.condition.useRegex,
+      !!trigger.condition.exactMatch,
+      url,
+    ) === null
+  );
+}
+
+/**
  * Whether an enabled domain trigger matches the URL
  */
 export function matchesDomainTrigger(triggers: (TriggerConfig | null)[], url: string): boolean {
-  return triggers.some(
-    (trigger) =>
-      !!trigger?.enabled &&
-      trigger.type === TriggerType.DOMAIN &&
-      !!trigger.condition?.domainPattern &&
-      validateDomainPattern(
-        trigger.condition.domainPattern,
-        !!trigger.condition.useRegex,
-        !!trigger.condition.exactMatch,
-        url,
-      ) === null,
-  );
+  return triggers.some((trigger) => isDomainTriggerMatch(trigger, url));
 }

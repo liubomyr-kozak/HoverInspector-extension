@@ -28,7 +28,7 @@ import { useTriggerActions } from "../hooks/useTriggerActions";
 
 // Import components
 import TriggerList from "../components/TriggerList";
-import TriggerForm from "../components/TriggerForm";
+import TriggerForm, { TriggerFormHandle } from "../components/TriggerForm";
 
 /**
  * TriggersTab Component
@@ -49,8 +49,8 @@ const TriggersTab: React.FC = () => {
   // Custom hooks
   const { editTrigger, deleteTrigger, saveTrigger, toggleTriggerEnabled } = useTriggerActions();
 
-  // Ref to store current form data
-  const currentFormDataRef = useRef<TriggerConfig | null>(null);
+  // The form, validated and submitted by the Save button
+  const triggerFormRef = useRef<TriggerFormHandle>(null);
 
   // Load triggers and scenarios when component mounts
   useEffect(() => {
@@ -77,16 +77,12 @@ const TriggersTab: React.FC = () => {
     }
   };
 
-  const handleFormChange = (formData: TriggerConfig) => {
-    currentFormDataRef.current = formData;
+  const handleFormInvalid = () => {
+    message.error("Please fill in all required fields.");
   };
 
   const handleSaveTrigger = () => {
-    if (currentFormDataRef.current) {
-      handleFormSubmit(currentFormDataRef.current);
-    } else {
-      message.error("Please fill in all required fields.");
-    }
+    triggerFormRef.current?.submit();
   };
 
   const handleTriggerCancel = () => {
@@ -114,11 +110,13 @@ const TriggersTab: React.FC = () => {
                 </div>
               </div>
 
-              <TriggerForm 
-                onFormChange={handleFormChange}
+              <TriggerForm
+                key={activeTriggerID || "new"}
+                formRef={triggerFormRef}
                 onSubmit={handleFormSubmit}
-                currentTrigger={currentTrigger} 
-                scenarios={scenarios} 
+                onInvalid={handleFormInvalid}
+                currentTrigger={currentTrigger}
+                scenarios={scenarios}
               />
             </div>
           ) : (

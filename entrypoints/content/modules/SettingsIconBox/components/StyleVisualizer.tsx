@@ -33,12 +33,14 @@ interface Props {
 
 const SizeLabel: React.FC<{ value?: string }> = ({ value }) => <span className="text-[9px]">{value || "px"}</span>;
 
+// CSS shorthand order: 1 value = all sides, 2 = vertical horizontal, 3 = top horizontal bottom, 4 = t r b l
 const parseSideValues = (value: string): BoxSide => {
-  const [top, right, bottom, left] = value.split(" ").map((v) => parseInt(v.replace("px", "")) || 0);
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .map((v) => Math.round((parseFloat(v) || 0) * 100) / 100);
+  const [top, right = top, bottom = top, left = right] = parts;
 
-  if (left === undefined) return { top, right: top, bottom: top, left: top };
-  if (bottom === undefined) return { top, right, bottom: top, left: right };
-  if (right === undefined) return { top, right: top, bottom: top, left: top };
   return { top, right, bottom, left };
 };
 
@@ -51,7 +53,8 @@ export const BoxModelVisualizer: React.FC<Props> = ({ selectedElementType }) => 
   const [unit, setUnit] = useState("px");
   const selectedElement = useDomNodeObserver(selectedElementType);
 
-  if (!selectedElement) return <div>Element not found</div>;
+  if (!selectedElement)
+    return <div className="text-xs text-gray-400 italic">Hover over or click an element on the page to see its details.</div>;
 
   const style = DomNodeManagerInstance.getStyleByNode(selectedElement) as any;
   const rect = selectedElement.getBoundingClientRect();
@@ -72,26 +75,31 @@ export const BoxModelVisualizer: React.FC<Props> = ({ selectedElementType }) => 
   const letterSpacing = style["letter-spacing"] || NON_VALUE;
   const backgroundImage = style["background-image"] || NON_VALUE;
 
+  // rem is relative to the root font size, em to the element's own font size
+  const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const ownFontSize = parseFloat(style["font-size"]) || rootFontSize;
+  const trim = (n: number, digits: number) => String(Number(n.toFixed(digits)));
+
   const convert = (value: number) => {
     switch (unit) {
       case "rem":
         return (
           <>
-            {(value / 16).toFixed(2)}
+            {trim(value / rootFontSize, 3)}
             <SizeLabel value="rem" />
           </>
         );
       case "em":
         return (
           <>
-            {(value / 16).toFixed(2)}
+            {trim(value / ownFontSize, 3)}
             <SizeLabel value="em" />
           </>
         );
       default:
         return (
           <>
-            {value}
+            {trim(value, 2)}
             <SizeLabel value="px" />
           </>
         );

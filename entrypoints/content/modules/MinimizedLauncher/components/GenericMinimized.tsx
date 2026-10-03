@@ -1,8 +1,10 @@
 import React from "react";
 import { useDispatch } from "react-redux";
 import { IconChevronDown, IconX } from "@tabler/icons-react";
-import { Modal } from "antd";
-import { toggleLauncherActiveIcon, toggleFeatureMinimized } from "@entrypoints/content/store/app/app.slice.ts";
+import {
+  onCloseMinimizedFeature,
+  onToggleFeatureMinimized,
+} from "@entrypoints/content/store/app/saga-action/app.saga.action.ts";
 import { ICON_ITEMS } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { FeatureContainer, MainButton, QuickAction } from "../MinimizedLauncher.styled.ts";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
@@ -18,32 +20,16 @@ export const GenericMinimized: React.FC<GenericMinimizedProps> = ({ featureId, s
 
   if (!feature) return null;
 
-  const openFeature = () => dispatch(toggleLauncherActiveIcon(featureId));
+  // Restore: un-minimize and open the tool (persisted by the saga)
+  const openFeature = () => dispatch(onToggleFeatureMinimized.getPayload({ featureKey: featureId }));
 
-  const closeMinimized = () => {
-    Modal.confirm({
-      title: "Close Minimized Launcher",
-      content: `Would you like to activate the ${feature.title} feature?`,
-      okText: "Yes, Activate",
-      cancelText: "Just Close",
-      getContainer: () =>
-        // @ts-ignore
-        (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!,
-      onOk: () => {
-        dispatch(toggleLauncherActiveIcon(featureId));
-        dispatch(toggleFeatureMinimized(featureId));
-      },
-      onCancel: () => {
-        dispatch(toggleFeatureMinimized(featureId));
-        dispatch(toggleLauncherActiveIcon(featureId));
-      },
-    });
-  };
+  // Close: drop the pill and bring the normal toolbar back, without opening the tool
+  const closeMinimized = () => dispatch(onCloseMinimizedFeature.getPayload({ featureKey: featureId }));
 
   const FeatureIcon = feature.icon;
 
   return (
-    <FeatureContainer style={style}>
+    <FeatureContainer className="drag-handle" style={style}>
       <Tooltip title="Close">
         <QuickAction onClick={closeMinimized}>
           <IconX size={14} />

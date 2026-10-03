@@ -3,8 +3,16 @@ import ExtensionStorageManager from "@entrypoints/core/services/storage/Extensio
 
 const SERVER_VISIBILITY_KEY = "automation_server_visibility";
 
+// Whether a key event comes from a field the user types in (events from the shadow root are retargeted)
+const isTypingTarget = (event: KeyboardEvent) => {
+  const target = (event.composedPath?.()[0] || event.target) as HTMLElement | null;
+  if (!target || !(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+};
+
 /**
- * Custom hook to handle the 'S' key press for showing the Server tab
+ * Custom hook to handle the 'S' key press for showing the Server tab:
+ * holding S for 2 seconds (outside of text fields) shows it, or hides it when it is shown
  * @returns {boolean} Whether the Server tab should be visible
  */
 export const useServerTabVisibility = (): {
@@ -12,6 +20,8 @@ export const useServerTabVisibility = (): {
   setServerTabVisible: (visible: boolean) => void;
 } => {
   const [isServerTabVisible, setIsServerTabVisible] = useState(false);
+  const visibleRef = useRef(false);
+  visibleRef.current = isServerTabVisible;
   const keyPressTimer = useRef<NodeJS.Timeout | null>(null);
   const keyPressStartTime = useRef<number | null>(null);
   const KEY_PRESS_DURATION = 2000; // 2 seconds in milliseconds
@@ -51,15 +61,15 @@ export const useServerTabVisibility = (): {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Check if 'S' key is pressed
 
-      if (event.key.toLowerCase() === "s") {
+      if (event.key?.toLowerCase() === "s" && !isTypingTarget(event)) {
         // Prevent starting a new timer if one is already running
         if (keyPressStartTime.current === null) {
           keyPressStartTime.current = Date.now();
 
           // Start a timer to check duration
           keyPressTimer.current = setTimeout(() => {
-            // If the key has been pressed for the required duration, show the server tab
-            setServerTabVisible(true);
+            // If the key has been pressed for the required duration, show (or hide) the server tab
+            setServerTabVisible(!visibleRef.current);
 
             // Reset tracking variables
             keyPressStartTime.current = null;
@@ -71,7 +81,7 @@ export const useServerTabVisibility = (): {
 
     const handleKeyUp = (event: KeyboardEvent) => {
       // Check if 'S' key is released
-      if (event.key.toLowerCase() === "s") {
+      if (event.key?.toLowerCase() === "s") {
         // Clear the timer
         if (keyPressTimer.current) {
           clearTimeout(keyPressTimer.current);

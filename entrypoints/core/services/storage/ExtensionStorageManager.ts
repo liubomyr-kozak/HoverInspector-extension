@@ -8,14 +8,15 @@ import {
   changeMinimizedLauncherPosition,
   changeMinimizedFeaturesAndActiveIcons,
   changePreventDefault,
+  changeColorHistory,
   changeViewType,
   changeVisibleFeatures,
   deactivateAppInTab,
   getAllAutomationScenarios,
   getAutomationScenario,
   getState,
+  setState,
   hideSponsorMessage,
-  minimizedFeaturePopup,
   removeAutomationScenario,
   saveAutomationScenario,
   saveFunction,
@@ -40,7 +41,7 @@ import {
   getElementDetailsPanelPosition,
   saveElementDetailsPanelPosition,
 } from "@entrypoints/background/store/backgroundSlice.ts";
-import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
+import { appSettingsInitial, migrateAppSettings } from "@entrypoints/core/initialData/app.ts";
 
 class ExtensionStorageManager {
   async initInitialData() {
@@ -50,17 +51,14 @@ class ExtensionStorageManager {
       return setupInitialState(appSettingsInitial);
     }
 
-    // чи то якийсь кеш чи ще щось.... чи сам фреймоворк заглючив,
-    // але інколи версія не співпадає, причому setupInitialState не визивається,
-    // оставлю цей код поки що тут, якщо виникне знову така проблема, потрбіно буде преписати це місце,
-    // так як конструктор AppLocalStorage має перевіряти версію даних і якщо вона не співпадає, то записувати нові дані,
-    // наступного разу потрібно буде там перевірити
+    // Older settings are migrated (user values kept, new keys defaulted) rather than reset
     if (appState.version !== appSettingsInitial.version) {
-      // if need, need to save old data, or remap here
-      return setupInitialState(appSettingsInitial);
+      const migrated = migrateAppSettings(appState);
+      await setState(migrated);
+      return migrated;
     }
 
-    return appState;
+    return migrateAppSettings(appState);
   }
 
   async getState() {
@@ -68,55 +66,61 @@ class ExtensionStorageManager {
   }
 
   async setState(data: any) {
-    return getState(data);
+    return setState(data);
   }
 
   async deactivateAppInTab() {
-    deactivateAppInTab();
+    return await deactivateAppInTab();
   }
 
   async changeLauncherIconOrder(launcherIconOrder: string[]) {
-    changeLauncherIconOrder(launcherIconOrder);
+    return await changeLauncherIconOrder(launcherIconOrder);
   }
 
   async changeLauncherActiveFeature(launcherIconOrder: string[]) {
-    changeLauncherActiveFeature(launcherIconOrder);
+    return await changeLauncherActiveFeature(launcherIconOrder);
   }
 
   async changeFeaturePopupPosition(featurePopupPosition) {
-    changeFeaturePopupPosition(featurePopupPosition);
+    return await changeFeaturePopupPosition(featurePopupPosition);
   }
 
-  async minimizedFeaturePopup(isMinimized: boolean) {
-    minimizedFeaturePopup(isMinimized);
+
+  /**
+   * Resize the browser window so the page viewport (window.innerWidth) gets the requested width.
+   * The window frame and scrollbar are added on top, otherwise a "768px" preset lands below 768px.
+   */
+  async changeCurrentWindowSize(viewportWidth: number) {
+    const frameWidth = Math.max(0, window.outerWidth - window.innerWidth);
+    return await changeCurrentWindowSize(viewportWidth + frameWidth);
   }
 
-  async changeCurrentWindowSize(featurePopupPosition) {
-    changeCurrentWindowSize(featurePopupPosition);
+  async changeColorHistory(colorHistory: string[]) {
+    return await changeColorHistory(colorHistory);
   }
 
   async changePreventDefault(preventDefault) {
-    changePreventDefault(preventDefault);
+    return await changePreventDefault(preventDefault);
   }
 
   async changeViewType(preventDefault) {
-    changeViewType(preventDefault);
+    return await changeViewType(preventDefault);
   }
 
   async changeVisibleFeatures(visibleFeatures: string[]) {
-    changeVisibleFeatures(visibleFeatures);
+    return await changeVisibleFeatures(visibleFeatures);
   }
 
   async changeMinimizedFeatures(minimizedFeatures: string[]) {
-    changeMinimizedFeatures(minimizedFeatures);
+    return await changeMinimizedFeatures(minimizedFeatures);
   }
 
   async changeMinimizedFeaturesAndActiveIcons(minimizedFeatures: string[], activeIcons: string[]) {
-    changeMinimizedFeaturesAndActiveIcons({ data: { minimizedFeatures, activeIcons } });
+    return await changeMinimizedFeaturesAndActiveIcons({ minimizedFeatures, activeIcons });
   }
 
   async changeMinimizedLauncherPosition(minimizedPosition: { x: number; y: number }) {
-    changeMinimizedLauncherPosition(minimizedPosition);
+    return await changeMinimizedLauncherPosition(minimizedPosition);
   }
 
   // Automation Scenarios Methods
@@ -164,7 +168,7 @@ class ExtensionStorageManager {
    * @returns {Promise<Object>} Object with success status
    */
   async addStepToAutomationScenario(id, step) {
-    return await addStepToAutomationScenario({ data: { id, step } });
+    return await addStepToAutomationScenario({ id, step });
   }
 
   /**
@@ -173,7 +177,7 @@ class ExtensionStorageManager {
    * @returns {Promise<void>}
    */
   async hideSponsorMessage(hiddenUntil) {
-    return await hideSponsorMessage({ data: hiddenUntil });
+    return await hideSponsorMessage(hiddenUntil);
   }
 
   /**
@@ -319,7 +323,7 @@ class ExtensionStorageManager {
    * @returns {Promise<Object>} Object with success status and key
    */
   async saveElementDetailsPanelPosition(position) {
-    return await saveElementDetailsPanelPosition({ data: position });
+    return await saveElementDetailsPanelPosition(position);
   }
 }
 

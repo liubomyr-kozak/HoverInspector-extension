@@ -1,4 +1,4 @@
-import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
+import { appSettingsInitial, migrateAppSettings } from "@entrypoints/core/initialData/app.ts";
 
 import { APP_STORE_STATE } from "../../constants";
 import LocalStorage from "./LocalStorage.ts";
@@ -14,8 +14,7 @@ class AppLocalStorage {
     // create new data if it doesn't exist
     this.localStorage.get(this.app_local_store_key).then((data) => {
       if (!data || data.version !== appSettingsInitial.version) {
-        // if need, need to save old data, or remap here
-        this.localStorage.set(this.app_local_store_key, appSettingsInitial);
+        this.localStorage.set(this.app_local_store_key, migrateAppSettings(data));
       }
     });
   }

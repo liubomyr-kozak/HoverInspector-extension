@@ -346,8 +346,8 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
             <StepsHeading>
               <StepsHeadingText>Steps</StepsHeadingText>
               <StepCount>
-                {currentStepIndex >= 0 ? currentStepIndex + 1 : 0} / {steps.length} steps
-                {scenario.data.length === 1 ? "step" : "steps"}
+                {currentStepIndex >= 0 ? `${currentStepIndex + 1} / ` : ""}
+                {steps.length} {steps.length === 1 ? "step" : "steps"}
               </StepCount>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <SpeedControlButton initialSpeed={executionSpeed} onSpeedChange={handleSpeedChange} />
@@ -406,15 +406,15 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                 // Determine text status
                 let textStatus = "";
                 if (status === ExecutionStatus.SUCCESS) {
-                  textStatus = "успішно";
+                  textStatus = "success";
                 } else if (status === ExecutionStatus.ERROR) {
-                  textStatus = "помилка";
+                  textStatus = "error";
                 } else if (status === ExecutionStatus.RUNNING) {
-                  textStatus = "виконується";
+                  textStatus = "running";
                 } else if (status === ExecutionStatus.PAUSED) {
-                  textStatus = "пауза";
+                  textStatus = "paused";
                 } else if (status === ExecutionStatus.SKIPPED) {
-                  textStatus = "пропущено";
+                  textStatus = "skipped";
                 }
 
                 // Check if this step is being edited
@@ -592,7 +592,7 @@ export const ScenarioItem: React.FC<ScenarioItemProps> = ({
                         {/* Display execution error if available */}
                         {executionError && (
                           <StepErrorContainer>
-                            <strong>Помилка:</strong> {executionError}
+                            <strong>Error:</strong> {executionError}
                           </StepErrorContainer>
                         )}
 

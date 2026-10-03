@@ -1,5 +1,6 @@
 import styled, { css } from "styled-components";
 import { ZINDEX_LAUNCHER_CONTAINER } from "@entrypoints/shared/constant/zIndex.ts";
+import { LogoContainer } from "@entrypoints/shared/components/Logo/Logo.tsx";
 
 export const LauncherContainer = styled.div`
   position: fixed;
@@ -9,6 +10,13 @@ export const LauncherContainer = styled.div`
   align-items: center;
   z-index: ${ZINDEX_LAUNCHER_CONTAINER};
   transform: translateX(-50%);
+  /* On narrow windows the toolbar wraps instead of running off both edges (and hiding the menu) */
+  width: max-content;
+  max-width: calc(100vw - 16px);
+
+  @media (max-width: 560px) {
+    bottom: 8px;
+  }
 `;
 
 export const LauncherBody = styled.div`
@@ -18,8 +26,22 @@ export const LauncherBody = styled.div`
   padding: 10px 20px;
   border-radius: 16px;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
+  row-gap: 14px;
   color: #333;
+
+  @media (max-width: 560px) {
+    padding: 8px 10px;
+
+    /* Keep the logo, drop its label to leave room for the tools */
+    ${LogoContainer} {
+      font-size: 0;
+      gap: 0;
+      margin-right: 6px;
+    }
+  }
 
   &::before {
     content: "";
@@ -111,6 +133,7 @@ export const Divider = styled.div`
 `;
 
 export const MenuContainer = styled.div`
+  max-width: calc(100vw - 32px);
   padding: 8px;
   background: #fff;
   border-radius: 8px;
@@ -138,9 +161,10 @@ export const MenuItemText = styled.div`
 
 export const MenuWrapper = styled.div`
   display: flex;
-  max-height: 600px;
+  max-height: min(600px, calc(100vh - 120px));
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 `;
 
 export const LeftColumn = styled.div`
@@ -159,4 +183,8 @@ export const FeaturesGrid = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   width: 100%;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
 `;

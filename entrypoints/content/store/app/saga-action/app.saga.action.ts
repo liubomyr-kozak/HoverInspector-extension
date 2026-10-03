@@ -1,4 +1,4 @@
-import { delay, put, select, takeLatest } from "redux-saga/effects";
+import { put, select } from "redux-saga/effects";
 
 import PopupSettingModel from "@entrypoints/core/Models/PopupSettingModel.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
@@ -12,7 +12,9 @@ import {
   setLauncherIconOrder,
   setLocalAppSetting,
   setMinimizedLauncherPosition,
+  setTargetLocked,
   setViewType,
+  syncSharedSettings,
   toggleFeatureMinimized,
   toggleFeatureVisibility,
   toggleLauncherActiveIcon,
@@ -24,6 +26,18 @@ import { closeElementCompare } from "@entrypoints/content/store/elementCompare/e
 import { closeElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 
 const freezeSelect = new FreezeSelect();
+
+/** Lets hover follow the pointer again; the next click picks a new source element. */
+export const unlockTarget = () => {
+  freezeSelect.reset();
+};
+
+/** Forget the source element and any locked target (the inspector was closed). */
+export const resetElementSelection = () => {
+  freezeSelect.reset();
+  DomNodeManager.setIsFirstNodeSelected(false);
+  DomNodeManager.remove("selectedElement");
+};
 
 export const onUpdateEventPreventDefaultWatcher = sagaEnhancer(function* updateEventPreventDefaultWatcher(data) {
   PopupSettingModel.setPreventDefault(data.payload.preventDefault);
@@ -40,13 +54,11 @@ export const onUpdateInspectorViewTypeWatcher = sagaEnhancer(function* updateIns
 export const onUpdateAppSettingWatcher = sagaEnhancer(function* updateAppSettingWatcherFn() {
   const { app } = yield select();
 
-  ExtensionStorageManager.getState().then((settings) => {
-    const storeSetting = {
-      ...(settings as any),
-      user: app.user,
-      settings: app.settings,
-    };
-    ExtensionStorageManager.setState(storeSetting);
+  const settings = yield ExtensionStorageManager.getState();
+  yield ExtensionStorageManager.setState({
+    ...(settings as any),
+    user: app.user,
+    settings: app.settings,
   });
 });
 
@@ -54,8 +66,11 @@ export const onUserEventSelectWatcher = sagaEnhancer(function* userEventSelectWa
   freezeSelect.precessFreeze(true);
 
   if (freezeSelect.isFreeze) {
+    yield put(setTargetLocked(true));
     return;
   }
+
+  yield put(setTargetLocked(false));
 
   const oldSelectedElement = DomNodeManager.get("selectedElement");
   let selectedElement;
@@ -175,7 +190,6 @@ export const onChangeLauncherActiveFeature = sagaEnhancer(function* changeLaunch
   if (needsAdjustment) {
     yield put(setFeaturePopupPosition(adjustedPosition));
 
-    yield delay(100);
     yield ExtensionStorageManager.changeFeaturePopupPosition(adjustedPosition);
   }
 });
@@ -238,18 +252,16 @@ export const onToggleFeatureMinimized = sagaEnhancer(function* onToggleFeatureMi
   // After the feature minimized state is toggled in the Redux state, persist the changes
   const state = yield select();
 
-  yield ExtensionStorageManager.changeMinimizedFeatures(state.app.minimizedFeatures);
-  yield delay(100);
-  yield ExtensionStorageManager.changeLauncherActiveFeature(state.app.launcher.activeIcons);
-
-  // // Save both minimizedFeatures and activeIcons atomically to avoid race condition
-  // yield ExtensionStorageManager.changeMinimizedFeaturesAndActiveIcons(
-  //   state.app.minimizedFeatures,
-  //   state.app.launcher.activeIcons,
-  // );
+  // Save both lists in one write so neither change can overwrite the other
+  yield ExtensionStorageManager.changeMinimizedFeaturesAndActiveIcons(
+    state.app.minimizedFeatures,
+    state.app.launcher.activeIcons,
+  );
 });
 
 export const onClearAllActiveIcons = sagaEnhancer(function* onClearAllActiveIconsFn(action) {
+  yield put(clearAllActiveIcons());
+
   // Close all child popups when the main feature popup is closed
   yield put(closeNoteForm());
   yield put(closeElementCompare());
@@ -273,4 +285,25 @@ export const onChangeMinimizedLauncherPosition = sagaEnhancer(function* changeMi
 
   // Then persist to storage
   yield ExtensionStorageManager.changeMinimizedLauncherPosition(payload);
+});
+
+/** Closes a minimized tool's pill without opening the tool */
+export const onCloseMinimizedFeature = sagaEnhancer(function* onCloseMinimizedFeatureFn({ payload }) {
+  const { featureKey } = payload as { featureKey: string };
+  const current = yield select();
+  if (!current.app.minimizedFeatures?.includes(featureKey)) return;
+
+  yield put(toggleFeatureMinimized(featureKey));
+  const state = yield select();
+  yield ExtensionStorageManager.changeMinimizedFeatures(state.app.minimizedFeatures);
+});
+
+/**
+ * Settings are one shared object, but each tab keeps its own copy. When a tab comes back into view,
+ * pick up toolbar changes made in another tab; otherwise the next toggle here would write the stale
+ * list back and undo them.
+ */
+export const onSyncSharedSettings = sagaEnhancer(function* onSyncSharedSettingsFn() {
+  const stored = yield ExtensionStorageManager.getState();
+  if (stored) yield put(syncSharedSettings(stored));
 });

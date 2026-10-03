@@ -12,6 +12,21 @@ export const ElementDetailsPopup: React.FC = () => {
   const dispatch = useDispatch();
   const state = useSelector((s: RootState) => s.elementDetails);
 
+  // Esc closes this popup first instead of switching the whole extension off. Typing keeps Esc for the
+  // input; the capture phase runs before the global handler, which skips prevented events.
+  useEffect(() => {
+    if (!state.isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const target = event.composedPath()[0] as HTMLElement | undefined;
+      if (target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName || "")) return;
+      event.preventDefault();
+      dispatch(closeElementDetails());
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [state.isOpen, dispatch]);
+
   // Default position and size
   const defaultPosition = {
     x: window.innerWidth - 460,
@@ -73,7 +88,7 @@ export const ElementDetailsPopup: React.FC = () => {
   return (
     <FloatingModal
       open={state.isOpen}
-      title="Element details"
+      title={state.title ? `Element details: ${state.title}` : "Element details"}
       onCancel={() => dispatch(closeElementDetails())}
       initialWidth={panelPosition.width}
       initialHeight={panelPosition.height}

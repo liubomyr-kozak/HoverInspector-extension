@@ -18,7 +18,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CONVERT_TOOLS, CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { Tooltip } from "@/entrypoints/shared/components/Tooltip";
 
 const HeaderContent = styled.div`
@@ -150,11 +150,15 @@ const ViewControls = styled.div`
   gap: 8px;
 `;
 
+// Icon-only so the controls fit next to the title and close button in the narrow panel
 const ControlButton = styled.button<{ active?: boolean }>`
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -209,24 +213,36 @@ export const SnapshotCompareHeader = memo<SnapshotCompareHeaderProps>(
             <Tooltip title={"Back to list"}>
               <FeatureIcon icon={IconArrowLeft} onClick={onBackToList} />
             </Tooltip>
-            {CSS_SNAPSHOT.title} (A/B Compare)
+            <FeatureTitleText title={`${CSS_SNAPSHOT.title} (A/B Compare)`}>{CSS_SNAPSHOT.title} (A/B Compare)</FeatureTitleText>
             <PortalModalHeaderButtons>
               <ViewControls>
-                <ControlButton active={activeCompareView === "diff"} onClick={() => onChangeCompareView("diff")}>
-                  <IconCode size={16} />
-                  Diff
-                </ControlButton>
+                <Tooltip title="Diff view">
+                  <ControlButton
+                    active={activeCompareView === "diff"}
+                    onClick={() => onChangeCompareView("diff")}
+                    aria-label="Diff view"
+                  >
+                    <IconCode size={16} />
+                  </ControlButton>
+                </Tooltip>
 
-                <ControlButton active={activeCompareView === "stats"} onClick={() => onChangeCompareView("stats")}>
-                  <IconActivity size={16} />
-                  Stats
-                </ControlButton>
+                <Tooltip title="Statistics">
+                  <ControlButton
+                    active={activeCompareView === "stats"}
+                    onClick={() => onChangeCompareView("stats")}
+                    aria-label="Statistics"
+                  >
+                    <IconActivity size={16} />
+                  </ControlButton>
+                </Tooltip>
 
                 {activeCompareView === "diff" && (
-                  <ControlButton onClick={onToggleSplitView}>
-                    {splitView ? <IconLayoutSidebarRightExpand size={16} /> : <IconLayoutList size={16} />}
-                    {splitView ? "Split" : "Unified"}
-                  </ControlButton>
+                  // Tooltip keeps its first title, so remount it when the mode flips
+                  <Tooltip key={String(splitView)} title={splitView ? "Split view (click for unified)" : "Unified view (click for split)"}>
+                    <ControlButton onClick={onToggleSplitView} aria-label={splitView ? "Switch to unified view" : "Switch to split view"}>
+                      {splitView ? <IconLayoutSidebarRightExpand size={16} /> : <IconLayoutList size={16} />}
+                    </ControlButton>
+                  </Tooltip>
                 )}
               </ViewControls>
             </PortalModalHeaderButtons>

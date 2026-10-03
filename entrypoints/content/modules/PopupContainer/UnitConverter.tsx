@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Col, Divider, InputNumber, List, Popover, Row, Select, Typography } from "antd";
-import { FeatureTitle } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
+import { Button, Col, Divider, InputNumber, List, Row, Select } from "antd";
+import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import copy from "copy-to-clipboard";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
-import SettingsButton from "@entrypoints/shared/components/SettingsButton";
 import { IconCopy, IconTrash } from "@tabler/icons-react";
 import {
   PortalModalHeader,
@@ -12,7 +11,6 @@ import {
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CONVERT_TOOLS, RULER } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
-const { Text } = Typography;
 
 const units = ["px", "rem", "em", "%", "vw", "vh"];
 
@@ -26,42 +24,63 @@ interface ConversionHistoryItem {
   baseSize: number;
 }
 
+// Kept in extension storage so it follows the user across sites and never touches the page's own localStorage
+const HISTORY_STORAGE_KEY = "unitConverterHistory";
+
+// rem is relative to the page's root font size, which is not always 16px
+const getRootFontSize = () => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+
 export const UnitConverter: React.FC = () => {
   const [inputValue, setInputValue] = useState<number>(16);
   const [inputUnit, setInputUnit] = useState<string>("px");
   const [outputUnit, setOutputUnit] = useState<string>("rem");
-  const [baseSize, setBaseSize] = useState<number>(16);
+  const [baseSize, setBaseSize] = useState<number>(getRootFontSize);
   const [history, setHistory] = useState<ConversionHistoryItem[]>([]);
+  const historyLoaded = useRef(false);
+  // vw/vh results depend on the window size, so follow it
+  const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const userChangedInput = useRef(false);
 
   // Ref to store timeout ID for debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load history from localStorage on component mount
   useEffect(() => {
-    const savedHistory = localStorage.getItem("unitConverterHistory");
-    if (savedHistory) {
-      try {
-        const parsedHistory = JSON.parse(savedHistory);
-        setHistory(parsedHistory);
-      } catch (e) {
-        console.error("Failed to parse history from localStorage", e);
-      }
-    }
+    browser.storage.local
+      .get(HISTORY_STORAGE_KEY)
+      .then((stored) => {
+        const saved = stored?.[HISTORY_STORAGE_KEY];
+        if (Array.isArray(saved)) setHistory(saved);
+      })
+      .catch((e) => console.error("Failed to load conversion history", e))
+      .finally(() => {
+        historyLoaded.current = true;
+      });
   }, []);
 
-  // Save history to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem("unitConverterHistory", JSON.stringify(history));
+    if (!historyLoaded.current) return;
+    browser.storage.local.set({ [HISTORY_STORAGE_KEY]: history }).catch(() => undefined);
   }, [history]);
 
-  // Auto-save to history when conversion parameters change (with debounce)
+  // Auto-save to history when the user changes the conversion (with debounce); opening the tool adds nothing
   useEffect(() => {
+    if (!userChangedInput.current) {
+      userChangedInput.current = true;
+      return;
+    }
+
     // Clear any existing timeout to implement debounce
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Set a new timeout to save after 1.5 seconds of inactivity
+    // Save after a few seconds without changes
     saveTimeoutRef.current = setTimeout(() => {
       addToHistory();
       saveTimeoutRef.current = null;
@@ -94,10 +113,10 @@ export const UnitConverter: React.FC = () => {
           return (value / 100) * baseSize;
         case "vw":
           // vw — % від ширини viewport
-          return (window.innerWidth * value) / 100;
+          return (viewport.width * value) / 100;
         case "vh":
           // vh — % від висоти viewport
-          return (window.innerHeight * value) / 100;
+          return (viewport.height * value) / 100;
         default:
           return value;
       }
@@ -116,9 +135,9 @@ export const UnitConverter: React.FC = () => {
           return (pxValue / baseSize) * 100;
         case "vw":
           // Для vw рахуємо, скільки це від ширини viewport
-          return (pxValue / window.innerWidth) * 100;
+          return (pxValue / viewport.width) * 100;
         case "vh":
-          return (pxValue / window.innerHeight) * 100;
+          return (pxValue / viewport.height) * 100;
         default:
           return pxValue;
       }
@@ -199,14 +218,13 @@ export const UnitConverter: React.FC = () => {
       <PortalModalHeader portalId={HeaderPortalId.UNIT_CONVERTER}>
         <FeatureTitle>
           <FeatureIcon icon={CONVERT_TOOLS.icon} isBetta />
-          {CONVERT_TOOLS.title}
+          <FeatureTitleText title={CONVERT_TOOLS.title}>{CONVERT_TOOLS.title}</FeatureTitleText>
         </FeatureTitle>
       </PortalModalHeader>
 
       <Row gutter={12} style={{ marginBottom: 16 }}>
         <Col span={10}>
           <InputNumber
-            min={0}
             value={inputValue}
             onChange={(v) => setInputValue(v ?? 0)}
             style={{ width: "100%" }}
@@ -242,12 +260,32 @@ export const UnitConverter: React.FC = () => {
         </Col>
       </Row>
 
+      <Row gutter={12} align="middle" style={{ marginBottom: 12 }}>
+        <Col flex="none">
+          <Tooltip placement="top" title="Root font size used for rem, em and % (defaults to this page's)">
+            <span className="text-gray-500">Base size</span>
+          </Tooltip>
+        </Col>
+        <Col flex="110px">
+          <InputNumber
+            min={1}
+            value={baseSize}
+            onChange={(v) => setBaseSize(v || 16)}
+            addonAfter="px"
+            style={{ width: "100%" }}
+          />
+        </Col>
+        <Col flex="auto" className="text-right text-gray-400 text-xs">
+          viewport {viewport.width}×{viewport.height}
+        </Col>
+      </Row>
+
       <Row style={{ marginBottom: 12 }}>
         <Col span={24}>
-          <div className="flex justify-end mt-2">
+          <div className="flex justify-end items-center mt-2">
             <span className="text-gray-500 mr-2">
-              Result: ({inputValue}
-              {inputUnit} ÷ {baseSize}px) ={" "}
+              {inputValue}
+              {inputUnit} =
             </span>
             <Tooltip placement="top" title="Click to Copy" clickTile={"Copied!"}>
               <span
