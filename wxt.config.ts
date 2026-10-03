@@ -17,21 +17,6 @@ export default defineConfig({
       default_icon: "icon/32.png",
     },
     permissions: ["activeTab", "scripting", "background", "storage", "unlimitedStorage"],
-    web_accessible_resources: [
-      {
-        resources: [
-          "icon-16.png",
-          "icon-16-active.png",
-          "icon-32.png",
-          "icon-32-active.png",
-          "icon-64.png",
-          "icon-64-active.png",
-          "icon-128.png",
-          "icon-128-active.png",
-        ],
-        matches: [],
-      },
-    ],
     browser_specific_settings: {
       gecko: {
         id: "https://liubomyr-kozak.github.io/hover-inspector/",
