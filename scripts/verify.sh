@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One command that runs every automatic check from docs/CODE_STYLE.md section 18 on your change.
+# One command that runs every automatic check from .claude/rules/code-style/workflow.md on your change.
 # Usage: yarn verify            (compares with origin/master)
 #        BASE=some-branch yarn verify
 # Exit code 0 means every automatic check passed. The browser check (verify-in-browser skill) is still yours.
@@ -44,10 +44,9 @@ check_pattern "no window.localStorage" '\blocalStorage\.'
 HEX="$(printf '%s\n' "$ADDED" | grep -nE '#[0-9a-fA-F]{3,8}\b' | grep -v 'tokens.ts')"
 [ -n "$HEX" ] && { echo "WARN: hard-coded hex colours (use tokens unless there is no token):"; printf '%s\n' "$HEX" | head -10 | sed 's/^/        /'; }
 
-echo; echo "TypeScript (only errors in your files count; the repo has old errors elsewhere)..."
+echo; echo "TypeScript (all files, compared with the merge base; old errors do not count)..."
 if [ ${#CHANGED[@]} -gt 0 ]; then
-  TSC="$(yarn -s compile 2>&1 | grep -F -f <(printf '%s(\n' "${CHANGED[@]}"))"
-  [ -n "$TSC" ] && { fail "TypeScript errors in changed files"; printf '%s\n' "$TSC" | head -20 | sed 's/^/        /'; } || ok "no TypeScript errors in changed files"
+  BASE="$BASE" bash scripts/tsc-diff.sh || failed=1
 fi
 
 echo; echo "yarn test..."

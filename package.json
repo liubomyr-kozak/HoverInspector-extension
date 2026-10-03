@@ -28,6 +28,7 @@
     "zip:firefox": "wxt zip -b firefox",
     "zip:edge": "wxt zip -b edge",
     "compile": "tsc --noEmit",
+    "compile:diff": "bash scripts/tsc-diff.sh",
     "postinstall": "wxt prepare"
   },
   "dependencies": {

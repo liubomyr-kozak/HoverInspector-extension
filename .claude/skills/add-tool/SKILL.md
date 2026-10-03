@@ -18,7 +18,7 @@ Follow every step in order. Replace the sample names with yours using this table
 | `wordCounterPrefs` | Storage key, camelCase | `linkCheckerPrefs` |
 | `IconAbc` | Icon from `@tabler/icons-react` | `IconLink` |
 
-Read `docs/CODE_STYLE.md` sections 5–8 and 10 once before you start.
+Read `.claude/rules/code-style/components.md`, `panel.md`, `styling.md`, `state.md` and `storage.md` once before you start.
 
 ## Step 1. Register the tool in the launcher
 
@@ -309,7 +309,7 @@ Only if your tool also draws on the page outside the panel (like the Ruler): ren
 
 - Small preferences or a short history: the `browser.storage.local` pattern in step 3d. Key in a
   `const ..._STORAGE_KEY` at the top of the file.
-- Large or structured data shared with the background: see `docs/CODE_STYLE.md` section 10.2 and 11.2.
+- Large or structured data shared with the background: see `.claude/rules/code-style/storage.md` ("App settings and domain data") and `messaging.md`.
 - **Never** use `window.localStorage` (that is the website's storage).
 
 ## Step 6. Check
@@ -339,7 +339,7 @@ controls and the footer button without clipping.
 
 ## Step 7. Commit
 
-Follow `docs/CODE_STYLE.md` section 17. Example subject: `Add a Word Counter tool`. The body says what
+Follow `.claude/rules/code-style/workflow.md` ("Git"). Example subject: `Add a Word Counter tool`. The body says what
 the tool does for the user and that `countWords` has tests.
 
 ## Mistakes to avoid
