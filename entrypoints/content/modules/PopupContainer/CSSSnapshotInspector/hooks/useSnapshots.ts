@@ -11,7 +11,9 @@ import {
   trimAndSaveSnapshots,
   isValidSnapshot,
   deleteSnapshot as deleteSnapshotUtil,
+  saveSnapshot,
 } from "../utils/snapshotStorage";
+import { normalizeSnapshotName } from "../utils/snapshotLabels";
 import { RootState } from "@entrypoints/content/store/createStore";
 import {
   selectSnapshots,
@@ -20,6 +22,7 @@ import {
   setSnapshots,
   addSnapshot as addSnapshotAction,
   removeSnapshot,
+  updateSnapshot,
   setLoading,
   setError,
 } from "@entrypoints/content/store/snapshot/snapshotSlice";
@@ -31,6 +34,8 @@ interface UseSnapshotsReturn {
   compareSnapshots: readonly CSSSnapshot[];
   captureSnapshot: (title?: string, options?: SnapshotOptions) => Promise<CSSSnapshot>;
   deleteSnapshot: (id: string) => Promise<void>;
+  /** Renames a saved snapshot; resolves to false when the name is empty or the snapshot is gone */
+  renameSnapshot: (id: string, name: string) => Promise<boolean>;
   importSnapshot: () => void;
   selectSnapshot: (snapshot: CSSSnapshot | null) => void;
   toggleCompare: (snapshot: CSSSnapshot) => void;
@@ -149,6 +154,30 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     [selectedSnapshot?.id, dispatch],
   );
 
+  // Rename: update the list, the open details and the compare selection at once, then persist
+  const renameSnapshot = useCallback(
+    async (id: string, rawName: string): Promise<boolean> => {
+      const name = normalizeSnapshotName(rawName);
+      const current = snapshots.find((snapshot) => snapshot.id === id);
+      if (!name || !current) return false;
+      if (current.title === name) return true;
+
+      const renamed: CSSSnapshot = { ...current, title: name };
+      dispatch(updateSnapshot(renamed));
+      setSelectedSnapshot((prev) => (prev?.id === id ? renamed : prev));
+      setCompareSnapshots((prev) => prev.map((snapshot) => (snapshot.id === id ? renamed : snapshot)));
+
+      try {
+        await saveSnapshot(renamed);
+      } catch (err) {
+        console.warn("Failed to save the renamed snapshot:", err);
+        dispatch(setError("Snapshot renamed but the new name could not be saved to extension storage"));
+      }
+      return true;
+    },
+    [snapshots, dispatch],
+  );
+
   // Імпорт знімка з файлу
   const importSnapshot = useCallback(() => {
     const input = document.createElement("input");
@@ -260,6 +289,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     compareSnapshots,
     captureSnapshot,
     deleteSnapshot,
+    renameSnapshot,
     importSnapshot,
     addSnapshot,
     selectSnapshot,

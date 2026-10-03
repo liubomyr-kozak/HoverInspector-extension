@@ -30,10 +30,7 @@ const MainContainer = styled.div`
 `;
 
 const FilterContainer = styled.div`
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(12px);
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  padding: 0 0 10px;
 `;
 
 const FilterInputWrapper = styled.div`
@@ -42,13 +39,12 @@ const FilterInputWrapper = styled.div`
 
 const FilterInput = styled.input`
   width: 100%;
-  padding: 12px 20px 12px 20px;
-  padding-right: 48px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(229, 231, 235, 0.8);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
+  height: 32px;
+  padding: 0 40px 0 10px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
   color: #1f2937;
   transition: all 200ms ease;
 
@@ -59,7 +55,6 @@ const FilterInput = styled.input`
   &:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 `;
 
@@ -86,16 +81,6 @@ const ClearButton = styled.button`
   }
 `;
 
-const FilterStats = styled.div`
-  margin-top: 12px;
-  padding: 8px 12px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #4338ca;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 8px;
-  display: inline-block;
-`;
 
 const ContentArea = styled.div`
   flex: 1;
@@ -120,6 +105,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     compareSnapshots,
     captureSnapshot,
     deleteSnapshot,
+    renameSnapshot,
     importSnapshot,
     selectSnapshot,
     toggleCompare,
@@ -200,12 +186,14 @@ export const CSSSnapshotInspector: React.FC = () => {
       toggleCompare(firstSnapshot);
       toggleCompare(currentPageSnapshot);
 
+      setActiveCompareView("diff");
       // Start comparison view. compareSnapshots in this closure is still the old
       // value, so skip the canCompare check: both snapshots were just queued.
       startComparison(true);
 
     } catch (error) {
-      console.error("Failed to create current page snapshot:", error);
+      // Shown in the panel's error box; not a crash
+      console.warn("Failed to create current page snapshot:", error);
       dispatch(setError(error instanceof Error ? error.message : "Could not capture the current page"));
     }
   };
@@ -213,62 +201,11 @@ export const CSSSnapshotInspector: React.FC = () => {
   // Обробник для початку порівняння
   const handleStartComparison = () => {
     if (canCompare) {
+      // Every new comparison opens on the diff, not on whichever view the last one was left in
+      setActiveCompareView("diff");
       startComparison();
     }
   };
-
-  const renderContent = useMemo(() => {
-    switch (viewMode) {
-      case ViewMode.DETAIL:
-        return (
-          <SnapshotViewer
-            snapshot={selectedSnapshot}
-            onBack={handleBackToList}
-            onCompareWithCurrentPage={() => handleCompareWithCurrentPage()}
-          />
-        );
-
-      case ViewMode.COMPARE:
-        return (
-          <SnapshotCompare
-            snapshotA={compareSnapshots[0]}
-            snapshotB={compareSnapshots[1]}
-            onBack={handleBackToList}
-            activeView={activeCompareView}
-            setActiveView={setActiveCompareView}
-            splitView={splitView}
-            setSplitView={setSplitView}
-          />
-        );
-
-      case ViewMode.LIST:
-      default:
-        return (
-          <SnapshotManager
-            snapshots={filteredSnapshots}
-            compareSnapshots={compareSnapshots}
-            onView={handleViewSnapshot}
-            onDelete={deleteSnapshot}
-            onExport={exportSnapshot}
-            onToggleCompare={toggleCompare}
-            onStartComparison={handleStartComparison}
-            onCompareWithCurrentPage={handleCompareWithCurrentPage}
-            isFiltered={snapshots.length > 0 && filteredSnapshots.length !== snapshots.length}
-          />
-        );
-    }
-  }, [
-    viewMode,
-    selectedSnapshot,
-    compareSnapshots,
-    filteredSnapshots,
-    handleBackToList,
-    handleViewSnapshot,
-    deleteSnapshot,
-    exportSnapshot,
-    toggleCompare,
-    handleStartComparison,
-  ]);
 
   // Обробник для захоплення знімка з обробкою помилок
   const handleCaptureSnapshot = async () => {
@@ -292,6 +229,56 @@ export const CSSSnapshotInspector: React.FC = () => {
   const handleCaptureFromPickedElement = () => {
     elementPicker.togglePicking();
   };
+
+  // A is the older snapshot, B the newer one, whatever order they were ticked in, so the diff reads
+  // "what changed since A"
+  const comparePair = [...compareSnapshots].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Recomputed every render: the handlers it passes down are recreated each render anyway
+  const renderContent = (() => {
+    switch (viewMode) {
+      case ViewMode.DETAIL:
+        return (
+          <SnapshotViewer
+            snapshot={selectedSnapshot}
+            onBack={handleBackToList}
+            onCompareWithCurrentPage={() => handleCompareWithCurrentPage()}
+          />
+        );
+
+      case ViewMode.COMPARE:
+        return (
+          <SnapshotCompare
+            snapshotA={comparePair[0]}
+            snapshotB={comparePair[1]}
+            onBack={handleBackToList}
+            activeView={activeCompareView}
+            setActiveView={setActiveCompareView}
+            splitView={splitView}
+            setSplitView={setSplitView}
+          />
+        );
+
+      case ViewMode.LIST:
+      default:
+        return (
+          <SnapshotManager
+            snapshots={filteredSnapshots}
+            compareSnapshots={compareSnapshots}
+            onView={handleViewSnapshot}
+            onDelete={deleteSnapshot}
+            onExport={exportSnapshot}
+            onRename={renameSnapshot}
+            onToggleCompare={toggleCompare}
+            onCompareWithCurrentPage={handleCompareWithCurrentPage}
+            onCapture={handleCaptureSnapshot}
+            onPickElement={handleCaptureFromPickedElement}
+            isFiltered={snapshots.length > 0 && filteredSnapshots.length !== snapshots.length}
+            totalCount={snapshots.length}
+          />
+        );
+    }
+  })();
 
   // // Event listener for COMPARE_SNAPSHOTS message from SnapshotViewer
   // useEffect(() => {
@@ -330,6 +317,7 @@ export const CSSSnapshotInspector: React.FC = () => {
           onCapture={handleCaptureSnapshot}
           onImport={importSnapshot}
           onCompare={handleStartComparison}
+          onClearCompare={clearCompare}
           onToggleSearch={handleToggleSearch}
           isSearchVisible={isSearchVisible}
           error={error}
@@ -343,10 +331,13 @@ export const CSSSnapshotInspector: React.FC = () => {
           onBackToList={handleBackToList}
           error={error}
           onCompareWithCurrentPage={() => handleCompareWithCurrentPage()}
+          onRename={renameSnapshot}
         />
       )}
       {viewMode === ViewMode.COMPARE && (
         <SnapshotCompareHeader
+          snapshotA={comparePair[0]}
+          snapshotB={comparePair[1]}
           onBackToList={handleBackToList}
           error={error}
           activeCompareView={activeCompareView}
@@ -363,7 +354,8 @@ export const CSSSnapshotInspector: React.FC = () => {
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="🔍 Search snapshots by title, URL, or date..."
+              placeholder="Search by name, address or date"
+              aria-label="Search snapshots"
               autoFocus
             />
             {filter && (
@@ -380,11 +372,6 @@ export const CSSSnapshotInspector: React.FC = () => {
               ×
             </ClearButton>
           </FilterInputWrapper>
-          {filteredSnapshots.length !== snapshots.length && (
-            <FilterStats>
-              Showing {filteredSnapshots.length} of {snapshots.length} snapshots
-            </FilterStats>
-          )}
         </FilterContainer>
       )}
       {/* Main Content Area with improved background and padding */}

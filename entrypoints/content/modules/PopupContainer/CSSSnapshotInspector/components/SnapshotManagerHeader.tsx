@@ -86,6 +86,7 @@ const ErrorContainer = styled.div`
   backdrop-filter: blur(8px);
   width: 100%;
   box-sizing: border-box;
+  margin-bottom: 10px;
 
   .error-text {
     flex: 1;
@@ -262,6 +263,7 @@ interface SnapshotManagerHeaderProps {
   readonly onCapture: () => Promise<void>;
   readonly onImport: () => void;
   readonly onCompare: () => void;
+  readonly onClearCompare?: () => void;
   readonly onToggleSearch?: () => void;
   readonly isSearchVisible?: boolean;
   readonly error?: string | null;
@@ -280,6 +282,7 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
     onCapture,
     onImport,
     onCompare,
+    onClearCompare,
     onToggleSearch,
     isSearchVisible = false,
     error,
@@ -405,10 +408,21 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
           </FeatureTitle>
         </PortalModalHeader>
 
+        {/* The one place the comparison is started: appears once a snapshot is ticked */}
         {compareSnapshots && compareSnapshots.length > 0 && (
           <ScenarioPortalFooterButtons portalId={HeaderPortalId.CSS_SNAPSHOT}>
             <AutomationFooterContainer>
-              <div className="flex gap-2 w-full justify-end">
+              <div className="flex items-center gap-2 w-full min-w-0" data-testid="snapshot-compare-bar">
+                <span className="flex-1 min-w-0 truncate text-xs text-gray-600" aria-live="polite">
+                  {compareSnapshots.length === 2
+                    ? "2 selected"
+                    : "1 selected · tick 1 more"}
+                </span>
+                {onClearCompare && (
+                  <Button size="middle" onClick={onClearCompare}>
+                    Clear
+                  </Button>
+                )}
                 <CompareButton
                   onClick={onCompare}
                   disabled={compareSnapshots.length !== 2}
@@ -420,7 +434,7 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
                   }
                 >
                   <MdOutlineCompare size={16} />
-                  <span>Compare ({compareSnapshots.length}/2)</span>
+                  <span>Compare</span>
                 </CompareButton>
               </div>
             </AutomationFooterContainer>
