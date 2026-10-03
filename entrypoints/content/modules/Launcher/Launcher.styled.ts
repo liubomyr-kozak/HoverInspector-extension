@@ -120,7 +120,8 @@ export const IconButton = styled.button<{ $active?: boolean }>`
 export const SectionTitle = styled.div`
   font-size: 12px;
   font-weight: bold;
-  color: #888;
+  /* #888 was 3.5:1 on white */
+  color: #6b7280;
   margin: 0 0 6px;
   padding: 0 4px;
   text-transform: uppercase;
