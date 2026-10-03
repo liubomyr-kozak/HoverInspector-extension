@@ -79,7 +79,22 @@ const HoverActions = styled.div`
   transition: opacity 120ms ease;
 `;
 
-const Row = styled.li<{ $selected: boolean; $confirming: boolean }>`
+/** A or B, as the compare view will label the two selected snapshots (same colours as its header) */
+const SideTag = styled.span<{ $side: "A" | "B" }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: ${tokens.radius.sm}px;
+  font-size: 11px;
+  font-weight: 700;
+  background: ${(p) => (p.$side === "A" ? "#fee2e2" : "#dcfce7")};
+  color: ${(p) => (p.$side === "A" ? "#b91c1c" : tokens.color.success)};
+`;
+
+const Row = styled.li<{ $selected: boolean; $confirming: boolean; $disabled?: boolean }>`
   position: relative;
   display: flex;
   align-items: center;
@@ -88,7 +103,7 @@ const Row = styled.li<{ $selected: boolean; $confirming: boolean }>`
   padding: 6px 6px 6px 10px;
   border-bottom: 1px solid ${tokens.color.border};
   background: ${(p) => (p.$confirming ? tokens.color.dangerBg : p.$selected ? tokens.color.primaryBg : tokens.color.surface)};
-  cursor: pointer;
+  cursor: ${(p) => (p.$disabled ? "not-allowed" : "pointer")};
   transition: background-color 120ms ease;
 
   &:last-child {
@@ -133,7 +148,7 @@ const Body = styled.div`
 
 const NameLine = styled.div`
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   min-width: 0;
 `;
@@ -224,7 +239,7 @@ const MenuDivider = styled.div`
   background: ${tokens.color.border};
 `;
 
-type RowMenuAction = "view" | "current" | "rename" | "export" | "delete";
+type RowMenuAction = "current" | "rename" | "export" | "delete";
 
 /** The row's ⋮ menu (same Popover pattern as the automation scenario menu) */
 const RowMenu: React.FC<{ name: string; withCurrent: boolean; onAction: (action: RowMenuAction) => void }> = ({
@@ -257,7 +272,6 @@ const RowMenu: React.FC<{ name: string; withCurrent: boolean; onAction: (action:
       overlayInnerStyle={{ padding: 4 }}
       content={
         <MenuList role="menu" aria-label={`Actions for ${name}`}>
-          {item("view", <IconEye size={16} />, "View details")}
           {withCurrent && item("current", <IconGitCompare size={16} />, "Compare with current page")}
           {item("rename", <IconPencil size={16} />, "Rename")}
           {item("export", <IconDownload size={16} />, "Export as JSON")}
@@ -388,11 +402,15 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
 
     const selectedIds = new Set(compareSnapshots.map((s) => s.id));
     const selectionFull = compareSnapshots.length >= 2;
+    // The compare view always puts the older snapshot on side A, so the tags match what it will show
+    const sideOf = (snapshot: CSSSnapshot): "A" | "B" | null => {
+      if (!selectedIds.has(snapshot.id) || compareSnapshots.length < 2) return null;
+      const other = compareSnapshots.find((s) => s.id !== snapshot.id);
+      return other && other.timestamp < snapshot.timestamp ? "B" : "A";
+    };
 
     const onMenu = (snapshot: CSSSnapshot, key: RowMenuAction) => {
       switch (key) {
-        case "view":
-          return onView(snapshot);
         case "current":
           return onCompareWithCurrentPage?.(snapshot);
         case "rename":
@@ -415,7 +433,15 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
           <span>
             <strong>Snapshots</strong> {shown === total ? total : `${shown} of ${total}`}
           </span>
-          {compareSnapshots.length === 0 && shown > 1 && <span>Tick two to compare</span>}
+          {shown > 1 && (
+            <span aria-live="polite">
+              {compareSnapshots.length === 0
+                ? "Click two snapshots to compare"
+                : compareSnapshots.length === 1
+                  ? "Click one more to compare"
+                  : "Ready to compare"}
+            </span>
+          )}
         </ListCaption>
         <List aria-label="Saved snapshots">
           {snapshots.map((snapshot) => {
@@ -428,6 +454,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
             const renaming = renamingId === snapshot.id;
             const confirming = confirmDeleteId === snapshot.id;
             const checkDisabled = !selected && selectionFull;
+            const side = sideOf(snapshot);
 
             return (
               <Row
@@ -435,8 +462,11 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                 $selected={selected}
                 $confirming={confirming}
                 data-snapshot-id={snapshot.id}
+                $disabled={checkDisabled}
+                title={checkDisabled ? "Two snapshots are selected. Untick one to pick another." : undefined}
+                // Clicking a row selects it for comparison; details have their own button
                 onClick={() => {
-                  if (!renaming && !confirming) onView(snapshot);
+                  if (!renaming && !confirming && !checkDisabled) onToggleCompare(snapshot);
                 }}
               >
                 <Check
@@ -483,12 +513,17 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                   <>
                     <Body>
                       <NameLine>
+                        {side && (
+                          <SideTag $side={side} aria-label={side === "A" ? "Side A, before" : "Side B, after"}>
+                            {side}
+                          </SideTag>
+                        )}
                         <Name title={name}>{name}</Name>
-                        <Time title={formatSnapshotDateTime(snapshot.timestamp)}>
-                          {formatSnapshotTime(snapshot.timestamp)}
-                        </Time>
                       </NameLine>
-                      <Meta title={snapshot.url}>{meta}</Meta>
+                      {/* The time sits with the details so a narrow panel keeps the name readable */}
+                      <Meta title={`${formatSnapshotDateTime(snapshot.timestamp)} · ${snapshot.url}`}>
+                        <Time>{formatSnapshotTime(snapshot.timestamp)}</Time> · {meta}
+                      </Meta>
                     </Body>
                     <RowActions onClick={(e) => e.stopPropagation()}>
                       {onCompareWithCurrentPage && (
@@ -502,6 +537,9 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                           </IconButton>
                         </HoverActions>
                       )}
+                      <IconButton label={`View details of ${name}`} size={28} onClick={() => onView(snapshot)}>
+                        <IconEye />
+                      </IconButton>
                       <RowMenu
                         name={name}
                         withCurrent={!!onCompareWithCurrentPage}

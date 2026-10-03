@@ -416,7 +416,7 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
                 <span className="flex-1 min-w-0 truncate text-xs text-gray-600" aria-live="polite">
                   {compareSnapshots.length === 2
                     ? "2 selected"
-                    : "1 selected · tick 1 more"}
+                    : "1 selected · pick 1 more"}
                 </span>
                 {onClearCompare && (
                   <Button size="middle" onClick={onClearCompare}>

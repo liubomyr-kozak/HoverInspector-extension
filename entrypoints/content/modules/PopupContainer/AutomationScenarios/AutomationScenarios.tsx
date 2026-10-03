@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Tabs } from "antd";
-import { IconBolt, IconCalendar, IconCode, IconHistory, IconListDetails, IconServer } from "@tabler/icons-react";
+import { IconBolt, IconCalendar, IconCode, IconHistory, IconListDetails, IconServer, IconSettings } from "@tabler/icons-react";
 
 import ScenariosListTab from "./tabs/ScenariosListTab.tsx";
 import FunctionsTab from "./tabs/FunctionsTab";
 import SchedulesTab from "./tabs/SchedulesTab";
 import TriggersTab from "./tabs/TriggersTab";
 import ExecutionHistoryTab from "./tabs/ExecutionHistoryTab";
+import SettingsTab from "./tabs/SettingsTab";
 import ServerTab from "./tabs/ServerTab";
 import { useServerTabVisibility } from "./hooks/useServerTabVisibility";
 import { useServerSettings } from "./hooks/useServerSettings";
@@ -185,6 +186,15 @@ export const AutomationScenarios: React.FC = () => {
             children: (
               <div className="w-full">
                 <ExecutionHistoryTab />
+              </div>
+            ),
+          },
+          {
+            key: "settings",
+            label: tabLabel("settings", IconSettings, "Settings"),
+            children: (
+              <div className="w-full">
+                <SettingsTab />
               </div>
             ),
           },

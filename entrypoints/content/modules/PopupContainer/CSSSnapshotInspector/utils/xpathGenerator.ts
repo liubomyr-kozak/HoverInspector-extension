@@ -160,33 +160,34 @@ const generateXPathWithAttributes = (element: Element): string => {
   return parts.join('') || '/';
 };
 
+/** True when `xpath` finds exactly this element; a selector shared with other elements highlights the wrong one */
+const matchesOnly = (xpath: string, element: Element): boolean => {
+  try {
+    const result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    return result.snapshotLength === 1 && result.snapshotItem(0) === element;
+  } catch {
+    return false;
+  }
+};
+
+/** `contains(@class, 'a')` also matches `ab`; pad both sides with spaces to match whole class names */
+const hasClass = (name: string) => `contains(concat(' ', normalize-space(@class), ' '), ' ${name} ')`;
+
 /**
- * Generates optimized XPath using the best available selector
+ * Generates optimized XPath: the shortest selector (id, classes, another attribute) that finds only this
+ * element, else the absolute path
  */
 const generateOptimizedXPath = (element: Element): string => {
-  // Priority: ID > unique class > unique attribute > position
-  if (element.id) {
-    return `//${element.tagName.toLowerCase()}[@id='${element.id}']`;
-  }
-  
-  // Check for unique class combinations
-  if (element.classList.length > 0) {
-    const classSelector = Array.from(element.classList).join(' and contains(@class,');
-    const xpath = `//${element.tagName.toLowerCase()}[contains(@class,'${classSelector}')]`;
-    // This is a simplified check - in practice, you'd want to verify uniqueness
-    return xpath;
-  }
-  
-  // Check for unique attributes
-  const skipAttrs = new Set(['id', 'class', 'style']);
-  for (const attr of element.attributes) {
-    if (!skipAttrs.has(attr.name) && attr.value) {
-      return `//${element.tagName.toLowerCase()}[@${attr.name}='${attr.value}']`;
-    }
-  }
-  
-  // Fall back to absolute path
-  return generateAbsoluteXPath(element);
+  const tag = element.tagName.toLowerCase();
+  const skipAttrs = new Set(["id", "class", "style"]);
+  const attribute = Array.from(element.attributes).find((attr) => !skipAttrs.has(attr.name) && attr.value && !attr.value.includes("'"));
+  const classes = Array.from(element.classList).filter((c) => !c.includes("'"));
+  const candidates = [
+    element.id && !element.id.includes("'") ? `//${tag}[@id='${element.id}']` : "",
+    classes.length ? `//${tag}[${classes.map(hasClass).join(" and ")}]` : "",
+    attribute ? `//${tag}[@${attribute.name}='${attribute.value}']` : "",
+  ];
+  return candidates.find((xpath) => xpath && matchesOnly(xpath, element)) || generateAbsoluteXPath(element);
 };
 
 /**
