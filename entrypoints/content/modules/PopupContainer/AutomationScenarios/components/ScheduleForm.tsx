@@ -70,8 +70,9 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios,
     : {
         enabled: true,
         frequency: ScheduleFrequency.ONCE,
-        startDate: dayjs(),
-        startTime: dayjs(),
+        // A few minutes from now: a one-time schedule set to the current minute would already be in the past
+        startDate: dayjs().add(5, "minute"),
+        startTime: dayjs().add(5, "minute"),
       };
 
   // Initialize React Hook Form

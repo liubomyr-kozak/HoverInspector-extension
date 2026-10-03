@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Tabs } from "antd";
-import { IconBolt, IconCalendar, IconHistory, IconServer, IconMinus, IconMaximize } from "@tabler/icons-react";
+import { IconBolt, IconCalendar, IconCode, IconHistory, IconListDetails, IconServer } from "@tabler/icons-react";
 
 import ScenariosListTab from "./tabs/ScenariosListTab.tsx";
 import FunctionsTab from "./tabs/FunctionsTab";
@@ -98,6 +98,14 @@ export const AutomationScenarios: React.FC = () => {
     return null;
   }
 
+  // Tabs show their icon, and their name only when selected, so they all fit in the narrow panel
+  const tabLabel = (key: string, Icon: React.ComponentType<{ size?: number }>, title: string) => (
+    <span className="flex items-center" title={title} aria-label={title}>
+      <Icon size={16} />
+      {activeTab === key && <span style={{ marginLeft: "4px" }}>{title}</span>}
+    </span>
+  );
+
   return (
     <div className="w-full">
       <PortalModalHeader portalId={HeaderPortalId.SCENARIOS_TAB}>
@@ -130,12 +138,13 @@ export const AutomationScenarios: React.FC = () => {
 
       <Tabs
         activeKey={activeTab}
+        tabBarGutter={16}
         onChange={setActiveTab}
         destroyOnHidden
         items={[
           {
             key: "scenarios",
-            label: "Scenarios",
+            label: tabLabel("scenarios", IconListDetails, "Scenarios"),
             children: (
               <div className="w-full">
                 <ScenariosListTab />
@@ -146,7 +155,7 @@ export const AutomationScenarios: React.FC = () => {
             ? [
                 {
                   key: "functions",
-                  label: "Functions",
+                  label: tabLabel("functions", IconCode, "Functions"),
                   children: (
                     <div className="w-full">
                       <FunctionsTab />
@@ -157,12 +166,7 @@ export const AutomationScenarios: React.FC = () => {
             : []),
           {
             key: "schedules",
-            label: (
-              <span className="flex items-center">
-                <IconCalendar size={16} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                Schedules
-              </span>
-            ),
+            label: tabLabel("schedules", IconCalendar, "Schedules"),
             children: (
               <div className="w-full">
                 <SchedulesTab />
@@ -171,12 +175,7 @@ export const AutomationScenarios: React.FC = () => {
           },
           {
             key: "triggers",
-            label: (
-              <span className="flex items-center">
-                <IconBolt size={16} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                Triggers
-              </span>
-            ),
+            label: tabLabel("triggers", IconBolt, "Triggers"),
             children: (
               <div className="w-full">
                 <TriggersTab />
@@ -185,12 +184,7 @@ export const AutomationScenarios: React.FC = () => {
           },
           {
             key: "history",
-            label: (
-              <span className="flex items-center">
-                <IconHistory size={16} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                Execution History
-              </span>
-            ),
+            label: tabLabel("history", IconHistory, "History"),
             children: (
               <div className="w-full">
                 <ExecutionHistoryTab />
@@ -201,12 +195,7 @@ export const AutomationScenarios: React.FC = () => {
             ? [
                 {
                   key: "server",
-                  label: (
-                    <span className="flex items-center">
-                      <IconServer size={16} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                      Server
-                    </span>
-                  ),
+                  label: tabLabel("server", IconServer, "Server"),
                   children: (
                     <div className="w-full">
                       <ServerTab onHide={hideServerTab} />
