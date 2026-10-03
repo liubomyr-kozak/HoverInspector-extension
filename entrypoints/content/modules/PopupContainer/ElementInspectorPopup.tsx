@@ -80,8 +80,8 @@ export const ElementInspectorPopup = () => {
         )}
 
         {renderToggle(
-          "Single Select",
-          "When enabled, only allows selecting one element at a time",
+          "Hover Only",
+          "Inspect only the element under the cursor; clicks don't select a source element",
           isSingleSelectValue,
           () => {
             dispatch(setIsSingleSelect(!isSingleSelect));
@@ -91,7 +91,7 @@ export const ElementInspectorPopup = () => {
 
         {renderToggle(
           "Show All Borders",
-          "When enabled, shows borders on all elements when hovering",
+          "Outline every element on the page to see the layout structure",
           showAllBordersValue,
           () => {
             dispatch(setShowAllBorders(!showAllBorders));
@@ -140,8 +140,8 @@ export const ElementInspectorPopup = () => {
 
         {isSingleSelect &&
           renderToggle(
-            "Single Select",
-            "When enabled, only allows selecting one element at a time",
+            "Hover Only",
+            "Inspect only the element under the cursor; clicks don't select a source element",
             isSingleSelectValue,
             () => {
               dispatch(setIsSingleSelect(!isSingleSelect));
@@ -152,7 +152,7 @@ export const ElementInspectorPopup = () => {
         {showAllBorders &&
           renderToggle(
             "Show All Borders",
-            "When enabled, shows borders on all elements when hovering",
+            "Outline every element on the page to see the layout structure",
             showAllBordersValue,
             () => {
               dispatch(setShowAllBorders(!showAllBorders));

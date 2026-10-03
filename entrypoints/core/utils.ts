@@ -61,10 +61,13 @@ export const setMargin = (
   hoverNodeParams: any,
 ) => {
   if (hoverNodeParams) {
-    const topBorder = parseInt(hoverNodeParams["margin-top"]);
-    const leftBorder = parseInt(hoverNodeParams["margin-left"]);
-    const rightBorder = parseInt(hoverNodeParams["margin-right"]);
-    const bottomBorder = parseInt(hoverNodeParams["margin-bottom"]);
+    // Negative margins pull neighbours in rather than adding space around the box, so they are
+    // drawn as no margin (a negative border width is invalid and left the previous element's value)
+    const marginSize = (value) => Math.max(0, parseFloat(value) || 0);
+    const topBorder = marginSize(hoverNodeParams["margin-top"]);
+    const leftBorder = marginSize(hoverNodeParams["margin-left"]);
+    const rightBorder = marginSize(hoverNodeParams["margin-right"]);
+    const bottomBorder = marginSize(hoverNodeParams["margin-bottom"]);
 
     containerMargin.style.top = `${top - topBorder}px`;
     containerMargin.style.left = `${left - leftBorder}px`;
@@ -72,10 +75,10 @@ export const setMargin = (
     containerMargin.style.height = `${height + topBorder + bottomBorder + 1}px`;
     containerMargin.style.display = `block`;
 
-    containerMargin.style.borderTopWidth = `${hoverNodeParams["margin-top"]}`;
-    containerMargin.style.borderBottomWidth = `${hoverNodeParams["margin-bottom"]}`;
-    containerMargin.style.borderLeftWidth = `${hoverNodeParams["margin-left"]}`;
-    containerMargin.style.borderRightWidth = `${hoverNodeParams["margin-right"]}`;
+    containerMargin.style.borderTopWidth = `${topBorder}px`;
+    containerMargin.style.borderBottomWidth = `${bottomBorder}px`;
+    containerMargin.style.borderLeftWidth = `${leftBorder}px`;
+    containerMargin.style.borderRightWidth = `${rightBorder}px`;
   }
 };
 
