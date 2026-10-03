@@ -10,6 +10,7 @@ import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/Pop
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { NOTE_TAKING_TOOLS } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { onToggleFeatureMinimized } from "@entrypoints/content/store/app/saga-action/app.saga.action";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 
 const HEADER_PORTAL_ID = "note-taking-tools-header";
 
@@ -28,13 +29,9 @@ export const NoteTakingToolsIntegration: React.FC = () => {
           <FeatureIcon icon={NOTE_TAKING_TOOLS.icon} />
           <FeatureTitleText title={NOTE_TAKING_TOOLS.title}>{NOTE_TAKING_TOOLS.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
-            <div
-              className="ml-auto cursor-pointer p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center"
-              onClick={() => dispatch(onToggleFeatureMinimized.getPayload({ featureKey: NOTE_TAKING_TOOLS.id }))}
-              title="Minimize Note Taking Tools"
-            >
-              <TbWindowMinimize className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100" />
-            </div>
+            <IconButton label="Minimize Note Taking Tools" onClick={() => dispatch(onToggleFeatureMinimized.getPayload({ featureKey: NOTE_TAKING_TOOLS.id }))}>
+                <TbWindowMinimize />
+              </IconButton>
           </PortalModalHeaderButtons>
         </FeatureTitle>
       </PortalModalHeader>

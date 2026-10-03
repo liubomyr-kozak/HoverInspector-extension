@@ -86,12 +86,13 @@ export function Sidebar({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search notes..."
+            aria-label="Search notes"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 bg-muted border-0"
+            className="pl-9 h-8 bg-input-background border border-input"
           />
         </div>
-        <Button onClick={onNewNote} size="sm" className="h-9 gap-1.5" title="New note">
+        <Button onClick={onNewNote} size="sm" className="h-8 gap-1.5" title="New note">
           <Plus className="h-4 w-4" />
           New
         </Button>
