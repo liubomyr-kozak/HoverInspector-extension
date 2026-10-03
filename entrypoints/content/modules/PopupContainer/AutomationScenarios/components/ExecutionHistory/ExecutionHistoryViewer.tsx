@@ -210,7 +210,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
     }
   };
 
-  // Table columns
+  // Table columns: three narrow columns so the table fits a 350-450px panel without scrolling sideways
   const columns = [
     {
       title: "Scenario",
@@ -218,61 +218,63 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
       key: "scenario",
       render: (scenarioId: string, record: ExecutionHistoryEntry) => {
         const scenarioTitle = scenarios[scenarioId]?.title || record.scenarioTitle;
-        return <Text ellipsis={{ tooltip: scenarioTitle }}>{scenarioTitle}</Text>;
+        return (
+          <div style={{ minWidth: 0 }}>
+            <Text strong ellipsis={{ tooltip: scenarioTitle }} style={{ display: "block", maxWidth: "100%" }}>
+              {scenarioTitle}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {formatTimestamp(record.executionTime)} · {formatDuration(record.duration)}
+            </Text>
+          </div>
+        );
       },
-    },
-    {
-      title: "Execution Time",
-      dataIndex: "executionTime",
-      key: "executionTime",
-      render: (text: string) => formatTimestamp(text),
-    },
-    {
-      title: "Duration",
-      dataIndex: "duration",
-      key: "duration",
-      render: (text: number) => formatDuration(text),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: ExecutionStatus) => getStatusTag(status),
-    },
-    {
-      title: "Steps",
-      key: "steps",
-      render: (text: string, record: ExecutionHistoryEntry) => (
-        <span>
-          {record.stepsCompleted} / {record.totalSteps}
-        </span>
+      width: 96,
+      render: (status: ExecutionStatus, record: ExecutionHistoryEntry) => (
+        <div>
+          {getStatusTag(status)}
+          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+            {record.stepsCompleted} / {record.totalSteps} steps
+          </div>
+        </div>
       ),
     },
     {
-      title: "Actions",
+      title: "",
       key: "actions",
+      width: 76,
       render: (text: string, record: ExecutionHistoryEntry) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button type="text" icon={<EyeOutlined />} onClick={() => viewExecutionDetails(record)} />
+        <Space size={0}>
+          <Tooltip title="View details">
+            <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => viewExecutionDetails(record)} />
           </Tooltip>
           <Tooltip title="Export">
-            <Button type="text" icon={<DownloadOutlined />} onClick={() => exportExecutionHistoryEntry(record)} />
+            <Button
+              type="text"
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={() => exportExecutionHistoryEntry(record)}
+            />
           </Tooltip>
-          <Tooltip title="Delete">
-            <Popconfirm
-              title="Are you sure you want to delete this execution history entry?"
-              onConfirm={() => deleteExecutionHistoryEntry(record.id)}
-              okText="Yes"
-              cancelText="No"
-              getPopupContainer={() =>
-                // @ts-ignore
-                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-              }
-            >
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
-          </Tooltip>
+          <Popconfirm
+            title="Delete this history entry?"
+            onConfirm={() => deleteExecutionHistoryEntry(record.id)}
+            okText="Delete"
+            cancelText="Cancel"
+            getPopupContainer={() =>
+              // @ts-ignore
+              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+            }
+          >
+            <Tooltip title="Delete">
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+            </Tooltip>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -287,111 +289,115 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
   };
 
   return (
-    <Card>
-      <div style={{ marginBottom: "16px" }}>
-        <Space wrap>
-          <Input
-            placeholder="Search scenarios"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            prefix={<SearchOutlined />}
-            style={{ width: 200 }}
-            allowClear
-          />
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+        <Input
+          placeholder="Search scenarios"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          prefix={<SearchOutlined />}
+          style={{ gridColumn: "1 / -1" }}
+          allowClear
+        />
 
-          <RangePicker value={dateRange} onChange={(dates) => setDateRange(dates)} style={{ width: 250 }} />
+        <RangePicker
+          value={dateRange}
+          onChange={(dates) => setDateRange(dates)}
+          style={{ gridColumn: "1 / -1" }}
+          getPopupContainer={() =>
+            // @ts-ignore
+            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+          }
+        />
 
-          <Select
-            placeholder="Filter by status"
-            value={statusFilter || undefined}
-            onChange={(value) => setStatusFilter(value || "")}
-            style={{ width: 150 }}
-            allowClear
-            getPopupContainer={() =>
-              // @ts-ignore
-              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-            }
-          >
-            <Option value={ExecutionStatus.SUCCESS}>Success</Option>
-            <Option value={ExecutionStatus.ERROR}>Error</Option>
-            <Option value={ExecutionStatus.WARNING}>Warning</Option>
-            <Option value={ExecutionStatus.RUNNING}>Running</Option>
-            <Option value={ExecutionStatus.PAUSED}>Paused</Option>
-            <Option value={ExecutionStatus.CANCELLED}>Cancelled</Option>
-            <Option value={ExecutionStatus.SKIPPED}>Skipped</Option>
-          </Select>
+        <Select
+          placeholder="Status"
+          value={statusFilter || undefined}
+          onChange={(value) => setStatusFilter(value || "")}
+          allowClear
+          getPopupContainer={() =>
+            // @ts-ignore
+            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+          }
+        >
+          <Option value={ExecutionStatus.SUCCESS}>Success</Option>
+          <Option value={ExecutionStatus.ERROR}>Error</Option>
+          <Option value={ExecutionStatus.WARNING}>Warning</Option>
+          <Option value={ExecutionStatus.RUNNING}>Running</Option>
+          <Option value={ExecutionStatus.PAUSED}>Paused</Option>
+          <Option value={ExecutionStatus.CANCELLED}>Cancelled</Option>
+          <Option value={ExecutionStatus.SKIPPED}>Skipped</Option>
+        </Select>
 
-          <Select
-            placeholder="Filter by scenario"
-            value={scenarioFilter || undefined}
-            onChange={(value) => setScenarioFilter(value || "")}
-            style={{ width: 200 }}
-            allowClear
-            showSearch
-            optionFilterProp="children"
-            getPopupContainer={() =>
-              // @ts-ignore
-              (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
-            }
-          >
-            {Object.entries(scenarios).map(([id, scenario]) => (
-              <Option key={id} value={id}>
-                {scenario.title}
-              </Option>
-            ))}
-          </Select>
-
-          <Button icon={<FilterOutlined />} onClick={resetFilters}>
-            Reset Filters
-          </Button>
-
-          <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-            Refresh
-          </Button>
-        </Space>
+        <Select
+          placeholder="Scenario"
+          value={scenarioFilter || undefined}
+          onChange={(value) => setScenarioFilter(value || "")}
+          allowClear
+          showSearch
+          optionFilterProp="children"
+          getPopupContainer={() =>
+            // @ts-ignore
+            (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+          }
+        >
+          {Object.entries(scenarios).map(([id, scenario]) => (
+            <Option key={id} value={id}>
+              {scenario.title}
+            </Option>
+          ))}
+        </Select>
       </div>
 
-      <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between" }}>
-        <Text>
+      <div style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <Text type="secondary" style={{ whiteSpace: "nowrap" }}>
           {selectedRowKeys.length > 0
-            ? `Selected ${selectedRowKeys.length} of ${filteredEntries.length} entries`
-            : `${filteredEntries.length} entries`}
+            ? `${selectedRowKeys.length} of ${filteredEntries.length} selected`
+            : `${filteredEntries.length} ${filteredEntries.length === 1 ? "entry" : "entries"}`}
         </Text>
 
-        <Space>
-          <Button
-            type="primary"
-            icon={<ExportOutlined />}
-            onClick={exportSelectedEntries}
-            disabled={selectedRowKeys.length === 0}
-          >
-            Export Selected
-          </Button>
+        <Space size={4}>
+          <Tooltip title="Reset filters">
+            <Button size="small" icon={<FilterOutlined />} onClick={resetFilters} />
+          </Tooltip>
+          <Tooltip title="Refresh">
+            <Button size="small" icon={<ReloadOutlined />} onClick={onRefresh} />
+          </Tooltip>
+          <Tooltip title="Export selected">
+            <Button
+              size="small"
+              icon={<ExportOutlined />}
+              onClick={exportSelectedEntries}
+              disabled={selectedRowKeys.length === 0}
+            />
+          </Tooltip>
           <Popconfirm
             title="Delete selected entries?"
-            description={`Are you sure you want to delete ${selectedRowKeys.length} execution history entries? This action cannot be undone.`}
+            description={`Delete ${selectedRowKeys.length} history entries? This can't be undone.`}
             onConfirm={deleteSelectedEntries}
-            okText="Yes"
-            cancelText="No"
+            okText="Delete"
+            cancelText="Cancel"
             disabled={selectedRowKeys.length === 0}
             getPopupContainer={() =>
               // @ts-ignore
               (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
             }
           >
-            <Button danger icon={<DeleteOutlined />} disabled={selectedRowKeys.length === 0}>
-              Delete Selected
-            </Button>
+            <Tooltip title="Delete selected">
+              <Button size="small" danger icon={<DeleteOutlined />} disabled={selectedRowKeys.length === 0} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       </div>
 
       <Table
+        size="small"
         rowSelection={rowSelection}
         columns={columns}
         dataSource={filteredEntries}
         rowKey="id"
-        pagination={{ pageSize: 10 }}
+        tableLayout="fixed"
+        pagination={{ pageSize: 10, size: "small", hideOnSinglePage: true }}
       />
 
       <Drawer
@@ -454,7 +460,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
           </>
         )}
       </Drawer>
-    </Card>
+    </div>
   );
 };
 
