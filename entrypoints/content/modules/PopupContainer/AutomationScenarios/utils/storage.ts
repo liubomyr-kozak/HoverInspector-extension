@@ -18,6 +18,11 @@ import {
   TriggerMap,
 } from "../types.ts";
 import LocalAPIServer from "@/entrypoints/core/services/api/LocalAPIServer.ts";
+import {
+  getExpiredExecutionHistoryIds,
+  MAX_EXECUTION_HISTORY_ENTRIES,
+  normalizeExecutionHistoryEntry,
+} from "./executionHistory.ts";
 
 /**
  * Retrieves all automation scenarios from storage
@@ -664,7 +669,7 @@ export const getAllExecutionHistoryFromLocalStorage = async (): Promise<Executio
     // Filter for items with 'ex_hist_' prefix
     Object.keys(allItems).forEach((key) => {
       if (key.startsWith("ex_hist_")) {
-        executionHistory[key] = allItems[key] as unknown as ExecutionHistoryEntry;
+        executionHistory[key] = normalizeExecutionHistoryEntry(key, allItems[key]);
       }
     });
 
@@ -718,6 +723,31 @@ export const removeExecutionHistoryFromLocalStorage = async (key: string): Promi
   } catch (e) {
     console.error("Error removing execution history entry from storage:", e);
     return false;
+  }
+};
+
+/**
+ * Deletes the oldest execution history entries so at most `max` are kept
+ *
+ * @returns {Promise<string[]>} Promise that resolves to the keys of the deleted entries
+ */
+export const pruneExecutionHistoryInLocalStorage = async (
+  max: number = MAX_EXECUTION_HISTORY_ENTRIES,
+): Promise<string[]> => {
+  try {
+    const executionHistory = await getAllExecutionHistoryFromLocalStorage();
+    const expiredIds = getExpiredExecutionHistoryIds(executionHistory, max);
+
+    const removed: string[] = [];
+    for (const id of expiredIds) {
+      if (await removeExecutionHistoryFromLocalStorage(id)) {
+        removed.push(id);
+      }
+    }
+    return removed;
+  } catch (e) {
+    console.error("Error pruning execution history:", e);
+    return [];
   }
 };
 

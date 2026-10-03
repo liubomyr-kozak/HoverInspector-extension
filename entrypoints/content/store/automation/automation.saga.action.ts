@@ -9,6 +9,7 @@ import {
   getAllScenariosFromLocalStorage,
   getAllSchedulesFromLocalStorage,
   getAllTriggersFromLocalStorage,
+  pruneExecutionHistoryInLocalStorage,
   removeExecutionHistoryFromLocalStorage,
   removeFunctionFromLocalStorage,
   removeScenarioFromLocalStorage,
@@ -39,6 +40,7 @@ import {
   shouldResumeSession,
   startExecutionSession,
 } from "../../modules/PopupContainer/AutomationScenarios/utils/executionSession.ts";
+import { createExecutionHistoryEntry } from "../../modules/PopupContainer/AutomationScenarios/utils/executionHistory.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
@@ -295,7 +297,13 @@ export const saveExecutionHistoryWatcher = sagaEnhancer(function* saveExecutionH
 
     if (success) {
       // Update Redux store
-      yield put(automationActions.addExecutionHistory({ id: historyId, entry }));
+      yield put(automationActions.addExecutionHistory({ id: historyId, entry: { ...entry, id: historyId } }));
+
+      // Keep only the newest entries
+      const removedIds: string[] = yield call(pruneExecutionHistoryInLocalStorage);
+      if (removedIds.length > 0) {
+        yield put(automationActions.removeMultipleExecutionHistory(removedIds));
+      }
     } else {
       // Handle error
       console.error("Failed to save execution history");
@@ -792,17 +800,19 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         // from the step execution callback
       }
 
-      // Save the execution log to execution history
-      const historyEntry = {
-        scenarioId: id,
-        scenarioTitle: scenario.title,
-        executionLog: historyLog,
-        timestamp: new Date().toISOString(),
-      };
-
       // Generate a unique ID for this execution history entry
       const historyId = yield call(generateUniqueId);
       const executionHistoryId = `ex_hist_${historyId}`;
+
+      // Save the execution log to execution history
+      const historyEntry = createExecutionHistoryEntry({
+        id: executionHistoryId,
+        scenarioId: id,
+        scenarioTitle: scenario.title,
+        log: { ...historyLog, status: executionLog.status },
+        totalSteps: singleStep ? 1 : totalStepsInScenario,
+        stepsBefore: singleStep ? 0 : startFromStep,
+      });
 
       // Save the execution history entry
       yield put(saveExecutionHistoryWatcher.getPayload({ id: executionHistoryId, entry: historyEntry }));
@@ -884,22 +894,23 @@ export const resumeExecutionWatcher = sagaEnhancer(function* resumeExecutionWatc
     if (session.nextStepIndex >= (scenario.data?.length || 0)) {
       yield call(clearExecutionSession);
       const startedAt = session.startedAt || session.updatedAt;
-      const historyId = yield call(generateUniqueId);
+      const historyId = `ex_hist_${yield call(generateUniqueId)}`;
       yield put(
         saveExecutionHistoryWatcher.getPayload({
-          id: `ex_hist_${historyId}`,
-          entry: {
+          id: historyId,
+          entry: createExecutionHistoryEntry({
+            id: historyId,
             scenarioId: session.scenarioId,
             scenarioTitle: scenario.title,
-            executionLog: {
+            log: {
               entries: [],
               startTime: new Date(startedAt).toISOString(),
               endTime: new Date().toISOString(),
               totalDuration: Date.now() - startedAt,
               status: ExecutionStatus.SUCCESS,
             },
-            timestamp: new Date().toISOString(),
-          },
+            totalSteps: scenario.data?.length || 0,
+          }),
         }),
       );
       return;
