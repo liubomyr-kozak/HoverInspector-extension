@@ -53,6 +53,17 @@ const trySaveSnapshot = async (snapshot: CSSSnapshot): Promise<boolean> => {
 };
 
 /**
+ * Saves a single snapshot (e.g. after renaming it) without rewriting the others. Falls back to the
+ * minimal version when the full one does not fit, like saveSnapshots. Throws when neither could be stored.
+ */
+export const saveSnapshot = async (snapshot: CSSSnapshot): Promise<void> => {
+  const optimized = optimizeSnapshot(snapshot);
+  if (await trySaveSnapshot(optimized)) return;
+  if (await trySaveSnapshot(createMinimalSnapshot(optimized))) return;
+  throw new Error(`Failed to save snapshot ${snapshot.id} to extension storage`);
+};
+
+/**
  * Зберігає знімки у сховище
  */
 export const saveSnapshots = async (snapshots: CSSSnapshot[]): Promise<void> => {
@@ -212,16 +223,8 @@ const createMinimalSnapshot = (snapshot: CSSSnapshot): CSSSnapshot => {
     url: snapshot.url,
     title: snapshot.title,
     elementCount: Math.min(snapshot.elementCount, 100),
-    root: {
-      id: 'root-minimal',
-      path: ['body'],
-      tag: 'body',
-      classes: [],
-      attributes: {},
-      bounds: { top: 0, left: 0, width: 0, height: 0 },
-      styles: {},
-      children: [],
-    },
+    // Keep the root element itself (tag, xpath, styles) so the snapshot still opens and compares
+    root: { ...snapshot.root, children: [] },
     metadata: snapshot.metadata,
   };
 };

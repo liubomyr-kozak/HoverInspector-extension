@@ -28,6 +28,7 @@ import {
 import { PERFORMANCE_LIMITS } from "../constants";
 import { getDefaultStylesForTag } from "./defaultStyles";
 import { generateXPathVariants } from "./xpathGenerator";
+import { getSnapshotLocation, getSnapshotName } from "./snapshotLabels";
 
 // No baseline cache needed when diffing strictly against UA defaults
 
@@ -209,7 +210,7 @@ const buildClassRuleIndex = (): ClassRuleIndex => {
 const extractClassRules = (element: Element, index: ClassRuleIndex): Record<string, Record<string, string>> => {
   const classRules: Record<string, Record<string, string>> = {};
 
-  for (const className of Array.from(element.classList)) {
+  for (const className of getPageClasses(element)) {
     const rules = index.get(className);
     if (!rules) continue;
 
@@ -229,6 +230,15 @@ const extractClassRules = (element: Element, index: ClassRuleIndex): Record<stri
 
   return classRules;
 };
+
+/**
+ * Classes the extension itself puts on page elements while it works (react-draggable marks <body> while a
+ * panel is dragged or resized; the inspector marks highlighted nodes). They are not part of the page and
+ * made every snapshot taken mid-drag differ from the next one.
+ */
+const EXTENSION_CLASS = /^(react-draggable|hover-inspector)/;
+export const getPageClasses = (element: Element): string[] =>
+  Array.from(element.classList).filter((className) => !EXTENSION_CLASS.test(className));
 
 /**
  * Будує вузол знімка для елемента, зберігаючи лише зміни відносно базового стану
@@ -261,7 +271,7 @@ const buildSnapshotNode = (
   // Отримуємо основні властивості
   const id = element.id || undefined;
   const xpath = generateXPathVariants(element);
-  const classes = Array.from(element.classList);
+  const classes = getPageClasses(element);
   const attributes: Record<string, string> = {};
 
   // Збираємо атрибути (окрім id та class)
@@ -390,7 +400,8 @@ export const createCSSSnapshot = async (title?: string, options: SnapshotOptions
     id: `snapshot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     timestamp: Date.now(),
     url: window.location.href,
-    title: title || document.title || window.location.hostname,
+    // Auto name: the page title, else its address ("localhost/checkout")
+    title: title || document.title.trim() || getSnapshotLocation(window.location.href) || "Page",
     elementCount: stats.totalNodes,
     root: tree,
     metadata: {
@@ -443,10 +454,10 @@ export const createCurrentSnapshotFor = async (snapshot: CSSSnapshot): Promise<C
 
   if (isElementSnapshot && !element) {
     // Comparing the element with the whole page would mark everything as changed
-    throw new Error(`The element of "${snapshot.title}" is not on this page`);
+    throw new Error(`"${getSnapshotName(snapshot)}" is not on this page any more, so it can't be compared with it`);
   }
   if (!element) {
-    return createCSSSnapshot("Current Page");
+    return createCSSSnapshot("Current page");
   }
 
   const { tree, stats } = buildSnapshotTree(element, {
