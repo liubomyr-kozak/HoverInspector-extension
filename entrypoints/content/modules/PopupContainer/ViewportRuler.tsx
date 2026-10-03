@@ -19,6 +19,23 @@ export const breakpoints = [
   { label: "🖥️ WQHD / 2K (2560px)", value: 2560 },
 ];
 
+/**
+ * Asks the background to resize the browser window so the page gets `width` px, and resolves with the width
+ * the page actually ends up with: Chrome won't make a window narrower than about 500px or wider than the screen.
+ */
+export const resizeViewportTo = async (width: number): Promise<number> => {
+  await ExtensionStorageManager.changeCurrentWindowSize(width);
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  return window.innerWidth;
+};
+
+export const describeResizeMiss = (requested: number, actual: number) =>
+  Math.abs(actual - requested) <= 2
+    ? ""
+    : `Asked for ${requested}px, but the page is ${actual}px wide: Chrome can't make the window that ${
+        requested < actual ? "narrow" : "wide"
+      }.${requested < actual ? " For phone sizes use DevTools device mode (Ctrl+Shift+M)." : ""}`;
+
 const RulerWrapper = styled.div`
   position: fixed;
   top: 0;
@@ -93,6 +110,22 @@ const TooltipLabel = styled.div<{ $x: number }>`
   }
 `;
 
+// Top right, clear of the feature panel that usually sits on the left
+const ResizeMissLabel = styled.div`
+  position: fixed;
+  top: 27px;
+  right: 8px;
+  max-width: 420px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  background: #fff7e6;
+  color: #874d00;
+  border: 1px solid #ffd591;
+  border-radius: 0 0 4px 4px;
+  z-index: ${ZINDEX_RULER_WRAPPER};
+`;
+
 const CurrentSizeLabel = styled.div`
   position: fixed;
   top: 0;
@@ -115,14 +148,20 @@ export const ViewportRuler = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleLabelClick = (width: number) => {
-    try {
-      // Працює тільки у відкритих popup-вікнах
-      // window.resizeTo(width, window.innerHeight);
+  const [resizeMiss, setResizeMiss] = useState("");
 
-      ExtensionStorageManager.changeCurrentWindowSize(width);
+  useEffect(() => {
+    if (!resizeMiss) return;
+    const timer = setTimeout(() => setResizeMiss(""), 6000);
+    return () => clearTimeout(timer);
+  }, [resizeMiss]);
+
+  const handleLabelClick = async (width: number) => {
+    try {
+      const actual = await resizeViewportTo(width);
+      setResizeMiss(describeResizeMiss(width, actual));
     } catch (e) {
-      console.warn("window.resizeTo is not available in this context");
+      setResizeMiss("The window could not be resized.");
     }
   };
 
@@ -146,6 +185,7 @@ export const ViewportRuler = () => {
         ))}
       </RulerWrapper>
       <CurrentSizeLabel>Current: {windowWidth}px</CurrentSizeLabel>
+      {resizeMiss && <ResizeMissLabel>{resizeMiss}</ResizeMissLabel>}
     </>
   );
 };
