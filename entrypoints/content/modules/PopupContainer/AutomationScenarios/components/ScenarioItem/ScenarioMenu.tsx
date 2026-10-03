@@ -62,6 +62,7 @@ const ScenarioMenu: React.FC<ScenarioMenuProps> = ({ id, anyExecuting }) => {
       okButtonProps={{ danger: true }}
       cancelText="Cancel"
       placement="bottomRight"
+      overlayStyle={{ maxWidth: 280 }}
       getPopupContainer={shadowBody}
       trigger={[]}
       onConfirm={() => {
