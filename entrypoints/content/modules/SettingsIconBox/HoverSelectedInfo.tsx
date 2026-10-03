@@ -67,7 +67,7 @@ const HoverSelectedInfo = () => {
   return (
     <SettingTab>
       <SettingTabHeader>
-        <Title level={5}>View Type </Title>
+        <Title level={5}>View type</Title>
         <CustomSegmented
           className="mb-5"
           value={viewType}
@@ -75,48 +75,44 @@ const HoverSelectedInfo = () => {
           options={[
             {
               value: "code",
-              label: "Style Code",
+              label: "Style code",
               icon: <IconCode size={16} />,
-              activeClassName: "bg-sky-500 text-sky-100",
             },
             {
               value: "ui",
-              label: "UI Details",
+              label: "UI details",
               icon: <IconBrandAbstract size={16} />,
-              activeClassName: "[background:linear-gradient(135deg,#ff7e5f,#feb47b)] text-orange-100",
             },
           ]}
-          inactiveClassName="bg-white text-gray-500 hover:bg-gray-100"
+          ariaLabel="View type"
         />
 
         {!isSingleSelect && (
           <>
-            <Title level={5}>Selected Element</Title>
+            <Title level={5}>Selected element</Title>
             <CustomSegmented
               className="mb-5"
               value={selectedElementType}
               onChange={handleSetSelectedElementType}
               options={[
                 {
-                  label: "source",
+                  label: "Source",
                   value: "selectedElement",
                   icon: <IconWashDryShade size={16} />,
-                  activeClassName: "bg-slate-500 text-slate-100",
                 },
                 {
-                  label: "target",
+                  label: "Target",
                   value: "hoverElement",
                   icon: <IconLayersSelected size={16} />,
-                  activeClassName: "bg-slate-500 text-slate-100",
                 },
               ]}
-              inactiveClassName="bg-white text-gray-500 hover:bg-gray-100"
+              ariaLabel="Selected element"
             />
             <div className="-mt-3 mb-4 text-xs text-gray-500">
               {isTargetLocked ? (
                 <>
                   Target locked. Click on the page to pick a new source, or{" "}
-                  <button type="button" className="text-sky-600 hover:underline" onClick={handleUnlockTarget}>
+                  <button type="button" className="text-blue-600 underline hover:text-blue-700" onClick={handleUnlockTarget}>
                     unlock it
                   </button>
                   .

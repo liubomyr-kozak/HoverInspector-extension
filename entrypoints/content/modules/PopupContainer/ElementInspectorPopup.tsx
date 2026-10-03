@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Popover, Switch } from "antd";
 import { IconInfoCircle, IconSettings, IconPointer } from "@tabler/icons-react";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 
 import HoverSelectedInfo from "@entrypoints/content/modules/SettingsIconBox/HoverSelectedInfo.tsx";
 import { onUpdateEventPreventDefaultWatcher } from "@entrypoints/content/store/app/saga-action/app.saga.action";
@@ -114,13 +115,14 @@ export const ElementInspectorPopup = () => {
               content={settingsContent}
               zIndex={1150}
               placement="topRight"
-              trigger="hover"
+              // Click as well as hover, so the settings also open from the keyboard
+              trigger={["hover", "click"]}
               // @ts-ignore
               getPopupContainer={() => document.querySelector("hover-inspector")!.shadowRoot as HTMLElement}
             >
-              <span className={`cursor-pointer text-gray-500 hover:text-gray-700 transition-colors ml-auto`}>
+              <IconButton label="Inspector settings" title="">
                 <IconSettings size={18} />
-              </span>
+              </IconButton>
             </Popover>
           </PortalModalHeaderButtons>
         </FeatureTitle>
