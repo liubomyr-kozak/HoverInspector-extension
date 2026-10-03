@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
-import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow } from "@tabler/icons-react";
+import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow, IconLayoutDashboard } from "@tabler/icons-react";
 import { Tabs } from "antd";
 
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import TypographyRules from "@entrypoints/content/modules/SettingsIconBox/components/TypographyRules.tsx";
+import DesignOverview from "@entrypoints/content/modules/SettingsIconBox/components/DesignOverview.tsx";
 import {
   PortalModalHeader,
   HeaderPortalId,
@@ -95,7 +96,7 @@ const ShadowTokensPane: React.FC<{ navigateToElement: NavigateToElement }> = ({ 
 };
 
 export const AnalyzePageUI = () => {
-  const [activeTab, setActiveTab] = useState("color-palette");
+  const [activeTab, setActiveTab] = useState("overview");
   const highlightManager = useHighlightOverlay();
 
   // Element chips in the token tabs scroll to and highlight their element
@@ -110,11 +111,21 @@ export const AnalyzePageUI = () => {
   const tabItems = useMemo(
     () => [
       {
+        key: "overview",
+        label: (
+          <span className="flex items-center gap-2">
+            <IconLayoutDashboard size={18} className="text-blue-600" />
+            <span className="font-medium">Overview</span>
+          </span>
+        ),
+        children: <DesignOverview />,
+      },
+      {
         key: "color-palette",
         label: (
           <span className="flex items-center gap-2">
             <IconColorSwatch size={18} className="text-purple-500" />
-            <span className="font-medium">Color Palette</span>
+            <span className="font-medium">Colors</span>
           </span>
         ),
         children: <ColorPaletteDefinition />,
@@ -124,7 +135,7 @@ export const AnalyzePageUI = () => {
         label: (
           <span className="flex items-center gap-2">
             <IconTypography size={18} className="text-green-600" />
-            <span className="font-medium">Typography Rules</span>
+            <span className="font-medium">Type</span>
           </span>
         ),
         children: <TypographyRules />,
@@ -134,7 +145,7 @@ export const AnalyzePageUI = () => {
         label: (
           <span className="flex items-center gap-2">
             <IconRuler size={18} className="text-blue-500" />
-            <span className="font-medium">Spacing Tokens</span>
+            <span className="font-medium">Spacing</span>
           </span>
         ),
         children: <SpacingTokensPane navigateToElement={navigateToElement} />,
@@ -144,7 +155,7 @@ export const AnalyzePageUI = () => {
         label: (
           <span className="flex items-center gap-2">
             <IconBorderRadius size={18} className="text-orange-500" />
-            <span className="font-medium">Border Tokens</span>
+            <span className="font-medium">Radii</span>
           </span>
         ),
         children: <BorderTokensPane navigateToElement={navigateToElement} />,
@@ -154,7 +165,7 @@ export const AnalyzePageUI = () => {
         label: (
           <span className="flex items-center gap-2">
             <IconShadow size={18} className="text-gray-500" />
-            <span className="font-medium">Shadow Tokens</span>
+            <span className="font-medium">Shadows</span>
           </span>
         ),
         children: <ShadowTokensPane navigateToElement={navigateToElement} />,
@@ -178,8 +189,8 @@ export const AnalyzePageUI = () => {
           onChange={setActiveTab}
           items={tabItems}
           className="analyze-page-tabs"
-          size="large"
-          tabBarGutter={24}
+          size="small"
+          tabBarGutter={16}
           // The "more tabs" dropdown would otherwise render into the page's <body>, outside our styles
           getPopupContainer={(trigger) =>
             (trigger.getRootNode() as ShadowRoot).querySelector?.("html > body") as HTMLElement ?? trigger.parentElement!
