@@ -1,8 +1,9 @@
 import React from "react";
-import { Badge, Button, Empty, List, Switch, Tag } from "antd";
+import { Badge, Button, Empty, List, Popconfirm, Switch, Tag } from "antd";
 import { IconCode, IconEdit, IconEye, IconTrash, IconWorld } from "@tabler/icons-react";
 import { TriggerConfig, TriggerMap, TriggerType } from "../types.ts";
 import { formatDistanceToNow } from "date-fns";
+import { shadowBody } from "../utils/popupContainer";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip";
 
 interface TriggerListProps {
@@ -112,9 +113,23 @@ const TriggerList: React.FC<TriggerListProps> = ({ triggers, activeTriggerID, on
               <Tooltip title="Edit Trigger" key="edit">
                 <Button type="text" icon={<IconEdit size={18} />} onClick={() => onEdit(key)} />
               </Tooltip>,
-              <Tooltip title="Delete Trigger" key="delete">
-                <Button type="text" danger icon={<IconTrash size={18} />} onClick={() => onDelete(key)} />
-              </Tooltip>,
+              <Popconfirm
+                key="delete"
+                title="Delete this trigger?"
+                description={`"${trigger.title}" will be removed. This can't be undone.`}
+                okText="Delete"
+                okButtonProps={{ danger: true }}
+                cancelText="Cancel"
+                placement="bottomRight"
+                getPopupContainer={shadowBody}
+                onConfirm={() => onDelete(key)}
+              >
+                <span>
+                  <Tooltip title="Delete Trigger">
+                    <Button type="text" danger icon={<IconTrash size={18} />} aria-label={`Delete ${trigger.title}`} />
+                  </Tooltip>
+                </span>
+              </Popconfirm>,
             ]}
           >
             <List.Item.Meta
