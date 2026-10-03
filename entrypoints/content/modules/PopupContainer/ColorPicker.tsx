@@ -246,7 +246,13 @@ const ColorPicker = () => {
       <CopyRow>
         <CurrentSwatch color={color} />
         {hexValue && (
-          <CopyButton onClick={() => copyToClipboard(hexValue)} title="Copy HEX" aria-label={`Copy ${hexValue}`}>
+          // The short HEX value never truncates; the long rgba() one shrinks first
+          <CopyButton
+            style={{ flexShrink: 0 }}
+            onClick={() => copyToClipboard(hexValue)}
+            title="Copy HEX"
+            aria-label={`Copy ${hexValue}`}
+          >
             <IconCopy size={14} /> <span>{hexValue}</span>
           </CopyButton>
         )}
