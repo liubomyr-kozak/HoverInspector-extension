@@ -33,20 +33,22 @@ const PopupContainer = ({ data, hoverElement }) => {
   const fontFamily = (data["font-family"] || "").split(",")[0].replace(/["']/g, "").trim();
 
   const hasText = !!isChildText(hoverElement?.childNodes);
+  // Not instanceof: elements inside same-origin iframes come from another realm
+  const isSvg = hoverElement?.namespaceURI === "http://www.w3.org/2000/svg";
   // SVG text is painted with fill, so its CSS color says nothing
-  const showTextColor = hasText && !!color && !(hoverElement instanceof SVGElement);
+  const showTextColor = hasText && !!color && !isSvg;
 
   // SVG shapes are painted with fill/stroke rather than background/color
   let svgFill = "";
   let svgStroke = "";
-  if (hoverElement instanceof SVGElement && hoverElement.localName !== "svg") {
+  if (isSvg && hoverElement.localName !== "svg") {
     const svgStyle = getComputedStyle(hoverElement);
     svgFill = svgStyle.fill && svgStyle.fill !== "none" ? svgStyle.fill : "";
     svgStroke = svgStyle.stroke && svgStyle.stroke !== "none" ? svgStyle.stroke : "";
   }
 
   // Images: the intrinsic size and alt text are what people usually check
-  const isImage = hoverElement instanceof HTMLImageElement;
+  const isImage = hoverElement?.localName === "img";
   const imageNatural = isImage && hoverElement.naturalWidth ? `${hoverElement.naturalWidth} × ${hoverElement.naturalHeight}px` : "";
   const imageAlt = isImage ? hoverElement.getAttribute("alt") : null;
 

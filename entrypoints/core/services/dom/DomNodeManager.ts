@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getRectInTopViewport } from "@entrypoints/shared/utils/frames";
 
 // @ts-nocheck
 const styleRulesList = [
@@ -218,7 +219,8 @@ class DomNodeManager {
     getBoundingClientRec(value) {
         const nodeEl = typeof value === 'string' ? this.get(value) : value;
 
-        return nodeEl && nodeEl.getBoundingClientRect();
+        // In the top viewport, also for elements inside same-origin iframes
+        return nodeEl && getRectInTopViewport(nodeEl);
     }
 
     getStyleByNode = (value, styleRules = styleRulesList) => {

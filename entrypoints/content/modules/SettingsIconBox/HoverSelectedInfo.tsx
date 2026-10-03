@@ -53,7 +53,7 @@ const HoverSelectedInfo = () => {
 
     // Flash the element so the user sees which one they switched to. A Web Animation on the outline leaves
     // the element's own styles alone (changing its background used to show up in the tooltip and CSS output)
-    if (selectedNode instanceof Element && typeof (selectedNode as any).animate === "function") {
+    if (selectedNode?.nodeType === Node.ELEMENT_NODE && typeof (selectedNode as any).animate === "function") {
       selectedNode.animate(
         [
           { outline: "3px solid rgba(242, 157, 104, 1)", outlineOffset: "2px" },

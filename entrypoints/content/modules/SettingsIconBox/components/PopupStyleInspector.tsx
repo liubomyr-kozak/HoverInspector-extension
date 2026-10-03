@@ -185,7 +185,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
   const blockRef = useRef(null);
 
   const processedLines = useMemo(() => {
-    if (!selectedElement || !(selectedElement instanceof Element)) return [];
+    if (!selectedElement || selectedElement.nodeType !== Node.ELEMENT_NODE) return [];
     const styles = { ...DomNodeManager.getStyleByNode(selectedElement) };
     const computed = getComputedStyle(selectedElement);
     // The computed "background" shorthand only repeats background-color/-image in a long resolved form
