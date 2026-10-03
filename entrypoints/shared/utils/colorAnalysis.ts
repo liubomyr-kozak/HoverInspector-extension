@@ -5,39 +5,118 @@
  * and converting colors between different formats (RGB, HEX, HSL, HSV).
  */
 
+export type RGBA = { r: number; g: number; b: number; a: number };
+
+const RGB_FUNCTION_RE =
+  /^rgba?\(\s*(-?[\d.]+)(?:\s*,\s*|\s+)(-?[\d.]+)(?:\s*,\s*|\s+)(-?[\d.]+)(?:\s*(?:,|\/)\s*([\d.]+%?))?\s*\)$/i;
+
+const clampByte = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
+
+const colorCache = new Map<string, RGBA | null>();
+let parseContext: CanvasRenderingContext2D | null | undefined;
+
+const getParseContext = (): CanvasRenderingContext2D | null => {
+  if (parseContext === undefined) {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      parseContext = canvas.getContext("2d", { willReadFrequently: true });
+    } catch {
+      parseContext = null;
+    }
+  }
+  return parseContext;
+};
+
+/**
+ * Parses any CSS color the browser understands (rgb, hex, named, hsl, lab, oklch,
+ * color(display-p3 ...), ...) into sRGB bytes by painting it on a 1x1 canvas.
+ */
+const parseWithCanvas = (color: string): RGBA | null => {
+  const ctx = getParseContext();
+  if (!ctx) return null;
+
+  // An invalid value leaves fillStyle untouched: detect that with two sentinels
+  ctx.fillStyle = "#000";
+  ctx.fillStyle = color;
+  const first = ctx.fillStyle;
+  ctx.fillStyle = "#fff";
+  ctx.fillStyle = color;
+  if (first !== ctx.fillStyle) return null;
+
+  ctx.clearRect(0, 0, 1, 1);
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b, alpha] = ctx.getImageData(0, 0, 1, 1).data;
+  return { r, g, b, a: Math.round((alpha / 255) * 1000) / 1000 };
+};
+
 /**
  * Converts a CSS color to RGB format
  * @param color The CSS color to convert
- * @returns An object with r, g, b, and a properties
+ * @returns An object with r, g, b, and a properties, or null if the color can't be parsed
  */
-export const colorToRgb = (color: string): { r: number, g: number, b: number, a: number } | null => {
-  // Default return if parsing fails
-  const defaultRgb = { r: 0, g: 0, b: 0, a: 1 };
-  
+export const colorToRgb = (color: string): RGBA | null => {
   if (!color) return null;
-  
-  // Create a temporary element to use the browser's color parsing
-  const tempElement = document.createElement('div');
-  tempElement.style.color = color;
-  document.body.appendChild(tempElement);
-  
-  // Get the computed style
-  const computedColor = window.getComputedStyle(tempElement).color;
-  document.body.removeChild(tempElement);
-  
-  // Parse the computed color
-  const rgbMatch = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d*\.?\d+))?\)/);
-  
-  if (rgbMatch) {
-    return {
-      r: parseInt(rgbMatch[1], 10),
-      g: parseInt(rgbMatch[2], 10),
-      b: parseInt(rgbMatch[3], 10),
-      a: rgbMatch[4] ? parseFloat(rgbMatch[4]) : 1
-    };
+  const key = color.trim();
+
+  if (colorCache.has(key)) return colorCache.get(key)!;
+
+  let result: RGBA | null = null;
+  // Fast path for the rgb()/rgba() strings getComputedStyle returns for sRGB colours
+  const match = key.match(RGB_FUNCTION_RE);
+  if (match) {
+    const alphaRaw = match[4];
+    const a = alphaRaw === undefined ? 1 : alphaRaw.endsWith("%") ? parseFloat(alphaRaw) / 100 : parseFloat(alphaRaw);
+    result = { r: clampByte(+match[1]), g: clampByte(+match[2]), b: clampByte(+match[3]), a: Math.min(1, Math.max(0, a)) };
+  } else if (key.toLowerCase() === "transparent") {
+    result = { r: 0, g: 0, b: 0, a: 0 };
+  } else {
+    result = parseWithCanvas(key);
   }
-  
-  return defaultRgb;
+
+  if (colorCache.size > 2000) colorCache.clear();
+  colorCache.set(key, result);
+  return result;
+};
+
+/**
+ * Alpha-composites `top` over `bottom` (bottom is treated as opaque)
+ */
+export const compositeColors = (top: RGBA, bottom: RGBA): RGBA => {
+  const a = top.a;
+  return {
+    r: Math.round(top.r * a + bottom.r * (1 - a)),
+    g: Math.round(top.g * a + bottom.g * (1 - a)),
+    b: Math.round(top.b * a + bottom.b * (1 - a)),
+    a: 1,
+  };
+};
+
+const WHITE: RGBA = { r: 255, g: 255, b: 255, a: 1 };
+
+const toCssRgb = ({ r, g, b, a }: RGBA) => (a >= 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a})`);
+
+/**
+ * Background colour actually visible behind an element: walks up the ancestors and
+ * composites (semi-)transparent backgrounds until an opaque one is found (white if none).
+ * Background images are not taken into account.
+ */
+export const getEffectiveBackgroundColor = (element: Element): string => {
+  const layers: RGBA[] = [];
+  let current: Element | null = element;
+
+  while (current) {
+    const rgba = colorToRgb(window.getComputedStyle(current).backgroundColor);
+    if (rgba && rgba.a > 0) {
+      layers.push(rgba);
+      if (rgba.a >= 1) break;
+    }
+    current = current.parentElement;
+  }
+
+  // Composite from the bottom-most layer upwards, starting on the white canvas
+  const result = layers.reduceRight<RGBA>((below, layer) => compositeColors(layer, below), WHITE);
+  return toCssRgb(result);
 };
 
 /**
@@ -68,11 +147,16 @@ export const calculateLuminance = (rgb: { r: number, g: number, b: number }): nu
  * @returns The contrast ratio between the two colors
  */
 export const calculateContrastRatio = (color1: string, color2: string): number => {
-  const rgb1 = colorToRgb(color1);
-  const rgb2 = colorToRgb(color2);
-  
-  if (!rgb1 || !rgb2) return 1;
-  
+  const parsed1 = colorToRgb(color1);
+  const parsed2 = colorToRgb(color2);
+
+  if (!parsed1 || !parsed2) return 1;
+
+  // color2 is the background: a translucent background sits on white, and a
+  // translucent foreground is blended with the background it is drawn on
+  const rgb2 = parsed2.a < 1 ? compositeColors(parsed2, WHITE) : parsed2;
+  const rgb1 = parsed1.a < 1 ? compositeColors(parsed1, rgb2) : parsed1;
+
   const luminance1 = calculateLuminance(rgb1);
   const luminance2 = calculateLuminance(rgb2);
   
@@ -308,9 +392,11 @@ export const analyzeButtonColors = (element: Element): {
   const backgroundColor = computedStyle.backgroundColor;
   const textColor = computedStyle.color;
   const borderColor = computedStyle.borderColor;
-  
-  const isLightBackground = isLightColor(backgroundColor);
-  const readabilityInfo = evaluateReadability(textColor, backgroundColor);
+  // Transparent backgrounds show whatever is behind them: use that for contrast
+  const visibleBackground = getEffectiveBackgroundColor(element);
+
+  const isLightBackground = isLightColor(visibleBackground);
+  const readabilityInfo = evaluateReadability(textColor, visibleBackground);
   
   return {
     backgroundColor,

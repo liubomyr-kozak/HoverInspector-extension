@@ -113,21 +113,26 @@ export const DiffViewerWrapper: React.FC<DiffViewerWrapperProps> = ({
     }
   }, [oldValue, newValue, leftTitle, rightTitle]);
 
-  // Handle identical content case
+  // Handle identical content case: there is nothing to diff, but keep every line clickable
   if (diffFile === "IDENTICAL_CONTENT") {
-    const content = oldValue || "";
+    const lines = (oldValue || "").split("\n");
     return (
       <div className="h-full">
-        <style>{diffViewCss}</style>
-        <div style={{ padding: "20px", fontFamily: "monospace", whiteSpace: "pre-wrap", fontSize: "14px", backgroundColor: "#f8f9fa" }}>
-          {leftTitle && (
-            <div style={{ marginBottom: "10px", fontWeight: "bold", color: "#24292e" }}>
-              {leftTitle}
-            </div>
-          )}
-          <pre style={{ margin: 0, overflow: "auto", maxHeight: "calc(100vh - 100px)" }}>
-            {content}
-          </pre>
+        <div style={{ padding: "12px", fontFamily: "monospace", fontSize: "12px", backgroundColor: "#f8f9fa" }}>
+          <div style={{ marginBottom: "8px", fontWeight: 600, color: "#166534", fontFamily: "inherit" }}>
+            No differences found{leftTitle && rightTitle ? ` between ${leftTitle} and ${rightTitle}` : ""}
+          </div>
+          <div style={{ overflow: "auto", maxHeight: "calc(100vh - 100px)" }}>
+            {lines.map((line, index) => (
+              <div
+                key={index}
+                onClick={(event) => onLineClick?.(`L${index + 1}`, { lineNumber: index + 1, side: SplitSide.old }, event)}
+                style={{ whiteSpace: "pre", cursor: onLineClick ? "pointer" : "default", lineHeight: "20px" }}
+              >
+                {line}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

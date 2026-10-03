@@ -38,35 +38,68 @@ export const loadSnapshots = async (): Promise<CSSSnapshot[]> => {
 };
 
 /**
+ * Saves one snapshot through the background. The background handler swallows
+ * exceptions (e.g. quota errors) and never answers, so anything other than
+ * `{ success: true }` is treated as a failed write.
+ */
+const trySaveSnapshot = async (snapshot: CSSSnapshot): Promise<boolean> => {
+  try {
+    const result = await ExtensionStorageManager.saveCSSSnapshot(snapshot.id, snapshot);
+    return Boolean((result as { success?: boolean } | undefined)?.success);
+  } catch (error) {
+    console.warn(`Failed to save snapshot ${snapshot.id}:`, error);
+    return false;
+  }
+};
+
+/**
  * Зберігає знімки у сховище
  */
 export const saveSnapshots = async (snapshots: CSSSnapshot[]): Promise<void> => {
-  try {
-    // Оптимізуємо знімки перед збереженням
-    const optimizedSnapshots = snapshots.map(optimizeSnapshot);
-    
-    // Зберігаємо кожен знімок окремо
-    for (const snapshot of optimizedSnapshots) {
-      try {
-        await ExtensionStorageManager.saveCSSSnapshot(snapshot.id, snapshot);
-      } catch (error) {
-        if ((error as any).name === 'QuotaExceededError') {
-          console.warn(`Storage quota exceeded for snapshot ${snapshot.id}`);
-          // Спробуємо зберегти мінімальну версію
-          const minimalSnapshot = createMinimalSnapshot(snapshot);
-          await ExtensionStorageManager.saveCSSSnapshot(snapshot.id, minimalSnapshot);
-        } else {
-          throw error;
-        }
-      }
+  // Оптимізуємо знімки перед збереженням
+  const optimizedSnapshots = snapshots.map(optimizeSnapshot);
+
+  // Keep the in-memory list in sync even if persisting fails, so a freshly
+  // captured snapshot is never silently dropped from the UI.
+  store.dispatch(setSnapshots(optimizedSnapshots));
+
+  const failed: string[] = [];
+
+  // Зберігаємо кожен знімок окремо
+  for (const snapshot of optimizedSnapshots) {
+    if (await trySaveSnapshot(snapshot)) continue;
+
+    // Most likely the storage quota: try a minimal version instead
+    console.warn(`Could not store snapshot ${snapshot.id}, retrying with a minimal version`);
+    if (!(await trySaveSnapshot(createMinimalSnapshot(snapshot)))) {
+      failed.push(snapshot.id);
     }
-    
-    // Оновлюємо Redux стейт після успішного збереження
-    store.dispatch(setSnapshots(optimizedSnapshots));
-  } catch (error) {
-    console.error('Failed to save snapshots:', error);
-    throw error;
   }
+
+  if (failed.length) {
+    throw new Error(`Failed to save ${failed.length} snapshot(s) to extension storage`);
+  }
+};
+
+/**
+ * Keeps only the newest MAX_SNAPSHOTS_MEMORY snapshots, saves them and deletes
+ * the ones that were trimmed off so they don't linger in storage forever.
+ */
+export const trimAndSaveSnapshots = async (snapshots: CSSSnapshot[]): Promise<CSSSnapshot[]> => {
+  const limit = PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY;
+  const kept = snapshots.slice(-limit);
+  const trimmed = snapshots.slice(0, Math.max(0, snapshots.length - limit));
+
+  for (const snapshot of trimmed) {
+    try {
+      await deleteSnapshot(snapshot.id);
+    } catch {
+      // already logged in deleteSnapshot
+    }
+  }
+
+  await saveSnapshots(kept);
+  return kept;
 };
 
 /**
@@ -86,14 +119,46 @@ export const deleteSnapshot = async (id: string): Promise<void> => {
  */
 export const exportSnapshot = (snapshot: CSSSnapshot): void => {
   const dataStr = JSON.stringify(snapshot, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+  // Blob URLs avoid the size limits and encoding cost of huge data: URIs
+  const blobUrl = URL.createObjectURL(new Blob([dataStr], { type: 'application/json' }));
 
   const exportFileName = `css-snapshot-${snapshot.id}.json`;
 
   const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
+  linkElement.setAttribute('href', blobUrl);
   linkElement.setAttribute('download', exportFileName);
   linkElement.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+};
+
+/**
+ * Returns the hostname of a snapshot URL without throwing on bad/legacy values
+ */
+export const getSnapshotHostname = (url: string | undefined | null): string => {
+  if (!url) return 'Unknown';
+  try {
+    return new URL(url).hostname || url;
+  } catch {
+    return url;
+  }
+};
+
+/**
+ * Basic structural validation for snapshots coming from files
+ */
+export const isValidSnapshot = (value: unknown): value is CSSSnapshot => {
+  if (!value || typeof value !== 'object') return false;
+  const s = value as Partial<CSSSnapshot>;
+  return (
+    typeof s.id === 'string' &&
+    s.id.length > 0 &&
+    typeof s.timestamp === 'number' &&
+    typeof s.url === 'string' &&
+    typeof s.title === 'string' &&
+    !!s.root &&
+    typeof s.root === 'object' &&
+    Array.isArray(s.root.children)
+  );
 };
 
 /**

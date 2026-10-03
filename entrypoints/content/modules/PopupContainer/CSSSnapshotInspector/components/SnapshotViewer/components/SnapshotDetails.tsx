@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { ReactDiffViewer } from "../../SnapshotCompare/components/TreeDiffView/components/ReactDiffViewer";
 import { buildDOMTree } from "../../../utils/domTreeBuilder";
 import { CSSSnapshot } from "../../../types";
+import { getStylesFromSnapshot } from "../../SnapshotCompare/utils";
 
 interface SnapshotDetailsProps {
   snapshot: CSSSnapshot;
@@ -13,7 +14,7 @@ interface SnapshotDetailsProps {
 
 /**
  * Component for displaying single snapshot using ReactDiffViewer
- * Shows the snapshot tree in unified view with all nodes auto-expanded
+ * Shows the snapshot tree as clickable lines that open element details
  */
 export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, title }) => {
 
@@ -21,23 +22,9 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
   const tree = useMemo(() => {
     if (!snapshot.root) return null;
 
-    // Convert snapshot format to ElementStyleData format for buildDOMTree
-    const stylesData: Record<string, any> = {};
-
-    const processNode = (node: any, path: string[] = []) => {
-      const nodeKey = node.key || `${node.tag}-${path.length}`;
-      const currentPath = [...path, nodeKey].join(" > ");
-
-      stylesData[currentPath] = { ...node };
-
-      // Process children recursively
-      for (const child of node.children || []) {
-        processNode(child, [...path, nodeKey]);
-      }
-    };
-
-    // Start processing from the root node
-    processNode(snapshot.root, []);
+    // Key nodes by their real DOM path (body[0] > div[1] ...) so same-tag siblings
+    // don't overwrite each other and the tree keeps the DOM order
+    const stylesData = getStylesFromSnapshot(snapshot);
 
     return buildDOMTree(stylesData);
   }, [snapshot]);
@@ -84,14 +71,8 @@ export const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({ snapshot, titl
           overflow: "auto",
         }}
       >
-        <ReactDiffViewer
-          treeA={tree}
-          treeB={tree} // For single snapshot, show same tree on both sides
-          splitView={false} // Always use unified view for single snapshots
-          showDiffOnly={false} // Show all content, not just differences
-          expandAll={true} // Auto-expand all nodes
-          displaySingleLineNumbers={true} // Default is false - hide line numbers for cleaner view
-        />
+        {/* Same tree on both sides renders a clickable element listing (no diff) */}
+        <ReactDiffViewer treeA={tree} treeB={tree} splitView={false} showDiffOnly={false} />
       </div>
     </div>
   );

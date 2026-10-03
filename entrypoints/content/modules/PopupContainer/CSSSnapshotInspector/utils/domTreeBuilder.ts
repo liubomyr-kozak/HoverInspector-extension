@@ -49,17 +49,15 @@ export function buildDOMTree(
   positionData?: Record<string, any>,
 ): DOMTreeNode {
   const rootNode = createRootNode();
-  const sortedPaths = getSortedElementPaths(Object.keys(stylesData));
 
-  sortedPaths.forEach((path) => {
+  // Keys are produced by a pre-order DOM walk, so their insertion order is the DOM order.
+  // Don't sort them: alphabetical order puts "div[10]" before "div[2]" and reorders siblings.
+  Object.keys(stylesData).forEach((path) => {
     const elementData = stylesData[path];
     const positionInfo = positionData?.[path];
 
     insertElementIntoTree(rootNode, path, elementData, positionInfo);
   });
-
-  sortTreeChildren(rootNode);
-
 
   return structuredClone(rootNode);
 }
@@ -79,13 +77,6 @@ function createRootNode(): DOMTreeNode {
     children: [],
     level: 0,
   };
-}
-
-/**
- * Sort element paths to ensure parents are processed before children
- */
-function getSortedElementPaths(paths: string[]): string[] {
-  return paths.sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -115,6 +106,13 @@ function insertElementIntoTree(
     children: [],
     level: pathSegments.length,
   } as any;
+
+  // A placeholder may already exist if a descendant was inserted first: fill it in place
+  const placeholder = findChildByPath(parentNode, elementPath);
+  if (placeholder) {
+    Object.assign(placeholder, { ...elementNode, children: placeholder.children });
+    return;
+  }
 
   parentNode.children.push(elementNode);
 }
@@ -161,7 +159,7 @@ function cleanElementId(id?: string | null): string | null {
   // Check if ID appears to be randomly generated
   const randomPatterns = [
     /^el-[a-z0-9]{6}$/i, // Pattern like "el-rnzjwo"
-    /^[a-z0-9]{8,}$/i, // Long random strings (8+ chars)
+    /^(?=[a-z]*\d)(?=\d*[a-z])[a-z0-9]{8,}$/i, // Long random strings mixing letters and digits (not "container")
     /^_[a-z0-9]+$/i, // IDs starting with underscore
     /^[0-9]+$/, // Pure numbers
     /^tmp[_-]?[a-z0-9]+$/i, // Temporary IDs
@@ -281,19 +279,6 @@ function createParentNodeName(tagName: string, id?: string, classes: string[] = 
   }
 
   return name;
-}
-
-/**
- * Sort tree children recursively for consistent display
- */
-function sortTreeChildren(node: DOMTreeNode): void {
-  if (node.children.length > 0) {
-    // Sort children by name for consistent ordering
-    node.children.sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
-
-    // Recursively sort grandchildren
-    node.children.forEach((child) => sortTreeChildren(child));
-  }
 }
 
 /**

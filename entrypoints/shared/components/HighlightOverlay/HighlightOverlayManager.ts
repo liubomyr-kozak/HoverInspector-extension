@@ -1,5 +1,5 @@
 import { Observable } from "rxjs";
-import { finalize, share } from "rxjs/operators";
+import { share } from "rxjs/operators";
 
 // Predefined highlight style variants
 export const HIGHLIGHT_STYLES = {
@@ -35,9 +35,15 @@ class HighlightOverlayManager {
   private overlay: HTMLDivElement;
   private highlightTimer?: NodeJS.Timeout;
 
+  // Handlers of the active selection stream (click / Esc / hover)
   private clickHandler?: (e: MouseEvent) => void;
   private escHandler?: (e: KeyboardEvent) => void;
   private mouseMoveHandler?: (e: MouseEvent) => void;
+  // Standalone hover highlight (startMouseMoveHighlight); kept separate so it never
+  // overwrites — and leaks — the selection stream's mousemove handler
+  private hoverMoveHandler?: (e: MouseEvent) => void;
+  // Ends the active selection stream with a "stopped" event
+  private stopActiveSelection?: (reason: SelectionEvent["reason"]) => void;
 
   private constructor() {
     this.overlay = document.createElement("div");
@@ -97,12 +103,23 @@ class HighlightOverlayManager {
     }
   }
 
-  private clearHandlers() {
+  private clearSelectionHandlers() {
     if (this.clickHandler) document.removeEventListener("click", this.clickHandler, true);
     if (this.escHandler) document.removeEventListener("keydown", this.escHandler, true);
     if (this.mouseMoveHandler) document.removeEventListener("mousemove", this.mouseMoveHandler, true);
 
     this.clickHandler = this.escHandler = this.mouseMoveHandler = undefined;
+    this.stopActiveSelection = undefined;
+  }
+
+  private clearHoverHandler() {
+    if (this.hoverMoveHandler) document.removeEventListener("mousemove", this.hoverMoveHandler, true);
+    this.hoverMoveHandler = undefined;
+  }
+
+  private clearHandlers() {
+    this.clearSelectionHandlers();
+    this.clearHoverHandler();
   }
 
   private clearHighlightTimer() {
@@ -173,22 +190,22 @@ class HighlightOverlayManager {
     this.overlay.style.display = "none";
   }
 
-  private _preHighlightedElement: Element | null = null;
-
   public startMouseMoveHighlight(
     variant: HighlightStyleVariant = "hover",
     customStyles?: Partial<CSSStyleDeclaration>,
   ) {
-    this.mouseMoveHandler = (e: MouseEvent) => {
-      const target = e.target as Element;
+    this.clearHoverHandler();
 
-      if (this._preHighlightedElement !== target) {
-        this._preHighlightedElement = target;
-      } else {
+    let lastTarget: Element | null = null;
+    this.hoverMoveHandler = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (lastTarget === target) return;
+      lastTarget = target;
+
+      if (!target || target.nodeType !== Node.ELEMENT_NODE || this.isExtensionEvent(e)) {
+        this.overlay.style.display = "none";
         return;
       }
-
-      if (!target || target.nodeType !== Node.ELEMENT_NODE || this.isExtensionElement(target)) return;
 
       this.applyOverlayStyles(target.getBoundingClientRect(), {
         ...HIGHLIGHT_STYLES[variant],
@@ -196,16 +213,23 @@ class HighlightOverlayManager {
       });
     };
 
-    document.addEventListener("mousemove", this.mouseMoveHandler, true);
+    document.addEventListener("mousemove", this.hoverMoveHandler, true);
   }
 
+  /** Stops hover highlighting and any active selection, removing every listener. */
   public stopMouseMoveHighlight() {
+    this.stopSelectionMode();
     this.clearHandlers();
     this.stopHighlight();
   }
 
+  /** Cancels the active selection; subscribers receive { type: "stopped", reason: "cancelled" }. */
   public stopSelectionMode() {
-    this.clearHandlers();
+    if (this.stopActiveSelection) {
+      this.stopActiveSelection("cancelled");
+    } else {
+      this.clearSelectionHandlers();
+    }
   }
 
   public isSelectionActive(): boolean {
@@ -214,19 +238,27 @@ class HighlightOverlayManager {
 
   public streamSelectionMode(): Observable<SelectionEvent> {
     return new Observable<SelectionEvent>((subscriber) => {
-      subscriber.next({ type: "started" });
+      // Only one selection can be active at a time: cancel the previous one
+      this.stopSelectionMode();
+
+      let finished = false;
+      const finish = (reason: SelectionEvent["reason"], selected?: { xpath: string; element: Element }) => {
+        if (finished) return;
+        finished = true;
+        teardown();
+        if (selected) subscriber.next({ type: "selected", ...selected });
+        subscriber.next({ type: "stopped", reason });
+        subscriber.complete();
+      };
 
       // Add hover highlighting functionality
-      this.mouseMoveHandler = (e: MouseEvent) => {
+      let lastTarget: Element | null = null;
+      const mouseMoveHandler = (e: MouseEvent) => {
         const target = e.target as Element;
+        if (lastTarget === target) return;
+        lastTarget = target;
 
-        if (this._preHighlightedElement !== target) {
-          this._preHighlightedElement = target;
-        } else {
-          return;
-        }
-
-        if (!target || target.nodeType !== Node.ELEMENT_NODE || this.isExtensionElement(target)) {
+        if (!target || target.nodeType !== Node.ELEMENT_NODE || this.isExtensionEvent(e)) {
           this.overlay.style.display = "none";
           return;
         }
@@ -236,34 +268,68 @@ class HighlightOverlayManager {
         });
       };
 
-      this.clickHandler = (e: MouseEvent) => {
+      const clickHandler = (e: MouseEvent) => {
+        // Clicks on the extension's own UI (e.g. the cancel button) must keep working
+        if (this.isExtensionEvent(e)) return;
         e.preventDefault();
         e.stopPropagation();
         const element = e.target as Element;
-        const xpath = this.generateXPath(element);
-        subscriber.next({ type: "selected", xpath, element });
-        subscriber.next({ type: "stopped", reason: "completed" });
-        subscriber.complete();
+        finish("completed", { xpath: this.generateXPath(element), element });
       };
 
-      this.escHandler = (e: KeyboardEvent) => {
+      const escHandler = (e: KeyboardEvent) => {
         if (e.key === "Escape") {
           e.preventDefault();
           e.stopPropagation();
-          subscriber.next({ type: "stopped", reason: "escape" });
-          subscriber.complete();
+          finish("escape");
         }
       };
 
-      document.addEventListener("mousemove", this.mouseMoveHandler, true);
-      document.addEventListener("click", this.clickHandler, true);
-      document.addEventListener("keydown", this.escHandler, true);
+      const teardown = () => {
+        document.removeEventListener("mousemove", mouseMoveHandler, true);
+        document.removeEventListener("click", clickHandler, true);
+        document.removeEventListener("keydown", escHandler, true);
+        // Only reset the shared state if it still belongs to this stream
+        if (this.clickHandler === clickHandler) {
+          this.clickHandler = this.escHandler = this.mouseMoveHandler = undefined;
+          this.stopActiveSelection = undefined;
+          this.overlay.style.display = "none";
+        }
+      };
 
-      return () => this.clearHandlers();
-    }).pipe(
-      share(),
-      finalize(() => this.clearHandlers()),
-    );
+      this.mouseMoveHandler = mouseMoveHandler;
+      this.clickHandler = clickHandler;
+      this.escHandler = escHandler;
+      this.stopActiveSelection = (reason) => finish(reason);
+
+      document.addEventListener("mousemove", mouseMoveHandler, true);
+      document.addEventListener("click", clickHandler, true);
+      document.addEventListener("keydown", escHandler, true);
+
+      subscriber.next({ type: "started" });
+
+      // Unsubscribing (without a click/Esc) just removes the listeners
+      return () => {
+        finished = true;
+        teardown();
+      };
+    }).pipe(share());
+  }
+
+  /** True when the event originated inside the extension's own UI (incl. its shadow DOM). */
+  private isExtensionEvent(e: Event): boolean {
+    const path = typeof e.composedPath === "function" ? e.composedPath() : [];
+    if (path.length) {
+      // The path already contains every ancestor (across shadow roots), so check nodes individually
+      return path.some(
+        (node) =>
+          node instanceof Element &&
+          (node.tagName.toLowerCase() === "hover-inspector" ||
+            node.classList.contains("hover-inspector") ||
+            node.hasAttribute("data-hover-inspector")),
+      );
+    }
+    return e.target instanceof Element && this.isExtensionElement(e.target);
   }
 
   private isExtensionElement(el: Element): boolean {

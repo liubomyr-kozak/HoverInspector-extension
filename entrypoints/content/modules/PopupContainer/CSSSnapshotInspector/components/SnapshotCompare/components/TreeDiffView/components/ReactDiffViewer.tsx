@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { DOMTreeNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
 import { CacheProvider } from "@emotion/react";
@@ -8,10 +8,6 @@ import DiffViewer from "@entrypoints/shared/components/DiffViewerWrapper";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { openElementDetails } from "@entrypoints/content/store/elementDetails/elementDetails.slice";
 import { AppDispatch } from "@entrypoints/content/store/createStore";
-import {
-  calculateStyleChanges,
-  convertToElementSideData,
-} from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/styleComparison";
 import { createElementDiff } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/simpleDiff";
 
 interface LineData {
@@ -29,104 +25,64 @@ interface ReactDiffViewerProps {
   displaySingleLineNumbers?: boolean;
 }
 
-/**
- * Converts a DOM tree node to a string representation for diffing
- */
-const convertTreeToString = (node: DOMTreeNode, level = 0): string => {
-  const indent = "  ".repeat(level);
+/** pathString -> computed style properties whose value differs between the two trees */
+type ChangedStylesMap = Map<string, string[]>;
 
-  // Start with the opening tag
-  let result = `${indent}<${node.tagName}`;
-
-  // Add ID if present
-  if (node.id) {
-    result += ` id="${node.id}"`;
+const collectNodesByPath = (node: DOMTreeNode, collection = new Map<string, DOMTreeNode>()) => {
+  if (node.pathString) {
+    collection.set(node.pathString, node);
   }
-
-  // Add classes if present
-  if (node.classes && node.classes.length > 0) {
-    result += ` class="${node.classes.join(" ")}"`;
-  }
-
-  // Add attributes if present
-  if (node.attributes) {
-    Object.entries(node.attributes).forEach(([key, value]) => {
-      if (key !== "id" && key !== "class" && key !== "style") {
-        // Skip id and class as they're already handled
-        result += ` ${key}="${value}"`;
-      }
-    });
-  }
-
-  // Add inline styles if present
-  if (node.inlineStyles && Object.keys(node.inlineStyles).length > 0) {
-    const styleString = Object.entries(node.inlineStyles)
-      .map(([property, value]) => `${property}: ${value}`)
-      .join("; ");
-    result += ` style="${styleString}"`;
-  }
-
-  // If there are no children, close the tag
-  if (!node.children || node.children.length === 0) {
-    result += " />\n";
-    return result;
-  }
-
-  // Otherwise, add children
-  result += ">\n";
-
-  // Add each child
-  if (node.children) {
-    node.children.forEach((child) => {
-      result += convertTreeToString(child, level + 1);
-    });
-  }
-
-  // Close the tag
-  result += `${indent}</${node.tagName}>\n`;
-
-  return result;
+  node.children?.forEach((child) => collectNodesByPath(child, collection));
+  return collection;
 };
 
-// Utility function to convert CSS selector path to XPath
-const cssPathToXPath = (cssPath: string): string => {
-  if (!cssPath) return "";
+/**
+ * Logical/derived properties that always mirror another computed property
+ * (block-size = height, transform-origin follows the size, ...). Listing them
+ * would only repeat the same change several times.
+ */
+const DERIVED_STYLE_PROPERTY =
+  /^(?:(?:min-|max-)?(?:block|inline)-size|(?:margin|padding|inset|border)-(?:block|inline)(?:-.+)?|perspective-origin|transform-origin)$/;
 
-  // Split by > and clean up
-  const segments = cssPath
-    .split(">")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  // Convert each segment to XPath format
-  const xpathSegments = segments.map((segment) => {
-    // Handle cases like "div#id.class1.class2[attr=value]"
-    let tagName = segment.replace(/[#.\[].*/g, ""); // Extract just the tag name
-
-    if (!tagName) {
-      tagName = "*"; // If no tag name, use wildcard
-    }
-
-    return `//${tagName.toLowerCase()}`;
+/**
+ * Finds elements present in both trees whose computed styles changed. The markup
+ * lines alone don't carry computed styles, so without this a style-only change
+ * (e.g. a colour tweak) produced an empty diff.
+ */
+const computeChangedStyles = (
+  nodesA: Map<string, DOMTreeNode>,
+  nodesB: Map<string, DOMTreeNode>,
+): ChangedStylesMap => {
+  const changed: ChangedStylesMap = new Map();
+  nodesA.forEach((left, path) => {
+    const right = nodesB.get(path);
+    if (!right) return;
+    const leftStyles = left.styles || {};
+    const rightStyles = right.styles || {};
+    const keys = new Set([...Object.keys(leftStyles), ...Object.keys(rightStyles)]);
+    const diff = [...keys]
+      .filter((key) => leftStyles[key] !== rightStyles[key] && !DERIVED_STYLE_PROPERTY.test(key))
+      .sort();
+    if (diff.length) changed.set(path, diff);
   });
+  return changed;
+};
 
-  // If we have segments, join them; otherwise use the original path as-is
-  if (xpathSegments.length > 0) {
-    // For now, just use the last segment as a simple XPath
-    // This is a basic implementation - could be enhanced later
-    const lastSegment = segments[segments.length - 1];
-    let tagName = lastSegment.replace(/[#.\[].*/g, "");
-    if (!tagName) tagName = "*";
-    return `//${tagName.toLowerCase()}`;
-  }
-
-  return cssPath; // Fallback to original path
+/** Extra lines listing the changed computed styles of an element, shown under its tag */
+const styleLinesFor = (node: DOMTreeNode, level: number, changedStyles?: ChangedStylesMap): LineData[] => {
+  const keys = changedStyles?.get(node.pathString);
+  if (!keys) return [];
+  const indent = "  ".repeat(level + 1);
+  return keys.map((key) => ({
+    text: `${indent}/* style */ ${key}: ${node.styles?.[key] ?? "(not set)"};`,
+    metadata: { ...node, nodeType: "style", level, styleProperty: key },
+  }));
 };
 
 /**
  * Converts a DOM tree node to LineData format for diffing with metadata support
  */
-const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
+const convertTreeToStringV2 = (node: DOMTreeNode, level = 0, changedStyles?: ChangedStylesMap): LineData[] => {
   const indent = "  ".repeat(level);
   const lines: LineData[] = [];
 
@@ -174,6 +130,7 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
         // xpath
       },
     });
+    lines.push(...styleLinesFor(node, level, changedStyles));
     return lines;
   }
 
@@ -189,11 +146,12 @@ const convertTreeToStringV2 = (node: DOMTreeNode, level = 0): LineData[] => {
       // xpath
     },
   });
+  lines.push(...styleLinesFor(node, level, changedStyles));
 
   // Add each child
   if (node.children) {
     node.children.forEach((child) => {
-      lines.push(...convertTreeToStringV2(child, level + 1));
+      lines.push(...convertTreeToStringV2(child, level + 1, changedStyles));
     });
   }
 
@@ -223,55 +181,38 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   displaySingleLineNumbers = false,
 }) => {
   const highlightManager = useHighlightOverlay();
-  const oldValue = useMemo(() => convertTreeToStringV2(treeA), [treeA]);
-  const newValue = useMemo(() => convertTreeToStringV2(treeB), [treeB]);
+  // Same tree on both sides = single snapshot view (no diff to compute)
+  const isSingleTree = treeA === treeB;
 
-  // OPTIMIZATION: Pre-compute all element style comparisons once
-  const preComputedStyleComparisons = useMemo(() => {
-    const startTime = performance.now();
-    const styleCache = new Map<string, any>();
+  const nodesA = useMemo(() => collectNodesByPath(treeA), [treeA]);
+  const nodesB = useMemo(() => (isSingleTree ? nodesA : collectNodesByPath(treeB)), [treeB, isSingleTree, nodesA]);
+  const changedStyles = useMemo(
+    () => (isSingleTree ? undefined : computeChangedStyles(nodesA, nodesB)),
+    [isSingleTree, nodesA, nodesB],
+  );
 
-    // Helper to collect all nodes with their paths from a tree
-    const collectAllNodes = (node: DOMTreeNode, collection = new Map<string, DOMTreeNode>()) => {
-      if (node.pathString) {
-        collection.set(node.pathString, node);
-      }
-      node.children?.forEach((child) => collectAllNodes(child, collection));
-      return collection;
+  const oldValue = useMemo(() => convertTreeToStringV2(treeA, 0, changedStyles), [treeA, changedStyles]);
+  const newValue = useMemo(
+    () => (isSingleTree ? oldValue : convertTreeToStringV2(treeB, 0, changedStyles)),
+    [treeB, changedStyles, isSingleTree, oldValue],
+  );
+
+  // Element style comparison is computed lazily, only for the element that was clicked
+  const getStyleComparison = (pathString: string) => {
+    const leftNode = nodesA.get(pathString) || null;
+    const rightNode = nodesB.get(pathString) || null;
+    if (!leftNode && !rightNode) return undefined;
+    const styleDiff = createElementDiff(leftNode, rightNode, false);
+    return {
+      styleDiff,
+      leftNode,
+      rightNode,
+      showIdentity: false,
+      showBounds: false,
+      changedAttrs: [],
+      changedStyles: Object.keys(styleDiff.leftData),
     };
-
-    // Collect all nodes from both trees
-    const nodesA = collectAllNodes(treeA);
-    const nodesB = collectAllNodes(treeB);
-
-    // Pre-compute style differences for all elements that exist in either tree
-    const allPaths = new Set([...nodesA.keys(), ...nodesB.keys()]);
-
-    allPaths.forEach((path) => {
-      const leftNode = nodesA.get(path) || null;
-      const rightNode = nodesB.get(path) || null;
-
-      if (leftNode || rightNode) {
-        // Pre-compute the element diff for this path
-        const styleDiff = createElementDiff(leftNode, rightNode, false);
-
-        // Cache the complete comparison data
-        styleCache.set(path, {
-          styleDiff,
-          leftNode,
-          rightNode,
-          showIdentity: false,
-          showBounds: false,
-          changedAttrs: [],
-          changedStyles: Object.keys(styleDiff.leftData),
-        });
-      }
-    });
-
-    const endTime = performance.now();
-
-    return styleCache;
-  }, [treeA, treeB]);
+  };
 
   // Helper: find counterpart node in other tree by pathString if available
   // NOTE: This is kept for backward compatibility but should rarely be used now
@@ -372,11 +313,8 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
       let compareData: any = undefined;
       const pathString = metadata.pathString;
 
-      if (pathString && preComputedStyleComparisons.has(pathString)) {
-        // O(1) lookup from pre-computed cache - much faster than DFS search!
-        const cachedComparison = preComputedStyleComparisons.get(pathString);
-
-        compareData = cachedComparison;
+      if (pathString && (nodesA.has(pathString) || nodesB.has(pathString))) {
+        compareData = getStyleComparison(pathString);
       } else {
         // Fallback to old method if pathString is not available (backward compatibility)
         console.warn("⚠️ Falling back to DFS search - pathString not found:", pathString);
@@ -455,35 +393,16 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
     }
   };
 
-  if (!cache || !shadowContainer) {
-    return <div>Loading diff viewer...</div>;
-  }
-
-  // Create a mapping of line numbers to metadata for click handling
-  const [lineMetadataMap, setLineMetadataMap] = useState<Map<string, any>>(new Map());
-
-  useEffect(() => {
+  // Line id ("L12" / "R12") -> metadata of the element on that line
+  const lineMetadataMap = useMemo(() => {
     const metadataMap = new Map<string, any>();
-
-    // Map old/left side lines
     oldValue.forEach((lineData, index) => {
-      const lineNumber = index + 1;
-      const lineId = `L${lineNumber}`;
-      if (lineData.metadata) {
-        metadataMap.set(lineId, lineData.metadata);
-      }
+      if (lineData.metadata) metadataMap.set(`L${index + 1}`, lineData.metadata);
     });
-
-    // Map new/right side lines
     newValue.forEach((lineData, index) => {
-      const lineNumber = index + 1;
-      const lineId = `R${lineNumber}`;
-      if (lineData.metadata) {
-        metadataMap.set(lineId, lineData.metadata);
-      }
+      if (lineData.metadata) metadataMap.set(`R${index + 1}`, lineData.metadata);
     });
-
-    setLineMetadataMap(metadataMap);
+    return metadataMap;
   }, [oldValue, newValue]);
 
   const handleDiffViewerLineClick = (lineId: string, metadata: any, event: React.MouseEvent<HTMLElement>) => {
@@ -495,6 +414,14 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
       console.warn("No metadata found for line:", lineId);
     }
   };
+
+  if (isSingleTree) {
+    return <ClickableTreeLines lines={oldValue} onLineClick={(index) => handleLineClick(`L${index + 1}`, oldValue[index].metadata)} />;
+  }
+
+  if (!cache || !shadowContainer) {
+    return <div>Loading diff viewer...</div>;
+  }
 
   return (
     <DiffViewer
@@ -508,5 +435,51 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
       hideLineNumbers={hideLineNumbers}
       onLineClick={handleDiffViewerLineClick}
     />
+  );
+};
+
+/**
+ * Read-only tree listing for a single snapshot: every line is clickable and opens
+ * the element details (and highlights the element on the page).
+ */
+const ClickableTreeLines: React.FC<{ lines: LineData[]; onLineClick: (index: number) => void }> = ({
+  lines,
+  onLineClick,
+}) => {
+  const [hovered, setHovered] = useState<number | null>(null);
+  return (
+    <div
+      style={{
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        fontSize: 12,
+        lineHeight: "20px",
+        padding: "8px 0",
+        overflowX: "auto",
+      }}
+      onMouseLeave={() => setHovered(null)}
+    >
+      {lines.map((line, index) => {
+        const isClosing = line.metadata?.nodeType === "closing";
+        return (
+          <div
+            key={index}
+            role="button"
+            tabIndex={-1}
+            title={line.metadata?.displayName ? `Show details for ${line.metadata.displayName}` : undefined}
+            onClick={() => onLineClick(index)}
+            onMouseEnter={() => setHovered(index)}
+            style={{
+              whiteSpace: "pre",
+              padding: "0 12px",
+              cursor: "pointer",
+              color: isClosing ? "#6b7280" : "#1f2937",
+              background: hovered === index ? "#eef2ff" : "transparent",
+            }}
+          >
+            {line.text}
+          </div>
+        );
+      })}
+    </div>
   );
 };
