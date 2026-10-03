@@ -1,15 +1,11 @@
-import React, { JSX, useEffect, useRef, useState, useMemo } from "react";
+import React, { JSX, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { IconX } from "@tabler/icons-react";
-import { createGlobalStyle } from "styled-components";
 import {
   onChangeFeaturePopupPosition,
   onChangeLauncherIconOrder,
   onClearAllActiveIcons,
 } from "@entrypoints/content/store/app/saga-action/app.saga.action";
-import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager";
 import { FloatingModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal";
-import { hideSponsorMessage } from "@entrypoints/content/store/app/app.slice";
 import { ElementInspectorPopup } from "@entrypoints/content/modules/PopupContainer/ElementInspectorPopup";
 import {
   ANALYZE_PAGE,
@@ -32,39 +28,14 @@ import { PageNotes } from "@entrypoints/content/modules/PopupContainer/PageNotes
 import { NoteTakingToolsIntegration } from "@entrypoints/content/modules/PopupContainer/NoteTakingToolsIntegration.tsx";
 import { HighlightOverlayProvider } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext.tsx";
 import {
-  BecomeASponsor,
-  BecomeASponsorText,
   FeatureContainer,
-  HideButton,
   FooterContainer,
   HeaderContainer,
   ButtonsContainer,
   HeaderButtonsContainer,
 } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
-import RandomBackground from "@entrypoints/shared/components/RandomBackground.tsx";
 import ViewportInfo from "@entrypoints/content/modules/PopupContainer/ViewportInfo.tsx";
-import { PiCloverDuotone } from "react-icons/pi";
 import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";
-
-const GlobalStyle = createGlobalStyle`
-    @keyframes spin {
-        from {
-            transform: rotate(0deg);
-        }
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    @keyframes colorPulse {
-        0%, 100% {
-            color: #15803d;
-        }
-        50% {
-            color: #3aca70;
-        }
-    }
-`;
 
 // Smallest size at which every tool panel is still usable (older versions allowed shrinking to 10px)
 const MIN_PANEL_WIDTH = 320;
@@ -88,62 +59,10 @@ export function PopupContainer() {
 
   const { activeIcons = [], iconOrder: iconOrderStorage } = useSelector((state: any) => state?.app.launcher);
   const featurePopupPosition = useSelector((state: any) => state?.app.featurePopupPosition);
-  const sponsorMessage = useSelector((state: any) => state?.app.sponsorMessage);
-
-  const [isLongPress, setIsLongPress] = useState(false);
-  const [luckySponsorHide, setLuckySponsorHide] = useState(false);
-  const pressTimer = useRef<NodeJS.Timeout | null>(null);
-  const pressTimerDate = useRef<number>(null);
 
   const handleUpdatePopupSetting = (data) => {
     dispatch(onChangeFeaturePopupPosition.getPayload(data));
   };
-
-  const handleSponsorMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setIsLongPress(true);
-
-    pressTimerDate.current = Date.now();
-    pressTimer.current = setTimeout(() => {
-      setLuckySponsorHide(true);
-    }, 1000);
-  };
-
-  const handleHideSponsorMessage = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const isSimpleClick = Date.now() - (pressTimerDate.current || 0) < 1000;
-
-    if (isSimpleClick) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const hiddenUntil = tomorrow.getTime();
-      await ExtensionStorageManager.hideSponsorMessage(hiddenUntil);
-      dispatch(hideSponsorMessage(hiddenUntil));
-    }
-
-    pressTimer.current && clearTimeout(pressTimer.current);
-    pressTimer.current = null;
-    setIsLongPress(false);
-  };
-
-  const handleHideSponsorMessageForMonth = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const oneMonthLater = new Date();
-    oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
-
-    const hiddenUntil = oneMonthLater.getTime();
-    await ExtensionStorageManager.hideSponsorMessage(hiddenUntil);
-    dispatch(hideSponsorMessage(hiddenUntil));
-  };
-
-  const shouldShowSponsorMessage = !sponsorMessage?.hiddenUntil || Date.now() > sponsorMessage.hiddenUntil;
 
   // Create header content - now all features use portals to inject their headers
   const renderHeaderContent = () => {
@@ -173,7 +92,6 @@ export function PopupContainer() {
 
   return (
     <>
-      <GlobalStyle />
       <FloatingModal
         open={activeIcons.length}
         title={renderHeaderContent()}
@@ -187,72 +105,6 @@ export function PopupContainer() {
         onCancel={() => dispatch(onClearAllActiveIcons.getPayload())}
         footer={
           <FooterContainer>
-            {shouldShowSponsorMessage ? (
-              <BecomeASponsor
-                target={"_blank"}
-                href={"https://github.com/liubomyr-kozak/HoverInspectorSupport/blob/main/SponsorRequest.md"}
-              >
-                <div className="hover-effect">
-                  <RandomBackground />
-                </div>
-
-                {luckySponsorHide ? (
-                  <BecomeASponsorText className="px-4">
-                    <p
-                      className="flex items-center justify-center transition-colors"
-                      style={{
-                        animation: "colorPulse 1s infinite",
-                      }}
-                    >
-                      <PiCloverDuotone size={18} className="mr-2" />
-                      Welcome to the club! You found my secret gift!
-                    </p>
-                    <HideButton onClick={handleHideSponsorMessageForMonth} title="Hide sponsor message for 1 month">
-                      Hide sponsor message for 1 month
-                    </HideButton>
-                  </BecomeASponsorText>
-                ) : (
-                  <BecomeASponsorText>
-                    <h3>Become a sponsor</h3>
-                    <p title="Support the project and help bring new features faster.">Help bring new features faster.</p>
-                  </BecomeASponsorText>
-                )}
-
-                <button
-                  type="button"
-                  style={{
-                    position: "absolute",
-                    top: "5px",
-                    right: "5px",
-                    cursor: "pointer",
-                    zIndex: 10,
-                    display: "flex",
-                    border: "none",
-                    background: "rgba(255,255,255,0.7)",
-                    borderRadius: "50%",
-                    padding: "2px",
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Enter/Space: there is no press to time, so it is a simple "hide until tomorrow"
-                    if (e.detail === 0) pressTimerDate.current = Date.now();
-                    handleHideSponsorMessage(e);
-                  }}
-                  onMouseDown={handleSponsorMouseDown}
-                  onMouseUp={handleHideSponsorMessage}
-                  title="Hide until tomorrow"
-                  aria-label="Hide the sponsor message until tomorrow"
-                >
-                  <IconX
-                    size={16}
-                    style={{
-                      animation: isLongPress ? "spin 1s linear infinite" : "none",
-                    }}
-                  />
-                </button>
-              </BecomeASponsor>
-            ) : null}
             <ButtonsContainer id="hover-inspector-popup-footer-container" />
           </FooterContainer>
         }
