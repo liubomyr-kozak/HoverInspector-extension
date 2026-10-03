@@ -2,10 +2,11 @@ import React, { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 
 import DomNodeManager, { useDomNodeObserver } from "@entrypoints/core/services/dom/DomNodeManager.ts";
-import { setElementBorder } from "@entrypoints/core/utils";
+import { clipOverlayTo, setElementBorder } from "@entrypoints/core/utils";
 
 import { isActionTypeHover, isActionTypeScroll } from "@entrypoints/content/store/app/app.slice";
 import styled from "styled-components";
+import { getNodeComputedStyle } from "@entrypoints/shared/frameAgent/remoteNode";
 import { ZINDEX_HOVERED_ELEMENT_BORDER } from "@entrypoints/shared/constant/zIndex.ts";
 
 const HoveredElementBorder = styled.div`
@@ -27,7 +28,7 @@ const AnyHoveredElementBox = () => {
       if (!anyHoveredElement) return;
 
       const clientRectHoveredNode = DomNodeManager.getBoundingClientRec(anyHoveredElement);
-      const borderRadius = getComputedStyle(anyHoveredElement).borderRadius;
+      const borderRadius = getNodeComputedStyle(anyHoveredElement).borderRadius;
 
       setElementBorder(anyHoveredElementRef.current, {
         borderRadius,
@@ -36,6 +37,8 @@ const AnyHoveredElementBox = () => {
         width: clientRectHoveredNode.width,
         height: clientRectHoveredNode.height,
       });
+      // Inside an iframe, stop at the frame's edges like the element does
+      clipOverlayTo(anyHoveredElementRef.current, DomNodeManager.getOverlayClipRect(anyHoveredElement));
     }
   }, [userAction, anyHoveredElement]);
 

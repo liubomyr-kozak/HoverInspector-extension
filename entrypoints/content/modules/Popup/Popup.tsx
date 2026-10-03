@@ -6,6 +6,9 @@ import { cutPx, getLeftPosition, getTagMeta, isChildText, targetColorStringToHex
 import { colorBoxStyle, flexChildRightStyle, targetSizeStyle, targetTitleStyle } from "./PopupStyle.tsx";
 import { BoxLabelContainer, PopupWrapper } from "./Popup.styled.ts";
 import cx from "classnames";
+import { getNodeComputedStyle } from "@entrypoints/shared/frameAgent/remoteNode";
+import { describeFrameContext } from "@entrypoints/content/frameAgentHost";
+import { lastPointer } from "./pointer";
 
 // Label on the left, value pushed to the right edge, never touching each other
 const rowStyle: React.CSSProperties = {
@@ -42,7 +45,7 @@ const PopupContainer = ({ data, hoverElement }) => {
   let svgFill = "";
   let svgStroke = "";
   if (isSvg && hoverElement.localName !== "svg") {
-    const svgStyle = getComputedStyle(hoverElement);
+    const svgStyle = getNodeComputedStyle(hoverElement);
     svgFill = svgStyle.fill && svgStyle.fill !== "none" ? svgStyle.fill : "";
     svgStroke = svgStyle.stroke && svgStyle.stroke !== "none" ? svgStyle.stroke : "";
   }
@@ -56,7 +59,9 @@ const PopupContainer = ({ data, hoverElement }) => {
   const showColors = !!(backgroundColor || showTextColor || svgFill || svgStroke);
   const showTypography = hasText && !!font;
   const showImage = isImage && (!!imageNatural || imageAlt !== null);
-  const hasBody = showSpacing || showColors || showTypography || !!border || showImage;
+  // Cross-origin frames: say where the element is, or that the frame itself is all we can show
+  const frameContext = describeFrameContext(hoverElement);
+  const hasBody = showSpacing || showColors || showTypography || !!border || showImage || !!frameContext;
 
   const renderColorInfo = (label, colorValue, showLabel = true) => {
     if (!colorValue) return null;
@@ -169,6 +174,24 @@ const PopupContainer = ({ data, hoverElement }) => {
           {cutPx(width)} × {cutPx(height)}px
         </div>
       </div>
+
+      {frameContext && (
+        <div
+          style={{
+            marginBottom: '12px',
+            fontSize: '11px',
+            lineHeight: 1.4,
+            color: frameContext.limited ? '#8a4b00' : '#495057',
+            background: frameContext.limited ? '#fff4e0' : '#f1f3f5',
+            border: `1px solid ${frameContext.limited ? '#f5d2a0' : '#e9ecef'}`,
+            borderRadius: '4px',
+            padding: '4px 8px',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {frameContext.text}
+        </div>
+      )}
 
       {/* Spacing Section */}
       {showSpacing && (
@@ -326,18 +349,6 @@ const PopupContainer = ({ data, hoverElement }) => {
 const ARROW_HEIGHT = 8;
 const CURSOR_OFFSET = 16;
 
-// Last pointer position, for elements too tall to put the tooltip above or below them
-const lastPointer = { x: -1, y: -1 };
-if (typeof window !== "undefined") {
-  window.addEventListener(
-    "mousemove",
-    (e) => {
-      lastPointer.x = e.clientX;
-      lastPointer.y = e.clientY;
-    },
-    { capture: true, passive: true },
-  );
-}
 
 // // Додаю виправлення без зміни стилю функції
 // const getPopupPosition = (hoverNodeParams, popupRef) => {

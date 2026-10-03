@@ -5,6 +5,7 @@ import { skipTab } from "./shared/utils.ts";
 import { actionsContextSlice } from "./store/backgroundSlice.ts";
 import { appBackgroundSlice } from "./store/appBackgroundSlice.ts";
 import { handleAutomationTabPort, registerAutomationTabListeners } from "./automationTabs.ts";
+import { registerFrameAgentRelay } from "./frameAgentRelay.ts";
 
 let lastBrowserAction;
 
@@ -78,6 +79,7 @@ export default defineBackground({
     });
 
     registerAutomationTabListeners();
+    registerFrameAgentRelay();
 
     const debounceMap: Record<number, NodeJS.Timeout> = {};
 

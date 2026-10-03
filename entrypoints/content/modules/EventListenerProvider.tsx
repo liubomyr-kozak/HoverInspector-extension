@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import PopupSettingModel from "@entrypoints/core/Models/PopupSettingModel";
@@ -8,10 +8,13 @@ import {
   onUserEventSelectWatcher,
 } from "@entrypoints/content/store/app/saga-action/app.saga.action";
 import { userEventScrollConfirm } from "@entrypoints/content/store/app/app.slice";
-import { watchSameOriginFrames } from "@entrypoints/shared/utils/frames";
+import { mapRectFromWindow, watchSameOriginFrames } from "@entrypoints/shared/utils/frames";
+import { setLastPointer } from "@entrypoints/content/modules/Popup/pointer";
+import { setAllBordersVisible } from "@entrypoints/shared/utils/allBorders";
+import { RemoteFrameNode } from "@entrypoints/shared/frameAgent/remoteNode";
+import { startFrameAgentHost } from "@entrypoints/content/frameAgentHost";
 
 let preNodeTarget: any = null;
-const OUTLINE_STYLE_ID = "hover-inspector-element-outline";
 
 function hasAppClass(node: any) {
   return (
@@ -19,34 +22,16 @@ function hasAppClass(node: any) {
   );
 }
 
-/**
- * "Show All Borders": outlines every page element with a single stylesheet. Outlines take no
- * space, so the page layout stays the same, and removing the stylesheet restores the page exactly.
- */
-function setAllBordersVisible(visible: boolean) {
-  const existing = document.getElementById(OUTLINE_STYLE_ID);
-
-  if (!visible) {
-    existing?.remove();
-    return;
-  }
-  if (existing) return;
-
-  const styleElement = document.createElement("style");
-  styleElement.id = OUTLINE_STYLE_ID;
-  styleElement.textContent = `
-    body *:not(hover-inspector) {
-      outline: 1px dashed rgba(255, 140, 0, 0.6) !important;
-      outline-offset: -1px !important;
-    }
-  `;
-  document.head.appendChild(styleElement);
-}
-
 const onHandlerInputMove = (e: any, dispatch: any) => {
   // if (!PopupSettingModel.isHandleDomInspector) return;
 
   const candidateToHoverElement = e.target;
+
+  // Inside a same-origin iframe: the top window's pointer tracking doesn't see this move
+  if (e.view && e.view !== window) {
+    const point = mapRectFromWindow(e.view, { left: e.clientX, top: e.clientY, width: 0, height: 0 });
+    setLastPointer(point.left, point.top);
+  }
 
   // in SVG className is Object
   const isHoveredNotTarget = preNodeTarget !== candidateToHoverElement;
@@ -67,6 +52,22 @@ const onHandlerInputMove = (e: any, dispatch: any) => {
 
   // return dispatch({type: USER_EVENT_HOVER});
   return dispatch(onUserEventHoverWatcher.getPayload());
+};
+
+/** The pointer moved to another element inside a cross-origin frame (reported by its frame agent) */
+const onRemoteHover = (node: RemoteFrameNode, pointer: { x: number; y: number } | null, dispatch: any) => {
+  if (pointer) setLastPointer(pointer.x, pointer.y);
+  preNodeTarget = node;
+  DomNodeManager.update({ anyHoveredElement: node });
+  DomNodeManager.update({ candidateToHoverElement: node });
+  dispatch(onUserEventHoverWatcher.getPayload());
+};
+
+/** Mouse down inside a cross-origin frame; the agent already blocked the click if asked to */
+const onRemoteSelect = (node: RemoteFrameNode, dispatch: any) => {
+  DomNodeManager.update({ candidateToSelectedElement: node });
+  if (PopupSettingModel.isSingleSelect) return;
+  dispatch(onUserEventSelectWatcher.getPayload());
 };
 
 // // Функція повертає ще одну функцію (це важливо!)
@@ -143,11 +144,26 @@ const onHandlerChange = (e: any) => {
 const EventListenerProvider: React.FC = () => {
   const dispatch = useDispatch();
   const showAllBorders = useSelector((state: any) => !!state.app?.showAllBorders);
+  const preventDefault = useSelector((state: any) => !!state.app?.preventDefault);
+  const frameAgentHost = useRef<ReturnType<typeof startFrameAgentHost> | null>(null);
 
   useEffect(() => {
-    setAllBordersVisible(showAllBorders);
-    return () => setAllBordersVisible(false);
+    if (!showAllBorders) return;
+    // The outlines go into same-origin frames too (cross-origin ones: their frame agent, below)
+    setAllBordersVisible(document, true);
+    const stopWatchingFrames = watchSameOriginFrames((frameWindow) => {
+      setAllBordersVisible(frameWindow.document, true);
+      return () => setAllBordersVisible(frameWindow.document, false);
+    });
+    return () => {
+      setAllBordersVisible(document, false);
+      stopWatchingFrames();
+    };
   }, [showAllBorders]);
+
+  useEffect(() => {
+    frameAgentHost.current?.setSettings({ preventDefault, showAllBorders });
+  }, [preventDefault, showAllBorders]);
 
   const onMouseUp = useCallback((e: any) => onHandlerMouseUp(e), []);
   const onClick = useCallback((e: any) => onHandlerClick(e), []);
@@ -172,14 +188,37 @@ const EventListenerProvider: React.FC = () => {
       return () => listeners.forEach(([type, listener]) => target.removeEventListener(type, listener, { capture: true }));
     };
 
-    const unlistenTop = listen(window);
+    // Cross-origin iframes: a frame agent inside reports hover/click/scroll (started lazily, on the
+    // first such frame)
+    const host = startFrameAgentHost(
+      {
+        onHover: (node, pointer) => onRemoteHover(node, pointer, dispatch),
+        onSelect: (node) => onRemoteSelect(node, dispatch),
+        onUpdate: () => dispatch(userEventScrollConfirm()),
+      },
+      { preventDefault: PopupSettingModel.preventDefault, showAllBorders: false },
+    );
+    frameAgentHost.current = host;
+
+    const listenWithFrameAgents = (target: Window) => {
+      const unlisten = listen(target);
+      const unlistenAgents = host.listenWindow(target);
+      return () => {
+        unlisten();
+        unlistenAgents();
+      };
+    };
+
+    const unlistenTop = listenWithFrameAgents(window);
     // Same-origin iframes: their events never reach the top window, so hover/click/scroll are taken
     // from each frame's own window. Rects are mapped back to the top viewport by DomNodeManager.
-    const stopWatchingFrames = watchSameOriginFrames(listen);
+    const stopWatchingFrames = watchSameOriginFrames(listenWithFrameAgents, host.noteCrossOriginFrame);
 
     return () => {
       unlistenTop();
       stopWatchingFrames();
+      host.stop();
+      frameAgentHost.current = null;
     };
   }, []);
 
