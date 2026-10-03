@@ -38,6 +38,11 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [react(), Svgr()],
+    resolve: {
+      // The default react-toastify build injects its stylesheet (and :root variables) into the page's
+      // <head>. Our toasts live in the shadow root, which gets the CSS separately (see content/app.tsx).
+      alias: [{ find: /^react-toastify$/, replacement: "react-toastify/unstyled" }],
+    },
   }),
   test: {
     environment: "jsdom", // <- додає window, document і т.д.
