@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { IconEye } from '@tabler/icons-react';
 import { BorderRadiusToken } from './paletteTypes';
-import { ImportSection } from './ImportSection';
+import { ImportSection, normalizeLength } from './ImportSection';
 
 interface BorderTokenTabProps {
   tokens: BorderRadiusToken[];
@@ -54,6 +54,7 @@ export const BorderTokenTab: React.FC<BorderTokenTabProps> = ({ tokens, navigate
           if (/^\d+$/.test(trimmed)) return `${trimmed}px`; // Add px to plain numbers
           return trimmed;
         }}
+        normalize={normalizeLength}
       />
       {/* Columns follow the panel width (md:/lg: breakpoints follow the page's width instead) */}
       <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))" }}>

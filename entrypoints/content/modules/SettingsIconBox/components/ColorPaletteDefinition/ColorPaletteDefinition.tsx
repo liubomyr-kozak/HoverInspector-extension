@@ -18,6 +18,24 @@ import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOve
 import ColorCategorySection from "./ColorCategorySection.tsx";
 import { ImportSection } from "./ImportSection";
 
+let colorContext: CanvasRenderingContext2D | null = null;
+
+/**
+ * Canonical form of a CSS colour ("#fff", "white" and "rgb(255,255,255)" all give "#ffffff"), null when
+ * the value isn't a colour. The canvas only accepts valid colours into fillStyle.
+ */
+const normalizeColor = (value: string): string | null => {
+  colorContext = colorContext || document.createElement("canvas").getContext("2d");
+  if (!colorContext) return value.toLowerCase();
+  colorContext.fillStyle = "#000001";
+  colorContext.fillStyle = value;
+  const first = String(colorContext.fillStyle);
+  colorContext.fillStyle = "#000002";
+  colorContext.fillStyle = value;
+  // Unchanged sentinel: the browser rejected the value
+  return first === "#000001" && String(colorContext.fillStyle) === "#000002" ? null : first;
+};
+
 // Start empty: the palette is filled from the page, never from placeholder colours
 const emptyPalette: ColorPalette = {
   // Role-based categories
@@ -221,6 +239,7 @@ export const ColorPaletteDefinition: React.FC = () => {
           // For named colors, return as-is
           return trimmed;
         }}
+        normalize={normalizeColor}
       />
 
       <div className="flex gap-6">

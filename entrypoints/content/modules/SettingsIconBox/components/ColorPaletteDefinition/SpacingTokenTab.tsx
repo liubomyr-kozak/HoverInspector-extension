@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { IconEye } from "@tabler/icons-react";
 import { SpacingToken } from "./paletteTypes";
-import { ImportSection } from "./ImportSection";
+import { ImportSection, normalizeLength } from "./ImportSection";
 
 interface SpacingTokenTabProps {
   tokens: SpacingToken[];
@@ -57,6 +57,7 @@ export const SpacingTokenTab: React.FC<SpacingTokenTabProps> = ({ tokens, naviga
           if (/^\d+$/.test(trimmed)) return `${trimmed}px`; // Add px to plain numbers
           return trimmed;
         }}
+        normalize={normalizeLength}
       />
       <div className="grid grid-cols-3 gap-2">
         {tokens.map((token) => (
