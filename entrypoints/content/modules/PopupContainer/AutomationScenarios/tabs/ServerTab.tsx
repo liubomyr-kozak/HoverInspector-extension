@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Switch, message, Spin, Divider } from "antd";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Button, Switch, message, Spin, Divider } from "antd";
 import { IconServer } from "@tabler/icons-react";
 import { debounce } from "lodash";
 
@@ -27,44 +27,50 @@ const defaultSettings: ServerSettings = {
   syncTriggers: true,
 };
 
-const ServerTab: React.FC = () => {
+interface ServerTabProps {
+  /** Hides the Server tab (it is shown again by holding the S key for 2 seconds) */
+  onHide?: () => void;
+}
+
+// Validates a URL
+const isValidUrl = (url: string): boolean => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const ServerTab: React.FC<ServerTabProps> = ({ onHide }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [serverUrl, setServerUrl] = useState("");
-  const [saveToBackend, setSaveToBackend] = useState(false);
-  const [syncScenarios, setSyncScenarios] = useState(true);
-  const [syncFunctions, setSyncFunctions] = useState(true);
-  const [syncSchedules, setSyncSchedules] = useState(true);
-  const [syncTriggers, setSyncTriggers] = useState(true);
+  const [settings, setSettings] = useState<ServerSettings>(defaultSettings);
+  const { serverUrl, saveToBackend, syncScenarios, syncFunctions, syncSchedules, syncTriggers } = settings;
 
-  // Функція для валідації URL
-  const isValidUrl = (url: string): boolean => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  // The latest settings, for saves started by the debounced URL input
+  const settingsRef = useRef<ServerSettings>(defaultSettings);
+  settingsRef.current = settings;
 
-  // Завантаження налаштувань при ініціалізації
+  // Load the settings
   useEffect(() => {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const settings = await ExtensionStorageManager.getAutomationScenario(SERVER_SETTINGS_KEY);
-        //localhost:5555
-        http: if (settings) {
-          setServerUrl(settings.serverUrl || "");
-          setSaveToBackend(settings.saveToBackend || false);
-          setSyncScenarios(settings.syncScenarios ?? true);
-          setSyncFunctions(settings.syncFunctions ?? true);
-          setSyncSchedules(settings.syncSchedules ?? true);
-          setSyncTriggers(settings.syncTriggers ?? true);
+        const stored = await ExtensionStorageManager.getAutomationScenario(SERVER_SETTINGS_KEY);
+        if (stored) {
+          setSettings({
+            serverUrl: stored.serverUrl || "",
+            saveToBackend: stored.saveToBackend || false,
+            syncScenarios: stored.syncScenarios ?? true,
+            syncFunctions: stored.syncFunctions ?? true,
+            syncSchedules: stored.syncSchedules ?? true,
+            syncTriggers: stored.syncTriggers ?? true,
+          });
         }
       } catch (error) {
         console.error("Failed to load server settings:", error);
-        message.error("Не вдалося завантажити налаштування сервера");
+        message.error("Failed to load the server settings");
       } finally {
         setLoading(false);
       }
@@ -73,73 +79,64 @@ const ServerTab: React.FC = () => {
     loadSettings();
   }, []);
 
-  // Функція для збереження налаштувань
+  // Save the settings
   const saveSettings = async (newSettings: Partial<ServerSettings>) => {
     try {
       setSaving(true);
 
-      const currentSettings: ServerSettings = {
-        serverUrl,
-        saveToBackend,
-        syncScenarios,
-        syncFunctions,
-        syncSchedules,
-        syncTriggers,
-        ...newSettings,
-      };
+      const currentSettings: ServerSettings = { ...settingsRef.current, ...newSettings };
 
       await ExtensionStorageManager.saveAutomationScenario({
         id: SERVER_SETTINGS_KEY,
         scenario: currentSettings,
       });
-      message.success("Налаштування збережено");
     } catch (error) {
       console.error("Failed to save server settings:", error);
-      message.error("Не вдалося зберегти налаштування");
+      message.error("Failed to save the server settings");
     } finally {
       setSaving(false);
     }
   };
 
-  const debouncedSaveUrl = debounce((url: string) => {
-    if (url === "" || isValidUrl(url)) {
-      saveSettings({ serverUrl: url });
-    }
-  }, 1000);
+  const saveSettingsRef = useRef(saveSettings);
+  saveSettingsRef.current = saveSettings;
 
-  // Обробник зміни URL сервера
+  // Save the URL once the user stopped typing
+  const debouncedSaveUrl = useMemo(
+    () =>
+      debounce((url: string) => {
+        if (url === "" || isValidUrl(url)) {
+          saveSettingsRef.current({ serverUrl: url });
+        }
+      }, 1000),
+    [],
+  );
+
+  useEffect(() => () => debouncedSaveUrl.flush(), [debouncedSaveUrl]);
+
+  // Server URL change
   const handleServerUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
-    setServerUrl(newUrl);
+    setSettings((current) => ({ ...current, serverUrl: newUrl }));
     debouncedSaveUrl(newUrl);
   };
 
-  // Обробник зміни опції "Save to Backend"
+  // "Save to backend" change
   const handleSaveToBackendChange = (checked: boolean) => {
-    setSaveToBackend(checked);
+    setSettings((current) => ({ ...current, saveToBackend: checked }));
     saveSettings({ saveToBackend: checked });
   };
 
-  // Обробник зміни опцій синхронізації
+  // Sync option change
   const handleSyncChange = (key: keyof ServerSettings, checked: boolean) => {
-    const setters = {
-      syncScenarios: setSyncScenarios,
-      syncFunctions: setSyncFunctions,
-      syncSchedules: setSyncSchedules,
-      syncTriggers: setSyncTriggers,
-    };
-
-    const setter = setters[key as keyof typeof setters];
-    if (setter) {
-      setter(checked);
-      saveSettings({ [key]: checked });
-    }
+    setSettings((current) => ({ ...current, [key]: checked }));
+    saveSettings({ [key]: checked });
   };
 
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "200px" }}>
-        <Spin tip="Завантаження налаштувань сервера..." size="large" />
+        <Spin tip="Loading server settings..." size="large" />
       </div>
     );
   }
@@ -148,16 +145,21 @@ const ServerTab: React.FC = () => {
     <div>
       <div className="flex items-center mb-4">
         <IconServer size={20} className="mr-2" />
-        <h2 className="text-lg font-medium">Конфігурація сервера</h2>
+        <h2 className="text-lg font-medium">Server configuration</h2>
         {saving && <Spin size="small" className="ml-2" />}
+        {onHide && (
+          <Button size="small" type="text" className="ml-auto" onClick={onHide} title="Hold S for 2 seconds to show it again">
+            Hide tab
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">
         {/* Server URL */}
         <div>
           <label className="flex items-center text-sm font-medium mb-2">
-            URL сервера
-            <Tooltip title="Введіть URL для синхронізації даних автоматизації">
+            Server URL
+            <Tooltip title="The URL of the server automation data is synced with">
               <InfoCircleOutlined style={{ marginLeft: 4 }} />
             </Tooltip>
           </label>
@@ -166,84 +168,83 @@ const ServerTab: React.FC = () => {
             value={serverUrl}
             onChange={handleServerUrlChange}
             placeholder="https://example.com/api/automation"
-            disabled={saving}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
           />
           {serverUrl && !isValidUrl(serverUrl) && (
-            <p className="text-red-500 text-xs mt-1">Будь ласка, введіть дійсний URL</p>
+            <p className="text-red-500 text-xs mt-1">Please enter a valid URL</p>
           )}
         </div>
 
         {/* Save to Backend */}
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <span className="text-sm font-medium">Зберігати в бекенд</span>
-            <Tooltip title="Увімкніть для збереження даних автоматизації на сервері бекенду">
+            <span className="text-sm font-medium">Save to backend</span>
+            <Tooltip title="Save automation data on the backend server">
               <InfoCircleOutlined style={{ marginLeft: 4 }} />
             </Tooltip>
           </div>
-          <Switch checked={saveToBackend} onChange={handleSaveToBackendChange} disabled={saving} />
+          <Switch checked={saveToBackend} onChange={handleSaveToBackendChange} />
         </div>
 
         {/* Sync Options */}
         {saveToBackend && (
           <>
-            <Divider orientation="left">Опції синхронізації</Divider>
+            <Divider orientation="left">Sync options</Divider>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <span className="text-sm">Сценарії</span>
-                  <Tooltip title="Увімкніть для синхронізації сценаріїв із сервером">
+                  <span className="text-sm">Scenarios</span>
+                  <Tooltip title="Sync scenarios with the server">
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </div>
                 <Switch
                   checked={syncScenarios}
                   onChange={(checked) => handleSyncChange("syncScenarios", checked)}
-                  disabled={saving || !saveToBackend}
+                  disabled={!saveToBackend}
                 />
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <span className="text-sm">Функції</span>
-                  <Tooltip title="Увімкніть для синхронізації функцій із сервером">
+                  <span className="text-sm">Functions</span>
+                  <Tooltip title="Sync functions with the server">
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </div>
                 <Switch
                   checked={syncFunctions}
                   onChange={(checked) => handleSyncChange("syncFunctions", checked)}
-                  disabled={saving || !saveToBackend}
+                  disabled={!saveToBackend}
                 />
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <span className="text-sm">Розклади</span>
-                  <Tooltip title="Увімкніть для синхронізації розкладів із сервером">
+                  <span className="text-sm">Schedules</span>
+                  <Tooltip title="Sync schedules with the server">
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </div>
                 <Switch
                   checked={syncSchedules}
                   onChange={(checked) => handleSyncChange("syncSchedules", checked)}
-                  disabled={saving || !saveToBackend}
+                  disabled={!saveToBackend}
                 />
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <span className="text-sm">Тригери</span>
-                  <Tooltip title="Увімкніть для синхронізації тригерів із сервером">
+                  <span className="text-sm">Triggers</span>
+                  <Tooltip title="Sync triggers with the server">
                     <InfoCircleOutlined style={{ marginLeft: 4 }} />
                   </Tooltip>
                 </div>
                 <Switch
                   checked={syncTriggers}
                   onChange={(checked) => handleSyncChange("syncTriggers", checked)}
-                  disabled={saving || !saveToBackend}
+                  disabled={!saveToBackend}
                 />
               </div>
             </div>

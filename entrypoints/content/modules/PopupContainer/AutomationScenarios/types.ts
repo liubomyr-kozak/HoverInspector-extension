@@ -106,6 +106,7 @@ export interface ScheduleConfig {
   interval?: number; // For custom intervals (in minutes)
   lastExecuted?: string; // ISO date string of last execution
   nextExecution?: string; // ISO date string of next scheduled execution
+  runClaim?: string; // Set by the tab that runs the schedule, so other tabs don't run it too
 }
 
 /**

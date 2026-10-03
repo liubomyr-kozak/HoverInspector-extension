@@ -7,7 +7,7 @@ import {
   ExecutionSession,
   getSessionOwner,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/executionSession.ts";
-import { matchesDomainTrigger } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/validationUtils.ts";
+import { isDomainTriggerMatch } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/validationUtils.ts";
 import { TriggerConfig } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types.ts";
 import { AUTOMATION_SCENARIO_PREFIX } from "@entrypoints/core/constants/automation.ts";
 
@@ -74,17 +74,87 @@ function parseStored<T>(value: unknown): T | null {
   }
 }
 
+// Triggers by storage key, read once and refreshed when a trigger changes
+let triggersCache: Promise<Record<string, TriggerConfig | null>> | null = null;
+
+async function loadTriggers(): Promise<Record<string, TriggerConfig | null>> {
+  const storage = chrome.storage.local as typeof chrome.storage.local & { getKeys?: () => Promise<string[]> };
+  let items: Record<string, unknown>;
+  if (typeof storage.getKeys === "function") {
+    const keys = (await storage.getKeys()).filter((key) => key.startsWith(TRIGGER_KEY_PREFIX));
+    items = keys.length > 0 ? await chrome.storage.local.get(keys) : {};
+  } else {
+    items = await chrome.storage.local.get(null);
+  }
+
+  return Object.fromEntries(
+    Object.keys(items)
+      .filter((key) => key.startsWith(TRIGGER_KEY_PREFIX))
+      .map((key) => [key, parseStored<TriggerConfig>(items[key])]),
+  );
+}
+
+function getTriggers() {
+  if (!triggersCache) {
+    triggersCache = loadTriggers().catch((error) => {
+      triggersCache = null;
+      throw error;
+    });
+  }
+  return triggersCache;
+}
+
+// The domain triggers that turned the extension on in each tab, per site: a trigger runs once per tab and
+// site (see TriggerScenarioEvaluator), so the extension isn't turned on again for it after the user closed it.
+// Kept in session storage so it survives the service worker restarting.
+const TRIGGER_ACTIVATIONS_KEY = "automation_trigger_activations";
+
+type TriggerActivations = Record<string, string[]>;
+
+async function getTriggerActivations(): Promise<TriggerActivations> {
+  try {
+    const items = await chrome.storage.session.get(TRIGGER_ACTIVATIONS_KEY);
+    return (items[TRIGGER_ACTIVATIONS_KEY] as TriggerActivations) || {};
+  } catch {
+    return {};
+  }
+}
+
+async function setTriggerActivations(activations: TriggerActivations) {
+  try {
+    await chrome.storage.session.set({ [TRIGGER_ACTIVATIONS_KEY]: activations });
+  } catch {
+    // ignore
+  }
+}
+
+async function forgetTriggerActivations(tabId: number) {
+  const activations = await getTriggerActivations();
+  if (activations[tabId]) {
+    delete activations[tabId];
+    await setTriggerActivations(activations);
+  }
+}
+
 async function activateIfTriggered(tabId: number, url: string | undefined) {
   if (!url || !/^https?:/.test(url) || Ext.session.isActive(tabId)) return;
 
-  const items = await chrome.storage.local.get(null);
-  const triggers = Object.keys(items)
-    .filter((key) => key.startsWith(TRIGGER_KEY_PREFIX))
-    .map((key) => parseStored<TriggerConfig>(items[key]));
+  const triggers = await getTriggers();
+  const origin = new URL(url).origin;
+  const matching = Object.keys(triggers)
+    .filter((key) => isDomainTriggerMatch(triggers[key], url))
+    .map((key) => `${key}|${origin}`);
+  if (matching.length === 0) return;
 
-  if (matchesDomainTrigger(triggers, url)) {
-    await Ext.session.activate(tabId);
-  }
+  // Already turned on for these triggers on this site: the triggers have run, or the user closed it
+  const activations = await getTriggerActivations();
+  const done = activations[tabId] || [];
+  const pending = matching.filter((entry) => !done.includes(entry));
+  if (pending.length === 0) return;
+
+  activations[tabId] = [...done, ...pending];
+  await setTriggerActivations(activations);
+  await Ext.session.activate(tabId);
 }
 
 export function registerAutomationTabListeners() {
@@ -104,5 +174,14 @@ export function registerAutomationTabListeners() {
     activateIfTriggered(tabId, tab.url).catch((error) => console.error("Error checking URL triggers:", error));
   });
 
-  chrome.tabs.onRemoved.addListener((tabId) => tabsToActivate.delete(tabId));
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    tabsToActivate.delete(tabId);
+    forgetTriggerActivations(tabId).catch(() => {});
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && Object.keys(changes).some((key) => key.startsWith(TRIGGER_KEY_PREFIX))) {
+      triggersCache = null;
+    }
+  });
 }

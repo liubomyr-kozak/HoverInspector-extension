@@ -80,10 +80,10 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
     if (searchText) {
       const lowerSearchText = searchText.toLowerCase();
       filtered = filtered.filter((entry) => {
-        const scenarioTitle = scenarios[entry.scenarioId]?.title || entry.scenarioTitle;
+        const scenarioTitle = scenarios[entry.scenarioId]?.title || entry.scenarioTitle || "";
         return (
           scenarioTitle.toLowerCase().includes(lowerSearchText) ||
-          entry.id.toLowerCase().includes(lowerSearchText) ||
+          (entry.id || "").toLowerCase().includes(lowerSearchText) ||
           (entry.error && entry.error.toLowerCase().includes(lowerSearchText))
         );
       });
@@ -265,6 +265,10 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
               onConfirm={() => deleteExecutionHistoryEntry(record.id)}
               okText="Yes"
               cancelText="No"
+              getPopupContainer={() =>
+                // @ts-ignore
+                (document.querySelector("hover-inspector")!.shadowRoot as HTMLElement)?.querySelector("html > body")!
+              }
             >
               <Button type="text" danger icon={<DeleteOutlined />} />
             </Popconfirm>
@@ -299,8 +303,8 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
 
           <Select
             placeholder="Filter by status"
-            value={statusFilter}
-            onChange={(value) => setStatusFilter(value)}
+            value={statusFilter || undefined}
+            onChange={(value) => setStatusFilter(value || "")}
             style={{ width: 150 }}
             allowClear
             getPopupContainer={() =>
@@ -319,8 +323,8 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
 
           <Select
             placeholder="Filter by scenario"
-            value={scenarioFilter}
-            onChange={(value) => setScenarioFilter(value)}
+            value={scenarioFilter || undefined}
+            onChange={(value) => setScenarioFilter(value || "")}
             style={{ width: 200 }}
             allowClear
             showSearch
@@ -393,7 +397,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
       <Drawer
         title="Execution Details"
         placement="right"
-        width={600}
+        width={Math.min(600, window.innerWidth)}
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
         getContainer={() =>
@@ -446,7 +450,7 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
               </Space>
             </div>
 
-            <ExecutionLogViewer log={selectedEntry.log} title="Execution Log" />
+            {selectedEntry.log && <ExecutionLogViewer log={selectedEntry.log} title="Execution Log" />}
           </>
         )}
       </Drawer>

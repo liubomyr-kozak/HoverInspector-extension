@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useImperativeHandle, useState } from "react";
 import { Button, Checkbox, Divider, Input, Radio, Select, Switch, Tooltip } from "antd";
 import { IconWorldWww, IconRegex, IconCheck } from "@tabler/icons-react";
 import { useForm, Controller } from "react-hook-form";
@@ -39,17 +39,31 @@ const createValidationSchema = () => {
   });
 };
 
+export interface TriggerFormHandle {
+  /** Validates the form and calls onSubmit with the entered trigger when it is valid */
+  submit: () => Promise<void>;
+}
+
 interface TriggerFormProps {
   onFormChange?: (formData: TriggerConfig) => void;
   onSubmit?: (formData: TriggerConfig) => void;
+  onInvalid?: () => void;
   currentTrigger: TriggerConfig | null;
   scenarios: ScenarioMap;
+  formRef?: React.Ref<TriggerFormHandle>;
 }
 
 /**
  * Component for adding or editing a trigger
  */
-const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, currentTrigger, scenarios }) => {
+const TriggerForm: React.FC<TriggerFormProps> = ({
+  onFormChange,
+  onSubmit,
+  onInvalid,
+  currentTrigger,
+  scenarios,
+  formRef,
+}) => {
   // State for trigger type selection to show/hide relevant fields
   const [triggerType, setTriggerType] = useState<TriggerType>(currentTrigger?.type || TriggerType.DOMAIN);
 
@@ -206,6 +220,12 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ onFormChange, onSubmit, curre
   const onFormSubmit = (data: TriggerConfig) => {
     onSubmit?.(data);
   };
+
+  useImperativeHandle(formRef, () => ({ submit: handleSubmit(onFormSubmit, () => onInvalid?.()) }), [
+    handleSubmit,
+    onSubmit,
+    onInvalid,
+  ]);
 
   // Handle form changes
   useEffect(() => {

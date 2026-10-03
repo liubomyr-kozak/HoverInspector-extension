@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useImperativeHandle } from "react";
 import { Checkbox, Col, DatePicker, Divider, InputNumber, Row, Select, Switch, TimePicker } from "antd";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -13,8 +13,8 @@ const validationSchema = yup.object().shape({
   scenarioId: yup.string().required("Please select a scenario to run"),
   frequency: yup.string().required("Please select a frequency"),
   enabled: yup.boolean(),
-  startDate: yup.mixed(),
-  startTime: yup.mixed(),
+  startDate: yup.mixed().required("Please select a start date"),
+  startTime: yup.mixed().required("Please select a start time"),
   endDate: yup.mixed(),
   daysOfWeek: yup.array().when("frequency", {
     is: ScheduleFrequency.WEEKLY,
@@ -35,16 +35,30 @@ const validationSchema = yup.object().shape({
 
 const { Option } = Select;
 
+export interface ScheduleFormHandle {
+  /** Validates the form; resolves to the entered schedule, or null when it is not valid */
+  submit: () => Promise<ScheduleConfig | null>;
+}
+
 interface ScheduleFormProps {
   currentSchedule: ScheduleConfig | null;
   scenarios: ScenarioMap;
   onFormChange?: (formData: ScheduleConfig) => void;
+  formRef?: React.Ref<ScheduleFormHandle>;
 }
+
+// Converts the date / time pickers' values back to the stored strings
+const toScheduleConfig = (values: any): ScheduleConfig => ({
+  ...values,
+  startDate: values.startDate ? dayjs(values.startDate).format("YYYY-MM-DD") : "",
+  startTime: values.startTime ? dayjs(values.startTime).format("HH:mm") : "",
+  endDate: values.endDate ? dayjs(values.endDate).format("YYYY-MM-DD") : undefined,
+});
 
 /**
  * Component for adding or editing a schedule
  */
-const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios, onFormChange }) => {
+const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios, onFormChange, formRef }) => {
   // Convert date strings to dayjs objects for form initialization
   const initialValues = currentSchedule
     ? {
@@ -56,8 +70,9 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios,
     : {
         enabled: true,
         frequency: ScheduleFrequency.ONCE,
-        startDate: dayjs(),
-        startTime: dayjs(),
+        // A few minutes from now: a one-time schedule set to the current minute would already be in the past
+        startDate: dayjs().add(5, "minute"),
+        startTime: dayjs().add(5, "minute"),
       };
 
   // Initialize React Hook Form
@@ -65,12 +80,27 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios,
     control,
     watch,
     setValue,
+    handleSubmit,
     formState: { errors },
   } = useForm<ScheduleConfig>({
     resolver: yupResolver(validationSchema),
     defaultValues: initialValues,
     mode: "onChange",
   });
+
+  useImperativeHandle(
+    formRef,
+    () => ({
+      submit: () =>
+        new Promise<ScheduleConfig | null>((resolve) => {
+          handleSubmit(
+            (values) => resolve(toScheduleConfig(values)),
+            () => resolve(null),
+          )();
+        }),
+    }),
+    [handleSubmit],
+  );
 
   const frequency = watch("frequency");
 
@@ -80,6 +110,7 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios,
 
     // Reset fields that are not relevant to the new frequency
     if (value === ScheduleFrequency.ONCE) {
+      setValue("endDate", undefined);
       setValue("daysOfWeek", undefined);
       setValue("dayOfMonth", undefined);
       setValue("interval", undefined);
@@ -100,19 +131,11 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios,
   };
 
   // Watch form changes and notify parent
-  const watchedValues = watch();
   useEffect(() => {
-    if (onFormChange) {
-      // Convert dayjs objects back to strings for the callback
-      const formData = {
-        ...watchedValues,
-        startDate: watchedValues.startDate ? watchedValues.startDate.format("YYYY-MM-DD") : undefined,
-        startTime: watchedValues.startTime ? watchedValues.startTime.format("HH:mm") : undefined,
-        endDate: watchedValues.endDate ? watchedValues.endDate.format("YYYY-MM-DD") : undefined,
-      };
-      onFormChange(formData as ScheduleConfig);
-    }
-  }, [watchedValues, onFormChange]);
+    if (!onFormChange) return;
+    const subscription = watch((values) => onFormChange(toScheduleConfig(values)));
+    return () => subscription.unsubscribe();
+  }, [watch, onFormChange]);
 
   // Get scenario options for the select dropdown
   const scenarioOptions = Object.keys(scenarios).map((key) => ({
@@ -348,10 +371,10 @@ const ScheduleForm: React.FC<ScheduleFormProps> = ({ currentSchedule, scenarios,
         )}
       </div>
 
-      {frequency === ScheduleFrequency.ONCE && (
+      {frequency !== ScheduleFrequency.ONCE && (
         <div>
           <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
-            End Date
+            End Date (optional)
           </label>
           <Controller
             name="endDate"
