@@ -464,8 +464,8 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                         e.stopPropagation();
                         const isSelected = compareSnapshots.some((s) => s.id === snapshot.id);
 
-                        if (!isSelected && compareSnapshots.length === 0) {
-                          // No snapshots selected - show view details
+                        if (!isSelected && compareSnapshots.length !== 1) {
+                          // Not picking a second snapshot to compare - show view details
                           onView(snapshot);
                         } else if (!isSelected && compareSnapshots.length === 1) {
                           // One snapshot selected - select this one to compare
