@@ -4,26 +4,37 @@ type RequestProcessing = (
   data: { action: string; data: any },
   callback: (res: any) => void,
   localExecFn?: (params: any) => Promise<any>,
+  onError?: (error: Error) => void,
 ) => void;
 
-export const requestProcessing: RequestProcessing = (data, callback, localExecFn) => {
-  if (isPostProd()) {
-    // додав для випадку коли використовується всторому коді, який не має доступу до chrome.runtime
-    if (!chrome?.runtime?.id) return;
-    chrome.runtime.sendMessage(data, callback);
-  }
+export const requestProcessing: RequestProcessing = (data, callback, localExecFn, onError) => {
+  const fail = (error: unknown) => {
+    const err = error instanceof Error ? error : new Error(String(error));
+    if (onError) onError(err);
+    else console.error(`[${data.action}]`, err);
+  };
 
   if (isProduction() || isPostProd()) {
     // додав для випадку коли використовується всторому коді, який не має доступу до chrome.runtime
-    if (!chrome?.runtime?.id) return;
-    chrome.runtime.sendMessage(data, callback);
+    if (!chrome?.runtime?.id) {
+      if (onError) onError(new Error("Extension context is not available"));
+      return;
+    }
+    chrome.runtime.sendMessage(data, (response) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError && onError) {
+        onError(new Error(lastError.message));
+        return;
+      }
+      callback(response);
+    });
+    return;
   }
 
   if (isDevelopment()) {
-    // @ts-ignore
-    const result = localExecFn(data);
-    result.then((response) => {
-      callback(response);
-    });
+    Promise.resolve()
+      // @ts-ignore
+      .then(() => localExecFn(data))
+      .then(callback, fail);
   }
 };

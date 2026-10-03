@@ -6,6 +6,9 @@ type LocalExecFn<T = any, R = any> = (
   ctx: { getState: () => any; setState: (newState: Partial<any>) => void },
 ) => Promise<R> | R;
 
+// Key used to transport an action error from the background back to the caller
+const SLICE_ERROR_KEY = "__chromeSliceError";
+
 type StorageType = "localStorage" | "sessionStorage";
 
 type StorageStrategy = {
@@ -42,17 +45,20 @@ const chromeStorageStrategies: Record<StorageType, StorageStrategy> = {
   },
 };
 
-console.log("😎😎😎 :: -> createChromeSlice");
 export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config: SliceDefinition<T>) => {
-  const { name = "__global__", initialState, version = 1, actions, storage = "chromeLocal" } = config;
+  const { name = "__global__", initialState, version = 1, storage = "localStorage" } = config;
   const storageStrategy = chromeStorageStrategies[storage];
 
   // Локальний state завжди синхронний
   let state = { ...initialState, version };
 
-  // Асинхронне завантаження persistedState з Chrome storage
-  storageStrategy.get(name).then((persistedState: any) => {
-    if (persistedState) {
+  // Асинхронне завантаження persistedState з Chrome storage.
+  // Every action awaits `ready`, so nothing reads the empty initial state (or
+  // overwrites storage with it) before the persisted state has been loaded.
+  const ready: Promise<void> = Promise.resolve()
+    .then(() => storageStrategy.get(name))
+    .then((persistedState: any) => {
+      if (!persistedState) return;
       if (persistedState.version === version) {
         state = { ...state, ...persistedState };
       } else {
@@ -60,8 +66,10 @@ export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config:
         for (const key of preservedKeys) state[key] = persistedState[key];
         state.version = version;
       }
-    }
-  });
+    })
+    .catch((error) => {
+      console.error(`[${name}] failed to load persisted state`, error);
+    });
 
   const getState = () => state;
 
@@ -71,16 +79,38 @@ export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config:
     storageStrategy.set(name, state).catch(console.error);
   };
 
-  const bound: any = {};
   const methods = { getState, setState };
+
+  // Actions wrapped so they always run against the loaded state
+  const actions = {} as T;
+  for (const key in config.actions) {
+    const fn = config.actions[key];
+    actions[key] = (async (data: any, ctx: typeof methods) => {
+      await ready;
+      return fn(data, ctx);
+    }) as T[typeof key];
+  }
+
+  const bound: any = {};
 
   for (const key in actions) {
     const fn = actions[key];
     bound[key] = (data: Parameters<typeof fn>[0]) =>
-      new Promise<Awaited<ReturnType<typeof fn>>>((resolve) => {
+      new Promise<Awaited<ReturnType<typeof fn>>>((resolve, reject) => {
         const debugCb = () => fn(data, methods);
 
-        requestProcessing({ action: `${name}/${key}`, data }, resolve, debugCb);
+        requestProcessing(
+          { action: `${name}/${key}`, data },
+          (response: any) => {
+            if (response && typeof response === "object" && SLICE_ERROR_KEY in response) {
+              reject(new Error(response[SLICE_ERROR_KEY]));
+            } else {
+              resolve(response);
+            }
+          },
+          debugCb,
+          reject,
+        );
       });
   }
 
@@ -88,10 +118,12 @@ export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config:
     name,
     actions,
     methods,
+    ready,
     ...bound,
   } as {
     name: string;
     actions: T;
+    ready: Promise<void>;
     methods: {
       getState: () => typeof state;
       setState: (newState: Partial<typeof state>) => void;
@@ -109,13 +141,22 @@ export const combineChromeSlices = <T extends Record<string, ReturnType<typeof c
   root.initMiddleware = () => {
     if (chrome.runtime) {
       chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (typeof request?.action !== "string") return false;
         const [sliceName, actionName] = request.action.split("/");
 
         const slice = Object.values(slices).find((s) => s.name === sliceName);
         if (slice && slice.actions[actionName]) {
           const fn = slice.actions[actionName] as LocalExecFn;
 
-          fn(request.data, slice.methods).then((res) => sendResponse(res));
+          Promise.resolve()
+            .then(() => fn(request.data, slice.methods))
+            .then(
+              (res) => sendResponse(res),
+              (error) => {
+                console.error(`[${request.action}] failed`, error);
+                sendResponse({ [SLICE_ERROR_KEY]: String(error?.message || error) });
+              },
+            );
           return true;
         }
         return false;
