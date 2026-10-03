@@ -3,19 +3,16 @@ import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import { NotesList } from "./components/NotesList";
-import { Note, NoteGroup, NotesState } from "@entrypoints/shared/types/notes";
-import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
+import { Note, NotesState } from "@entrypoints/shared/types/notes";
 import {
   getAllNotes,
   updateNote,
   deleteNote,
   importNotes,
   updateNotesSearchQuery,
-  createNoteGroup,
   updateNoteGroup,
-  setSelectedNote,
 } from "@entrypoints/background/store/notesActionsSlice.ts";
-import { isNoteOnPage } from "@entrypoints/background/services/notes.ts";
+import { filterNotesForList, NotesListFilter } from "@entrypoints/background/services/notes.ts";
 import { openNoteForm, triggerRefresh } from "@entrypoints/content/store/notes/notes.slice";
 import { useCurrentUrl } from "./VisibleNotesProvider/useCurrentUrl";
 import { onToggleFeatureMinimized } from "@entrypoints/content/store/app/saga-action/app.saga.action";
@@ -28,8 +25,6 @@ import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/Pop
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { PAGE_NOTES } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { TbWindowMinimize } from "react-icons/tb";
-import { FiGlobe, FiMap, FiTarget, FiX } from "react-icons/fi";
-import { AttachmentTypeEnum } from "@entrypoints/shared/types/notes";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
@@ -54,7 +49,6 @@ const ErrorState = styled.div`
 
 export const PageNotes: React.FC = () => {
   const dispatch = useDispatch();
-  const highlightOverlay = useHighlightOverlay();
 
   const { activeIcons = [], iconOrder = [] } = useSelector((state: any) => state?.app.launcher);
   const { refreshTrigger } = useSelector((state: any) => state?.notes || { refreshTrigger: 0 });
@@ -70,33 +64,13 @@ export const PageNotes: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Note Visibility & Attachment filter (header buttons)
-  const [selectedAttachmentType, setSelectedAttachmentType] = useState<"global" | "route" | "element" | null>(null);
-  const [showVisibilitySection, setShowVisibilitySection] = useState(false);
-
-  // Show only this page's notes unless "All pages" is selected
-  const [showAllPages, setShowAllPages] = useState(false);
+  // Which notes the list shows; notes for this page by default
+  const [filter, setFilter] = useState<NotesListFilter>("page");
   const currentUrl = useCurrentUrl();
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const handleToggleFeatureMinimized = (featureKey: string) => {
     dispatch(onToggleFeatureMinimized.getPayload({ featureKey }));
-  };
-
-  // Note Visibility & Attachment handlers
-  const handleAttachmentTypeClick = (type: "global" | "route" | "element") => {
-    if (selectedAttachmentType === type) {
-      setSelectedAttachmentType(null);
-      setShowVisibilitySection(false);
-    } else {
-      setSelectedAttachmentType(type);
-      setShowVisibilitySection(true);
-    }
-  };
-
-  const handleCloseVisibilitySection = () => {
-    setSelectedAttachmentType(null);
-    setShowVisibilitySection(false);
   };
 
   const loadNotesData = useCallback(async () => {
@@ -247,19 +221,6 @@ export const PageNotes: React.FC = () => {
     [loadNotesData, dispatch],
   );
 
-  const handleSelectNote = useCallback(async (noteId: string) => {
-    try {
-      await setSelectedNote(noteId);
-
-      setNotesState((prev) => ({
-        ...prev,
-        selectedNoteId: noteId,
-      }));
-    } catch (err) {
-      console.error("Failed to select note:", err);
-    }
-  }, []);
-
   const handleUpdateSearchQuery = useCallback(async (query: string) => {
     // Update the input right away; persisting the query can lag behind
     setNotesState((prev) => ({
@@ -300,52 +261,16 @@ export const PageNotes: React.FC = () => {
     [notesState.groups],
   );
 
-  const handleCreateGroup = useCallback(async (name: string, color: string): Promise<NoteGroup> => {
-    try {
-      const newGroup = await createNoteGroup({
-        data: { name, color },
-      });
+  const visibleNotes = useMemo(
+    () => filterNotesForList(notesState.notes || [], filter, currentUrl, notesState.searchQuery),
+    [notesState.notes, filter, currentUrl, notesState.searchQuery],
+  );
 
-      setNotesState((prev) => ({
-        ...prev,
-        groups: [...prev.groups, newGroup],
-      }));
-
-      return newGroup;
-    } catch (err) {
-      console.error("Failed to create group:", err);
-      throw err;
-    }
-  }, []);
-
-  // Notes for the selected scope (this page / all pages) and header attachment filter.
-  // Search filtering happens in NotesList.
-  const filteredNotes = useMemo(() => {
-    if (!notesState.notes) return [];
-
-    return notesState.notes.filter((note) => {
-      const locations = note.locations || [];
-
-      if (!showAllPages && !isNoteOnPage(note, window.location.hostname, currentUrl)) {
-        return false;
-      }
-
-      switch (selectedAttachmentType) {
-        case "global":
-          return locations.some((location) => location.attachmentType === AttachmentTypeEnum.GLOBAL);
-        case "route":
-          return locations.some(
-            (location) =>
-              location.attachmentType === AttachmentTypeEnum.ROUTE ||
-              location.attachmentType === AttachmentTypeEnum.DOMAIN,
-          );
-        case "element":
-          return locations.some((location) => !!location.elementXPath);
-        default:
-          return true;
-      }
-    });
-  }, [notesState.notes, showAllPages, currentUrl, selectedAttachmentType]);
+  const filterCounts = useMemo(() => {
+    const notes = notesState.notes || [];
+    const count = (value: NotesListFilter) => filterNotesForList(notes, value, currentUrl).length;
+    return { page: count("page"), all: notes.length, everywhere: count("everywhere"), element: count("element"), hidden: count("hidden") };
+  }, [notesState.notes, currentUrl]);
 
   if (!isActive) {
     return null;
@@ -420,31 +345,6 @@ export const PageNotes: React.FC = () => {
           <FeatureIcon icon={PAGE_NOTES.icon} />
           <FeatureTitleText title={PAGE_NOTES.title}>{PAGE_NOTES.title}</FeatureTitleText>
           <PortalModalHeaderButtons>
-            {/* Note Visibility & Attachment buttons */}
-            <div className="flex items-center gap-1">
-              <IconButton
-                label="Filter: notes shown on all pages"
-                active={selectedAttachmentType === "global"}
-                onClick={() => handleAttachmentTypeClick("global")}
-              >
-                <FiGlobe className="w-4 h-4" />
-              </IconButton>
-              <IconButton
-                label="Filter: notes attached to routes or domains"
-                active={selectedAttachmentType === "route"}
-                onClick={() => handleAttachmentTypeClick("route")}
-              >
-                <FiMap className="w-4 h-4" />
-              </IconButton>
-              <IconButton
-                label="Filter: notes attached to page elements"
-                active={selectedAttachmentType === "element"}
-                onClick={() => handleAttachmentTypeClick("element")}
-              >
-                <FiTarget className="w-4 h-4" />
-              </IconButton>
-            </div>
-
             <IconButton label="Minimize Page Notes" onClick={() => {
                 handleToggleFeatureMinimized("pageNotes");
               }}>
@@ -453,44 +353,6 @@ export const PageNotes: React.FC = () => {
           </PortalModalHeaderButtons>
         </FeatureTitle>
       </PortalModalHeader>
-
-      {/* Note Visibility & Attachment Section */}
-      {showVisibilitySection && (
-        <div className="bg-blue-50 border-b border-blue-200 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
-              {selectedAttachmentType === "global" && (
-                <>
-                  <FiGlobe className="w-4 h-4" /> Global Visibility
-                </>
-              )}
-              {selectedAttachmentType === "route" && (
-                <>
-                  <FiMap className="w-4 h-4" /> Route Visibility
-                </>
-              )}
-              {selectedAttachmentType === "element" && (
-                <>
-                  <FiTarget className="w-4 h-4" /> Element Attachment
-                </>
-              )}
-            </h3>
-            <button
-              onClick={handleCloseVisibilitySection}
-              className="p-1 rounded-md hover:bg-blue-200 text-blue-600 transition-colors duration-200"
-              title="Clear filter"
-            >
-              <FiX className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="text-sm text-blue-700">
-            {selectedAttachmentType === "global" && "Showing notes that are visible on all pages."}
-            {selectedAttachmentType === "route" && "Showing notes attached to specific routes or domains."}
-            {selectedAttachmentType === "element" && "Showing notes attached to page elements."}{" "}
-            ({filteredNotes.length} {filteredNotes.length === 1 ? "note" : "notes"})
-          </div>
-        </div>
-      )}
 
       <input
         ref={importInputRef}
@@ -501,15 +363,17 @@ export const PageNotes: React.FC = () => {
       />
 
       <NotesList
-        notesState={{ ...notesState, notes: filteredNotes }}
-        totalNotesCount={notesState.notes.length}
-        showAllPages={showAllPages}
-        onShowAllPagesChange={setShowAllPages}
+        notes={visibleNotes}
+        groups={notesState.groups || []}
+        colorPalettes={notesState.colorPalettes}
+        searchQuery={notesState.searchQuery || ""}
+        filter={filter}
+        filterCounts={filterCounts}
+        onFilterChange={setFilter}
         onToggleVisibility={handleToggleVisibility}
         onCreateNote={handleCreateNote}
         onEditNote={handleEditNote}
         onDeleteNote={handleDeleteNote}
-        onSelectNote={handleSelectNote}
         onUpdateSearchQuery={handleUpdateSearchQuery}
         onToggleGroup={handleToggleGroup}
         onImportNotes={() => importInputRef.current?.click()}

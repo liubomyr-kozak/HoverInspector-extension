@@ -33,9 +33,6 @@ export const NoteFormPopup: React.FC = () => {
   const [panelPosition, setPanelPosition] = useState(defaultPosition);
   const [isPositionLoaded, setIsPositionLoaded] = useState(false);
 
-  // Form submission state
-  const [showTitleField, setShowTitleField] = useState(false);
-
   // Load saved position on mount
   useEffect(() => {
     const loadPosition = async () => {
@@ -84,7 +81,7 @@ export const NoteFormPopup: React.FC = () => {
   return (
     <FloatingModal
       open={notesState.isFormOpen}
-      title={notesState.editingNote ? "Edit Note" : "Create Note"}
+      title={notesState.editingNote ? "Edit note" : "New note"}
       onCancel={handleCancel}
       initialWidth={panelPosition.width}
       initialHeight={panelPosition.height}
@@ -100,8 +97,6 @@ export const NoteFormPopup: React.FC = () => {
           initialFormData={notesState.initialFormData}
           formId={formId}
           onCancel={handleCancel}
-          showTitleField={showTitleField}
-          onShowTitleFieldChange={setShowTitleField}
         />
       </ModalOverlayModal>
     </FloatingModal>

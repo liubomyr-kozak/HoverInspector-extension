@@ -10,16 +10,23 @@ import {
 } from '@entrypoints/background/store/notesActionsSlice';
 import { DEFAULT_NOTE_COLORS } from '@entrypoints/background/services/notes';
 import { triggerRefresh } from '@entrypoints/content/store/notes/notes.slice';
+import { Note as StoredNote, NoteGroup, NoteLocation, ColorPalette } from '@entrypoints/shared/types/notes';
 import {
-  Note as StoredNote,
-  NoteGroup,
-  NoteLocation,
-  ColorPalette,
-  AttachmentTypeEnum,
-} from '@entrypoints/shared/types/notes';
+  NoteScope,
+  buildLocations,
+  describeNoteLocations,
+  getNoteScope,
+  getPageContext,
+  getScopeForm,
+} from '@entrypoints/background/services/noteScope';
+import {
+  DEFAULT_NOTE_HEIGHT,
+  DEFAULT_NOTE_WIDTH,
+  getFreeNotePosition,
+} from '@entrypoints/content/modules/PopupContainer/PageNotes/VisibleNotesProvider/notePosition';
 
-// Where a note is shown as a sticky note: nowhere, on the page it was attached to, or everywhere
-export type NoteAttachment = 'none' | 'page' | 'global';
+// Where a note is shown as a sticky note: the same choice Page Notes offers (see noteScope.ts)
+export type NoteAttachment = NoteScope;
 
 // Note shape used by the Note Taking Tools components
 export interface Note {
@@ -49,45 +56,22 @@ export interface NoteUpdates {
 export const UNCATEGORIZED = 'Uncategorized';
 const DEFAULT_COLOR_ID = 'blue';
 
-const getAttachment = (note: StoredNote): NoteAttachment => {
-  const locations = note.locations || [];
-  if (locations.length === 0) return 'none';
-  return locations.some((location) => location.attachmentType === AttachmentTypeEnum.GLOBAL) ? 'global' : 'page';
-};
+const getAttachment = (note: StoredNote): NoteAttachment => getNoteScope(note, getPageContext());
 
-const describeLocation = (note: StoredNote): string | undefined => {
-  const [first] = note.locations || [];
-  if (!first) return undefined;
-  if (first.attachmentType === AttachmentTypeEnum.GLOBAL) return 'All pages';
-  if (first.attachmentType === AttachmentTypeEnum.DOMAIN) return first.domain;
-  return `${first.domain || ''}${first.routePattern || ''}`;
-};
+const describeLocation = (note: StoredNote): string | undefined =>
+  getAttachment(note) === 'none' ? undefined : describeNoteLocations(note);
 
-// Location for the current page (free-floating sticky note near the top right of the view)
-const createPageLocation = (attachmentType: AttachmentTypeEnum): NoteLocation => ({
-  attachmentType,
-  domain: window.location.hostname,
-  url: window.location.href,
-  ...(attachmentType === AttachmentTypeEnum.ROUTE
-    ? { routePattern: window.location.pathname, patternType: 'url' as const }
-    : {}),
-  coordinates: {
-    x: Math.max(0, window.scrollX + window.innerWidth - 290),
-    y: window.scrollY + 120,
-    width: 250,
-    height: 150,
-  },
-});
-
-const toLocations = (attachment: NoteAttachment, current: NoteLocation[] = []): NoteLocation[] => {
-  if (attachment === 'none') return [];
-  if (attachment === 'global') {
-    const [first] = current;
-    return [{ ...createPageLocation(AttachmentTypeEnum.GLOBAL), ...(first?.coordinates ? { coordinates: first.coordinates } : {}) }];
-  }
-  // Keep the existing page locations of a note that already is attached to pages
-  const pageLocations = current.filter((location) => location.attachmentType !== AttachmentTypeEnum.GLOBAL);
-  return pageLocations.length > 0 ? pageLocations : [createPageLocation(AttachmentTypeEnum.ROUTE)];
+/**
+ * Stored locations for a scope. An existing note keeps its own site, extra URL patterns, element and
+ * position; a note that gets onto a page for the first time is placed in view, clear of other stickies.
+ */
+const toLocations = (attachment: NoteAttachment, existing?: StoredNote): NoteLocation[] => {
+  const context = getPageContext();
+  const locations = buildLocations({ ...getScopeForm(existing ?? null, context), scope: attachment }, context);
+  const [primary, ...rest] = locations;
+  if (!primary || primary.coordinates || primary.elementXPath) return locations;
+  const position = getFreeNotePosition(DEFAULT_NOTE_WIDTH, DEFAULT_NOTE_HEIGHT);
+  return [{ ...primary, coordinates: { ...position, width: DEFAULT_NOTE_WIDTH, height: DEFAULT_NOTE_HEIGHT } }, ...rest];
 };
 
 /**
@@ -188,7 +172,7 @@ export function useReduxNotes() {
         if (colorId !== existing.colorId) storedUpdates.colorId = colorId;
       }
       if (updates.attachment !== undefined && updates.attachment !== getAttachment(existing)) {
-        storedUpdates.locations = toLocations(updates.attachment, existing.locations);
+        storedUpdates.locations = toLocations(updates.attachment, existing);
       }
       if (Object.keys(storedUpdates).length === 0) return;
 

@@ -232,11 +232,11 @@ export function NoteEditor({ note, isDraft, groups, palettes, onSave, onDelete, 
                 title="Show on pages"
                 aria-label="Show on pages"
               >
-                {attachment === 'global' ? <Globe className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                {attachment === 'everywhere' ? <Globe className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-3">
-              <LocationPicker attachment={attachment} location={note.location} onChange={setAttachment} />
+              <LocationPicker attachment={attachment} location={note.location} savedAttachment={note.attachment} onChange={setAttachment} />
             </PopoverContent>
           </Popover>
 

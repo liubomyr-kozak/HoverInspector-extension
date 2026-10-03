@@ -1,30 +1,33 @@
 import { Button } from './ui/button';
-import { MapPin, Globe, X, Check } from 'lucide-react';
+import { MapPin, Globe, X, Check, LayoutGrid } from 'lucide-react';
 import type { NoteAttachment } from '../hooks/useReduxNotes';
 
 interface LocationPickerProps {
   attachment: NoteAttachment;
   // Description of the current attachment (e.g. "example.com/page")
   location?: string;
+  // The saved attachment the location describes
+  savedAttachment?: NoteAttachment;
   onChange: (attachment: NoteAttachment) => void;
 }
 
 const OPTIONS: { value: NoteAttachment; label: string; description: string; icon: typeof MapPin }[] = [
-  { value: 'page', label: 'This page', description: 'Show as a sticky note on this page', icon: MapPin },
-  { value: 'global', label: 'All pages', description: 'Show as a sticky note on every page', icon: Globe },
-  { value: 'none', label: 'Not on a page', description: 'Keep the note only in this list', icon: X },
+  { value: 'page', label: 'This page', description: 'Sticky note on this page only', icon: MapPin },
+  { value: 'site', label: 'This site', description: 'Sticky note on every page of this site', icon: LayoutGrid },
+  { value: 'everywhere', label: 'Everywhere', description: 'Sticky note on every page of every site', icon: Globe },
+  { value: 'none', label: 'Notes list only', description: 'Not shown on pages', icon: X },
 ];
 
 /**
  * Chooses where the note is shown on web pages (stored as the note's page locations)
  */
-export function LocationPicker({ attachment, location, onChange }: LocationPickerProps) {
+export function LocationPicker({ attachment, location, savedAttachment, onChange }: LocationPickerProps) {
   return (
     <div className="space-y-2">
-      <h4 className="text-sm font-medium m-0">Show on pages</h4>
-      {attachment === 'page' && location && (
+      <h4 className="text-sm font-medium m-0">Show on</h4>
+      {attachment === savedAttachment && attachment !== 'none' && location && (
         <p className="text-xs text-muted-foreground m-0 truncate" title={location}>
-          Attached to {location}
+          Shown on {location}
         </p>
       )}
       <div className="space-y-1">
