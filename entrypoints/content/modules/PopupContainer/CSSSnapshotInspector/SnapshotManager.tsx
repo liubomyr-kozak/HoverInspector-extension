@@ -22,6 +22,7 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalHeaderButtons.tsx";
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { CSS_SNAPSHOT } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
+import { getSnapshotHostname } from "./utils/snapshotStorage";
 
 // Styled Components
 const ManagerContainer = styled.div``;
@@ -304,12 +305,23 @@ interface SnapshotManagerProps {
   readonly onExport: (snapshot: CSSSnapshot) => void;
   readonly onToggleCompare: (snapshot: CSSSnapshot) => void;
   readonly onStartComparison?: () => void;
+  readonly onCompareWithCurrentPage?: (snapshot: CSSSnapshot) => void;
 }
 
 export const SnapshotManager = memo<SnapshotManagerProps>(
-  ({ snapshots, compareSnapshots, onView, onDelete, onExport, onToggleCompare, onStartComparison }) => {
+  ({
+    snapshots,
+    compareSnapshots,
+    onView,
+    onDelete,
+    onExport,
+    onToggleCompare,
+    onStartComparison,
+    onCompareWithCurrentPage,
+  }) => {
     const [hoveredSnapshot, setHoveredSnapshot] = useState<string | null>(null);
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     if (snapshots.length === 0) {
       return (
@@ -379,11 +391,14 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                           Selected
                         </SelectionBadge>
                       )}
-                      <div className="text">Snapshot #{snapshot.title}</div>
+                      <div className="text" title={snapshot.title}>
+                        {snapshot.title || "Untitled snapshot"}
+                      </div>
                     </CardTitle>
                     <OptionsButton
                       onClick={(e) => {
                         e.stopPropagation();
+                        setConfirmDeleteId(null);
                         setMenuOpenId((id) => (id === snapshot.id ? null : snapshot.id));
                       }}
                       aria-label="More actions"
@@ -402,13 +417,18 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                         </MenuItem>
                         <MenuItem
                           onClick={() => {
+                            // Two-step delete: first click asks for confirmation, second deletes
+                            if (confirmDeleteId !== snapshot.id) {
+                              setConfirmDeleteId(snapshot.id);
+                              return;
+                            }
+                            setConfirmDeleteId(null);
                             setMenuOpenId(null);
-                            // if (confirm("Are you sure you want to delete this snapshot?")) {
                             onDelete(snapshot.id);
-                            // }
                           }}
+                          style={confirmDeleteId === snapshot.id ? { color: "#dc2626", fontWeight: 600 } : undefined}
                         >
-                          <IconTrash size={16} /> Delete
+                          <IconTrash size={16} /> {confirmDeleteId === snapshot.id ? "Click again to delete" : "Delete"}
                         </MenuItem>
                       </DropdownMenu>
                     )}
@@ -428,7 +448,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
 
                     <MetadataItem title={snapshot.url || ""}>
                       <IconGlobe size={14} className="icon" />
-                      <span className="value">{snapshot.url ? new URL(snapshot.url).hostname : "Unknown"}</span>
+                      <span className="value">{getSnapshotHostname(snapshot.url)}</span>
                     </MetadataItem>
                   </MetadataGrid>
 
@@ -511,8 +531,7 @@ export const SnapshotManager = memo<SnapshotManagerProps>(
                       variant="secondary"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Compare with current page logic
-                        window.postMessage({ type: "COMPARE_SNAPSHOTS", snapshots: [snapshot, "CURRENT_PAGE"] }, "*");
+                        onCompareWithCurrentPage?.(snapshot);
                       }}
                       style={{ minWidth: 120 }}
                       aria-label="Compare with current page"

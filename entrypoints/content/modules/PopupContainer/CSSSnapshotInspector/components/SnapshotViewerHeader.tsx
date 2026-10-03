@@ -253,8 +253,16 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
       }
     }, [selectedSnapshot]);
 
-    const saveSnapshotTitle = async (newTitle: string) => {
+    const saveSnapshotTitle = async (rawTitle: string) => {
       if (!selectedSnapshot) return;
+      const newTitle = rawTitle.trim();
+      // An empty title is not allowed: revert to the previous one
+      if (!newTitle) {
+        setTitle(selectedSnapshot.title);
+        setEditingTitle(false);
+        return;
+      }
+      setTitle(newTitle);
       try {
         const updatedSnapshot = {
           ...selectedSnapshot,

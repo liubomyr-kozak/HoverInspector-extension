@@ -11,7 +11,8 @@ interface UseViewModeReturn {
   canCompare: boolean;
   canViewDetails: boolean;
   viewSnapshot: (snapshot: CSSSnapshot) => void;
-  startComparison: () => void;
+  /** Pass `force` when the compare list was updated in the same tick (canCompare is still stale). */
+  startComparison: (force?: boolean) => void;
   backToList: () => void;
 }
 
@@ -36,8 +37,8 @@ export const useViewMode = (
   }, []);
 
   // Показати порівняння
-  const startComparison = useCallback(() => {
-    if (canCompare) {
+  const startComparison = useCallback((force = false) => {
+    if (force || canCompare) {
       setViewMode(ViewMode.COMPARE);
     }
   }, [canCompare]);
