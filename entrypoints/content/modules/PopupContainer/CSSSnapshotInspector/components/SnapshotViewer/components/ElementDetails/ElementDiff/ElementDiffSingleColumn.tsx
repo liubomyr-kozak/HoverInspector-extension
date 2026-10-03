@@ -34,7 +34,7 @@ import {
  * @param props.right - Правий стан елементу для порівняння
  * @returns JSX елемент з візуалізацією різниці
  */
-export const ElementDiffSingleColumn: React.FC<ElementDiffSingleColumnProps> = ({ left, right }) => {
+export const ElementDiffSingleColumn: React.FC<ElementDiffSingleColumnProps> = ({ left, right, selector }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["boxModel", "typography"]));
@@ -158,7 +158,7 @@ export const ElementDiffSingleColumn: React.FC<ElementDiffSingleColumnProps> = (
             </div>
           )}
 
-          <CSSSelector selector=".selected" />
+          <CSSSelector selector={selector || ".selected"} />
 
           {categories.map((category) => (
             <CategorySection

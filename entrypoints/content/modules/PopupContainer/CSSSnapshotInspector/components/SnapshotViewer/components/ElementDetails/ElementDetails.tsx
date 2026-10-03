@@ -28,12 +28,16 @@ export const ElementDetails: React.FC<ElementDetailsProps> = ({
   const diffData = state.styleDiffData;
   const leftData = state.compareLeftData || selectedElementData;
   const rightData = state.compareRightData || selectedElementStyles;
+  // e.g. div#c3.card
+  const selector = state.tagName
+    ? `${state.tagName.toLowerCase()}${state.id ? `#${state.id}` : ""}${(state.classes || []).map((c) => `.${c}`).join("")}`
+    : undefined;
 
   return (
     <>
       {/*<ElementDiff diffData={diffData} left={leftData as any} right={rightData as any} />*/}
 
-      <ElementDiffSingleColumn left={leftData} right={rightData} />
+      <ElementDiffSingleColumn left={leftData} right={rightData} selector={selector} />
     </>
   );
 };
