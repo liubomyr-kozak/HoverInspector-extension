@@ -2,349 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import DomNodeManager from "@entrypoints/core/services/dom/DomNodeManager.ts";
 
-import { cutPx, getLeftPosition, getTagMeta, isChildText, targetColorStringToHex } from "./helpers.tsx";
-import { colorBoxStyle, flexChildRightStyle, targetSizeStyle, targetTitleStyle } from "./PopupStyle.tsx";
-import { BoxLabelContainer, PopupWrapper } from "./Popup.styled.ts";
+import { cutPx, getLeftPosition } from "./helpers.tsx";
+import { PopupWrapper } from "./Popup.styled.ts";
 import cx from "classnames";
-import { getNodeComputedStyle } from "@entrypoints/shared/frameAgent/remoteNode";
 import { describeFrameContext } from "@entrypoints/content/frameAgentHost";
+import { useHoverCardConfig } from "@entrypoints/shared/hoverCard/store";
+import { HoverCardView } from "./HoverCardView";
 import { lastPointer } from "./pointer";
-
-// Label on the left, value pushed to the right edge, never touching each other
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '12px',
-  minWidth: 0,
-};
-const sectionTitleStyle: React.CSSProperties = {
-  fontSize: '11px',
-  fontWeight: 600,
-  color: '#495057',
-  marginBottom: '6px',
-  textTransform: 'uppercase',
-  letterSpacing: '0.5px',
-};
-const labelStyle: React.CSSProperties = { fontSize: '11px', color: '#666', whiteSpace: 'nowrap', flexShrink: 0 };
-
-const PopupContainer = ({ data, hoverElement }) => {
-  const { height, width, tag, className, id, padding, margin, border, color, backgroundColor, font } = data;
-  const fontSize = data["font-size"];
-  const fontWeight = data["font-weight"];
-  const lineHeight = data["line-height"];
-  const fontFamily = (data["font-family"] || "").split(",")[0].replace(/["']/g, "").trim();
-
-  const hasText = !!isChildText(hoverElement?.childNodes);
-  // Not instanceof: elements inside same-origin iframes come from another realm
-  const isSvg = hoverElement?.namespaceURI === "http://www.w3.org/2000/svg";
-  // SVG text is painted with fill, so its CSS color says nothing
-  const showTextColor = hasText && !!color && !isSvg;
-
-  // SVG shapes are painted with fill/stroke rather than background/color
-  let svgFill = "";
-  let svgStroke = "";
-  if (isSvg && hoverElement.localName !== "svg") {
-    const svgStyle = getNodeComputedStyle(hoverElement);
-    svgFill = svgStyle.fill && svgStyle.fill !== "none" ? svgStyle.fill : "";
-    svgStroke = svgStyle.stroke && svgStyle.stroke !== "none" ? svgStyle.stroke : "";
-  }
-
-  // Images: the intrinsic size and alt text are what people usually check
-  const isImage = hoverElement?.localName === "img";
-  const imageNatural = isImage && hoverElement.naturalWidth ? `${hoverElement.naturalWidth} × ${hoverElement.naturalHeight}px` : "";
-  const imageAlt = isImage ? hoverElement.getAttribute("alt") : null;
-
-  const showSpacing = !!(padding || margin);
-  const showColors = !!(backgroundColor || showTextColor || svgFill || svgStroke);
-  const showTypography = hasText && !!font;
-  const showImage = isImage && (!!imageNatural || imageAlt !== null);
-  // Cross-origin frames: say where the element is, or that the frame itself is all we can show
-  const frameContext = describeFrameContext(hoverElement);
-  const hasBody = showSpacing || showColors || showTypography || !!border || showImage || !!frameContext;
-
-  const renderColorInfo = (label, colorValue, showLabel = true) => {
-    if (!colorValue) return null;
-    
-    const hexValue = targetColorStringToHex(colorValue);
-    return (
-      <div style={rowStyle}>
-        {showLabel && <span style={labelStyle}>{label}:</span>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{
-            ...colorBoxStyle(colorValue),
-            borderRadius: '3px',
-            border: '1px solid rgba(0,0,0,0.1)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }} />
-          <span style={{ 
-            fontSize: '11px', 
-            fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
-            color: '#333',
-            background: '#f8f9fa',
-            padding: '2px 6px',
-            borderRadius: '3px',
-            border: '1px solid #e9ecef'
-          }}>
-            {hexValue}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  const renderSpacingValue = (value, truncate = false) => {
-    if (!value) return null;
-    return (
-      <span title={truncate ? value : undefined} style={{
-        ...(truncate ? { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }),
-        fontSize: '11px', 
-        fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
-        color: '#495057',
-        background: '#f8f9fa',
-        padding: '2px 6px',
-        borderRadius: '3px',
-        border: '1px solid #e9ecef'
-      }}>
-        {value}
-      </span>
-    );
-  };
-
-  const renderBorderSide = (sideLabel, borderData) => {
-    if (!borderData) return null;
-    if (borderData.style === 'none' || borderData.style === 'hidden' || parseFloat(borderData.width) === 0) {
-      return (
-        <div style={{ ...rowStyle, marginBottom: '4px' }}>
-          <span style={labelStyle}>{sideLabel}:</span>
-          <span style={{ fontSize: '11px', color: '#6b7280' }}>none</span>
-        </div>
-      );
-    }
-    return (
-      <div style={{ ...rowStyle, marginBottom: '4px' }}>
-        <span style={labelStyle}>{sideLabel}:</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '11px', color: '#495057' }}>
-            {borderData.width} {borderData.style}
-          </span>
-          <span style={{
-            ...colorBoxStyle(borderData.color),
-            width: '12px',
-            height: '12px',
-            borderRadius: '2px',
-            border: '1px solid rgba(0,0,0,0.1)'
-          }} />
-          <span style={{ 
-            fontSize: '11px', 
-            fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
-            color: '#666'
-          }}>
-            {targetColorStringToHex(borderData.color)}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <BoxLabelContainer className="BoxContainer">
-      {/* Header with element info and dimensions */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        gap: '8px',
-        ...(hasBody ? { marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e9ecef' } : {}),
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
-          {getTagMeta(tag, id, className)}
-        </div>
-        <div style={{
-          flexShrink: 0,
-          whiteSpace: 'nowrap',
-          fontSize: '12px',
-          fontWeight: '600',
-          color: '#495057',
-          background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
-          padding: '4px 8px',
-          borderRadius: '6px',
-          border: '1px solid #dee2e6'
-        }}>
-          {cutPx(width)} × {cutPx(height)}px
-        </div>
-      </div>
-
-      {frameContext && (
-        <div
-          style={{
-            marginBottom: '12px',
-            fontSize: '11px',
-            lineHeight: 1.4,
-            color: frameContext.limited ? '#8a4b00' : '#495057',
-            background: frameContext.limited ? '#fff4e0' : '#f1f3f5',
-            border: `1px solid ${frameContext.limited ? '#f5d2a0' : '#e9ecef'}`,
-            borderRadius: '4px',
-            padding: '4px 8px',
-            overflowWrap: 'anywhere',
-          }}
-        >
-          {frameContext.text}
-        </div>
-      )}
-
-      {/* Spacing Section */}
-      {showSpacing && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ 
-            fontSize: '11px', 
-            fontWeight: '600', 
-            color: '#495057', 
-            marginBottom: '6px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Spacing
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
-            {padding && (
-              <div style={rowStyle}>
-                <span style={labelStyle}>Padding:</span>
-                {renderSpacingValue(padding)}
-              </div>
-            )}
-            {margin && (
-              <div style={rowStyle}>
-                <span style={labelStyle}>Margin:</span>
-                {renderSpacingValue(margin)}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Colors Section */}
-      {showColors && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ 
-            fontSize: '11px', 
-            fontWeight: '600', 
-            color: '#495057', 
-            marginBottom: '6px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Colors
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
-            {backgroundColor && renderColorInfo('Background', backgroundColor)}
-            {showTextColor && renderColorInfo('Text', color)}
-            {svgFill && renderColorInfo('Fill', svgFill)}
-            {svgStroke && renderColorInfo('Stroke', svgStroke)}
-          </div>
-        </div>
-      )}
-
-      {/* Typography Section */}
-      {showTypography && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ 
-            fontSize: '11px', 
-            fontWeight: '600', 
-            color: '#495057', 
-            marginBottom: '6px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Typography
-          </div>
-          <div style={{ paddingLeft: '8px' }}>
-            <div style={{ ...rowStyle, marginBottom: '4px' }}>
-              <span style={labelStyle}>Size / Weight:</span>
-              {renderSpacingValue(`${fontSize}${lineHeight && lineHeight !== "normal" ? ` / ${lineHeight}` : ""} · ${fontWeight}`)}
-            </div>
-            {fontFamily && (
-              <div style={rowStyle}>
-                <span style={labelStyle}>Family:</span>
-                {renderSpacingValue(fontFamily, true)}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Image Section */}
-      {showImage && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={sectionTitleStyle}>Image</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '8px' }}>
-            {imageNatural && (
-              <div style={rowStyle}>
-                <span style={labelStyle}>Natural size:</span>
-                {renderSpacingValue(imageNatural)}
-              </div>
-            )}
-            {imageAlt !== null && (
-              <div style={rowStyle}>
-                <span style={labelStyle}>Alt:</span>
-                {renderSpacingValue(imageAlt || '""', true)}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Border Section */}
-      {border && (
-        <div style={{ marginBottom: '8px' }}>
-          <div style={{ 
-            fontSize: '11px', 
-            fontWeight: '600', 
-            color: '#495057', 
-            marginBottom: '6px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Border
-          </div>
-          <div style={{ paddingLeft: '8px' }}>
-            {border.type === "single" ? (
-              <div style={rowStyle}>
-                <span style={labelStyle}>All sides:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: '#495057' }}>
-                    {border.width} {border.style}
-                  </span>
-                  <span style={{
-                    ...colorBoxStyle(border.color),
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '2px',
-                    border: '1px solid rgba(0,0,0,0.1)'
-                  }} />
-                  <span style={{ 
-                    fontSize: '11px', 
-                    fontFamily: 'Monaco, "Cascadia Code", "SF Mono", Consolas, monospace',
-                    color: '#666'
-                  }}>
-                    {targetColorStringToHex(border.color)}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {renderBorderSide('Top', border.top)}
-                {renderBorderSide('Right', border.right)}
-                {renderBorderSide('Bottom', border.bottom)}
-                {renderBorderSide('Left', border.left)}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </BoxLabelContainer>
-  );
-};
 
 const ARROW_HEIGHT = 8;
 const CURSOR_OFFSET = 16;
@@ -664,6 +328,17 @@ const Popup = React.memo(() => {
     }
   }, [listenChangeUserAction]);
 
+  // A different set of rows changes the card's size: measure and place it again
+  const cardConfig = useHoverCardConfig();
+  const firstConfig = useRef(true);
+  useEffect(() => {
+    if (firstConfig.current) {
+      firstConfig.current = false;
+      return;
+    }
+    updatePopup("hoverElement");
+  }, [cardConfig]);
+
   const hoverElement = DomNodeManager.get("hoverElement");
 
   return (
@@ -677,7 +352,14 @@ const Popup = React.memo(() => {
         bottom: !popup.visibleIn?.bottom && popup.visibleIn?.top,
       })}
     >
-      {popup.data && <PopupContainer data={popup.data} hoverElement={hoverElement} />}
+      {popup.data && (
+        <HoverCardView
+          node={hoverElement}
+          summary={popup.data}
+          config={cardConfig}
+          frameContext={describeFrameContext(hoverElement)}
+        />
+      )}
     </PopupWrapper>
   );
 });

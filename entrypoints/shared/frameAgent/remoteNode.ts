@@ -67,6 +67,16 @@ export class RemoteFrameNode {
     return this.snapshot.naturalHeight;
   }
 
+  /** Role attribute and accessible name reported by the frame's agent */
+  get a11y() {
+    return { role: this.snapshot.role ?? null, ariaLabel: this.snapshot.ariaLabel ?? null };
+  }
+
+  /** Background behind the element's text, worked out inside the frame */
+  get effectiveBackground() {
+    return this.snapshot.effectiveBg || "";
+  }
+
   get isConnected() {
     return this.frame.isConnected;
   }
@@ -75,6 +85,8 @@ export class RemoteFrameNode {
     if (name === "id") return this.snapshot.elId || null;
     if (name === "class") return this.snapshot.className || null;
     if (name === "alt") return this.snapshot.alt;
+    if (name === "role") return this.snapshot.role ?? null;
+    if (name === "aria-label") return this.snapshot.ariaLabel ?? null;
     return null;
   }
 
