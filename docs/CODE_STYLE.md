@@ -572,13 +572,17 @@ it, and our CSS must not reach the page.
    ```
 
 2. When you pass `getPopupContainer` yourself (needed when the overlay must sit inside a scrolling or
-   clipped area), use `shadowBody` from
-   `entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/popupContainer.ts:5`:
+   clipped area), use `shadowBody` from `entrypoints/shared/utils/shadowBody.ts`. It is typed for antd,
+   so you never need `// @ts-ignore`:
 
    ```tsx
-   import { shadowBody } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/popupContainer";
+   import { shadowBody } from "@entrypoints/shared/utils/shadowBody";
    <Popconfirm getPopupContainer={shadowBody} overlayStyle={{ maxWidth: 280 }} ... />
+   <Select value={unit} onChange={setUnit} options={options} getPopupContainer={shadowBody} />
    ```
+
+   Some old files define their own `getPopupContainer` with `// @ts-ignore` (for example
+   `UnitConverter.tsx`). Never copy that, even in the same file: import `shadowBody` instead.
 
 3. **Never** let an overlay render into the page's `document.body`. Past bugs from this:
    - The Analyze Page tabs "more" menu opened in the page body, unstyled and off screen
@@ -1256,6 +1260,9 @@ After:
 ## 18. Checklist before you commit
 
 Run every item. Do not commit until all pass.
+
+Items 1-6 are automated: run `yarn verify` (`scripts/verify.sh`) in the repo root. It must end with
+`RESULT: all automatic checks passed`. The commands below show what it checks.
 
 1. `yarn build` succeeds.
 2. `yarn test` passes.

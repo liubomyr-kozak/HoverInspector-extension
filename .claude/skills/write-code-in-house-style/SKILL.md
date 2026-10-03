@@ -99,10 +99,7 @@ Do not copy legacy code [§14]: hard-coded hex colours, `state: any`, Ukrainian 
 Run in the repo root:
 
 ```bash
-yarn test
-yarn build
-yarn compile 2>&1 | grep -E "<paths of files you changed>"     # must print nothing
-git diff | grep -nE "^\+.*(: any|as any|@ts-ignore|console\.log|debugger|alert\()"   # must print nothing
+yarn verify    # must end with "RESULT: all automatic checks passed"; fix every FAIL and rerun
 git status                                                      # no package-lock.json, no dist/, no scratch files
 ```
 

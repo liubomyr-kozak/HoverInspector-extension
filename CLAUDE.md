@@ -25,12 +25,38 @@ Full guide: `docs/CODE_STYLE.md`. Read it before your first change. Skills: see 
 yarn install   # install (also runs wxt prepare)
 yarn build     # production build -> dist/chrome-mv3/  (must pass before commit)
 yarn test      # vitest run                          (must pass before commit)
+yarn verify    # every automatic check on your change (must print "all automatic checks passed")
 yarn dev       # WXT dev browser
 yarn start     # standalone page, http://localhost:4400
 ```
 
 **Never** use npm, npx or pnpm in the repo. **Never** create or commit `package-lock.json`. `yarn.lock` is
 the only lockfile. `yarn compile` (tsc) has about 227 old errors: only check that your files add none.
+
+## Definition of done (do all of it, every time)
+
+1. Run `yarn verify` in the repo root. Fix every `FAIL` line and run it again until it prints
+   `RESULT: all automatic checks passed`. It runs the forbidden-pattern checks, TypeScript on your
+   files, `yarn test` and `yarn build`.
+2. If you changed anything visible, do the browser check (`.claude/skills/verify-in-browser/SKILL.md`)
+   at 320px and 440px and open both screenshots. Not optional: unit tests do not see layout.
+3. Commit (message format in "Git" below).
+4. In your report, paste the last line of `yarn verify` and the screenshot paths.
+
+## Mistakes small models make here (check your diff for each)
+
+1. Copying an old pattern from the file you edit. Old files contain `// @ts-ignore`, `any`, hex colours
+   and their own `getPopupContainer`. The rules beat the surrounding code. Never copy them.
+2. `any` in a helper type, e.g. `formatter?: (value: any) => string`. Write the real type
+   (`(value: number) => string`) or split the list by value type.
+3. `// @ts-ignore` above `getPopupContainer`. Use `getPopupContainer={shadowBody}` from
+   `@entrypoints/shared/utils/shadowBody` (typed, no ignore needed).
+4. `<dt>`/`<dd>` or `<li>` without their `<dl>`/`<ul>` parent. Use the right parent or plain `<div>`s.
+5. A copy button that copies a placeholder such as "(not provided)". Hide or disable copy for empty values.
+6. Skipping the browser check because tests passed.
+7. Commit body that lists files instead of saying why. Say what changes for the user and why.
+8. Working in a git worktree but building or checking the main checkout. Always use
+   `REPO="$(git rev-parse --show-toplevel)"` and pass it on (see the skills).
 
 ## Folder map
 
@@ -93,6 +119,14 @@ Much old code breaks these rules (hard-coded colours, `any`, Ukrainian comments)
 - Work on the given branch; never push unless asked.
 - Commit subject: plain-English imperative, often `Area: what changes for the user`, no `feat:` prefix.
   Body explains why. PR body: `Before:` / `After:` / `## Not done` / `## How` (see CODE_STYLE §17).
+- Template:
+
+  ```
+  Unit Converter: swap units and choose the decimal precision
+
+  People converting back and forth had to pick both units again; the result also always showed
+  four decimals. The precision is remembered in browser.storage.local.
+  ```
 
 ## Skills (`.claude/skills/`)
 

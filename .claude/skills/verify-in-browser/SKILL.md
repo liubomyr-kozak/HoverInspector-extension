@@ -18,10 +18,10 @@ The script `check-panel.mjs` in this folder does the work. It:
 
 ## Steps
 
-1. Build the extension. Run in the repo:
+1. Build the extension. Run in your checkout (this also works in a git worktree):
 
    ```bash
-   cd /home/user/hoverinspector-extension && yarn build
+   REPO="$(git rev-parse --show-toplevel)" && cd "$REPO" && yarn build
    ```
 
 2. Make a scratch folder outside the repo and link Playwright into it. Use your session scratchpad
@@ -30,7 +30,7 @@ The script `check-panel.mjs` in this folder does the work. It:
    ```bash
    mkdir -p /tmp/hi-check && cd /tmp/hi-check
    ln -sfn /opt/node-tools/node_modules node_modules
-   cp /home/user/hoverinspector-extension/.claude/skills/verify-in-browser/check-panel.mjs .
+   cp "$REPO/.claude/skills/verify-in-browser/check-panel.mjs" .
    ```
 
    If `/opt/node-tools/node_modules/playwright` does not exist, use `ln -sfn "$(npm root -g)" node_modules`
@@ -40,8 +40,10 @@ The script `check-panel.mjs` in this folder does the work. It:
    `entrypoints/content/modules/Launcher/LauncherIcons.ts` (`title: "..."`).
 
    ```bash
-   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Unit Converter" 320
-   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Unit Converter" 440
+   HI_REPO="$REPO" PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Unit Converter" 320
+   HI_REPO="$REPO" PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Unit Converter" 440
+
+   `HI_REPO` must be your checkout (the one you just built). The script stops with an error without it.
    ```
 
    Optional third argument: a path to your own `.html` test page.

@@ -317,19 +317,21 @@ Only if your tool also draws on the page outside the panel (like the Ruler): ren
 Run each command in the repo root, in this order:
 
 ```bash
-cd /home/user/hoverinspector-extension
+REPO="$(git rev-parse --show-toplevel)" && cd "$REPO"
 yarn vitest run entrypoints/content/modules/PopupContainer/WordCounter   # your tests pass
 yarn test                                                                  # all tests pass
-yarn compile 2>&1 | grep -E "WordCounter|LauncherIcons|PopupContainer.tsx|ScenarioPortalHeaderButtons"   # prints nothing
-yarn build                                                                 # succeeds
+yarn verify                                                                # must end with "RESULT: all automatic checks passed"
 ```
+
+`yarn verify` runs the forbidden-pattern checks, TypeScript on your changed files, `yarn test` and
+`yarn build`. Fix every `FAIL` line and run it again until it passes.
 
 Then do the browser check with the `verify-in-browser` skill
 (`.claude/skills/verify-in-browser/SKILL.md`):
 
 ```bash
-PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Word Counter" 320
-PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Word Counter" 440
+HI_REPO="$REPO" PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Word Counter" 320
+HI_REPO="$REPO" PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "Word Counter" 440
 ```
 
 Expected: `header: Word Counter`, `errors: []`, and screenshots where the panel shows the title, the

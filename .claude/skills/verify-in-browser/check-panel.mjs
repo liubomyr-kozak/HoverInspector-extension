@@ -11,7 +11,12 @@ import fs from "fs";
 import http from "http";
 import path from "path";
 
-const REPO = process.env.HI_REPO || "/home/user/hoverinspector-extension";
+// Required, so a run from a worktree never silently checks another checkout's build
+const REPO = process.env.HI_REPO;
+if (!REPO || !fs.existsSync(path.join(REPO, "dist/chrome-mv3/manifest.json"))) {
+  console.error('Set HI_REPO to the repo you built, e.g. HI_REPO="$(git rev-parse --show-toplevel)", and run yarn build there first.');
+  process.exit(1);
+}
 const TOOL = process.argv[2] || "Unit Converter";
 const WIDTH = Number(process.argv[3] || 440);
 const PAGE_FILE = process.argv[4];

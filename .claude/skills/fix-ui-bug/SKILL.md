@@ -9,13 +9,13 @@ Do the steps in order. Do not skip step 1: a fix you have not seen fail and then
 
 ## Step 1. Reproduce
 
-1. Build: `cd /home/user/hoverinspector-extension && yarn build`.
+1. Build: `REPO="$(git rev-parse --show-toplevel)" && cd "$REPO" && yarn build`.
 2. Set up the browser check as described in `.claude/skills/verify-in-browser/SKILL.md` (scratch folder,
    `node_modules` link, copy of `check-panel.mjs`).
 3. Run it for the tool with the bug at the width where it shows (try 320 first):
 
    ```bash
-   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "<Tool title>" 320
+   HI_REPO="$REPO" PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "<Tool title>" 320
    ```
 
 4. If the bug needs clicks or typing, add them to your scratch copy of the script after step 5 in it
@@ -31,7 +31,7 @@ Look for the cause in this order. These caused most past UI bugs in this repo:
 
 | Symptom | Usual cause | Fix |
 | --- | --- | --- |
-| Dropdown, select, popover or tooltip unstyled, off screen or missing | antd overlay rendered into the page's `document.body` | Remove a wrong `getPopupContainer`, or pass `shadowBody` from `AutomationScenarios/utils/popupContainer.ts` (CODE_STYLE §8.3) |
+| Dropdown, select, popover or tooltip unstyled, off screen or missing | antd overlay rendered into the page's `document.body` | Remove a wrong `getPopupContainer`, or pass `shadowBody` from `entrypoints/shared/utils/shadowBody.ts` (CODE_STYLE §8.3) |
 | Popconfirm/popover wider than the panel | No max width, wrong placement | `overlayStyle={{ maxWidth: 280 }}`, `placement="bottomRight"` |
 | Text or buttons cut off at 320px | Flex child without `min-w-0`, fixed widths, no wrapping | `min-w-0`, `truncate`, `flex-wrap`, remove fixed widths |
 | Header title shows two letters | Title text not in `FeatureTitleText`, or header buttons not in `PortalModalHeaderButtons` | Use both (CODE_STYLE §6.1) |
@@ -56,8 +56,8 @@ Rules:
 2. Run the same check again at **320** and **440**:
 
    ```bash
-   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "<Tool title>" 320
-   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "<Tool title>" 440
+   HI_REPO="$REPO" PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "<Tool title>" 320
+   HI_REPO="$REPO" PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node check-panel.mjs "<Tool title>" 440
    ```
 
 3. Open both screenshots. The bug is gone and nothing else changed for the worse.
