@@ -108,7 +108,13 @@ export const automationActions = {
     return await AppStorageService.saveExecutionHistory(data);
   },
 
-  removeAutomationScenario: async ({ data: { id } }) => {
+  removeAutomationScenario: async ({ data }) => {
+    // The id is the full prefixed key (sc_..., sch_..., tr_...), sent as { id }
+    const id = typeof data === "string" ? data : data?.id;
+    if (!id || typeof id !== "string") {
+      return { success: false, error: "Missing id" };
+    }
+
     const settings = await AppStorageService.getAutomationScenario({
       data: "automation_server_settings",
     });

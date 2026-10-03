@@ -169,51 +169,20 @@ export const removeFolderFromLocalStorage = async (key: string): Promise<boolean
 };
 
 /**
- * Generates a unique ID for a new scenario or function
- * This function creates a random string with a pattern of one lowercase letter
- * followed by 10 alphanumeric characters, similar to id_html in devtools.panels.js
+ * Generates a unique ID for a new scenario, function, schedule, trigger or history entry.
+ * The ID starts with a lowercase letter followed by random characters; callers add the type prefix (sc_, fu_ ...).
  *
  * @returns {Promise<string>} A Promise that resolves to a unique ID
  */
 export const generateUniqueId = async (): Promise<string> => {
-  // Helper function to generate random characters
-  const generateRandomChar = (chars: string, count: number): string => {
-    let result = "";
-    for (let i = 0; i < count; i++) {
-      const randomIndex = Math.floor(Math.random() * chars.length);
-      result += chars.charAt(randomIndex);
-    }
-    return result;
-  };
-
   const lowercase = "abcdefghijklmnopqrstuvwxyz";
-  const alphanumeric = lowercase + "ABCDEFGHJKLMNPQRSTUVWXYZ1234567890";
+  const first = lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+  const random =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID().replace(/-/g, "")
+      : `${Date.now().toString(36)}${Math.random().toString(36).substring(2)}`;
 
-  // Generate ID with pattern: [lowercase][alphanumeric x 10]
-  const id = generateRandomChar(lowercase, 1) + generateRandomChar(alphanumeric, 10);
-
-  // Check if ID already exists in localStorage for scenarios
-  const scenarios = await getAllScenariosFromLocalStorage();
-  const existingScenarioKeys = Object.keys(scenarios);
-
-  // Check if ID already exists in localStorage for functions
-  const functions = await getAllFunctionsFromLocalStorage();
-  const existingFunctionKeys = Object.keys(functions);
-
-  // Combine all existing keys
-  const allExistingKeys = [...existingScenarioKeys, ...existingFunctionKeys];
-
-  // Check for both formats of keys for backward compatibility
-  if (
-    allExistingKeys.includes(`sc_${id}`) ||
-    allExistingKeys.includes(`fu_${id}`) ||
-    allExistingKeys.includes(`AUTOMATION_SCENARIO_${id}`)
-  ) {
-    // If ID already exists, generate a new one
-    return generateUniqueId();
-  }
-
-  return id;
+  return first + random.substring(0, 15);
 };
 
 /**
@@ -257,37 +226,6 @@ export const saveFunctionToLocalStorage = async (id: string, customFunction: Cus
   } catch (e) {
     console.error("Error saving function to storage:", e);
     return false;
-  }
-};
-
-/**
- * Creates a new folder using ExtensionStorageManager
- *
- * @param {ScenarioFolder} folder - The folder object to save
- * @returns {Promise<{success: boolean, id: string}>} Promise that resolves to an object with success status and folder ID
- */
-export const createFolderInLocalStorage = async (folder: ScenarioFolder): Promise<{ success: boolean; id: string }> => {
-  try {
-    // Generate a unique ID for the new folder
-    const id = await generateUniqueId();
-    if (!id) {
-      console.error("Failed to generate unique ID for folder");
-      return { success: false, id: "" };
-    }
-
-    // Use the same pattern as other functions: add a prefix to distinguish folders in the UI
-    const prefixedId = `fo_${id}`;
-
-    // Save the folder using the specialized folder storage method
-    const result = await ExtensionStorageManager.saveFolder({
-      id,
-      folder,
-    });
-
-    return { success: result.success, id: prefixedId };
-  } catch (e) {
-    console.error("Error creating folder in storage:", e);
-    return { success: false, id: "" };
   }
 };
 
@@ -337,50 +275,6 @@ export const addStepToScenario = async (scenarioId: string, step: ScenarioStep):
   } catch (e) {
     console.error("Error adding step to scenario:", e);
     return false;
-  }
-};
-
-/**
- * Duplicates an existing scenario
- *
- * @param {string} scenarioId - The ID of the scenario to duplicate
- * @param {string} newTitle - Optional new title for the duplicated scenario (defaults to "Copy of [original title]")
- * @returns {Promise<{success: boolean, id: string}>} Promise that resolves to an object with success status and new scenario ID
- */
-export const duplicateScenarioInLocalStorage = async (
-  scenarioId: string,
-  newTitle?: string,
-): Promise<{ success: boolean; id: string }> => {
-  try {
-    // Get the original scenario
-    const id = scenarioId.replace(/^sc_/, "");
-    const originalScenario = await ExtensionStorageManager.getAutomationScenario(id);
-
-    if (!originalScenario) {
-      console.error(`Scenario with ID ${scenarioId} not found`);
-      return { success: false, id: "" };
-    }
-
-    // Create a deep copy of the scenario
-    const duplicatedScenario: Scenario = JSON.parse(JSON.stringify(originalScenario));
-
-    // Update the title
-    duplicatedScenario.title = newTitle || `Copy of ${duplicatedScenario.title}`;
-
-    // Generate a unique ID for the new scenario
-    const newId = await generateUniqueId();
-    const prefixedId = `sc_${newId}`;
-
-    // Save the duplicated scenario
-    const result = await ExtensionStorageManager.saveAutomationScenario({
-      id: newId,
-      scenario: duplicatedScenario,
-    });
-
-    return { success: result.success, id: prefixedId };
-  } catch (e) {
-    console.error("Error duplicating scenario:", e);
-    return { success: false, id: "" };
   }
 };
 
@@ -546,9 +440,9 @@ export const saveScheduleToLocalStorage = async (id: string, schedule: ScheduleC
  */
 export const removeScheduleFromLocalStorage = async (key: string): Promise<boolean> => {
   try {
-    // Extract the ID from the key (remove the 'sch_' prefix)
-    const id = key.replace(/^sch_/, "");
-    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    // Storage keys keep the 'sch_' prefix (see the save function above)
+    const id = key.startsWith("sch_") ? key : `sch_${key}`;
+    const result = await ExtensionStorageManager.removeAutomationScenario({ id });
     return result.success;
   } catch (e) {
     console.error("Error removing schedule from storage:", e);
@@ -671,9 +565,9 @@ export const saveTriggerToLocalStorage = async (id: string, trigger: TriggerConf
  */
 export const removeTriggerFromLocalStorage = async (key: string): Promise<boolean> => {
   try {
-    // Extract the ID from the key (remove the 'tr_' prefix)
-    const id = key.replace(/^tr_/, "");
-    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    // Storage keys keep the 'tr_' prefix (see the save function above)
+    const id = key.startsWith("tr_") ? key : `tr_${key}`;
+    const result = await ExtensionStorageManager.removeAutomationScenario({ id });
     return result.success;
   } catch (e) {
     console.error("Error removing trigger from storage:", e);
@@ -771,11 +665,9 @@ export const saveExecutionHistoryToLocalStorage = async (
  */
 export const removeExecutionHistoryFromLocalStorage = async (key: string): Promise<boolean> => {
   try {
-    // Extract the ID from the key (remove the 'ex_hist_' prefix)
-    const id = key.replace(/^ex_hist_/, "");
-
-
-    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    // Storage keys keep the 'ex_hist_' prefix (see the save function above)
+    const id = key.startsWith("ex_hist_") ? key : `ex_hist_${key}`;
+    const result = await ExtensionStorageManager.removeAutomationScenario({ id });
     return result.success;
   } catch (e) {
     console.error("Error removing execution history entry from storage:", e);
@@ -906,9 +798,9 @@ export const saveNotificationMessageToLocalStorage = async (
  */
 export const removeNotificationMessageFromLocalStorage = async (key: string): Promise<boolean> => {
   try {
-    // Extract the ID from the key (remove the 'notification_' prefix)
-    const id = key.replace(/^notification_/, "");
-    const result = await ExtensionStorageManager.removeAutomationScenario(id);
+    // Storage keys keep the 'notification_' prefix (see the save function above)
+    const id = key.startsWith("notification_") ? key : `notification_${key}`;
+    const result = await ExtensionStorageManager.removeAutomationScenario({ id });
     return result.success;
   } catch (e) {
     console.error("Error removing notification message from storage:", e);
