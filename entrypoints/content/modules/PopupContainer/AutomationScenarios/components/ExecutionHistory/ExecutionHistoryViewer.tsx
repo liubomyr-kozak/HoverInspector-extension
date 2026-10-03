@@ -226,6 +226,14 @@ const ExecutionHistoryViewer: React.FC<ExecutionHistoryViewerProps> = ({
             <Text type="secondary" style={{ fontSize: 12 }}>
               {formatTimestamp(record.executionTime)} · {formatDuration(record.duration)}
             </Text>
+            {record.error && (
+              <div
+                title={record.error}
+                style={{ fontSize: 12, color: "#cf1322", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {record.error}
+              </div>
+            )}
           </div>
         );
       },

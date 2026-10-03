@@ -42,7 +42,7 @@ import {
   shouldResumeSession,
   startExecutionSession,
 } from "../../modules/PopupContainer/AutomationScenarios/utils/executionSession.ts";
-import { createExecutionHistoryEntry } from "../../modules/PopupContainer/AutomationScenarios/utils/executionHistory.ts";
+import { createExecutionHistoryEntry, formatStepError } from "../../modules/PopupContainer/AutomationScenarios/utils/executionHistory.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
 
@@ -802,7 +802,13 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
       } else if (executionLog.status === ExecutionStatus.ERROR) {
         // If there was an error, set the error message and update step status
         const errorEntry = executionLog.entries.find((entry) => entry.status === ExecutionStatus.ERROR);
-        yield put(automationActions.setExecutionError(errorEntry?.error || "An error occurred during execution"));
+        yield put(
+          automationActions.setExecutionError(
+            errorEntry
+              ? formatStepError({ ...errorEntry, stepIndex: startFromStep + errorEntry.stepIndex })
+              : "An error occurred during execution",
+          ),
+        );
 
         // Update the status of the failed step
         if (errorEntry && errorEntry.stepIndex >= 0) {
@@ -867,10 +873,8 @@ export const playScenarioWatcher = sagaEnhancer(function* playScenarioWatcherFn(
         yield put(automationActions.setCurrentStepIndex(-1));
         yield put(automationActions.setPendingSteps([]));
 
-        // Don't collapse scenarios that were manually stopped (CANCELLED status)
-        if (activeScenarioId && executionLog.status !== ExecutionStatus.CANCELLED) {
-          yield put(automationActions.setScenarioExpanded({ id: activeScenarioId, expanded: false }));
-        }
+        // Keep the scenario open: a failed run shows which step failed, a stopped one where it stopped
+        yield put(automationActions.setScenarioExpanded({ id, expanded: true }));
       }
     }
   } catch (error) {

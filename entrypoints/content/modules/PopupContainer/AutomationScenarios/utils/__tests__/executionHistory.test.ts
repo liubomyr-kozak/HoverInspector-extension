@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createExecutionHistoryEntry,
+  formatStepError,
   getExpiredExecutionHistoryIds,
   normalizeExecutionHistoryEntry,
 } from "../executionHistory";
@@ -40,7 +41,7 @@ describe("execution history entries", () => {
       status: ExecutionStatus.ERROR,
       stepsCompleted: 2,
       totalSteps: 5,
-      error: "Element not found",
+      error: "Step 2 (Click) failed: Element not found",
     });
   });
 
@@ -84,5 +85,15 @@ describe("execution history entries", () => {
       ]),
     );
     expect(getExpiredExecutionHistoryIds(entries, 2).sort()).toEqual(["ex_hist_1", "ex_hist_2"]);
+  });
+});
+
+describe("formatStepError", () => {
+  it("names the failed step by its number and type", () => {
+    expect(formatStepError({ stepIndex: 3, stepType: StepType.CLICK, error: "Element not found after 10 s: //a" })).toBe(
+      "Step 4 (Click) failed: Element not found after 10 s: //a",
+    );
+    expect(formatStepError({ stepIndex: 0, stepType: StepType.NOT_SET, error: "" })).toBe("Step 1 failed: Unknown error");
+    expect(formatStepError({ stepIndex: -1, stepType: StepType.CLICK, error: "Boom" })).toBe("Boom");
   });
 });
