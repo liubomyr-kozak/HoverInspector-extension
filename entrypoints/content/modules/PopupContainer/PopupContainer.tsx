@@ -214,7 +214,7 @@ export function PopupContainer() {
                 ) : (
                   <BecomeASponsorText>
                     <h3>Become a Sponsor</h3>
-                    <p>Support the project and help bring new features faster.</p>
+                    <p title="Support the project and help bring new features faster.">Help bring new features faster.</p>
                   </BecomeASponsorText>
                 )}
 
