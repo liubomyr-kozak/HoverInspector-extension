@@ -26,6 +26,7 @@ import { NotificationDialog } from "@entrypoints/content/modules/PopupContainer/
 import React from "react";
 import { parseSelectValues } from "./recordingUtils";
 import { describeKeyCombo, parseKeyCombo, pressKey } from "./keyboardUtils";
+import { resolveStoredValues } from "./storedValues";
 
 /**
  * Default delay between steps in milliseconds
@@ -330,6 +331,10 @@ export function getStepDescription(step: ScenarioStep): string {
       return `Show notification: "${step.value?.substring(0, 20)}${step.value && step.value.length > 20 ? "..." : ""}"`;
     case StepType.KEY_PRESS:
       return `Press ${describeKeyCombo(step.value) || "key"}`;
+    case StepType.GET_TEXT:
+      return step.value ? `Get text into "${step.value}"` : "Get text";
+    case StepType.WAIT_ELEMENT_VISIBLE:
+      return "Wait for element to be visible";
     default:
       return `Unknown step type: ${step.type}`;
   }
@@ -401,6 +406,31 @@ export function* executeInputStep(step: ScenarioStep) {
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
 }
+
+/**
+ * Executes a get text step: stores the text of the element (the value of a field) under the step's key,
+ * for the following steps to use as ${key}
+ */
+export function* executeGetTextStep(step: ScenarioStep) {
+  const element: Element = yield call(findStepElement, step, "get text");
+  const text =
+    element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement
+      ? element.value
+      : ((element as HTMLElement).innerText ?? element.textContent ?? "").trim();
+  const key = (step.value || "").trim() || `text_${Date.now().toString(36)}`;
+  yield put(automationActions.setStoredValue({ key, value: text }));
+}
+
+// Steps whose value may use stored values (${key}). Code steps are left alone: ${...} is JavaScript there.
+const STORED_VALUE_STEP_TYPES = [
+  StepType.INPUT,
+  StepType.VALUE,
+  StepType.SELECT,
+  StepType.NAVIGATE,
+  StepType.REDIRECT,
+  StepType.CONFIRMATION,
+  StepType.NOTIFICATION,
+];
 
 /**
  * Executes a key press step: the key is pressed on the step's element (focused first), or, for a step
@@ -835,6 +865,13 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
       }
     }
 
+    // Use the values stored by earlier get text steps
+    if (step.value && STORED_VALUE_STEP_TYPES.includes(step.type)) {
+      const storedValues = yield select((state) => state.automation.storedValues);
+      const resolved = resolveStoredValues(step.value, storedValues);
+      if (resolved !== step.value) step = { ...step, value: resolved };
+    }
+
     // Create a log entry for this step
     startTime = Date.now();
     const description = getStepDescription(step);
@@ -887,6 +924,9 @@ export function* executeStep(step: ScenarioStep, stepIndex: number) {
         break;
       case StepType.KEY_PRESS:
         yield call(executeKeyPressStep, step);
+        break;
+      case StepType.GET_TEXT:
+        yield call(executeGetTextStep, step);
         break;
       default:
         throw new Error(`Unknown step type: ${step.type}`);
