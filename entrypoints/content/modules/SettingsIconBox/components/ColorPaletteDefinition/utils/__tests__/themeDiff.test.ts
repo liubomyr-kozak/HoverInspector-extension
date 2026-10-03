@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyVariable,
+  findAliases,
   countThemeTokens,
   formatShadow,
   isDesignTheme,
@@ -235,5 +236,19 @@ describe("summarize", () => {
   it("counts matches among compared values", () => {
     const t = theme();
     expect(summarize([matchValue("spacing", "16px", t), matchValue("spacing", "15px", t), null])).toEqual({ matched: 1, total: 2 });
+  });
+});
+
+describe("findAliases", () => {
+  it("lists every variable holding the value, whatever its name", () => {
+    const entries: Array<[string, string]> = [
+      ["--space-4", "16px"],
+      ["--gap-md", "1rem"],
+      ["--z-index", "16"],
+      ["--radius", "8px"],
+    ];
+    expect(findAliases("spacing", "16px", entries)).toEqual(["--space-4", "--gap-md"]);
+    expect(findAliases("radius", "16px", entries)).toEqual(["--space-4", "--gap-md"]);
+    expect(findAliases("color", "#2563EB", [["--brand", "#2563eb"], ["--x", "#000"]])).toEqual(["--brand"]);
   });
 });

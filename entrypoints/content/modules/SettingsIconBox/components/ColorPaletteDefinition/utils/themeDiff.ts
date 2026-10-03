@@ -729,3 +729,25 @@ export const isDesignTheme = (value: unknown): value is DesignTheme => {
     ["fontFamilies", "fontSizes", "fontWeights", "lineHeights"].every((k) => typeof (t.typography as any)[k] === "object")
   );
 };
+
+const LENGTH_KINDS = new Set<TokenKind>(["spacing", "radius", "fontSize"]);
+
+/**
+ * The names (CSS custom properties, theme tokens) whose value equals `value` for this kind of token,
+ * whatever their name suggests: `--gap-md: 16px` is an alias of a 16px radius too.
+ */
+export const findAliases = (kind: TokenKind, value: string, entries: Array<[string, string]>, ctx: MatchContext = {}): string[] => {
+  const single = emptyTheme();
+  const map = tokensOf(single, kind);
+  return entries
+    .filter(([name, raw]) => {
+      const v = raw.trim();
+      if (!v || v.length > 200) return false;
+      // Bare numbers are not lengths in CSS
+      if (LENGTH_KINDS.has(kind) && !/[a-z]$/i.test(v)) return false;
+      for (const key of Object.keys(map)) delete map[key];
+      map[name] = v;
+      return matchValue(kind, value, single, ctx)?.status === "match";
+    })
+    .map(([name]) => name);
+};

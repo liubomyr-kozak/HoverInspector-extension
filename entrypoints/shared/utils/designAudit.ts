@@ -64,6 +64,8 @@ export interface DesignAudit {
    * colours, `16px` for lengths), so a used value can be traced back to its token
    */
   variables: Record<string, string[]>;
+  /** The same custom properties as [name, resolved value], for values the index doesn't cover (shadows, fonts) */
+  variableEntries?: Array<[string, string]>;
   /** What the issues are computed from, kept so they can be recomputed for another grid without a rescan */
   findings: { rgbaByHex: Map<string, RGBA>; a11y: AccessibilityFindings };
   colors: { text: ValueUsage[]; background: ValueUsage[]; border: ValueUsage[] };
@@ -73,6 +75,8 @@ export interface DesignAudit {
   spacing: ValueUsage[];
   radii: ValueUsage[];
   shadows: ValueUsage[];
+  /** Drawn border lines as `1px solid #E5E7EB` (size: the width in px) */
+  borderLines?: ValueUsage[];
   issues: DesignIssue[];
   /** 0-100, lower with more and more severe issues */
   score: number;
@@ -206,7 +210,7 @@ export const indexCssVariables = (
 };
 
 /** Custom properties declared on the root element (computed, so values are resolved) */
-const readRootVariables = (): Record<string, string[]> => {
+const readRootVariables = (): { index: Record<string, string[]>; entries: Array<[string, string]> } => {
   const rootElement = document.documentElement;
   const computed = getComputedStyle(rootElement);
   const names = new Set<string>();
@@ -229,12 +233,10 @@ const readRootVariables = (): Record<string, string[]> => {
       }
     }
   }
-  if (!names.size || names.size > 2000) return {};
+  if (!names.size || names.size > 2000) return { index: {}, entries: [] };
   const rootFontSize = parseFloat(computed.fontSize) || 16;
-  return indexCssVariables(
-    [...names].map((name) => [name, computed.getPropertyValue(name)]),
-    rootFontSize,
-  );
+  const entries = [...names].map((name) => [name, computed.getPropertyValue(name).trim()] as [string, string]);
+  return { index: indexCssVariables(entries, rootFontSize), entries };
 };
 
 /** The most common class names on a set of elements, for "where does this value come from" hints */
@@ -311,6 +313,7 @@ const createScanner = () => {
   const spacing = new UsageMap();
   const radii = new UsageMap();
   const shadows = new UsageMap();
+  const borderLines = new UsageMap();
   const typeStyles = new Map<string, TypeStyle>();
   const rgbaByHex = new Map<string, RGBA>();
 
@@ -337,6 +340,8 @@ const createScanner = () => {
       backgrounds.add(bg.hex, element);
       rgbaByHex.set(bg.hex, bg.rgba);
     }
+    // One count per element for each distinct border line, however many sides draw it
+    const lines = new Map<string, number>();
     for (const side of ["Top", "Right", "Bottom", "Left"] as const) {
       const width = parseFloat(style[`border${side}Width`]);
       if (width > 0 && style[`border${side}Style`] !== "none" && style[`border${side}Style`] !== "hidden") {
@@ -344,9 +349,11 @@ const createScanner = () => {
         if (border) {
           borders.add(border.hex, element);
           rgbaByHex.set(border.hex, border.rgba);
+          lines.set(`${formatPx(width)} ${style[`border${side}Style`]} ${border.hex}`, width);
         }
       }
     }
+    lines.forEach((width, line) => borderLines.add(line, element, width));
 
     // Spacing: every non-zero margin, padding and gap
     for (const prop of [
@@ -440,8 +447,9 @@ const createScanner = () => {
     const byCount = (a: { count: number }, b: { count: number }) => b.count - a.count;
     const bySize = (a: ValueUsage, b: ValueUsage) => (a.size ?? 0) - (b.size ?? 0);
     let variables: Record<string, string[]> = {};
+    let variableEntries: Array<[string, string]> = [];
     try {
-      variables = readRootVariables();
+      ({ index: variables, entries: variableEntries } = readRootVariables());
     } catch {
       variables = {};
     }
@@ -451,6 +459,7 @@ const createScanner = () => {
       truncated,
       grid: options.grid ?? SPACING_GRID,
       variables,
+      variableEntries,
       findings: {
         rgbaByHex,
         a11y: { lowContrast: [...lowContrast.values()], tinyText, tightLines, looseHeadings, tightHeadings },
@@ -466,6 +475,7 @@ const createScanner = () => {
       spacing: spacing.list().sort(bySize),
       radii: radii.list().sort(bySize),
       shadows: shadows.list().sort(byCount),
+      borderLines: borderLines.list().sort(byCount),
       issues: [],
       score: 100,
     };
