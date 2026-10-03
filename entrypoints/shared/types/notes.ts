@@ -6,9 +6,14 @@ export enum NoteViewType {
 export interface NoteLocationCoordinates {
   x: number;
   y: number;
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
+  // When true (element-anchored notes) x/y are an offset from the element's top-left corner
+  relativeToElement?: boolean;
 }
+
+// How a route location's routePattern is interpreted
+export type NotePatternType = "url" | "regex";
 
 // Extended attachment type enum
 export enum AttachmentTypeEnum {
@@ -25,6 +30,7 @@ export interface NoteLocation {
   domain: string; // I will use this on attachmentType "domain" and "global"
   elementXPath?: string;
   routePattern?: string;
+  patternType?: NotePatternType;
   url: string;
 
   // Position data (coordinates are separate as they're not location-specific)
@@ -62,14 +68,7 @@ export interface NotesState {
   groups: NoteGroup[];
   searchQuery: string;
   selectedNoteId?: string;
-  colorPalettes: {
-    id: string;
-    name: string;
-    value: string;
-    isDefault: boolean;
-    createdAt: number;
-    data: ColorPalette;
-  }[];
+  colorPalettes?: ColorPalette[];
 }
 
 export interface ColorPalette {
@@ -84,7 +83,6 @@ export interface ColorPalette {
 export interface CreateNotePayload extends Partial<Note> {
   content: string; // Required for creation
   title: string; // Required for creation
-  domain: string;
   locations: NoteLocation[];
 }
 
@@ -101,8 +99,21 @@ export interface CreateNoteGroupPayload {
 }
 
 export interface UpdateNoteGroupPayload {
-  id: string;
-  updates: Partial<NoteGroup>;
+  data: {
+    id: string;
+    updates: Partial<NoteGroup>;
+  };
+}
+
+export interface DeleteNoteGroupPayload {
+  data: string; // groupId
+}
+
+export interface ImportNotesPayload {
+  data: {
+    notes: Note[];
+    groups?: NoteGroup[];
+  };
 }
 
 export interface CreateColorPalettePayload {
