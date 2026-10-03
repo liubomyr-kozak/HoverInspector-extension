@@ -195,10 +195,7 @@ const renderToken = (token: Token, idx: number) => {
 };
 
 export const RenderLineWithColor = React.memo(function RenderLineWithColor({ lineValue }: { lineValue: string }) {
-  console.log("😎😎😎 ::RenderLineWithColor -> lineValue", lineValue);
   const tokens = useMemo(() => parseCssLine(lineValue), [lineValue]);
-
-  console.log("😀😀😀 ::RenderLineWithColor -> tokens", tokens);
 
   return <span className="text-wrap">{tokens.map(renderToken)}</span>;
 });
