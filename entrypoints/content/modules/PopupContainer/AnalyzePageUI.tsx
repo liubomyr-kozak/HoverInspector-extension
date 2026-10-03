@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow, IconLayoutDashboard } from "@tabler/icons-react";
 import { Tabs } from "antd";
 
@@ -12,11 +12,31 @@ import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon.tsx";
 import { ANALYZE_PAGE } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 import { ColorPaletteDefinition } from "../SettingsIconBox/components/ColorPaletteDefinition/ColorPaletteDefinition";
 import { BordersTab, ShadowsTab, SpacingTab, TypeTab } from "../SettingsIconBox/components/ColorPaletteDefinition/TokenTabs";
-import { PaletteProvider, type PaletteTab } from "../SettingsIconBox/components/ColorPaletteDefinition/PaletteContext";
-import { ThemeBar } from "../SettingsIconBox/components/ColorPaletteDefinition/tokenUi/ThemeBar";
+import { PALETTE_TAB_BAR_HEIGHT_VAR, PaletteProvider, type PaletteTab } from "../SettingsIconBox/components/ColorPaletteDefinition/PaletteContext";
+import { ThemeMenu } from "../SettingsIconBox/components/ColorPaletteDefinition/tokenUi/ThemeMenu";
+import { shadowBody } from "@entrypoints/shared/utils/shadowBody";
+
+/** Below this the theme button shows only its icon, so all six tabs still fit (320px panel) */
+const COMPACT_TAB_BAR_WIDTH = 380;
 
 export const AnalyzePageUI = () => {
   const [activeTab, setActiveTab] = useState<PaletteTab>("overview");
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  const [tabBarSize, setTabBarSize] = useState({ width: 0, height: 0 });
+
+  // The tab bar stays on top while the panel scrolls; the tabs' detail cards stick right under it
+  useLayoutEffect(() => {
+    const el = tabBarRef.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    setTabBarSize({ width, height });
+    const observer = new ResizeObserver(([entry]) => {
+      const box = entry.borderBoxSize[0];
+      setTabBarSize({ width: box?.inlineSize ?? entry.contentRect.width, height: box?.blockSize ?? entry.contentRect.height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Same pattern as the Automation tabs: every tab shows its icon, only the selected one its name, so all
   // six fit in the narrow panel instead of hiding behind a "more" menu
@@ -40,7 +60,7 @@ export const AnalyzePageUI = () => {
   );
 
   return (
-    <div className="w-full">
+    <div className="w-full" style={{ [PALETTE_TAB_BAR_HEIGHT_VAR]: `${tabBarSize.height}px` } as React.CSSProperties}>
       <PortalModalHeader portalId={HeaderPortalId.ANALYZE_PAGE}>
         <FeatureTitle>
           <FeatureIcon icon={ANALYZE_PAGE.icon} isBetta />
@@ -50,7 +70,6 @@ export const AnalyzePageUI = () => {
 
       {/* One page scan and one theme for every tab */}
       <PaletteProvider onOpenTab={setActiveTab}>
-        <ThemeBar />
         <Tabs
           activeKey={activeTab}
           onChange={(key) => setActiveTab(key as PaletteTab)}
@@ -58,10 +77,16 @@ export const AnalyzePageUI = () => {
           className="analyze-page-tabs"
           size="small"
           tabBarGutter={16}
+          tabBarStyle={{ margin: 0 }}
+          tabBarExtraContent={{ right: <ThemeMenu compact={tabBarSize.width < COMPACT_TAB_BAR_WIDTH} /> }}
+          renderTabBar={(props, DefaultTabBar) => (
+            // -top-4: the panel body's 16px padding, so nothing scrolls into view above the bar
+            <div ref={tabBarRef} className="sticky -top-4 z-10 mb-3 bg-white">
+              <DefaultTabBar {...props} />
+            </div>
+          )}
           // The "more tabs" dropdown would otherwise render into the page's <body>, outside our styles
-          getPopupContainer={(trigger) =>
-            (trigger.getRootNode() as ShadowRoot).querySelector?.("html > body") as HTMLElement ?? trigger.parentElement!
-          }
+          getPopupContainer={shadowBody}
         />
       </PaletteProvider>
     </div>

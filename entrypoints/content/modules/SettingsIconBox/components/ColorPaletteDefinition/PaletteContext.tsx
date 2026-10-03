@@ -8,6 +8,9 @@ import { isDesignTheme, type DesignTheme } from "./utils/themeDiff";
  * filter, and requests from the Overview to open a value in its tab.
  */
 
+/** CSS variable with the sticky tab bar's height, set by the tool so detail cards can stick under it */
+export const PALETTE_TAB_BAR_HEIGHT_VAR = "--palette-tab-bar-height";
+
 export type PaletteTab = "overview" | "color-palette" | "typography" | "spacing" | "borders" | "shadows";
 
 interface PaletteContextValue {

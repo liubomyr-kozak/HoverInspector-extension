@@ -821,6 +821,7 @@ export const auditToCssVariables = (audit: DesignAudit): string => {
   section("Spacing", audit.spacing.map((s, i) => [`space-${i + 1}`, s.value]));
   section("Radii", audit.radii.map((r, i) => [`radius-${i + 1}`, r.value]));
   section("Shadows", audit.shadows.map((s, i) => [`shadow-${i + 1}`, s.value]));
+  section("Borders", (audit.borderLines ?? []).map((b, i) => [`border-${i + 1}`, b.value]));
   lines.push("}");
   return lines.join("\n");
 };
