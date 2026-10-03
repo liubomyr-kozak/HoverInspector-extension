@@ -147,69 +147,35 @@ const AddScenarioForm: React.FC = () => {
   };
 
 
-  // Refs for tracking steps container and previous count for auto-scroll
+  // Refs for tracking steps container and previous count for auto-scroll.
+  // Starts at the current count so opening an existing scenario does not jump to its last step.
   const stepsContainerRef = useRef<HTMLDivElement>(null);
-  const previousStepCountRef = useRef<number>(0);
+  const previousStepCountRef = useRef<number>(currentSteps.length);
 
-  // Effect to scroll to bottom when new steps are added
+  // Scroll the panel to the newest step when one is added (recorded or "Add Step")
   useEffect(() => {
     const currentStepCount = currentSteps.length;
     const previousCount = previousStepCountRef.current;
-    
-    // If we have more steps than before, scroll to bottom
-    if (currentStepCount > previousCount && currentStepCount > 0) {
-      // Use setTimeout to ensure DOM has updated
-      setTimeout(() => {
-        if (modalContext) {
-          // Use the context's scroll method
-          modalContext.scrollToBottom();
-        } else if (stepsContainerRef.current) {
-          // Fallback to finding scrollable parent container
-          let scrollContainer = stepsContainerRef.current.closest(
-            '.ant-modal-body, .ant-tabs-content, [class*="modal"], [style*="overflow"]',
-          );
-
-          // If no specific scrollable container found, try to find any scrollable parent
-          if (!scrollContainer) {
-            let element = stepsContainerRef.current.parentElement;
-            while (element && element !== document.body) {
-              const style = window.getComputedStyle(element);
-              if (
-                style.overflow === "auto" ||
-                style.overflow === "scroll" ||
-                style.overflowY === "auto" ||
-                style.overflowY === "scroll"
-              ) {
-                scrollContainer = element;
-                break;
-              }
-              element = element.parentElement;
-            }
-          }
-
-          // If still no scrollable container found, try shadow DOM approach as fallback
-          if (!scrollContainer) {
-            const hoverInspector = document.querySelector("hover-inspector") as HTMLElement & {
-              shadowRoot: ShadowRoot | null;
-            };
-            scrollContainer = hoverInspector?.shadowRoot?.querySelector(
-              "html > body .draggable-modal .ant-modal-body",
-            ) as HTMLElement;
-          }
-
-          // Scroll to bottom with smooth behavior
-          if (scrollContainer) {
-            scrollContainer.scrollTo({
-              top: scrollContainer.scrollHeight,
-              behavior: "smooth",
-            });
-          }
-        }
-      }, 100); // Small delay to ensure DOM has rendered
-    }
-
-    // Update the previous count
     previousStepCountRef.current = currentStepCount;
+    if (currentStepCount <= previousCount) return;
+
+    const timer = setTimeout(() => {
+      if (modalContext?.getModalContainer()) {
+        modalContext.scrollToBottom();
+        return;
+      }
+      // Walk up to the nearest ancestor that actually scrolls (the panel body)
+      let element = stepsContainerRef.current?.parentElement ?? null;
+      while (element) {
+        const { overflowY } = window.getComputedStyle(element);
+        if ((overflowY === "auto" || overflowY === "scroll") && element.scrollHeight > element.clientHeight) {
+          element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+          return;
+        }
+        element = element.parentElement;
+      }
+    }, 100);
+    return () => clearTimeout(timer);
   }, [currentSteps.length, modalContext]);
 
   // Step edits are applied live: the inline step forms have no own Save button
