@@ -777,6 +777,20 @@ export function* executeNotificationStep(step: ScenarioStep) {
 }
 
 /**
+ * Whether the element is rendered and visible. offsetParent can't tell: it is null for position: fixed
+ * elements (toasts, dialogs), which made the step wait for them until it timed out.
+ */
+function isElementVisible(element: HTMLElement): boolean {
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  if (typeof (element as any).checkVisibility === "function") {
+    return (element as any).checkVisibility({ visibilityProperty: true });
+  }
+  const style = window.getComputedStyle(element);
+  return style.visibility !== "hidden" && style.display !== "none";
+}
+
+/**
  * Executes a wait element visible step
  */
 export function* executeWaitElementVisibleStep(step: ScenarioStep) {
@@ -795,14 +809,7 @@ export function* executeWaitElementVisibleStep(step: ScenarioStep) {
     const element = getElementByXPath(step.xpath, step.alternativeXpaths) as HTMLElement | null;
 
     if (element) {
-      // Check if element is visible
-      const rect = element.getBoundingClientRect();
-      const isVisible = rect.width > 0 && rect.height > 0 && 
-                       element.offsetParent !== null &&
-                       window.getComputedStyle(element).visibility !== 'hidden' &&
-                       window.getComputedStyle(element).display !== 'none';
-      
-      if (isVisible) {
+      if (isElementVisible(element)) {
         // Element is visible, step completed
         return;
       }
