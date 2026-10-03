@@ -3,8 +3,6 @@ import {
   IconSearch,
   IconX,
   IconPlus,
-  IconEye,
-  IconEyeOff,
   IconChevronDown,
   IconChevronRight,
   IconFolder,
@@ -15,54 +13,56 @@ import styled from "styled-components";
 import { Button } from "antd";
 import { tokens } from "@entrypoints/shared/styles/tokens";
 import { EmptyState } from "@entrypoints/shared/components/EmptyState";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { Note as NoteComponent } from "./Note";
-import { Note as NoteType, NoteGroup, NotesState, ColorPalette } from "@entrypoints/shared/types/notes";
-
-import { DEFAULT_NOTE_COLORS } from "@entrypoints/background/services/notes.ts";
-
-// Default color palette with IDs
-const DEFAULT_COLORS: ColorPalette[] = DEFAULT_NOTE_COLORS;
+import { Note as NoteType, NoteGroup, ColorPalette } from "@entrypoints/shared/types/notes";
+import { DEFAULT_NOTE_COLORS, NotesListFilter } from "@entrypoints/background/services/notes.ts";
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  height: 100%;
-  max-height: 400px;
+  min-height: 0;
 `;
 
 const Header = styled.div`
-  padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid ${tokens.color.border};
+  background: ${tokens.color.surfaceMuted};
 `;
 
 const SearchContainer = styled.div`
   position: relative;
-  margin-bottom: 12px;
+  flex: 1;
+  min-width: 0;
 `;
 
 const SearchInput = styled.input`
   width: 100%;
   height: ${tokens.control.md}px;
-  padding: 0 32px 0 36px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 0 32px 0 34px;
+  border: 1px solid ${tokens.color.borderStrong};
+  border-radius: ${tokens.radius.md}px;
+  background: ${tokens.color.surface};
+  color: ${tokens.color.text};
+  font-size: ${tokens.font.size.md}px;
   outline: none;
-  transition: border-color 0.2s;
+  box-sizing: border-box;
 
   &:focus {
     border-color: ${tokens.color.primary};
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   }
 `;
 
 const SearchIcon = styled.div`
   position: absolute;
-  left: 12px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6b7280;
+  color: ${tokens.color.textMuted};
+  line-height: 0;
 
   svg {
     width: 16px;
@@ -72,24 +72,23 @@ const SearchIcon = styled.div`
 
 const ClearButton = styled.button`
   position: absolute;
-  right: 8px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  border-radius: ${tokens.radius.sm}px;
   cursor: pointer;
-  color: #9ca3af;
-  transition: all 0.2s;
+  color: ${tokens.color.textMuted};
 
   &:hover {
     background: rgba(0, 0, 0, 0.05);
-    color: #6b7280;
+    color: ${tokens.color.text};
   }
 
   svg {
@@ -98,56 +97,26 @@ const ClearButton = styled.button`
   }
 `;
 
-const FilterControls = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-`;
-
-const FilterToggle = styled.button<{ $active: boolean }>`
+const Toolbar = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid ${(props) => (props.$active ? "#3b82f6" : "#d1d5db")};
-  background: ${(props) => (props.$active ? "rgba(59, 130, 246, 0.1)" : "white")};
-  color: ${(props) => (props.$active ? "#3b82f6" : "#6b7280")};
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.05);
-  }
-
-  svg {
-    width: 14px;
-    height: 14px;
-  }
+  min-width: 0;
 `;
 
-const ScopeToggle = styled.div`
-  display: inline-flex;
-  margin-top: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  overflow: hidden;
-`;
+const FilterSelect = styled.select`
+  flex: 1;
+  min-width: 0;
+  height: ${tokens.control.md}px;
+  padding: 0 6px;
+  border: 1px solid ${tokens.color.borderStrong};
+  border-radius: ${tokens.radius.md}px;
+  background: ${tokens.color.surface};
+  color: ${tokens.color.text};
+  font-size: ${tokens.font.size.sm}px;
 
-const ScopeButton = styled.button<{ $active: boolean }>`
-  padding: 4px 10px;
-  border: none;
-  font-size: 12px;
-  cursor: pointer;
-  background: ${(props) => (props.$active ? tokens.color.primary : "white")};
-  color: ${(props) => (props.$active ? "white" : tokens.color.textSecondary)};
-
-  & + & {
-    border-left: 1px solid #d1d5db;
+  &:focus {
+    border-color: ${tokens.color.primary};
   }
 `;
 
@@ -155,21 +124,17 @@ const LinkButton = styled.button`
   border: none;
   background: transparent;
   color: ${tokens.color.primary};
-  font-size: 13px;
+  font-size: ${tokens.font.size.sm}px;
   cursor: pointer;
   text-decoration: underline;
 `;
 
-const ButtonGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
+const Content = styled.div`
+  padding: 12px;
 `;
 
-const Content = styled.div``;
-
 const GroupContainer = styled.div`
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 `;
 
 const GroupHeader = styled.button`
@@ -178,51 +143,69 @@ const GroupHeader = styled.button`
   text-align: left;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px 8px;
   margin-bottom: 8px;
-  border-radius: 6px;
+  border-radius: ${tokens.radius.md}px;
   background: #f3f4f6;
+  color: ${tokens.color.text};
   cursor: pointer;
-  transition: background 0.2s;
 
   &:hover {
-    background: #e5e7eb;
+    background: ${tokens.color.border};
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
   }
 `;
 
 const GroupName = styled.span`
-  font-weight: 600;
-  color: #374151;
-  font-size: 14px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: ${tokens.font.size.sm}px;
 `;
 
 const GroupBadge = styled.span`
-  background: #e5e7eb;
-  color: #6b7280;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
+  background: ${tokens.color.surface};
+  color: ${tokens.color.textSecondary};
+  padding: 0 8px;
+  border-radius: 10px;
+  font-size: ${tokens.font.size.xs}px;
 `;
 
 const GroupContent = styled.div<{ $isExpanded: boolean }>`
   display: ${(props) => (props.$isExpanded ? "block" : "none")};
-  margin-left: 16px;
 `;
 
+const FILTER_LABELS: Record<NotesListFilter, string> = {
+  page: "On this page",
+  all: "All notes",
+  everywhere: "Shown on every site",
+  element: "Attached to an element",
+  hidden: "Hidden sticky notes",
+};
+
 interface NotesListProps {
-  notesState: NotesState;
-  // Number of notes before the page filter is applied
-  totalNotesCount: number;
-  showAllPages: boolean;
-  onShowAllPagesChange: (showAll: boolean) => void;
+  /** Notes after the filter and search */
+  notes: NoteType[];
+  groups: NoteGroup[];
+  colorPalettes?: ColorPalette[];
+  searchQuery: string;
+  filter: NotesListFilter;
+  /** Number of notes per filter, shown in the filter menu */
+  filterCounts: Record<NotesListFilter, number>;
+  onFilterChange: (filter: NotesListFilter) => void;
   onToggleVisibility: (id: string) => void;
   onCreateNote: () => void;
   onEditNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
-  onSelectNote: (id: string) => void;
   onUpdateSearchQuery: (query: string) => void;
   onToggleGroup: (groupId: string) => void;
   onImportNotes: () => void;
@@ -230,195 +213,161 @@ interface NotesListProps {
 }
 
 export const NotesList: React.FC<NotesListProps> = ({
-  notesState,
-  totalNotesCount,
-  showAllPages,
-  onShowAllPagesChange,
+  notes,
+  groups,
+  colorPalettes,
+  searchQuery,
+  filter,
+  filterCounts,
+  onFilterChange,
   onToggleVisibility,
   onCreateNote,
   onEditNote,
   onDeleteNote,
-  onSelectNote,
   onUpdateSearchQuery,
   onToggleGroup,
   onImportNotes,
   onExportNotes,
 }) => {
-  const noteColorPalettes = useMemo(
-    () => (notesState.colorPalettes?.length ? notesState.colorPalettes : DEFAULT_COLORS),
-    [notesState.colorPalettes],
-  );
-
-  const filteredNotes = useMemo(() => {
-    let notes = notesState.notes;
-
-    // Filter by search query
-    if (notesState.searchQuery?.trim()) {
-      const query = notesState.searchQuery.toLowerCase();
-      notes = notes.filter(
-        (note) =>
-          (note.title || "").toLowerCase().includes(query) || (note.content || "").toLowerCase().includes(query),
-      );
-    }
-
-    return notes;
-  }, [notesState.notes, notesState.searchQuery]);
+  const noteColorPalettes = colorPalettes?.length ? colorPalettes : DEFAULT_NOTE_COLORS;
 
   const groupedNotes = useMemo(() => {
-    const grouped: { group: NoteGroup | null; notes: NoteType[] }[] = [];
-    const ungroupedNotes: NoteType[] = [];
+    const grouped: { group: NoteGroup; notes: NoteType[] }[] = [];
+    const ungrouped: NoteType[] = [];
 
-    // Separate grouped and ungrouped notes
-    filteredNotes.forEach((note) => {
-      if (note.groupId) {
-        const group = notesState.groups.find((g) => g.id === note.groupId);
-        if (group) {
-          let groupEntry = grouped.find((g) => g.group?.id === note.groupId);
-          if (!groupEntry) {
-            groupEntry = { group, notes: [] };
-            grouped.push(groupEntry);
-          }
-          groupEntry.notes.push(note);
-        } else {
-          // Group doesn't exist, treat as ungrouped
-          ungroupedNotes.push(note);
-        }
-      } else {
-        ungroupedNotes.push(note);
+    notes.forEach((note) => {
+      const group = note.groupId ? groups.find((g) => g.id === note.groupId) : undefined;
+      if (!group) {
+        // No group, or its group was deleted
+        ungrouped.push(note);
+        return;
       }
+      let entry = grouped.find((g) => g.group.id === group.id);
+      if (!entry) {
+        entry = { group, notes: [] };
+        grouped.push(entry);
+      }
+      entry.notes.push(note);
     });
 
-    // Sort groups by creation date
-    grouped.sort((a, b) => b.group!.createdAt - a.group!.createdAt);
+    grouped.sort((a, b) => b.group.createdAt - a.group.createdAt);
+    grouped.forEach((entry) => entry.notes.sort((a, b) => b.updatedAt - a.updatedAt));
+    ungrouped.sort((a, b) => b.updatedAt - a.updatedAt);
 
-    // Sort notes within each group
-    grouped.forEach((groupEntry) => {
-      groupEntry.notes.sort((a, b) => b.updatedAt - a.updatedAt);
-    });
+    return { grouped, ungrouped };
+  }, [notes, groups]);
 
-    // Sort ungrouped notes
-    ungroupedNotes.sort((a, b) => b.updatedAt - a.updatedAt);
+  const renderNote = (note: NoteType) => (
+    <NoteComponent
+      key={note.id}
+      note={note}
+      colorPalette={noteColorPalettes}
+      onEdit={onEditNote}
+      onDelete={onDeleteNote}
+      onToggleVisibility={onToggleVisibility}
+    />
+  );
 
-    return { grouped, ungrouped: ungroupedNotes };
-  }, [filteredNotes, notesState.groups]);
+  const hasSearch = !!searchQuery.trim();
 
-  const totalNotes = filteredNotes.length;
-  const hasNotes = totalNotesCount > 0;
-  const hasNotesInScope = notesState.notes.length > 0;
+  const emptyState =
+    filterCounts.all === 0 ? (
+      <EmptyState icon={<IconFolder />} title="No notes yet" description='Add your first note with the "Add note" button.' />
+    ) : hasSearch ? (
+      <EmptyState
+        icon={<IconSearch />}
+        title="No matching notes"
+        description={filter === "all" ? "Try another search." : `Nothing in "${FILTER_LABELS[filter]}" matches.`}
+        action={
+          filter !== "all" ? (
+            <LinkButton type="button" onClick={() => onFilterChange("all")}>
+              Search all notes
+            </LinkButton>
+          ) : undefined
+        }
+      />
+    ) : (
+      <EmptyState
+        icon={<IconFolder />}
+        title={filter === "page" ? "No notes on this page" : `No notes: ${FILTER_LABELS[filter].toLowerCase()}`}
+        description={filter === "page" ? "Notes for other pages are under All notes." : undefined}
+        action={
+          <LinkButton type="button" onClick={() => onFilterChange("all")}>
+            Show all notes ({filterCounts.all})
+          </LinkButton>
+        }
+      />
+    );
 
   return (
     <Container>
       <Header>
-        <SearchContainer>
-          <SearchIcon>
-            <IconSearch />
-          </SearchIcon>
-          <SearchInput
-            type="text"
-            placeholder="Search notes..."
-            aria-label="Search notes"
-            value={notesState.searchQuery || ""}
-            onChange={(e) => onUpdateSearchQuery(e.target.value)}
-          />
-          {notesState.searchQuery && (
-            <ClearButton type="button" aria-label="Clear search" title="Clear search" onClick={() => onUpdateSearchQuery("")}>
-              <IconX />
-            </ClearButton>
-          )}
-        </SearchContainer>
+        <Toolbar>
+          <SearchContainer>
+            <SearchIcon>
+              <IconSearch />
+            </SearchIcon>
+            <SearchInput
+              type="text"
+              placeholder="Search notes"
+              aria-label="Search notes"
+              value={searchQuery}
+              onChange={(e) => onUpdateSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <ClearButton type="button" aria-label="Clear search" title="Clear search" onClick={() => onUpdateSearchQuery("")}>
+                <IconX />
+              </ClearButton>
+            )}
+          </SearchContainer>
 
-        <FilterControls>
-          <ButtonGroup>
-            <Button size="small" icon={<IconUpload size={14} />} onClick={onImportNotes} title="Import notes from a JSON file">
-              Import
-            </Button>
-            <Button size="small" icon={<IconDownload size={14} />} onClick={onExportNotes} title="Export notes to a JSON file">
-              Export
-            </Button>
-          </ButtonGroup>
-          <Button size="small" type="primary" icon={<IconPlus size={14} />} onClick={onCreateNote}>
+          <Button type="primary" icon={<IconPlus size={16} />} onClick={onCreateNote}>
             Add note
           </Button>
-        </FilterControls>
-
-        <ScopeToggle role="group" aria-label="Which notes to show">
-          <ScopeButton type="button" $active={!showAllPages} onClick={() => onShowAllPagesChange(false)}>
-            This page
-          </ScopeButton>
-          <ScopeButton type="button" $active={showAllPages} onClick={() => onShowAllPagesChange(true)}>
-            All pages ({totalNotesCount})
-          </ScopeButton>
-        </ScopeToggle>
+        </Toolbar>
+        <Toolbar>
+          <FilterSelect
+            aria-label="Which notes to show"
+            value={filter}
+            onChange={(e) => onFilterChange(e.target.value as NotesListFilter)}
+          >
+            {(Object.keys(FILTER_LABELS) as NotesListFilter[]).map((value) => (
+              <option key={value} value={value}>
+                {FILTER_LABELS[value]} ({filterCounts[value]})
+              </option>
+            ))}
+          </FilterSelect>
+          <IconButton type="button" label="Import notes from a JSON file" onClick={onImportNotes} size={32}>
+            <IconUpload />
+          </IconButton>
+          <IconButton
+            type="button"
+            label="Export all notes to a JSON file"
+            onClick={onExportNotes}
+            disabled={filterCounts.all === 0}
+            size={32}
+          >
+            <IconDownload />
+          </IconButton>
+        </Toolbar>
       </Header>
 
       <Content>
-        {!hasNotes ? (
-          <EmptyState
-            icon={<IconFolder />}
-            title="No notes yet"
-            description='Create your first note with the "Add note" button above.'
-          />
-        ) : !hasNotesInScope ? (
-          <EmptyState
-            icon={<IconFolder />}
-            title="No notes on this page"
-            description="Notes attached to other pages are hidden here."
-            action={
-              <LinkButton type="button" onClick={() => onShowAllPagesChange(true)}>
-                Show notes from all pages
-              </LinkButton>
-            }
-          />
-        ) : totalNotes === 0 ? (
-          <EmptyState
-            icon={<IconSearch />}
-            title="No matching notes"
-            description="Try another search or filter."
-          />
+        {notes.length === 0 ? (
+          emptyState
         ) : (
           <>
-            {/* Render grouped notes */}
-            {groupedNotes.grouped.map(({ group, notes }) => (
-              <GroupContainer key={group!.id}>
-                <GroupHeader type="button" aria-expanded={!!group!.isExpanded} onClick={() => onToggleGroup(group!.id)}>
-                  {group!.isExpanded ? <IconChevronDown /> : <IconChevronRight />}
-                  <GroupName>{group!.name}</GroupName>
-                  <GroupBadge>{notes.length}</GroupBadge>
+            {groupedNotes.grouped.map(({ group, notes: groupNotes }) => (
+              <GroupContainer key={group.id}>
+                <GroupHeader type="button" aria-expanded={!!group.isExpanded} onClick={() => onToggleGroup(group.id)}>
+                  {group.isExpanded ? <IconChevronDown /> : <IconChevronRight />}
+                  <GroupName>{group.name}</GroupName>
+                  <GroupBadge>{groupNotes.length}</GroupBadge>
                 </GroupHeader>
-                <GroupContent $isExpanded={group!.isExpanded}>
-                  {notes.map((note) => (
-                    <NoteComponent
-                      key={note.id}
-                      note={note}
-                      isSelected={note.id === notesState.selectedNoteId}
-                      colorPalette={noteColorPalettes}
-                      onEdit={onEditNote}
-                      onDelete={onDeleteNote}
-                      onSelect={onSelectNote}
-                      onToggleVisibility={onToggleVisibility}
-                    />
-                  ))}
-                </GroupContent>
+                <GroupContent $isExpanded={group.isExpanded}>{groupNotes.map(renderNote)}</GroupContent>
               </GroupContainer>
             ))}
-
-            {/* Render ungrouped notes */}
-            {groupedNotes.ungrouped.length > 0 && (
-              <div>
-                {groupedNotes.ungrouped.map((note) => (
-                  <NoteComponent
-                    key={note.id}
-                    note={note}
-                    isSelected={note.id === notesState.selectedNoteId}
-                    colorPalette={noteColorPalettes}
-                    onEdit={onEditNote}
-                    onDelete={onDeleteNote}
-                    onSelect={onSelectNote}
-                    onToggleVisibility={onToggleVisibility}
-                  />
-                ))}
-              </div>
-            )}
+            {groupedNotes.ungrouped.map(renderNote)}
           </>
         )}
       </Content>

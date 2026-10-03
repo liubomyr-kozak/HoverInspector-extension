@@ -52,12 +52,12 @@ export function NewNoteMenu({ onNewNote, selectedCategory, groups }: NewNoteMenu
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 h-auto py-2"
-            onClick={() => createNote(selectedGroup?.id, 'global')}
+            onClick={() => createNote(selectedGroup?.id, 'everywhere')}
           >
             <Globe className="h-4 w-4" />
             <div className="text-left">
-              <div className="font-medium">Sticky note on all pages</div>
-              <div className="text-xs text-muted-foreground">Shown on every page</div>
+              <div className="font-medium">Sticky note everywhere</div>
+              <div className="text-xs text-muted-foreground">Shown on every page of every site</div>
             </div>
           </Button>
 
