@@ -138,9 +138,21 @@ const DEFAULT_WIDTH = DEFAULT_NOTE_WIDTH;
 const DEFAULT_HEIGHT = DEFAULT_NOTE_HEIGHT;
 const MIN_SIZE = 50;
 const ELEMENT_GAP = 5;
-// An anchored element may render after the note (SPA): retry finding it for a while
-const ELEMENT_RETRY_INTERVAL = 500;
-const ELEMENT_RETRY_COUNT = 10;
+// How often an element note re-measures its element (it may render late, move or be replaced)
+const ELEMENT_FOLLOW_INTERVAL = 500;
+
+// Whether a mouse button / finger is down anywhere (a drag or resize may be in progress)
+let pointerDown = false;
+let pointerTrackingInstalled = false;
+const isPointerDown = () => {
+  if (!pointerTrackingInstalled) {
+    pointerTrackingInstalled = true;
+    window.addEventListener("pointerdown", () => (pointerDown = true), true);
+    window.addEventListener("pointerup", () => (pointerDown = false), true);
+    window.addEventListener("pointercancel", () => (pointerDown = false), true);
+  }
+  return pointerDown;
+};
 // Resizing reports every frame: persist only once the user stops
 const SAVE_DELAY = 400;
 
@@ -182,29 +194,60 @@ export const VisibleNoteContainer: React.FC<VisibleNoteProps> = ({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingStateRef = useRef<NoteRect | null>(null);
   const noteRef = useRef(note);
-  noteRef.current = note;
+  // A position saved from here is newer than the note prop until the notes are reloaded: don't
+  // let a re-render put the old coordinates back (the note would jump back on the next follow tick)
+  if (note.id !== noteRef.current.id || note.updatedAt >= noteRef.current.updatedAt) noteRef.current = note;
 
   const isChip = note.viewType === NoteViewType.CHIP;
 
-  // Calculate position for xpath-attached notes or use saved coordinates
+  // Last drag/resize of this note: until it is saved, its stored position is out of date
+  const lastInteractionRef = useRef(0);
+
+  // Position from the saved coordinates, or next to the element the note is attached to. Element notes are
+  // re-measured while shown, so they follow their element when the page layout changes or it renders late.
   useEffect(() => {
-    let retryTimer: ReturnType<typeof setInterval> | null = null;
+    isPointerDown(); // start tracking drags before the first follow tick
+    let lastKey = "";
+    const apply = (rect: NoteRect) => {
+      const key = `${Math.round(rect.x)}:${Math.round(rect.y)}:${Math.round(rect.width)}:${Math.round(rect.height)}`;
+      if (key === lastKey) return;
+      lastKey = key;
+      setPosition(rect);
+    };
 
-    // централізовано шукаємо location
-    const matchingLocation = findMatchingLocation(note, window.location.hostname, window.location.href);
-    const coords = matchingLocation?.coordinates;
-    const { width, height } = getSize(coords);
-    const elementXPath = matchingLocation?.elementXPath || (note as any).elementXPath;
+    const findElement = (xpath: string): Element | null => {
+      try {
+        return highlightOverlay.getElementByXPath(xpath);
+      } catch (error) {
+        console.error("Failed to position note by xpath:", error);
+        return null;
+      }
+    };
 
-    // функція для fallback позиції
-    const getFallbackPosition = (): NoteRect =>
-      coords && !coords.relativeToElement
-        ? clampToPage({ x: coords.x, y: coords.y, width, height })
-        : clampToPage({ ...getDefaultNotePosition(note.id, width), width, height });
+    const getElementXPath = () => {
+      const current = noteRef.current;
+      const location = findMatchingLocation(current, window.location.hostname, window.location.href);
+      return location?.elementXPath || (current as any).elementXPath;
+    };
 
-    // функція для позиції по XPath
-    const getXPathPosition = (element: Element): NoteRect => {
+    const compute = (): NoteRect => {
+      const current = noteRef.current;
+      const matchingLocation = findMatchingLocation(current, window.location.hostname, window.location.href);
+      const coords = matchingLocation?.coordinates;
+      const { width, height } = getSize(coords);
+      const elementXPath = matchingLocation?.elementXPath || (current as any).elementXPath;
+
+      const fallback = (): NoteRect =>
+        coords && !coords.relativeToElement
+          ? clampToPage({ x: coords.x, y: coords.y, width, height })
+          : clampToPage({ ...getDefaultNotePosition(current.id, width), width, height });
+
+      const element = elementXPath ? findElement(elementXPath) : null;
+      if (!element) return fallback();
+
       const rect = getElementPageRect(element);
+      // A hidden element (display: none) has no box to stick to
+      if (rect.width === 0 && rect.height === 0) return fallback();
 
       // A saved offset keeps the note where the user dragged it, relative to the element
       if (coords?.relativeToElement) {
@@ -213,47 +256,24 @@ export const VisibleNoteContainer: React.FC<VisibleNoteProps> = ({
 
       // Above the element, or below it when there is no room above
       const above = rect.top - ELEMENT_GAP - height;
-      return clampToPage({
-        x: rect.left,
-        y: above >= 0 ? above : rect.bottom + ELEMENT_GAP,
-        width,
-        height,
-      });
+      return clampToPage({ x: rect.left, y: above >= 0 ? above : rect.bottom + ELEMENT_GAP, width, height });
     };
 
-    const findElement = (): Element | null => {
-      try {
-        return elementXPath ? highlightOverlay.getElementByXPath(elementXPath) : null;
-      } catch (error) {
-        console.error("Failed to position note by xpath:", error);
-        return null;
-      }
-    };
+    apply(compute());
 
-    // головна логіка визначення позиції
-    if (!elementXPath) {
-      setPosition(getFallbackPosition());
-    } else {
-      const element = findElement();
-      if (element) {
-        setPosition(getXPathPosition(element));
-      } else {
-        setPosition(getFallbackPosition());
-        let attempts = 0;
-        retryTimer = setInterval(() => {
-          attempts += 1;
-          const found = findElement();
-          if (found) setPosition(getXPathPosition(found));
-          if (found || attempts >= ELEMENT_RETRY_COUNT) {
-            clearInterval(retryTimer!);
-            retryTimer = null;
-          }
-        }, ELEMENT_RETRY_INTERVAL);
-      }
-    }
+    if (!getElementXPath()) return;
+
+    const follow = () => {
+      // Not while the user drags or resizes it, or before that change is saved
+      if (isPointerDown() || Date.now() - lastInteractionRef.current < SAVE_DELAY + 300) return;
+      apply(compute());
+    };
+    const timer = setInterval(follow, ELEMENT_FOLLOW_INTERVAL);
+    window.addEventListener("resize", follow);
 
     return () => {
-      if (retryTimer) clearInterval(retryTimer);
+      clearInterval(timer);
+      window.removeEventListener("resize", follow);
     };
   }, [note.locations, highlightOverlay, currentUrl]);
 
@@ -326,6 +346,7 @@ export const VisibleNoteContainer: React.FC<VisibleNoteProps> = ({
 
   // Handle position changes and save to storage once dragging/resizing stops
   const handleModalStateChange = (newState: NoteRect) => {
+    lastInteractionRef.current = Date.now();
     pendingStateRef.current = newState;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
