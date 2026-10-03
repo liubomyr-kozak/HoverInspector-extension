@@ -1,4 +1,4 @@
-import { delay, put, select, takeLatest } from "redux-saga/effects";
+import { put, select } from "redux-saga/effects";
 
 import PopupSettingModel from "@entrypoints/core/Models/PopupSettingModel.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
@@ -40,13 +40,11 @@ export const onUpdateInspectorViewTypeWatcher = sagaEnhancer(function* updateIns
 export const onUpdateAppSettingWatcher = sagaEnhancer(function* updateAppSettingWatcherFn() {
   const { app } = yield select();
 
-  ExtensionStorageManager.getState().then((settings) => {
-    const storeSetting = {
-      ...(settings as any),
-      user: app.user,
-      settings: app.settings,
-    };
-    ExtensionStorageManager.setState(storeSetting);
+  const settings = yield ExtensionStorageManager.getState();
+  yield ExtensionStorageManager.setState({
+    ...(settings as any),
+    user: app.user,
+    settings: app.settings,
   });
 });
 
@@ -175,7 +173,6 @@ export const onChangeLauncherActiveFeature = sagaEnhancer(function* changeLaunch
   if (needsAdjustment) {
     yield put(setFeaturePopupPosition(adjustedPosition));
 
-    yield delay(100);
     yield ExtensionStorageManager.changeFeaturePopupPosition(adjustedPosition);
   }
 });
@@ -238,18 +235,16 @@ export const onToggleFeatureMinimized = sagaEnhancer(function* onToggleFeatureMi
   // After the feature minimized state is toggled in the Redux state, persist the changes
   const state = yield select();
 
-  yield ExtensionStorageManager.changeMinimizedFeatures(state.app.minimizedFeatures);
-  yield delay(100);
-  yield ExtensionStorageManager.changeLauncherActiveFeature(state.app.launcher.activeIcons);
-
-  // // Save both minimizedFeatures and activeIcons atomically to avoid race condition
-  // yield ExtensionStorageManager.changeMinimizedFeaturesAndActiveIcons(
-  //   state.app.minimizedFeatures,
-  //   state.app.launcher.activeIcons,
-  // );
+  // Save both lists in one write so neither change can overwrite the other
+  yield ExtensionStorageManager.changeMinimizedFeaturesAndActiveIcons(
+    state.app.minimizedFeatures,
+    state.app.launcher.activeIcons,
+  );
 });
 
 export const onClearAllActiveIcons = sagaEnhancer(function* onClearAllActiveIconsFn(action) {
+  yield put(clearAllActiveIcons());
+
   // Close all child popups when the main feature popup is closed
   yield put(closeNoteForm());
   yield put(closeElementCompare());

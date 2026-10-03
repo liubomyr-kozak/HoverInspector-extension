@@ -13,7 +13,6 @@ export const {
   changeLauncherActiveFeature,
   changeMinimizedLauncherPosition,
   changeCurrentWindowSize,
-  minimizedFeaturePopup,
   changeVisibleFeatures,
   changeMinimizedFeatures,
   changeMinimizedFeaturesAndActiveIcons,

@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { appSettingsInitial } from "@entrypoints/core/initialData/app.ts";
+import { appSettingsInitial, migrateAppSettings } from "@entrypoints/core/initialData/app.ts";
 import { ICON_ITEMS } from "@entrypoints/content/modules/Launcher/LauncherIcons.ts";
 
 const USER_EVENT_SCROLL_CONFIRM = "USER_EVENT_SCROLL_CONFIRM";
@@ -37,7 +37,7 @@ const appSlice = createSlice({
     },
     setLocalAppSetting(state, action: PayloadAction<any>) {
       return {
-        ...action.payload,
+        ...migrateAppSettings(action.payload),
         isActive: true,
       };
     },

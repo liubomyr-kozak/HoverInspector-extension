@@ -6,10 +6,10 @@ export const appSettingsInitial = {
   settings: {},
   isActive: true,
   featurePopupPosition: {
-    x: 0,
-    y: 0,
-    width: 350,
-    height: 475,
+    x: 16,
+    y: 40, // below the Page Ruler strip
+    width: 380,
+    height: 560,
   },
   preventDefault: false,
   isSingleSelect: false,
@@ -40,4 +40,31 @@ export const appSettingsInitial = {
     selectedNoteId: undefined,
   } as NotesState, // Store page notes
   version: "1.0.14",
+};
+
+/**
+ * Brings a stored settings object up to the current shape: keeps every value the user saved and
+ * fills keys added since with defaults, instead of wiping the settings on each version bump.
+ */
+export const migrateAppSettings = (stored: any) => {
+  if (!stored || typeof stored !== "object") return appSettingsInitial;
+
+  return {
+    ...appSettingsInitial,
+    ...stored,
+    featurePopupPosition: { ...appSettingsInitial.featurePopupPosition, ...stored.featurePopupPosition },
+    launcher: {
+      ...appSettingsInitial.launcher,
+      ...stored.launcher,
+      minimizedPosition: { ...appSettingsInitial.launcher.minimizedPosition, ...stored.launcher?.minimizedPosition },
+    },
+    user: { ...appSettingsInitial.user, ...stored.user },
+    sponsorMessage: { ...appSettingsInitial.sponsorMessage, ...stored.sponsorMessage },
+    colorHistory: Array.isArray(stored.colorHistory) ? stored.colorHistory : appSettingsInitial.colorHistory,
+    visibleFeatures: Array.isArray(stored.visibleFeatures) ? stored.visibleFeatures : appSettingsInitial.visibleFeatures,
+    minimizedFeatures: Array.isArray(stored.minimizedFeatures)
+      ? stored.minimizedFeatures
+      : appSettingsInitial.minimizedFeatures,
+    version: appSettingsInitial.version,
+  };
 };

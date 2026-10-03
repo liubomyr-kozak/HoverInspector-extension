@@ -20,15 +20,20 @@ export const chromeActionsSlice = (config) => {
   configMiddleware["initMiddleware"] = () => {
     if (chrome.runtime) {
       chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-        if ((config as Object).hasOwnProperty(request.action) && typeof config[request.action] === "function") {
-          const result = config[request.action](request);
-
-          result.then((response) => {
-            sendResponse(response);
-          });
-        } else {
-          console.info("Unknown action:", request.action);
+        if (!(config as Object).hasOwnProperty(request?.action) || typeof config[request.action] !== "function") {
+          // Another slice (or another messaging layer) handles this message
+          return false;
         }
+
+        Promise.resolve()
+          .then(() => config[request.action](request, sender))
+          .then(
+            (response) => sendResponse(response),
+            (error) => {
+              console.error(`[background] ${request.action} failed:`, error);
+              sendResponse({ success: false, error: String(error?.message || error) });
+            },
+          );
 
         return true;
       });
