@@ -43,6 +43,14 @@ export const tokens = {
   },
 } as const;
 
+/**
+ * antd draws keyboard focus with its pale colorPrimaryBorder (about 1.6:1 on white) and text fields with
+ * a 10%-opacity halo. Give both the same solid primary ring as the hand-built controls. These are
+ * component-level overrides, so ordinary borders (which also derive from the alias tokens) don't change.
+ */
+const focusOutline = { colorPrimaryBorder: tokens.color.focusRing, lineWidthFocus: 2 };
+const focusShadow = `0 0 0 2px ${tokens.color.focusRing}`;
+
 /** antd theme derived from the tokens, so antd's own controls match the hand-built ones */
 export const antdTheme = {
   token: {
@@ -56,5 +64,27 @@ export const antdTheme = {
     fontSize: tokens.font.size.md,
     controlHeight: tokens.control.md,
     controlHeightSM: tokens.control.sm,
+  },
+  components: {
+    Button: focusOutline,
+    Checkbox: focusOutline,
+    Radio: focusOutline,
+    Switch: focusOutline,
+    Segmented: focusOutline,
+    Tabs: focusOutline,
+    Collapse: focusOutline,
+    Pagination: focusOutline,
+    Dropdown: focusOutline,
+    Menu: focusOutline,
+    Modal: focusOutline,
+    Drawer: focusOutline,
+    Tree: focusOutline,
+    Input: { activeShadow: focusShadow },
+    InputNumber: { activeShadow: focusShadow },
+    DatePicker: { activeShadow: focusShadow },
+    Mentions: { activeShadow: focusShadow },
+    Select: { activeOutlineColor: tokens.color.focusRing },
+    Cascader: { activeOutlineColor: tokens.color.focusRing },
+    TreeSelect: { activeOutlineColor: tokens.color.focusRing },
   },
 };
