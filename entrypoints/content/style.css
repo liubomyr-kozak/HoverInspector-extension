@@ -41,11 +41,18 @@
 }
 
 /*
- * One visible keyboard focus ring for every hand-built control in the panels. :where() keeps the
- * specificity low so components with their own focus style (antd, the note tools' ring) keep it.
+ * One visible focus ring for every hand-built control, shown only while the user navigates with the
+ * keyboard (data-hi-keyboard on the host, set in content/index.tsx). With the mouse no outline is drawn
+ * at all: Chrome matches :focus-visible after clicking tabs, on programmatic focus and on focusable
+ * containers, which framed whole lists and tabs in blue. Text fields keep their own focus border.
  */
-:host :where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="option"],
-    [role="switch"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible {
+:host(:not([data-hi-keyboard])) *:focus,
+:host(:not([data-hi-keyboard])) *:focus-visible {
+  outline: none !important;
+}
+
+:host([data-hi-keyboard]) :where(button, a[href], summary, select, [role="button"], [role="tab"], [role="menuitem"],
+    [role="option"], [role="switch"], [role="checkbox"], [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: 2px solid var(--hi-color-primary);
   outline-offset: 2px;
 }

@@ -33,9 +33,9 @@ const PickerWrapper = styled.div`
   padding: 3px;
   margin: -3px;
 
-  /* The library sets \`outline: none\` inline on its inputs and tool buttons */
-  input[id^="rbgcp-"]:focus-visible,
-  [id^="rbgcp-"][role="button"]:focus-visible {
+  /* The library sets \`outline: none\` inline on its inputs and tool buttons. Keyboard navigation only */
+  :host([data-hi-keyboard]) & input[id^="rbgcp-"]:focus-visible,
+  :host([data-hi-keyboard]) & [id^="rbgcp-"][role="button"]:focus-visible {
     outline: 2px solid ${tokens.color.focusRing} !important;
     outline-offset: 1px;
   }
