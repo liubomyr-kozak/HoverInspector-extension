@@ -12,6 +12,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { IconEye, IconLetterCase, IconRuler } from "@tabler/icons-react";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
 import {
   AggregatedTypographyProperties,
@@ -122,7 +123,7 @@ const TypographyRules: React.FC = () => {
 
   // Render loading state
   if (isLoading) {
-    return <div className="p-4 text-center">Loading typography analysis...</div>;
+    return <LoadingState label="Analysing typography…" />;
   }
 
   return (

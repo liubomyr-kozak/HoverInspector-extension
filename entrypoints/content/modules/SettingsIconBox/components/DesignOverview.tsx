@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, ConfigProvider, Segmented } from "antd";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import { toast } from "react-toastify";
 import {
   IconAlertTriangle,
@@ -336,18 +337,7 @@ export const DesignOverview: React.FC = () => {
   }
 
   if (!audit) {
-    const percent = progress && progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
-    return (
-      <div role="status" aria-live="polite" className="py-2">
-        <p className="text-sm text-gray-600 mb-2">
-          Analysing the page…
-          {progress ? ` ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()} elements` : ""}
-        </p>
-        <div className="h-1 rounded bg-gray-200 overflow-hidden">
-          <div className="h-full bg-blue-600 transition-[width] duration-150" style={{ width: `${percent}%` }} />
-        </div>
-      </div>
-    );
+    return <LoadingState inline label="Analysing the page…" progress={progress} progressUnit="elements" />;
   }
 
   const issues = filter === "all" ? audit.issues : audit.issues.filter((i) => i.category === filter);

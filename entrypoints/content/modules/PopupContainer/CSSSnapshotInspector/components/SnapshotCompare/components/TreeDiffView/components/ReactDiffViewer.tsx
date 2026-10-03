@@ -1,3 +1,4 @@
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { DOMTreeNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/utils/domTreeBuilder";
@@ -420,7 +421,7 @@ export const ReactDiffViewer: React.FC<ReactDiffViewerProps> = ({
   }
 
   if (!cache || !shadowContainer) {
-    return <div>Loading diff viewer...</div>;
+    return <LoadingState inline label="Loading the diff…" />;
   }
 
   return (

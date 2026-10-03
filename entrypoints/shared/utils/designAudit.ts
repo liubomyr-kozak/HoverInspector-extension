@@ -570,7 +570,8 @@ export const findIssues = (
       push({
         severity: c.ratio < 3 ? "high" : "medium",
         category: "accessibility",
-        title: `Low text contrast ${c.ratio.toFixed(2)}:1`,
+        // Round down: 4.497 must not read as "4.50:1 needs at least 4.5:1"
+        title: `Low text contrast ${(Math.floor(c.ratio * 100) / 100).toFixed(2)}:1`,
         detail: `${c.fg} text on ${c.bg} needs at least ${c.required}:1 (WCAG AA). ${plural(c.elements.length, "element")}.`,
         values: [c.fg, c.bg],
         elements: c.elements,

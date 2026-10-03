@@ -197,7 +197,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
   // Announced to screen readers after a line is copied
   const [copyStatus, setCopyStatus] = useState("");
   const [flashLine, setFlashLine] = useState<number | null>(null);
-  const flashTimer = useRef<number>();
+  const flashTimer = useRef<number | undefined>(undefined);
   const copyLine = (value: string, index: number) => {
     copy(value);
     setCopyStatus(`Copied ${value}`);

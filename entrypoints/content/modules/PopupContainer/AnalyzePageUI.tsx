@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import { IconColorSwatch, IconTypography, IconRuler, IconBorderRadius, IconShadow, IconLayoutDashboard, IconRefresh } from "@tabler/icons-react";
 import { Button, Tabs } from "antd";
+import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import TypographyRules from "@entrypoints/content/modules/SettingsIconBox/components/TypographyRules.tsx";
@@ -55,11 +56,11 @@ const TokenTabFrame: React.FC<{
 }> = ({ loading, empty, emptyText, onRescan, children }) => (
   <div>
     <div className="flex justify-end mb-2">
-      <Button size="small" icon={<IconRefresh size={14} />} onClick={onRescan} disabled={loading}>
-        {loading ? "Scanning..." : "Rescan"}
+      <Button size="small" icon={<IconRefresh size={14} />} onClick={onRescan} loading={loading}>
+        Rescan
       </Button>
     </div>
-    {loading ? <p className="text-sm text-gray-500">Scanning the page...</p> : children}
+    {loading ? <LoadingState inline label="Scanning the page…" /> : children}
     {!loading && empty && <p className="text-sm text-gray-500 mt-3">{emptyText}</p>}
   </div>
 );
