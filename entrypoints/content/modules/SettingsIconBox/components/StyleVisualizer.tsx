@@ -31,7 +31,8 @@ interface Props {
   selectedElementType: string;
 }
 
-const SizeLabel: React.FC<{ value?: string }> = ({ value }) => <span className="text-[9px]">{value || "px"}</span>;
+// The unit is secondary to the number; smaller, but not below 10px
+const SizeLabel: React.FC<{ value?: string }> = ({ value }) => <span className="text-[10px]">{value || "px"}</span>;
 
 // CSS shorthand order: 1 value = all sides, 2 = vertical horizontal, 3 = top horizontal bottom, 4 = t r b l
 const parseSideValues = (value: string): BoxSide => {
@@ -110,21 +111,21 @@ export const BoxModelVisualizer: React.FC<Props> = ({ selectedElementType }) => 
     <div className="inline-block text-xs font-mono w-full">
       <div className="relative w-full overflow-hidden" style={{ height: "180px", backgroundColor: "#fff" }}>
         <div className="absolute inset-0 bg-orange-200 text-orange-800" style={{ padding: "36px" }}>
-          <div className="absolute top-1 left-1">margin</div>
+          <div className="absolute top-0 left-1">margin</div>
           <div className="absolute left-1/2 -translate-x-1/2 top-0">{convert(margin.top)}</div>
           <div className="absolute left-1/2 -translate-x-1/2 bottom-0">{convert(margin.bottom)}</div>
-          <div className="absolute top-1/2 -translate-y-1/2 left-0">{convert(margin.left)}</div>
-          <div className="absolute top-1/2 -translate-y-1/2 right-0">{convert(margin.right)}</div>
+          <div className="absolute top-1/2 -translate-y-1/2 left-1">{convert(margin.left)}</div>
+          <div className="absolute top-1/2 -translate-y-1/2 right-1">{convert(margin.right)}</div>
 
           <div className="w-full h-full bg-yellow-200 relative text-yellow-800" style={{ padding: "36px" }}>
-            <div className="absolute left-0 top-0">padding</div>
+            <div className="absolute left-1 top-0">padding</div>
             <div className="absolute left-1/2 -translate-x-1/2 top-0">{convert(padding.top)}</div>
             <div className="absolute left-1/2 -translate-x-1/2 bottom-0">{convert(padding.bottom)}</div>
-            <div className="absolute top-1/2 -translate-y-1/2 left-0">{convert(padding.left)}</div>
-            <div className="absolute top-1/2 -translate-y-1/2 right-0">{convert(padding.right)}</div>
+            <div className="absolute top-1/2 -translate-y-1/2 left-1">{convert(padding.left)}</div>
+            <div className="absolute top-1/2 -translate-y-1/2 right-1">{convert(padding.right)}</div>
 
             <div className="w-full h-full bg-white flex items-center justify-center text-black">
-              {convert(Math.round(rect.width))} × {convert(Math.round(rect.height))}
+              {convert(Math.round(rect.width))}&nbsp;×&nbsp;{convert(Math.round(rect.height))}
             </div>
           </div>
         </div>
@@ -132,7 +133,7 @@ export const BoxModelVisualizer: React.FC<Props> = ({ selectedElementType }) => 
 
       <div className="inline-block text-xs font-mono w-full pt-4">
         <div className="flex justify-end mb-2">
-          <select className="border rounded px-1 py-0.5" value={unit} onChange={(e) => setUnit(e.target.value)}>
+          <select aria-label="Box model unit" className="border rounded px-1 py-0.5" value={unit} onChange={(e) => setUnit(e.target.value)}>
             {UNITS.map((u) => (
               <option key={u} value={u}>
                 {u}
