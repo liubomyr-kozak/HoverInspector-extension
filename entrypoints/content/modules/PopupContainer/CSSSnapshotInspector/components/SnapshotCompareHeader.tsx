@@ -169,9 +169,9 @@ const ControlButton = styled.button<{ active?: boolean }>`
   ${(props) =>
     props.active
       ? `
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: #2563eb;
     color: white;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
   `
       : `
     background: rgba(255, 255, 255, 0.9);

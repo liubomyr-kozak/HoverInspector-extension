@@ -156,7 +156,7 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
                   gap: "8px",
                 }}
               >
-                <IconFileText size={18} color="#6366f1" />
+                <IconFileText size={18} color="#2563eb" />
                 Element Analysis
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -209,7 +209,7 @@ export const SnapshotCompare: React.FC<SnapshotCompareProps> = ({
                   gap: "8px",
                 }}
               >
-                <IconActivity size={18} color="#8b5cf6" />
+                <IconActivity size={18} color="#1d4ed8" />
                 Performance Impact
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

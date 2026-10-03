@@ -32,6 +32,8 @@ import {
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/components/ScenarioPortalFooterButtons.tsx";
 import { AutomationFooterContainer } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/styles.ts";
 import { Button } from "antd";
+import { IconButton } from "@entrypoints/shared/components/IconButton";
+import { tokens } from "@entrypoints/shared/styles/tokens";
 
 const HeaderContent = styled.div`
   display: flex;
@@ -124,87 +126,29 @@ const ActionsSection = styled.div`
   gap: 12px;
 `;
 
-// Compact square icon button: the header shares one row with the title and close button in a 350px panel
-const PrimaryButton = styled.button<{ disabled?: boolean }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-radius: 8px;
-  border: none;
-  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
-  transition: all 300ms ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-  ${(props) =>
-    props.disabled
-      ? `
-    background: #f3f4f6;
-    color: #9ca3af;
-    box-shadow: none;
-  `
-      : `
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-    
-    &:hover {
-      background: linear-gradient(135deg, #5b5feb, #7c3aed);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-      transform: scale(1.02);
-    }
-    
-    &:active {
-      transform: scale(0.98);
-    }
-  `}
-`;
-
 const CompareButton = styled.button`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  height: ${tokens.control.md}px;
+  padding: 0 14px;
+  background: ${tokens.color.primary};
   border: none;
-  border-radius: 8px;
+  border-radius: ${tokens.radius.md}px;
   font-size: 13px;
   font-weight: 600;
   color: white;
   cursor: pointer;
-  transition: all 200ms ease;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: background-color 150ms ease;
 
-  &:hover {
-    background: linear-gradient(135deg, #059669, #047857);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    transform: scale(1.02);
+  &:hover:not(:disabled) {
+    background: ${tokens.color.primaryHover};
   }
 
-  &:active {
-    transform: scale(0.98);
-  }
-`;
-
-const MoreButton = styled.button`
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 200ms ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-
-  &:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+  &:disabled {
+    background: #f3f4f6;
+    color: #6b7280;
+    cursor: not-allowed;
   }
 `;
 
@@ -284,7 +228,7 @@ const ProgressBar = styled.div`
 
   div {
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    background: ${tokens.color.primary};
     border-radius: 2px;
     animation: progress 2s ease-in-out infinite;
   }
@@ -376,16 +320,18 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
             <FeatureTitleText title={CSS_SNAPSHOT.title}>{CSS_SNAPSHOT.title}</FeatureTitleText>
 
             <PortalModalHeaderButtons>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1">
                 {/* Tooltip keeps its first title, so remount it when the state changes */}
                 <Tooltip key={String(isCapturing)} title={isCapturing ? "Capturing snapshot..." : "Capture snapshot of the page"}>
-                  <PrimaryButton
+                  <IconButton
+                    variant="primary"
+                    title=""
                     onClick={handleCapture}
                     disabled={isCapturing}
-                    aria-label={isCapturing ? "Capturing snapshot..." : "Capture new snapshot"}
+                    label={isCapturing ? "Capturing snapshot..." : "Capture new snapshot"}
                   >
                     {isCapturing ? <LoadingSpinner /> : <IconSparkles size={18} />}
-                  </PrimaryButton>
+                  </IconButton>
                 </Tooltip>
 
                 {onCaptureFromPickedElement && (
@@ -399,13 +345,12 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
                           : "Pick an element and snapshot it"
                     }
                   >
-                    <PrimaryButton
+                    <IconButton
+                      variant={isSelectingElement ? "danger" : "ghost"}
+                      title=""
                       onClick={handleCaptureFromPickedElement}
                       disabled={isCapturingFromElement}
-                      style={{
-                        background: isSelectingElement ? "linear-gradient(135deg, #ef4444, #dc2626)" : undefined,
-                      }}
-                      aria-label={
+                      label={
                         isCapturingFromElement
                           ? "Creating element snapshot..."
                           : isSelectingElement
@@ -415,17 +360,23 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
                       aria-pressed={isSelectingElement}
                     >
                       {isCapturingFromElement ? <LoadingSpinner /> : <IconCamera size={18} />}
-                    </PrimaryButton>
+                    </IconButton>
                   </Tooltip>
                 )}
 
                 <MenuContainer>
-                  <MoreButton onClick={() => setMenuOpen((v) => !v)} aria-label={menuOpen ? "Close menu" : "Open menu"}>
-                    <IconDotsVertical size={18} color="#6b7280" />
-                  </MoreButton>
+                  <IconButton
+                    onClick={() => setMenuOpen((v) => !v)}
+                    label="More snapshot actions"
+                    aria-expanded={menuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <IconDotsVertical size={18} />
+                  </IconButton>
                   {menuOpen && (
-                    <DropdownMenu onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu role="menu" onClick={(e) => e.stopPropagation()}>
                       <MenuItem
+                        role="menuitem"
                         onClick={() => {
                           setMenuOpen(false);
                           onToggleSearch?.();
@@ -436,6 +387,7 @@ export const SnapshotManagerHeader = memo<SnapshotManagerHeaderProps>(
                         <span>{isSearchVisible ? "Hide search" : "Show search"}</span>
                       </MenuItem>
                       <MenuItem
+                        role="menuitem"
                         onClick={() => {
                           setMenuOpen(false);
                           onImport();
