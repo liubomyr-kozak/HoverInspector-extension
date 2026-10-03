@@ -37,6 +37,14 @@ export const UnitConverter: React.FC = () => {
   const [baseSize, setBaseSize] = useState<number>(getRootFontSize);
   const [history, setHistory] = useState<ConversionHistoryItem[]>([]);
   const historyLoaded = useRef(false);
+  // vw/vh results depend on the window size, so follow it
+  const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const userChangedInput = useRef(false);
 
   // Ref to store timeout ID for debounce
@@ -105,10 +113,10 @@ export const UnitConverter: React.FC = () => {
           return (value / 100) * baseSize;
         case "vw":
           // vw — % від ширини viewport
-          return (window.innerWidth * value) / 100;
+          return (viewport.width * value) / 100;
         case "vh":
           // vh — % від висоти viewport
-          return (window.innerHeight * value) / 100;
+          return (viewport.height * value) / 100;
         default:
           return value;
       }
@@ -127,9 +135,9 @@ export const UnitConverter: React.FC = () => {
           return (pxValue / baseSize) * 100;
         case "vw":
           // Для vw рахуємо, скільки це від ширини viewport
-          return (pxValue / window.innerWidth) * 100;
+          return (pxValue / viewport.width) * 100;
         case "vh":
-          return (pxValue / window.innerHeight) * 100;
+          return (pxValue / viewport.height) * 100;
         default:
           return pxValue;
       }
@@ -217,7 +225,6 @@ export const UnitConverter: React.FC = () => {
       <Row gutter={12} style={{ marginBottom: 16 }}>
         <Col span={10}>
           <InputNumber
-            min={0}
             value={inputValue}
             onChange={(v) => setInputValue(v ?? 0)}
             style={{ width: "100%" }}
@@ -269,7 +276,7 @@ export const UnitConverter: React.FC = () => {
           />
         </Col>
         <Col flex="auto" className="text-right text-gray-400 text-xs">
-          viewport {window.innerWidth}×{window.innerHeight}
+          viewport {viewport.width}×{viewport.height}
         </Col>
       </Row>
 
