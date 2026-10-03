@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Button, ConfigProvider, Radio } from "antd";
 import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import { toast } from "react-toastify";
@@ -13,11 +13,8 @@ import {
 } from "@tabler/icons-react";
 import { useHighlightOverlay } from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext";
 import {
-  auditPageAsync,
   auditToCssVariables,
   isOnGrid,
-  regradeAudit,
-  SPACING_GRID,
   topClasses,
   type DesignAudit,
   type SpacingGrid,
@@ -25,6 +22,10 @@ import {
   type IssueCategory,
   type ValueUsage,
 } from "@entrypoints/shared/utils/designAudit";
+import { usePalette } from "./ColorPaletteDefinition/PaletteContext";
+import { matchTypeStyle, matchValue, summarize, type ThemeMatch } from "./ColorPaletteDefinition/utils/themeDiff";
+import { MatchBadge } from "./ColorPaletteDefinition/tokenUi/MatchBadge";
+import { shadowLabel, typeStyleLabel } from "./ColorPaletteDefinition/TokenTabs";
 
 /**
  * A design-system style overview of the page (like a Storybook docs page: colours, type scale,
@@ -47,18 +48,6 @@ const CATEGORY_LABEL: Record<IssueCategory, string> = {
 };
 
 const isColorValue = (value: string) => /^#[0-9A-F]{6,8}$/i.test(value);
-
-// The user's grid choice follows them across sites (extension storage, never the page's localStorage)
-const GRID_STORAGE_KEY = "designOverview.spacingGrid";
-const loadGrid = async (): Promise<SpacingGrid> => {
-  try {
-    const value = (await browser.storage.local.get(GRID_STORAGE_KEY))[GRID_STORAGE_KEY];
-    return value === 8 ? 8 : 4;
-  } catch {
-    return SPACING_GRID;
-  }
-};
-const saveGrid = (grid: SpacingGrid) => browser.storage.local.set({ [GRID_STORAGE_KEY]: grid }).catch(() => undefined);
 
 /** "Where does this value come from": the custom properties that resolve to it and the classes that use it */
 const sourceHint = (audit: DesignAudit, usage: { value: string; elements: Element[] }) => {
@@ -102,24 +91,44 @@ const useElementCycler = () => {
   return { show, position: (key: string) => positions[key] };
 };
 
-const Section: React.FC<{ title: string; count?: number; defaultOpen?: boolean; children: React.ReactNode }> = ({
-  title,
-  count,
-  defaultOpen = true,
-  children,
-}) => {
+const Section: React.FC<{
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  /** Theme status of the section's values: "12/30 ✓" next to the count */
+  matches?: Array<ThemeMatch | null>;
+  /** "Open the tab" link */
+  onOpen?: () => void;
+  children: React.ReactNode;
+}> = ({ title, count, defaultOpen = true, matches, onOpen, children }) => {
+  const summary = matches ? summarize(matches) : null;
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="mb-4">
-      <button
-        className="w-full flex items-center gap-1 text-left text-[13px] font-semibold text-gray-800 py-1"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        {open ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
-        {title}
-        {count !== undefined && <span className="ml-1 text-xs font-normal text-gray-500">{count}</span>}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          className="flex-1 min-w-0 flex items-center gap-1 text-left text-[13px] font-semibold text-gray-800 py-1"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          {open ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+          {title}
+          {count !== undefined && <span className="ml-1 text-xs font-normal text-gray-500">{count}</span>}
+          {summary && summary.total > 0 && (
+            <span
+              className="ml-1 text-[11px] font-normal text-gray-600"
+              title={`${summary.matched} of ${summary.total} values match the theme`}
+            >
+              · {summary.matched}/{summary.total} match the theme
+            </span>
+          )}
+        </button>
+        {onOpen && (
+          <button type="button" onClick={onOpen} className="shrink-0 text-xs text-blue-700 hover:text-blue-900 hover:underline">
+            Details
+          </button>
+        )}
+      </div>
       {open && <div className="mt-2">{children}</div>}
     </section>
   );
@@ -232,28 +241,33 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
 const SwatchGrid: React.FC<{
   audit: DesignAudit;
   colors: ValueUsage[];
-  onShow: (usage: ValueUsage) => void;
-}> = ({ audit, colors, onShow }) => (
+  matchOf: (value: string) => ThemeMatch | null;
+  onOpen: (usage: ValueUsage) => void;
+}> = ({ audit, colors, matchOf, onOpen }) => (
   <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))" }}>
     {colors.map((c) => {
       const source = sourceHint(audit, c);
+      const match = matchOf(c.value);
       return (
-        <div key={c.value} className="rounded-md border border-gray-200 overflow-hidden bg-white">
+        <div key={c.value} className="relative rounded-md border border-gray-200 overflow-hidden bg-white">
           <button
             className="block w-full h-10"
             style={{ background: c.value }}
-            onClick={() => onShow(c)}
-            title={`Show elements using ${c.value}${source.title ? `\n${source.title}` : ""}`}
-            aria-label={`Show elements using ${c.value}`}
+            onClick={() => onOpen(c)}
+            title={`Details of ${c.value}${source.title ? `\n${source.title}` : ""}`}
+            aria-label={`Details of ${c.value}`}
           />
+          <MatchBadge match={match} className="absolute top-1 right-1" />
           <button
             className="w-full px-1.5 py-1 text-left hover:bg-gray-50"
             onClick={() => copy(c.value, c.value)}
             title={`Copy ${c.value}${source.title ? `\n${source.title}` : ""}`}
           >
             <div className="text-[11px] font-mono text-gray-800 truncate">{c.value}</div>
-            {source.variables.length > 0 && (
-              <div className="text-[10px] font-mono text-blue-700 truncate">{source.variables[0]}</div>
+            {(match?.status === "match" || source.variables.length > 0) && (
+              <div className="text-[10px] font-mono text-blue-700 truncate">
+                {match?.status === "match" ? match.token : source.variables[0]}
+              </div>
             )}
             <div className="text-[10px] text-gray-600">
               {c.count} {c.count === 1 ? "use" : "uses"}
@@ -266,58 +280,38 @@ const SwatchGrid: React.FC<{
 );
 
 export const DesignOverview: React.FC = () => {
-  const [audit, setAudit] = useState<DesignAudit | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const {
+    audit,
+    error,
+    progress,
+    rescan: scan,
+    grid,
+    setGrid: changeGrid,
+    theme,
+    openToken,
+    rootFontSize,
+  } = usePalette();
   const [filter, setFilter] = useState<IssueCategory | "all">("all");
-  const [grid, setGrid] = useState<SpacingGrid | null>(null);
   const cycler = useElementCycler();
-  const scanRef = useRef<AbortController | null>(null);
-  const gridRef = useRef<SpacingGrid>(SPACING_GRID);
 
-  // Chunked scan: the page stays responsive and large pages are scanned past the old 6000-element cap
-  const scan = useCallback(() => {
-    scanRef.current?.abort();
-    const controller = new AbortController();
-    scanRef.current = controller;
-    setAudit(null);
-    setError(null);
-    setProgress(null);
-    auditPageAsync(document.body, {
-      grid: gridRef.current,
-      signal: controller.signal,
-      onProgress: (done, total) => !controller.signal.aborted && setProgress({ done, total }),
-    })
-      .then((result) => !controller.signal.aborted && setAudit(result))
-      .catch((e) => {
-        if (controller.signal.aborted) return;
-        console.error("Design audit failed:", e);
-        setError("Couldn't analyse this page.");
-      });
-  }, []);
-
-  // Load the remembered grid first, then scan with it
-  useEffect(() => {
-    let cancelled = false;
-    loadGrid().then((saved) => {
-      if (cancelled) return;
-      gridRef.current = saved;
-      setGrid(saved);
-      scan();
-    });
-    return () => {
-      cancelled = true;
-      scanRef.current?.abort();
+  /** Theme status of every value, by kind and value */
+  const matches = useMemo(() => {
+    if (!audit || !theme) return null;
+    const ctx = { rootFontSize };
+    const map = (kind: Parameters<typeof matchValue>[0], values: ValueUsage[]) =>
+      new Map(values.map((v) => [v.value, matchValue(kind, v.value, theme, ctx)]));
+    return {
+      color: map("color", [...audit.colors.text, ...audit.colors.background, ...audit.colors.border]),
+      spacing: map("spacing", audit.spacing),
+      radius: map("radius", audit.radii),
+      shadow: map("shadow", audit.shadows),
+      type: new Map(audit.typography.map((t) => [t.key, matchTypeStyle(t, theme, rootFontSize).overall])),
     };
-  }, [scan]);
-
-  const changeGrid = (value: SpacingGrid) => {
-    gridRef.current = value;
-    setGrid(value);
-    saveGrid(value);
-    // Only the issues depend on the grid: recompute them, no rescan
-    setAudit((current) => (current ? regradeAudit(current, value) : current));
-  };
+  }, [audit, theme, rootFontSize]);
+  const matchOf = useCallback(
+    (kind: "color" | "spacing" | "radius" | "shadow" | "type", value: string) => matches?.[kind].get(value) ?? null,
+    [matches],
+  );
 
   const categories = useMemo(() => {
     if (!audit) return [];
@@ -441,7 +435,12 @@ export const DesignOverview: React.FC = () => {
       </Section>
 
       {/* Colours */}
-      <Section title="Colours" count={colorCount}>
+      <Section
+        title="Colours"
+        count={colorCount}
+        matches={matches ? [...matches.color.values()] : undefined}
+        onOpen={() => openToken("color-palette", "")}
+      >
         {(
           [
             ["Text", audit.colors.text],
@@ -455,7 +454,8 @@ export const DesignOverview: React.FC = () => {
               <SwatchGrid
                 audit={audit}
                 colors={colors}
-                onShow={(c) => cycler.show(`${label}-${c.value}`, c.elements)}
+                matchOf={(value) => matchOf("color", value)}
+                onOpen={(c) => openToken("color-palette", c.value)}
               />
             </div>
           ) : null,
@@ -463,17 +463,23 @@ export const DesignOverview: React.FC = () => {
       </Section>
 
       {/* Typography */}
-      <Section title="Type scale" count={audit.typography.length}>
+      <Section
+        title="Type scale"
+        count={audit.typography.length}
+        matches={matches ? [...matches.type.values()] : undefined}
+        onOpen={() => openToken("typography", "")}
+      >
         <div className="mb-2 text-xs text-gray-500">
           Families: {audit.families.map((f) => `${f.value} (${f.count})`).join(", ") || "none"}
         </div>
         {audit.typography.slice(0, 40).map((t) => (
           <button
             key={t.key}
-            onClick={() => cycler.show(t.key, t.elements)}
-            className="w-full text-left border-b border-gray-100 py-2 hover:bg-gray-50 block"
-            title="Show elements with this style"
+            onClick={() => openToken("typography", t.key)}
+            className="w-full text-left border-b border-gray-100 py-2 hover:bg-gray-50 flex items-start gap-2"
+            title="Details of this style"
           >
+            <span className="flex-1 min-w-0">
             <div
               className="truncate text-gray-900"
               style={{
@@ -486,9 +492,11 @@ export const DesignOverview: React.FC = () => {
               The quick brown fox
             </div>
             <div className="text-[11px] text-gray-500 font-mono mt-0.5">
-              {t.size}px{t.size > 40 ? " (shown at 40px)" : ""} · {t.weight} · lh {t.lineHeight} · {t.familyName} ·{" "}
-              {t.count} {t.count === 1 ? "use" : "uses"}
+              {typeStyleLabel(t)} · {t.familyName} · {t.count} {t.count === 1 ? "use" : "uses"}
+              {t.size > 40 ? " (shown at 40px)" : ""}
             </div>
+            </span>
+            <MatchBadge match={matchOf("type", t.key)} className="mt-1" />
           </button>
         ))}
         {audit.typography.length > 40 && (
@@ -497,7 +505,12 @@ export const DesignOverview: React.FC = () => {
       </Section>
 
       {/* Spacing */}
-      <Section title="Spacing scale" count={audit.spacing.length}>
+      <Section
+        title="Spacing scale"
+        count={audit.spacing.length}
+        matches={matches ? [...matches.spacing.values()] : undefined}
+        onOpen={() => openToken("spacing", "")}
+      >
         <p className="text-xs text-gray-600 mb-2">
           Margins, paddings and gaps. Values off the {audit.grid}px grid are marked orange; a token name shows where a
           value matches a CSS variable on :root.
@@ -508,9 +521,9 @@ export const DesignOverview: React.FC = () => {
           return (
             <button
               key={s.value}
-              onClick={() => cycler.show(`space-${s.value}`, s.elements)}
+              onClick={() => openToken("spacing", s.value)}
               className="w-full flex items-center gap-2 py-0.5 hover:bg-gray-50"
-              title={`Show elements with this spacing${source.title ? `\n${source.title}` : ""}`}
+              title={`Details of ${s.value}${source.title ? `\n${source.title}` : ""}`}
             >
               <span
                 className={`w-14 shrink-0 text-right text-[11px] font-mono ${off ? "text-orange-700" : "text-gray-700"}`}
@@ -529,6 +542,11 @@ export const DesignOverview: React.FC = () => {
                 />
               </span>
               <span className="w-10 shrink-0 text-right text-[10px] text-gray-600">{s.count}×</span>
+              {matches && (
+                <span className="w-4 shrink-0 flex justify-center">
+                  <MatchBadge match={matchOf("spacing", s.value)} />
+                </span>
+              )}
             </button>
           );
         })}
@@ -536,15 +554,22 @@ export const DesignOverview: React.FC = () => {
       </Section>
 
       {/* Radii */}
-      <Section title="Corner radii" count={audit.radii.length} defaultOpen={audit.radii.length > 0}>
+      <Section
+        title="Corner radii"
+        count={audit.radii.length}
+        defaultOpen={audit.radii.length > 0}
+        matches={matches ? [...matches.radius.values()] : undefined}
+        onOpen={() => openToken("borders", "")}
+      >
         <div className="flex flex-wrap gap-3">
           {audit.radii.map((r) => (
             <button
               key={r.value}
-              onClick={() => cycler.show(`radius-${r.value}`, r.elements)}
-              className="text-center"
-              title={`Show elements with this radius${sourceHint(audit, r).title ? `\n${sourceHint(audit, r).title}` : ""}`}
+              onClick={() => openToken("borders", r.value)}
+              className="relative text-center"
+              title={`Details of ${r.value}${sourceHint(audit, r).title ? `\n${sourceHint(audit, r).title}` : ""}`}
             >
+              <MatchBadge match={matchOf("radius", r.value)} className="absolute -top-1.5 -right-1.5" />
               <div
                 className="w-12 h-12 bg-blue-50 border-2 border-blue-400 mx-auto"
                 style={{ borderRadius: Math.min(r.size ?? 0, 24) }}
@@ -558,19 +583,25 @@ export const DesignOverview: React.FC = () => {
       </Section>
 
       {/* Shadows */}
-      <Section title="Shadows" count={audit.shadows.length} defaultOpen={audit.shadows.length > 0}>
+      <Section
+        title="Shadows"
+        count={audit.shadows.length}
+        defaultOpen={audit.shadows.length > 0}
+        matches={matches ? [...matches.shadow.values()] : undefined}
+        onOpen={() => openToken("shadows", "")}
+      >
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}>
-          {audit.shadows.map((s, i) => (
+          {audit.shadows.map((s) => (
             <button
               key={s.value}
-              onClick={() => cycler.show(`shadow-${i}`, s.elements)}
-              className="p-2 text-left"
-              title={s.value}
+              onClick={() => openToken("shadows", s.value)}
+              className="relative p-2 text-left"
+              title={`Details of ${s.value}`}
             >
+              <MatchBadge match={matchOf("shadow", s.value)} className="absolute top-0 right-0 z-10" />
               <div className="h-12 rounded-md bg-white" style={{ boxShadow: s.value }} />
-              <div className="text-[10px] text-gray-500 mt-2">
-                shadow-{i + 1} · {s.count}×
-              </div>
+              <div className="text-[10px] font-mono text-gray-700 mt-2 truncate">{shadowLabel(s.value)}</div>
+              <div className="text-[10px] text-gray-500">{s.count}×</div>
             </button>
           ))}
           {!audit.shadows.length && <p className="text-xs text-gray-500">No shadows.</p>}
