@@ -119,7 +119,24 @@ export default defineContentScript({
           ExtensionStorageManager.deactivateAppInTab();
         };
         document.addEventListener("keydown", onEscape);
-        ctx.onInvalidated(() => document.removeEventListener("keydown", onEscape));
+
+        // Focus rings only while the user navigates with the keyboard: Chrome also matches :focus-visible
+        // after clicks on tabs, after programmatic focus and on focusable containers, which drew blue
+        // outlines all over the panels for mouse users.
+        const host = ui.shadowHost;
+        const onKeyboardNav = (event: KeyboardEvent) => {
+          if (event.key === "Tab" || event.key.startsWith("Arrow")) host.setAttribute("data-hi-keyboard", "");
+        };
+        const onPointerNav = () => host.removeAttribute("data-hi-keyboard");
+        window.addEventListener("keydown", onKeyboardNav, true);
+        window.addEventListener("pointerdown", onPointerNav, true);
+
+        const removeListeners = () => {
+          document.removeEventListener("keydown", onEscape);
+          window.removeEventListener("keydown", onKeyboardNav, true);
+          window.removeEventListener("pointerdown", onPointerNav, true);
+        };
+        ctx.onInvalidated(removeListeners);
 
         function checkAppHealth() {
           if (browser?.runtime?.id) {
@@ -138,9 +155,10 @@ export default defineContentScript({
 
         checkAppHealth();
 
-        return { root, wrapper };
+        return { root, wrapper, removeListeners };
       },
       onRemove: (elements) => {
+        elements?.removeListeners();
         elements?.root.unmount();
         elements?.wrapper.remove();
       },

@@ -14,6 +14,7 @@ import {
   PlainRect,
   watchSameOriginFrames,
 } from "@entrypoints/shared/utils/frames";
+import { readA11yAttributes, readEffectiveBackground } from "@entrypoints/shared/hoverCard/elementInfo";
 import { createFrameHub } from "./hub";
 import {
   COMPUTED_PROPS,
@@ -133,6 +134,8 @@ function createFrameAgent() {
     const fontSize = (target: Element | null) => (target ? parseFloat(win.getComputedStyle(target).fontSize) || 16 : 16);
     const cssZoom = (el as any).currentCSSZoom;
     const isImage = el.localName === "img";
+    const hasText = Array.prototype.some.call(el.childNodes, (node: Node) => node.nodeType === Node.TEXT_NODE);
+    const { role, ariaLabel } = readA11yAttributes(el);
 
     return {
       id: idOf(el),
@@ -142,12 +145,16 @@ function createFrameAgent() {
       elId: el.id || "",
       className: typeof (el as HTMLElement).className === "string" ? (el as HTMLElement).className : "",
       isSvg: el.namespaceURI === "http://www.w3.org/2000/svg",
-      hasText: Array.prototype.some.call(el.childNodes, (node: Node) => node.nodeType === Node.TEXT_NODE),
+      hasText,
       computed,
       zoom: (typeof cssZoom === "number" && cssZoom > 0 ? cssZoom : 1) * getFrameScale(el),
       rootFontSize: fontSize(el.ownerDocument.documentElement),
       parentFontSize: fontSize(el.parentElement),
       alt: isImage ? el.getAttribute("alt") : null,
+      role,
+      ariaLabel,
+      // Walking the ancestors costs a few style lookups; only text needs it (contrast)
+      effectiveBg: hasText ? readEffectiveBackground(el) : "",
       naturalWidth: isImage ? (el as HTMLImageElement).naturalWidth || 0 : 0,
       naturalHeight: isImage ? (el as HTMLImageElement).naturalHeight || 0 : 0,
       origin: window.location.origin,

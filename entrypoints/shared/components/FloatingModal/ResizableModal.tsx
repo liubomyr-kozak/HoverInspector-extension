@@ -42,6 +42,8 @@ export function ResizableModal({
   minHeight = 24,
 }: ResizableModalProps) {
   const [isDragging, setIsDragging] = useState(false);
+  // position "absolute": placed in document coordinates and scrolls with the page
+  const isPageAnchored = position === "absolute";
   const [isResizing, setIsResizing] = useState(false);
   const rndRef = useRef<Rnd | null>(null);
   const currentPosition = useRef(initialPosition);
@@ -90,6 +92,20 @@ export function ResizableModal({
   // On open and on window resize: show the whole panel, shrinking it when the window is smaller, so the
   // close button at the right of the header is never off-screen
   const fitToWindow = () => {
+    // Page-anchored panels (sticky notes) use document coordinates: a note further down a long page is
+    // not "off-screen", so only keep it inside the document's left/top edges and its width
+    if (isPageAnchored) {
+      const pageWidth = Math.max(document.documentElement.scrollWidth, window.innerWidth);
+      const size = preferred.current.size;
+      applyLayout(
+        {
+          x: Math.max(0, Math.min(preferred.current.position.x, pageWidth - Math.min(size.width, pageWidth))),
+          y: Math.max(0, preferred.current.position.y),
+        },
+        size,
+      );
+      return;
+    }
     const size = {
       width: Math.max(minWidth, Math.min(preferred.current.size.width, window.innerWidth)),
       height: Math.max(minHeight, Math.min(preferred.current.size.height, window.innerHeight)),
@@ -104,10 +120,13 @@ export function ResizableModal({
   // After a drag it is enough that part of the header can still be grabbed
   const clampIntoView = () => {
     const { x, y } = currentPosition.current;
-    const clamped = {
-      x: Math.min(Math.max(x, 0), window.innerWidth - VISIBLE_HEADER * 3),
-      y: Math.min(Math.max(y, 0), window.innerHeight - VISIBLE_HEADER),
-    };
+    const pageWidth = Math.max(document.documentElement.scrollWidth, window.innerWidth);
+    const clamped = isPageAnchored
+      ? { x: Math.min(Math.max(x, 0), pageWidth - VISIBLE_HEADER), y: Math.max(y, 0) }
+      : {
+          x: Math.min(Math.max(x, 0), window.innerWidth - VISIBLE_HEADER * 3),
+          y: Math.min(Math.max(y, 0), window.innerHeight - VISIBLE_HEADER),
+        };
 
     if (clamped.x !== x || clamped.y !== y) {
       applyLayout(clamped, currentSize.current);
@@ -120,7 +139,9 @@ export function ResizableModal({
   const startSize = useMemo(
     () => ({
       width: Math.max(minWidth, Math.min(initialSize.width, window.innerWidth)),
-      height: Math.max(minHeight, Math.min(initialSize.height, window.innerHeight)),
+      height: isPageAnchored
+        ? Math.max(minHeight, initialSize.height)
+        : Math.max(minHeight, Math.min(initialSize.height, window.innerHeight)),
     }),
     [isOpen],
   );

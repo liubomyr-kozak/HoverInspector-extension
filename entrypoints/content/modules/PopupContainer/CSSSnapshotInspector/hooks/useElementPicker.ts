@@ -3,7 +3,7 @@ import { Subscription } from 'rxjs';
 import { filter as rxFilter } from 'rxjs/operators';
 import { useHighlightOverlay } from '@entrypoints/shared/components/HighlightOverlay/HighlightOverlayContext';
 import { CSSSnapshot } from '../types';
-import { buildSnapshotTree } from '../utils/snapshotBuilder';
+import { buildSnapshotTree, getPageClasses } from '../utils/snapshotBuilder';
 import { trimAndSaveSnapshots } from '../utils/snapshotStorage';
 
 interface ElementPickerConfig {
@@ -178,7 +178,7 @@ export function useElementPicker(
 function createElementName(element: Element): string {
   return element.tagName.toLowerCase() +
     (element.id ? `#${element.id}` : '') +
-    (element.classList.length ? `.${Array.from(element.classList).join('.')}` : '');
+    (getPageClasses(element).length ? `.${getPageClasses(element).slice(0, 3).join('.')}` : '');
 }
 
 function createElementSnapshot({

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useScenarioFolders } from "../hooks/useScenarioFolders";
 import { groupScenariosByFolder, sortScenarioIds } from "../utils/folderUtils";
-import { EmptyFolderHint, FolderHeader, NewFolderBar } from "./ScenarioFolders";
+import { EmptyFolderHint, FolderHeader, NewFolderRow, ScenarioListToolbar } from "./ScenarioFolders";
 import { ExecutionHistoryEntry, ScenarioMap, ScenarioStep, ExecutionStatus } from "../types.ts";
 import { ScenarioList as StyledScenarioList } from "../styles.ts";
 import { ScenarioItem } from "./ScenarioItem";
@@ -47,7 +47,9 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
 
   const scenarioKeys = sortScenarioIds(scenarios);
   const { folders, createFolder, renameFolder, toggleFolderCollapsed, deleteFolder } = useScenarioFolders();
-  const hasFolders = Object.keys(folders).length > 0;
+  const folderCount = Object.keys(folders).length;
+  const hasFolders = folderCount > 0;
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   // Effect to scroll to bottom when new scenarios are added
   useEffect(() => {
@@ -130,8 +132,18 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
   }
 
   return (
-    <>
-      {!recording && <NewFolderBar onCreate={createFolder} />}
+    <div className="flex flex-col" data-testid="scenario-list">
+      {!recording && (
+        <ScenarioListToolbar
+          scenarioCount={scenarioKeys.length}
+          folderCount={folderCount}
+          creating={creatingFolder}
+          onNewFolder={() => setCreatingFolder(true)}
+        />
+      )}
+      {creatingFolder && !recording && (
+        <NewFolderRow onCreate={createFolder} onDone={() => setCreatingFolder(false)} />
+      )}
       <StyledScenarioList ref={listContainerRef}>
         {!hasFolders
           ? scenarioKeys.map(renderScenario)
@@ -150,7 +162,12 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
                     onDelete={() => group.folderId && deleteFolder(group.folderId)}
                   />
                   {open && (
-                    <ul className="list-none p-0 m-0 pl-2">
+                    // Scenarios in a folder hang off a guide line under the folder's chevron
+                    <ul
+                      className={`list-none p-0 m-0 ${
+                        group.folderId ? "ml-5 border-l border-gray-200 dark:border-gray-700" : ""
+                      }`}
+                    >
                       {group.scenarioIds.length ? group.scenarioIds.map(renderScenario) : <EmptyFolderHint />}
                     </ul>
                   )}
@@ -158,7 +175,7 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
               );
             })}
       </StyledScenarioList>
-    </>
+    </div>
   );
 };
 

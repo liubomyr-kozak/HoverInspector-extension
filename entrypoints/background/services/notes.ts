@@ -124,7 +124,7 @@ const toUrl = (url: string | URL): URL | null => {
 /**
  * Checks a route pattern against a page URL.
  *
- * - patternType "regex": the pattern is a RegExp tested against the path (with query) and the full URL.
+ * - patternType "regex": the pattern is a RegExp tested against the path, the path with query and the full URL.
  * - patternType "url" (default): "example.com/users/*", "https://example.com/a" or "/users/*".
  *   An optional host must match the page host; the path must match exactly ("*" is a wildcard),
  *   so "/" only matches the root page.
@@ -143,7 +143,8 @@ export function matchesRoutePattern(
   if (patternType === "regex") {
     try {
       const regex = new RegExp(trimmed);
-      return regex.test(pathWithQuery) || regex.test(url.href);
+      // The path alone first, so "^/users/[0-9]+$" also matches "/users/42?tab=1"
+      return regex.test(url.pathname) || regex.test(pathWithQuery) || regex.test(url.href);
     } catch {
       return false;
     }
@@ -265,12 +266,14 @@ export function findMatchingLocation(note: Note, currentDomain: string, currentU
  * Checks if a note is attached to the current page (ignores the note's visibility flag)
  */
 export function isNoteOnPage(note: Note, currentDomain: string, currentUrl: string): boolean {
-  if (Array.isArray(note.locations)) {
+  if (Array.isArray(note.locations) && note.locations.length > 0) {
     return note.locations.some((location) => matchesLocation(location, currentUrl));
   }
 
   // Backward compatibility: legacy notes stored domain/url on the note itself
-  return (note as any).domain === currentDomain || (note as any).url === currentUrl;
+  // (an import fills in an empty locations array for them)
+  const legacy = note as Note & { domain?: string; url?: string };
+  return (!!legacy.domain && legacy.domain === currentDomain) || (!!legacy.url && legacy.url === currentUrl);
 }
 
 /**
@@ -347,4 +350,42 @@ export function mergeImportedNotes(
     added: validNotes.length - updated,
     updated,
   };
+}
+
+/** Which notes the Page Notes list shows */
+export type NotesListFilter = "page" | "all" | "everywhere" | "element" | "hidden";
+
+/**
+ * Notes for the Page Notes list: the chosen filter, then the search text (title and text, any case).
+ * "page" = notes shown on the current page, "everywhere" = notes shown on every site,
+ * "element" = notes attached to an element, "hidden" = sticky notes the user hid.
+ */
+export function filterNotesForList(
+  notes: Note[],
+  filter: NotesListFilter,
+  currentUrl: string,
+  searchQuery = "",
+): Note[] {
+  const hostname = toUrl(currentUrl)?.hostname || "";
+  const query = searchQuery.trim().toLowerCase();
+
+  return notes.filter((note) => {
+    const locations = Array.isArray(note.locations) ? note.locations : [];
+    switch (filter) {
+      case "page":
+        if (!isNoteOnPage(note, hostname, currentUrl)) return false;
+        break;
+      case "everywhere":
+        if (!locations.some((location) => location.attachmentType === "global")) return false;
+        break;
+      case "element":
+        if (!locations.some((location) => !!location.elementXPath) && !(note as any).elementXPath) return false;
+        break;
+      case "hidden":
+        if (note.isVisible !== false) return false;
+        break;
+    }
+    if (!query) return true;
+    return (note.title || "").toLowerCase().includes(query) || (note.content || "").toLowerCase().includes(query);
+  });
 }

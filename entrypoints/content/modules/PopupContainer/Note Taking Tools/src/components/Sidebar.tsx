@@ -173,14 +173,14 @@ export function Sidebar({
               key={note.id}
               role="button"
               tabIndex={0}
-              className="p-3 rounded-xl cursor-pointer transition-all duration-200 bg-muted/50 hover:bg-muted"
+              className="px-3 py-2 rounded-md border border-border bg-background cursor-pointer transition-shadow hover:shadow-sm focus:bg-primary/10"
+              style={{ borderLeft: `4px solid ${note.color}` }}
               onClick={() => onNoteSelect(note.id)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') onNoteSelect(note.id);
+                if (e.key === 'Enter' && e.target === e.currentTarget) onNoteSelect(note.id);
               }}
             >
-              <div className="flex items-start gap-3 mb-2">
-                <div className="w-3 h-3 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: note.color }} />
+              <div className="flex items-start gap-3 mb-1.5">
                 <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-sm text-foreground truncate m-0">{note.title || 'Untitled'}</h4>
                   <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed m-0">
@@ -191,10 +191,10 @@ export function Sidebar({
 
               <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="font-medium whitespace-nowrap">{formatDate(note.updatedAt)}</span>
-                <span className="truncate">{note.category}</span>
+                {note.groupId && <span className="truncate">{note.category}</span>}
                 {note.location && (
                   <div className="flex items-center gap-1 min-w-0">
-                    {note.attachment === 'global' ? (
+                    {note.attachment === 'everywhere' ? (
                       <Globe className="h-3 w-3 flex-shrink-0" />
                     ) : (
                       <MapPin className="h-3 w-3 flex-shrink-0" />

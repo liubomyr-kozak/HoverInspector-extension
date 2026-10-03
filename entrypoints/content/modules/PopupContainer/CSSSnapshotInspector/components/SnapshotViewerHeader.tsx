@@ -1,6 +1,7 @@
 /**
  * SnapshotViewerHeader - Header component for DETAIL view mode (SnapshotViewer)
  */
+import { getSnapshotKind, getSnapshotName } from "../utils/snapshotLabels";
 import React, { memo, useState, useEffect } from "react";
 import styled from "styled-components";
 import { IconExclamationCircle, IconArrowLeft, IconCheck, IconX, IconEdit } from "@tabler/icons-react";
@@ -235,47 +236,32 @@ interface SnapshotViewerHeaderProps {
   readonly onBackToList: () => void;
   readonly error?: string | null;
   readonly onCompareWithCurrentPage?: () => Promise<void>;
+  readonly onRename?: (id: string, name: string) => Promise<boolean>;
 }
 
 /**
  * SnapshotViewerHeader component for DETAIL view mode
  */
 export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
-  ({ selectedSnapshot, onBackToList, error, onCompareWithCurrentPage }) => {
+  ({ selectedSnapshot, onBackToList, error, onCompareWithCurrentPage, onRename }) => {
     const [title, setTitle] = useState<string>("");
     const [editingTitle, setEditingTitle] = useState<boolean>(false);
     const [isCreatingCurrentSnapshot, setIsCreatingCurrentSnapshot] = useState<boolean>(false);
 
     useEffect(() => {
       if (selectedSnapshot) {
-        setTitle(selectedSnapshot.title);
+        setTitle(getSnapshotName(selectedSnapshot));
         setEditingTitle(false);
       }
     }, [selectedSnapshot]);
 
     const saveSnapshotTitle = async (rawTitle: string) => {
       if (!selectedSnapshot) return;
-      const newTitle = rawTitle.trim();
-      // An empty title is not allowed: revert to the previous one
-      if (!newTitle) {
-        setTitle(selectedSnapshot.title);
-        setEditingTitle(false);
-        return;
+      // An empty name is not allowed: revert to the previous one
+      if (!rawTitle.trim() || !onRename || !(await onRename(selectedSnapshot.id, rawTitle))) {
+        setTitle(getSnapshotName(selectedSnapshot));
       }
-      setTitle(newTitle);
-      try {
-        const updatedSnapshot = {
-          ...selectedSnapshot,
-          title: newTitle,
-        };
-        const allSnapshots = await import("../utils/snapshotStorage").then((m) => m.loadSnapshots());
-        const updatedSnapshots = allSnapshots.map((s: any) => (s.id === selectedSnapshot.id ? updatedSnapshot : s));
-        await import("../utils/snapshotStorage").then((m) => m.saveSnapshots(updatedSnapshots));
-        setEditingTitle(false);
-      } catch (error) {
-        setTitle(selectedSnapshot.title);
-        setEditingTitle(false);
-      }
+      setEditingTitle(false);
     };
 
     const handleCompareWithCurrentPage = async () => {
@@ -292,6 +278,9 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
       }
     };
 
+    const detailsTitle =
+      selectedSnapshot && getSnapshotKind(selectedSnapshot) === "element" ? "Element snapshot" : "Page snapshot";
+
     return (
       <>
         <PortalModalHeader portalId={HeaderPortalId.CSS_SNAPSHOT_DETAILS}>
@@ -299,7 +288,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
             <Tooltip title={"Back to list"}>
               <FeatureIcon icon={IconArrowLeft} onClick={onBackToList} />
             </Tooltip>
-            <FeatureTitleText title={`${CSS_SNAPSHOT.title} (Page Details)`}>{CSS_SNAPSHOT.title} (Page Details)</FeatureTitleText>
+            <FeatureTitleText title={detailsTitle}>{detailsTitle}</FeatureTitleText>
           </FeatureTitle>
         </PortalModalHeader>
 
@@ -323,7 +312,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                                 if (e.key === "Enter") {
                                   saveSnapshotTitle(title);
                                 } else if (e.key === "Escape") {
-                                  setTitle(selectedSnapshot.title);
+                                  setTitle(getSnapshotName(selectedSnapshot));
                                   setEditingTitle(false);
                                 }
                               }}
@@ -335,7 +324,7 @@ export const SnapshotViewerHeader = memo<SnapshotViewerHeaderProps>(
                               aria-label="Cancel renaming"
                               title="Cancel renaming"
                               onClick={() => {
-                                setTitle(selectedSnapshot.title);
+                                setTitle(getSnapshotName(selectedSnapshot));
                                 setEditingTitle(false);
                               }}
                             >

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  COMPUTED_PROPS,
   createFrameKey,
   FRAME_AGENT_EVENT,
   FRAME_AGENT_NS,
@@ -74,6 +75,25 @@ describe("frame agent protocol", () => {
     expect(Object.keys(result!.computed).sort()).toEqual(["color", "padding-top"]);
     expect(result!.computed["padding-top"].length).toBeLessThanOrEqual(600);
     expect(result!.className.length).toBeLessThanOrEqual(400);
+  });
+
+  it("keeps the hover card's extra properties and caps the accessibility fields", () => {
+    const result = sanitizeSnapshot(
+      snapshot({
+        computed: { "box-shadow": "none", "z-index": "3", "grid-template-columns": "1px" },
+        role: "r".repeat(500),
+        ariaLabel: "a".repeat(5000),
+        effectiveBg: { toString: () => "x" },
+      }),
+    );
+    expect(result!.computed).toEqual({ "box-shadow": "none", "z-index": "3", "grid-template-columns": "1px" });
+    expect(result!.role!.length).toBeLessThanOrEqual(60);
+    expect(result!.ariaLabel!.length).toBeLessThanOrEqual(200);
+    expect(result!.effectiveBg).toBe("");
+    expect(COMPUTED_PROPS.length).toBeLessThan(150);
+    const bare = sanitizeSnapshot(snapshot());
+    expect(bare!.role).toBeNull();
+    expect(bare!.ariaLabel).toBeNull();
   });
 
   it("clamps numbers and rejects odd tags", () => {

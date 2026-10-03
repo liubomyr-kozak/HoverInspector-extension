@@ -49,7 +49,8 @@ export const tokens = {
  * component-level overrides, so ordinary borders (which also derive from the alias tokens) don't change.
  */
 const focusOutline = { colorPrimaryBorder: tokens.color.focusRing, lineWidthFocus: 2 };
-const focusShadow = `0 0 0 2px ${tokens.color.focusRing}`;
+// Text fields: the primary border plus a light halo, not a second solid blue frame
+const focusShadow = "0 0 0 2px rgba(37, 99, 235, 0.15)";
 
 /** antd theme derived from the tokens, so antd's own controls match the hand-built ones */
 export const antdTheme = {

@@ -13,6 +13,7 @@
  * - Every message is shape-checked and size-capped here before use; values are only ever shown as text.
  */
 import { styleRulesList } from "@entrypoints/core/services/dom/nodeStyle";
+import { CARD_COMPUTED_PROPS } from "@entrypoints/shared/hoverCard/catalog";
 
 /** The agent bundle (an unlisted script), injected with scripting.executeScript into every frame. */
 export const FRAME_AGENT_FILE = "frame-agent.js";
@@ -68,6 +69,11 @@ export interface RemoteNodeSnapshot {
   rootFontSize: number;
   parentFontSize: number;
   alt: string | null;
+  /** Explicit role attribute, and the aria-label / aria-labelledby text */
+  role: string | null;
+  ariaLabel: string | null;
+  /** Background visible behind the element's text (for contrast), "" when unknown */
+  effectiveBg: string;
   naturalWidth: number;
   naturalHeight: number;
   /** The frame's origin, shown in the tooltip */
@@ -97,7 +103,10 @@ export interface FrameRegistration {
   key: string;
 }
 
-export const COMPUTED_PROPS: readonly string[] = [...new Set([...styleRulesList, "display", "fill", "stroke"])];
+/** Whitelist of computed properties a frame may report: the style summary plus what the hover card can show */
+export const COMPUTED_PROPS: readonly string[] = [
+  ...new Set([...styleRulesList, "display", "fill", "stroke", ...CARD_COMPUTED_PROPS]),
+];
 
 const KEY_RE = /^[0-9a-f]{32}$/;
 const MAX_VALUE = 600;
@@ -162,6 +171,9 @@ export function sanitizeSnapshot(value: unknown): RemoteNodeSnapshot | null {
     rootFontSize: finite(value.rootFontSize, 16, 1000) || 16,
     parentFontSize: finite(value.parentFontSize, 16, 1000) || 16,
     alt: typeof value.alt === "string" ? value.alt.slice(0, 300) : null,
+    role: typeof value.role === "string" && value.role ? value.role.slice(0, 60) : null,
+    ariaLabel: typeof value.ariaLabel === "string" && value.ariaLabel ? value.ariaLabel.slice(0, 200) : null,
+    effectiveBg: text(value.effectiveBg, 100),
     naturalWidth: Math.max(0, finite(value.naturalWidth)),
     naturalHeight: Math.max(0, finite(value.naturalHeight)),
     origin: text(value.origin, 200),
