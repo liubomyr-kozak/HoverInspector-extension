@@ -19,7 +19,7 @@ export default function ViewportInfoPanel() {
   const [tab, setTab] = useState<PageRulerTab>(PageRulerTab.Viewport);
 
   return (
-    <div className="flex flex-col min-w-0">
+    <div className="flex flex-col w-full min-w-0">
       <PortalModalHeader portalId={HeaderPortalId.VIEWPORT_INFO}>
         <FeatureTitle>
           <FeatureIcon icon={RULER.icon} isBetta />

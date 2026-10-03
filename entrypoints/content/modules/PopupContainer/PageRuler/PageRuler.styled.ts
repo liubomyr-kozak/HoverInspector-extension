@@ -13,10 +13,10 @@ export const SectionTitle = styled.h3`
   margin: 0 0 8px;
 `;
 
-// Label above value, two columns: stays readable down to the 320px panel
+// Label above value: two columns in the 320px panel, more as the panel gets wider
 export const InfoList = styled.dl`
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 10px 12px;
   margin: 0;
 
