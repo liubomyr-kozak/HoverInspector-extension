@@ -44,7 +44,8 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
     // Handle cases where scenarios might be undefined or missing title property
     const titleA = scenarios[a]?.title || "";
     const titleB = scenarios[b]?.title || "";
-    return titleA.localeCompare(titleB);
+    // Natural order: "Scenario 2" before "Scenario 10"
+    return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: "base" });
   });
 
   // Effect to scroll to bottom when new scenarios are added
