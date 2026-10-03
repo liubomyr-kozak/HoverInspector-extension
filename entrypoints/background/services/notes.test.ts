@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findMatchingLocation } from './notes';
+import { findMatchingLocation, mergeImportedNotes } from './notes';
 import { Note, AttachmentTypeEnum } from '@entrypoints/shared/types/notes';
 
 describe('findMatchingLocation', () => {
@@ -136,5 +136,29 @@ describe('findMatchingLocation', () => {
     
     expect(result).toBeDefined();
     expect(result?.routePattern).toBe('/dashboard/settings/*');
+  });
+});
+describe('mergeImportedNotes', () => {
+  const note = (id: string, content = id) => ({ id, content, title: '', locations: [] }) as unknown as Note;
+
+  it('counts replaced notes as updated, not as imported', () => {
+    const result = mergeImportedNotes(
+      { notes: [note('a'), note('b')], groups: [] },
+      { notes: [note('b', 'new b'), note('c')] },
+    );
+    expect(result.added).toBe(1);
+    expect(result.updated).toBe(1);
+    expect(result.notes.map((n) => n.id)).toEqual(['a', 'b', 'c']);
+    expect(result.notes.find((n) => n.id === 'b')!.content).toBe('new b');
+  });
+
+  it('skips invalid entries and counts a repeated id once', () => {
+    const result = mergeImportedNotes(
+      { notes: [] },
+      { notes: [null, { id: 1, content: 'x' }, { id: 'd' }, note('e', 'one'), note('e', 'two')] },
+    );
+    expect(result).toMatchObject({ added: 1, updated: 0 });
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0].content).toBe('two');
   });
 });

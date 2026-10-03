@@ -236,17 +236,13 @@ export const PageNotes: React.FC = () => {
         if (!Array.isArray(notes)) throw new Error(`No notes found in ${file.name}`);
 
         // Notes with an id that is already stored replace that note instead of adding a copy
-        const existingIds = new Set(notesState.notes.map((note) => note.id));
-        const { imported } = await importNotes({ data: { notes, groups: parsed?.groups || [] } });
-        const updated = notes.filter(
-          (note: any) => note && typeof note.content === "string" && existingIds.has(note.id),
-        ).length;
-        const added = Math.max(0, imported - updated);
+        const { added, updated } = await importNotes({ data: { notes, groups: parsed?.groups || [] } });
         const plural = (count: number) => `${count} note${count === 1 ? "" : "s"}`;
-        if (imported === 0) toast.info("The file has no notes to import");
+        const alreadyHere = `${updated === 1 ? "that was" : "that were"} already here`;
+        if (added + updated === 0) toast.info("The file has no notes to import");
         else if (updated === 0) toast.success(`Imported ${plural(added)}`);
-        else if (added === 0) toast.success(`Updated ${plural(updated)} that were already here`);
-        else toast.success(`Imported ${plural(added)}, updated ${plural(updated)} that were already here`);
+        else if (added === 0) toast.success(`Updated ${plural(updated)} ${alreadyHere}`);
+        else toast.success(`Imported ${plural(added)}, updated ${plural(updated)} ${alreadyHere}`);
         await loadNotesData();
         dispatch(triggerRefresh());
       } catch (err) {
@@ -254,7 +250,7 @@ export const PageNotes: React.FC = () => {
         toast.error(`Failed to import notes: ${(err as Error)?.message || err}`);
       }
     },
-    [loadNotesData, dispatch, notesState.notes],
+    [loadNotesData, dispatch],
   );
 
   const handleSelectNote = useCallback(async (noteId: string) => {
