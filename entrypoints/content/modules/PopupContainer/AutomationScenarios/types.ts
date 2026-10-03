@@ -41,6 +41,7 @@ export interface ScenarioFolder {
   title: string;
   description?: string;
   parentId?: string | null;
+  collapsed?: boolean; // Folded in the scenario list (kept across reloads)
 }
 
 /**

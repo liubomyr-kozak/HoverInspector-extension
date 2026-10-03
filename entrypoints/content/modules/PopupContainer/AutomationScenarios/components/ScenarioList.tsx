@@ -1,4 +1,7 @@
 import React, { useEffect, useRef } from "react";
+import { useScenarioFolders } from "../hooks/useScenarioFolders";
+import { groupScenariosByFolder, sortScenarioIds } from "../utils/folderUtils";
+import { EmptyFolderHint, FolderHeader, NewFolderBar } from "./ScenarioFolders";
 import { ExecutionHistoryEntry, ScenarioMap, ScenarioStep, ExecutionStatus } from "../types.ts";
 import { EmptyState, ScenarioList as StyledScenarioList } from "../styles.ts";
 import { ScenarioItem } from "./ScenarioItem";
@@ -40,13 +43,9 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
   const listContainerRef = useRef<HTMLUListElement>(null);
   const previousScenarioCountRef = useRef<number>(0);
 
-  const scenarioKeys = Object.keys(scenarios).sort((a, b) => {
-    // Handle cases where scenarios might be undefined or missing title property
-    const titleA = scenarios[a]?.title || "";
-    const titleB = scenarios[b]?.title || "";
-    // Natural order: "Scenario 2" before "Scenario 10"
-    return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: "base" });
-  });
+  const scenarioKeys = sortScenarioIds(scenarios);
+  const { folders, createFolder, renameFolder, toggleFolderCollapsed, deleteFolder } = useScenarioFolders();
+  const hasFolders = Object.keys(folders).length > 0;
 
   // Effect to scroll to bottom when new scenarios are added
   useEffect(() => {
@@ -99,7 +98,20 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
     previousScenarioCountRef.current = currentScenarioCount;
   }, [scenarioKeys.length, modalContext]);
 
-  if (scenarioKeys.length === 0) {
+  const renderScenario = (key: string) => (
+    <ScenarioItem
+      key={key}
+      id={key}
+      scenario={scenarios[key]}
+      isExecuting={key === activeScenarioId}
+      // Additional props for execution steps display
+      currentExecutingScenarioId={activeScenarioId}
+      scenarios={scenarios}
+      executionHistory={executionHistory}
+    />
+  );
+
+  if (scenarioKeys.length === 0 && !hasFolders) {
     // When recording is active, return an empty list container instead of the "No scenarios found" message
     // This allows new scenarios to appear in the list as they are created during recording
     if (recording) {
@@ -110,20 +122,35 @@ const ScenarioList: React.FC<ScenarioListProps> = ({
   }
 
   return (
-    <StyledScenarioList ref={listContainerRef}>
-      {scenarioKeys.map((key) => (
-        <ScenarioItem
-          key={key}
-          id={key}
-          scenario={scenarios[key]}
-          isExecuting={key === activeScenarioId}
-          // Additional props for execution steps display
-          currentExecutingScenarioId={activeScenarioId}
-          scenarios={scenarios}
-          executionHistory={executionHistory}
-        />
-      ))}
-    </StyledScenarioList>
+    <>
+      {!recording && <NewFolderBar onCreate={createFolder} />}
+      <StyledScenarioList ref={listContainerRef}>
+        {!hasFolders
+          ? scenarioKeys.map(renderScenario)
+          : groupScenariosByFolder(scenarios, folders).map((group) => {
+              // A folder holding the running scenario stays open so its progress is visible
+              const holdsActive = !!activeScenarioId && group.scenarioIds.includes(activeScenarioId);
+              const open = group.folderId === null || !group.collapsed || (executing && holdsActive);
+              return (
+                <li key={group.folderId || "no-folder"} className="list-none" data-folder-group={group.folderId || "none"}>
+                  <FolderHeader
+                    group={group}
+                    open={open}
+                    disabled={executing && holdsActive}
+                    onToggle={() => group.folderId && toggleFolderCollapsed(group.folderId)}
+                    onRename={(title) => renameFolder(group.folderId!, title)}
+                    onDelete={() => group.folderId && deleteFolder(group.folderId)}
+                  />
+                  {open && (
+                    <ul className="list-none p-0 m-0 pl-2">
+                      {group.scenarioIds.length ? group.scenarioIds.map(renderScenario) : <EmptyFolderHint />}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+      </StyledScenarioList>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import { eventChannel, END } from "redux-saga";
 import {
   generateUniqueId,
   getAllExecutionHistoryFromLocalStorage,
+  getAllFoldersFromLocalStorage,
   getAllFunctionsFromLocalStorage,
   getAllScenariosFromLocalStorage,
   getAllSchedulesFromLocalStorage,
@@ -51,6 +52,8 @@ export const loadScenariosWatcher = sagaEnhancer(function* loadScenariosWatcherE
     yield put(automationActions.setLoading(true));
     const scenarios = yield call(getAllScenariosFromLocalStorage);
     yield put(automationActions.setScenarios(scenarios));
+    const folders = yield call(getAllFoldersFromLocalStorage);
+    yield put(automationActions.setFolders(folders));
 
     // Automatically restore editing state after scenarios are loaded
     yield put({ type: restoreEditingStateWatcher.actionType });

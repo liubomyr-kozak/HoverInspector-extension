@@ -8,6 +8,8 @@ import {
   ExecutionStatus,
   FunctionMap,
   Scenario,
+  ScenarioFolder,
+  ScenarioFolderMap,
   ScenarioMap,
   ScenarioStep,
   ScheduleConfig,
@@ -28,6 +30,7 @@ export enum ScenarioStatus {
 export interface AutomationState {
   // Shared state
   scenarios: ScenarioMap;
+  folders: ScenarioFolderMap;
   functions: FunctionMap;
   schedules: ScheduleMap;
   triggers: TriggerMap;
@@ -95,6 +98,7 @@ export interface AutomationState {
 const initialState: AutomationState = {
   // Shared state
   scenarios: {},
+  folders: {},
   functions: {},
   schedules: {},
   triggers: {},
@@ -206,6 +210,15 @@ const automationSlice = createSlice({
     },
 
     // Scenario actions
+    setFolders(state, action: PayloadAction<ScenarioFolderMap>) {
+      state.folders = action.payload;
+    },
+    upsertFolder(state, action: PayloadAction<{ id: string; folder: ScenarioFolder }>) {
+      state.folders[action.payload.id] = action.payload.folder;
+    },
+    removeFolder(state, action: PayloadAction<string>) {
+      delete state.folders[action.payload];
+    },
     setScenarios(state, action: PayloadAction<ScenarioMap>) {
       state.scenarios = action.payload;
     },
@@ -539,6 +552,7 @@ export const automationActions = automationSlice.actions;
 
 // Export selectors
 export const selectScenarios = (state: { automation: AutomationState }) => state.automation.scenarios;
+export const selectFolders = (state: { automation: AutomationState }) => state.automation.folders;
 export const selectFunctions = (state: { automation: AutomationState }) => state.automation.functions;
 export const selectSchedules = (state: { automation: AutomationState }) => state.automation.schedules;
 export const selectTriggers = (state: { automation: AutomationState }) => state.automation.triggers;
