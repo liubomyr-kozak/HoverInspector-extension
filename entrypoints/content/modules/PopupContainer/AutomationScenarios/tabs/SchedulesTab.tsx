@@ -1,10 +1,10 @@
-import React, { useEffect } from "react";
-import { Button, Form, message, Spin } from "antd";
+import React, { useEffect, useRef } from "react";
+import { Button, message, Spin } from "antd";
 import { IconPlus } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
-import dayjs from "dayjs";
 
-import { ScheduleConfig } from "../types";
+import { ScheduleConfig, ScheduleFrequency } from "../types";
+import { calculateNextExecution } from "../utils/scheduleUtils";
 
 import {
   automationActions,
@@ -25,7 +25,7 @@ import {
 import { useScheduleActions } from "../hooks/useScheduleActions";
 
 import ScheduleList from "../components/ScheduleList";
-import ScheduleForm from "../components/ScheduleForm";
+import ScheduleForm, { ScheduleFormHandle } from "../components/ScheduleForm";
 
 /**
  * SchedulesTab Component
@@ -47,7 +47,7 @@ const SchedulesTab: React.FC = () => {
   const { editSchedule, deleteSchedule, saveSchedule, toggleScheduleEnabled } = useScheduleActions();
 
   // Form instance
-  const [scheduleForm] = Form.useForm();
+  const scheduleFormRef = useRef<ScheduleFormHandle>(null);
 
   // Load schedules and scenarios when component mounts
   useEffect(() => {
@@ -62,48 +62,54 @@ const SchedulesTab: React.FC = () => {
   };
 
   const handleEditSchedule = (id: string) => {
-    editSchedule(id, scheduleForm);
+    editSchedule(id);
   };
 
-  const handleSaveSchedule = () => {
-    scheduleForm
-      .validateFields()
-      .then((values) => {
-        // Format dates and times
-        const startDate = values.startDate ? values.startDate.format("YYYY-MM-DD") : "";
-        const startTime = values.startTime ? values.startTime.format("HH:mm") : "";
-        const endDate = values.endDate ? values.endDate.format("YYYY-MM-DD") : undefined;
+  const handleSaveSchedule = async () => {
+    const values = await scheduleFormRef.current?.submit();
+    if (!values) {
+      message.error("Please fill in all required fields.");
+      return;
+    }
 
-        // Calculate the next execution time
-        let nextExecution = "";
-        if (startDate && startTime) {
-          const [hours, minutes] = startTime.split(":").map(Number);
-          const nextDate = new Date(startDate);
-          nextDate.setHours(hours, minutes, 0, 0);
-          nextExecution = nextDate.toISOString();
-        }
+    const previous = activeScheduleId ? schedules[activeScheduleId] : null;
 
-        const scheduleToSave: ScheduleConfig = {
-          title: values.title,
-          description: values.description,
-          scenarioId: values.scenarioId,
-          enabled: values.enabled,
-          frequency: values.frequency,
-          startDate,
-          startTime,
-          endDate,
-          daysOfWeek: values.daysOfWeek,
-          dayOfMonth: values.dayOfMonth,
-          interval: values.interval,
-          nextExecution,
-        };
+    const scheduleToSave: ScheduleConfig = {
+      title: values.title,
+      description: values.description,
+      scenarioId: values.scenarioId,
+      enabled: values.enabled,
+      frequency: values.frequency,
+      startDate: values.startDate,
+      startTime: values.startTime,
+      endDate: values.frequency === ScheduleFrequency.ONCE ? undefined : values.endDate,
+      daysOfWeek: values.daysOfWeek,
+      dayOfMonth: values.dayOfMonth,
+      interval: values.interval,
+    };
 
-        saveSchedule(scheduleToSave, activeScheduleId);
-      })
-      .catch((error) => {
-        console.error("Validation failed:", error);
-        message.error("Please fill in all required fields.");
-      });
+    // Keep the last run, unless the time of a one-time schedule changed: then it runs again at the new time
+    const timingChanged =
+      !previous ||
+      previous.frequency !== scheduleToSave.frequency ||
+      previous.startDate !== scheduleToSave.startDate ||
+      previous.startTime !== scheduleToSave.startTime;
+    if (previous?.lastExecuted && !(scheduleToSave.frequency === ScheduleFrequency.ONCE && timingChanged)) {
+      scheduleToSave.lastExecuted = previous.lastExecuted;
+    }
+
+    // The next run after now (and after the last one), so a start time in the past doesn't run on save
+    const now = new Date();
+    const lastExecuted = scheduleToSave.lastExecuted ? new Date(scheduleToSave.lastExecuted) : null;
+    const nextExecution = calculateNextExecution(scheduleToSave, lastExecuted && lastExecuted > now ? lastExecuted : now);
+    if (!nextExecution && scheduleToSave.frequency === ScheduleFrequency.ONCE && !scheduleToSave.lastExecuted) {
+      message.warning("The start time has already passed, so this one-time schedule will not run.");
+    }
+    if (nextExecution && !(scheduleToSave.frequency === ScheduleFrequency.ONCE && scheduleToSave.lastExecuted)) {
+      scheduleToSave.nextExecution = nextExecution.toISOString();
+    }
+
+    saveSchedule(scheduleToSave, activeScheduleId);
   };
 
   const handleScheduleCancel = () => {
@@ -136,7 +142,12 @@ const SchedulesTab: React.FC = () => {
                 </div>
               </div>
 
-              <ScheduleForm form={scheduleForm} currentSchedule={currentSchedule} scenarios={scenarios} />
+              <ScheduleForm
+                key={activeScheduleId || "new"}
+                formRef={scheduleFormRef}
+                currentSchedule={currentSchedule}
+                scenarios={scenarios}
+              />
             </div>
           ) : (
             <>
