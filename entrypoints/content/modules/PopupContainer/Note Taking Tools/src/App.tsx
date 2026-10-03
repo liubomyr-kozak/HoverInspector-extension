@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Sidebar, ALL_NOTES, UNCATEGORIZED_ID } from './components/Sidebar';
 import { NoteEditor } from './components/NoteEditor';
-import { FloatingActionButton } from './components/FloatingActionButton';
+import { NewNoteMenu } from './components/NewNoteMenu';
 import { PortalContainerContext } from './components/ui/popover';
 import { useReduxNotes as useNotes, Note, NoteAttachment, NoteUpdates, UNCATEGORIZED } from './hooks/useReduxNotes';
 import nttStyles from './ntt.css?inline';
@@ -187,8 +187,8 @@ export default function App() {
               selectedCategory={selectedCategory}
               onCategorySelect={setSelectedCategory}
               onCreateCategory={handleCreateCategory}
+              newNoteMenu={<NewNoteMenu onNewNote={handleNewNote} selectedCategory={selectedCategory} groups={groups} />}
             />
-            <FloatingActionButton onNewNote={handleNewNote} selectedCategory={selectedCategory} groups={groups} />
           </>
         )}
       </PortalContainerContext.Provider>

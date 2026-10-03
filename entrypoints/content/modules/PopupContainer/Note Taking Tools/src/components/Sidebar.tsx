@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -19,6 +19,8 @@ interface SidebarProps {
   selectedCategory: string;
   onCategorySelect: (category: string) => void;
   onCreateCategory: (name: string) => void;
+  /** Dropdown half of the "New" split button: other places to create a note */
+  newNoteMenu?: ReactNode;
 }
 
 /**
@@ -32,6 +34,7 @@ export function Sidebar({
   selectedCategory,
   onCategorySelect,
   onCreateCategory,
+  newNoteMenu,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -92,10 +95,18 @@ export function Sidebar({
             className="pl-9 h-8 bg-input-background border border-input"
           />
         </div>
-        <Button onClick={onNewNote} size="sm" className="h-8 gap-1.5" title="New note">
-          <Plus className="h-4 w-4" />
-          New
-        </Button>
+        <div className="flex shrink-0" role="group" aria-label="New note">
+          <Button
+            onClick={onNewNote}
+            size="sm"
+            className={`h-8 gap-1.5 ${newNoteMenu ? 'rounded-r-none' : ''}`}
+            title="New note in the selected category"
+          >
+            <Plus className="h-4 w-4" />
+            New
+          </Button>
+          {newNoteMenu}
+        </div>
       </div>
 
       {/* Categories */}
