@@ -1,5 +1,6 @@
 import React from "react";
 import { LiveWatchToggle } from "../liveWatch/components/LiveWatchToggle";
+import { McpBridgeToggle } from "../components/McpBridgeToggle";
 
 /**
  * Settings of the Automation tool. Live watching lives here, not under the scenario list: it is a
@@ -8,6 +9,7 @@ import { LiveWatchToggle } from "../liveWatch/components/LiveWatchToggle";
 const SettingsTab: React.FC = () => (
   <div className="flex flex-col gap-3">
     <LiveWatchToggle />
+    <McpBridgeToggle />
   </div>
 );
 

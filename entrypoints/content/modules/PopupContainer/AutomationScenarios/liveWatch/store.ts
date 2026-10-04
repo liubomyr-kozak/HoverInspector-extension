@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { browser } from "wxt/browser";
+import { LIVE_WATCH_EVENTS_KEY, LIVE_WATCH_SETTINGS_KEY } from "@entrypoints/core/constants/liveWatch";
 import { LiveWatchSettings, WatchEvent } from "./types";
 import { mergeEvents, sanitizeEvents } from "./utils/patterns";
 
@@ -8,8 +9,6 @@ import { mergeEvents, sanitizeEvents } from "./utils/patterns";
  * Nothing here is ever sent anywhere. The settings follow the user to other tabs at once; the watched
  * events are written in batches so a busy page does not cause a storage write per click.
  */
-export const LIVE_WATCH_SETTINGS_KEY = "automationLiveWatch";
-export const LIVE_WATCH_EVENTS_KEY = "automationLiveWatchEvents";
 
 /** Remembered "don't suggest again" choices; the oldest are forgotten first */
 const DISMISSED_LIMIT = 200;

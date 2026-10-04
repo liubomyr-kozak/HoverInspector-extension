@@ -14,3 +14,6 @@ export const HOVER_INSPECTOR_ACTIVATE = "HOVER_INSPECTOR_ACTIVATE";
 export const DEV_SCRIPT_INJECTED = "DEV_SCRIPT_INJECTED";
 export const PROD_SCRIPT_INJECTED = "PROD_SCRIPT_INJECTED";
 export const SCRIPT_INJECTION_ERROR = "SCRIPT_INJECTION_ERROR";
+
+// MCP bridge: the background forwards an agent's request that needs the page to the content script
+export const HOVER_INSPECTOR_MCP_CALL = "HOVER_INSPECTOR_MCP_CALL";
