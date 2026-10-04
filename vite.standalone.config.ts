@@ -45,6 +45,10 @@ export default defineConfig({
     host: true,
   },
   optimizeDeps: {
+    // As in LinguaReef: rebuild the dependency cache on every start. The polyfills in .standalone/ are
+    // bundled into that cache (through the webextension-polyfill alias), and Vite does not notice when
+    // they change, so without this a `git pull` keeps running the old polyfills.
+    force: true,
     esbuildOptions: {
       tsconfig: "./tsconfig.standalone.json",
     },
