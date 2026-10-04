@@ -31,14 +31,14 @@ Look for the cause in this order. These caused most past UI bugs in this repo:
 
 | Symptom | Usual cause | Fix |
 | --- | --- | --- |
-| Dropdown, select, popover or tooltip unstyled, off screen or missing | antd overlay rendered into the page's `document.body` | Remove a wrong `getPopupContainer`, or pass `shadowBody` from `entrypoints/shared/utils/shadowBody.ts` (CODE_STYLE §8.3) |
+| Dropdown, select, popover or tooltip unstyled, off screen or missing | antd overlay rendered into the page's `document.body` | Remove a wrong `getPopupContainer`, or pass `shadowBody` from `entrypoints/shared/utils/shadowBody.ts` (`styling.md`, "Shadow-root overlays") |
 | Popconfirm/popover wider than the panel | No max width, wrong placement | `overlayStyle={{ maxWidth: 280 }}`, `placement="bottomRight"` |
 | Text or buttons cut off at 320px | Flex child without `min-w-0`, fixed widths, no wrapping | `min-w-0`, `truncate`, `flex-wrap`, remove fixed widths |
-| Header title shows two letters | Title text not in `FeatureTitleText`, or header buttons not in `PortalModalHeaderButtons` | Use both (CODE_STYLE §6.1) |
-| Blue outline after a mouse click | Own `:focus`/`focus:ring-*` style | Delete it; the global rule handles focus (CODE_STYLE §8.4) |
+| Header title shows two letters | Title text not in `FeatureTitleText`, or header buttons not in `PortalModalHeaderButtons` | Use both (`panel.md`, "Header") |
+| Blue outline after a mouse click | Own `:focus`/`focus:ring-*` style | Delete it; the global rule handles focus (`styling.md`, "Focus, selection and text") |
 | No focus ring when tabbing | Clickable `div`/`span`, or a library removing outlines | Use a `button`/`clickableProps`; for libraries add a rule under `:host([data-hi-keyboard])` |
-| Selected item has a ring or outline | Old selection style | Tint: `bg-blue-50 border-blue-300` / `tokens.color.primaryBg` (CODE_STYLE §8.5) |
-| Text too pale | Colour lighter than `gray-500` or a hard-coded hex | Token colour (CODE_STYLE §8.1) |
+| Selected item has a ring or outline | Old selection style | Tint: `bg-blue-50 border-blue-300` / `tokens.color.primaryBg` (`styling.md`, "Focus, selection and text") |
+| Text too pale | Colour lighter than `gray-500` or a hard-coded hex | Token colour (`styling.md`, token table) |
 | Sizes wrong on some sites | `rem` in styled-components or inline styles | Use `px` |
 | Esc closes the whole extension instead of the popup | Your handler does not stop the event | `event.preventDefault(); event.stopPropagation();` in a capture listener, or `usePopoverFocus` |
 | Listener or overlay stays after closing the tool | Missing `useEffect` cleanup | Return a cleanup that removes it |
@@ -73,4 +73,4 @@ Rules:
 ## Step 4. Commit
 
 Subject: `<Area>: <what now works>`, for example `Keep the scenario delete confirmation inside the panel`.
-Body: what the user saw before, why it happened, what they see now. See `docs/CODE_STYLE.md` §17.
+Body: what the user saw before, why it happened, what they see now. See `.claude/rules/code-style/workflow.md` ("Git").

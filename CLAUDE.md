@@ -6,8 +6,10 @@ Picker, Unit Converter, Color Palette & Typography, Automation Scenarios, CSS Sn
 Notes and Note Taking Tools are no longer in the launcher). The whole UI lives in the open shadow root of a `<hover-inspector>` element on
 the user's page.
 
-Guide: `docs/CODE_STYLE.md`. Read its introduction, then only the sections selected by its task table.
-For code-style and verification details, that guide supersedes this summary. Skills: see the end of this file.
+Code style: `.claude/rules/code-style/` (index: `docs/CODE_STYLE.md`). Claude Code loads `core.md`,
+`architecture.md` and `workflow.md` every session and each topic file when you read or edit matching
+code. Write new code the way those files say, not the way the surrounding old code does. For code-style
+and verification details, those files supersede this summary. Skills: see the end of this file.
 
 ## Stack
 
@@ -32,14 +34,14 @@ yarn start     # standalone page, http://localhost:4400
 ```
 
 **Never** use npm, npx or pnpm in the repo. **Never** create or commit `package-lock.json`. `yarn.lock` is
-the only lockfile. `yarn compile` may have existing failures: compare full diagnostics before and after TypeScript changes,
-including unchanged consumers. The changed-file filter in `yarn verify` is not that comparison.
+the only lockfile. `yarn compile` has existing failures: `yarn compile:diff` (run by `yarn verify`)
+compares full diagnostics with the merge base, including unchanged consumers, and fails only on new ones.
 
 ## Definition of done
 
 1. For code changes, run `yarn verify` in the repo root. Fix failures caused by your change and report
-   unrelated blockers. Also follow CODE_STYLE section 18 for full TypeScript comparison. For prose-only
-   edits, check links, examples and the diff; application tests/builds are unnecessary.
+   unrelated blockers (see `workflow.md`, "Checklist before you commit"). For prose-only edits, check
+   links, examples and the diff; application tests/builds are unnecessary.
 2. If you changed anything visible, do the browser check (`.claude/skills/verify-in-browser/SKILL.md`)
    at 320px and 440px and open both screenshots. Not optional: unit tests do not see layout.
 3. Commit only when authorized (message format in "Git" below).
@@ -72,7 +74,8 @@ entrypoints/
   features/        extension plumbing: messaging protocol, tab sessions
   shared/          reusable UI (components/), tokens (styles/), pure utils (utils/), frameAgent/, hoverCard/, types/
   frame-agent.ts   script injected into cross-origin iframes
-docs/CODE_STYLE.md   the detailed guide
+docs/CODE_STYLE.md   index of the code style files
+.claude/rules/code-style/  the code style, one file per topic
 .claude/skills/      repo skills
 ```
 
@@ -105,7 +108,7 @@ docs/CODE_STYLE.md   the detailed guide
     Extract meaningful or reused pure logic for testing; keep trivial expressions local.
 
 Much old code breaks these rules (hard-coded colours, `any`, Ukrainian comments). Do not copy it; see
-`docs/CODE_STYLE.md` section 14. Use its named references and inspect current APIs, not commit recency.
+`.claude/rules/code-style/legacy.md`. Use its named references and inspect current APIs, not commit recency.
 
 ## Owner guidelines (`guidelines.md`)
 
@@ -115,13 +118,14 @@ Much old code breaks these rules (hard-coded colours, `any`, Ukrainian comments)
 - Avoid unnecessary prop relaying within the task scope; do not refactor unrelated code.
 - Ask a question when you are not sure about something.
 - `guidelines.md` asks for documentation and analysis in Ukrainian. The owner later asked for agent
-  instruction files (`CLAUDE.md`, `docs/CODE_STYLE.md`, `.claude/skills/**`) in English. Write those in English.
+  instruction files (`CLAUDE.md`, `docs/CODE_STYLE.md`, `.claude/rules/**`, `.claude/skills/**`) in
+  English. Write those in English.
 
 ## Git
 
 - Work on the given branch; never push unless asked.
 - Commit subject: plain-English imperative, often `Area: what changes for the user`, no `feat:` prefix.
-  Body explains why. PR body: `Before:` / `After:` / `## Not done` / `## How` (see CODE_STYLE §17).
+  Body explains why. PR body: `Before:` / `After:` / `## Not done` / `## How` (see `workflow.md`).
 - Template:
 
   ```
