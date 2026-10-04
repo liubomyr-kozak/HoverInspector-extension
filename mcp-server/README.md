@@ -27,7 +27,15 @@ Add it to your agent, with the absolute path to your checkout:
 claude mcp add hover-inspector -- node /path/to/HoverInspector-extension/dist/mcp-server/hover-inspector-mcp.mjs
 ```
 
-or in a JSON MCP config (Claude Desktop, Cursor):
+Codex (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.hover-inspector]
+command = "node"
+args = ["/path/to/HoverInspector-extension/dist/mcp-server/hover-inspector-mcp.mjs"]
+```
+
+or in a JSON MCP config (Claude Desktop, Cursor `~/.cursor/mcp.json`):
 
 ```json
 {
@@ -40,7 +48,9 @@ or in a JSON MCP config (Claude Desktop, Cursor):
 }
 ```
 
-Then turn on the MCP bridge in the extension. The `status` tool tells you whether it is connected.
+You never start the server by hand: the agent starts it when it starts and stops it when it exits. Each
+person runs it on their own computer, next to their own browser; there is nothing to deploy. Then turn on
+the MCP bridge in the extension. The `status` tool tells you whether it is connected.
 
 Environment variables:
 
