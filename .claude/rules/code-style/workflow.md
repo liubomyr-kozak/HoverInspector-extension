@@ -7,9 +7,10 @@ Run commands in the checkout you are editing. Use `git rev-parse --show-toplevel
 | Command | Purpose |
 | --- | --- |
 | `yarn install` | Install dependencies; also runs WXT prepare. Only needed when dependencies need installation. |
-| `yarn dev` | WXT development browser. |
-| `yarn start` | Standalone Vite page at localhost:4400; does not replace extension checks. |
-| `yarn build` | Production extension in `dist/chrome-mv3/`. |
+| `yarn dev` | WXT browser with the extension in `staging` mode (real background and extension storage). |
+| `yarn start` | Standalone Vite page at localhost:4400 (`development` mode); does not replace extension checks. |
+| `yarn build` | Runs the tests, then builds the production extension in `dist/chrome-mv3/`. |
+| `yarn build:local` | Runs the tests, then builds the unminified extension with source maps in `dist/chrome-mv3-staging/`. |
 | `yarn test` | All vitest tests, once. |
 | `yarn vitest run <path>` | Focused tests for a file or directory. Replace `<path>`. |
 | `yarn test:watch` | Tests in watch mode. |

@@ -26,6 +26,10 @@ export default defineConfig({
   manifestVersion: 3,
   modules: ["@wxt-dev/module-react"],
   outDir: "dist",
+  // Release zips are kept next to the earlier ones in archives/, named by version like in LinguaReef
+  zip: {
+    artifactTemplate: "../archives/{{packageVersion}}-{{browser}}.zip",
+  },
   alias: {
     "@": "./",
     "@assets": "./assets",
@@ -36,7 +40,11 @@ export default defineConfig({
     "@modules": "./modules",
     "@utils": "./utils",
   },
-  vite: () => ({
+  // Same modes as LinguaReef. WXT sets NODE_ENV to the mode: "production" is the store build,
+  // "staging" is the local build of the installed extension (LinguaReef's local-prod: not minified,
+  // with source maps). "development" belongs to the standalone page; see the scripts in package.json.
+  vite: ({ mode }) => ({
+    build: mode === "production" ? {} : { minify: false, sourcemap: true },
     plugins: [react(), Svgr()],
     resolve: {
       // The default react-toastify build injects its stylesheet (and :root variables) into the page's

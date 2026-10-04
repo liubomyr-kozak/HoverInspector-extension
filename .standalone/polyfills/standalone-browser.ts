@@ -4,6 +4,27 @@
  */
 
 import { defineBackground, defineContentScript, createShadowRootUi } from './wxt-mocks';
+import { createStandaloneStorage, StandaloneStorage } from './standaloneStorage';
+
+type MessageListener = (message: unknown, sender: { id: string }, sendResponse: (response?: unknown) => void) => unknown;
+
+// Same in-page message bus as LinguaReef's BrowserApi mock: background code runs in the page, so a
+// message "to a tab" goes straight to the listeners the content code registered here.
+const messageListeners = new Set<MessageListener>();
+const STANDALONE_EXTENSION_ID = "standalone-extension-id";
+
+const deliverToListeners = async (message: unknown): Promise<unknown> => {
+  let response: unknown;
+  for (const listener of messageListeners) {
+    const result = await new Promise<unknown>((resolve) => {
+      const returned = listener(message, { id: STANDALONE_EXTENSION_ID }, resolve);
+      // A listener that returns true answers later through sendResponse; anything else answers now
+      if (returned !== true) resolve(returned instanceof Promise ? returned : undefined);
+    });
+    if (result !== undefined) response = result;
+  }
+  return response;
+};
 
 // Define Browser interface for export
 export interface Browser {
@@ -23,20 +44,17 @@ export interface Browser {
       addListener: (callback: () => void) => void;
     };
     onMessage: {
-      addListener: (callback: (request: any, sender: any, sendResponse: any) => boolean) => void;
+      addListener: (callback: MessageListener) => void;
+      removeListener: (callback: MessageListener) => void;
+      hasListener: (callback: MessageListener) => boolean;
     };
     sendMessage: (data: any, callback?: (response: any) => void) => Promise<void>;
   };
-  storage: {
-    local: {
-      get: () => Promise<any>;
-      set: () => Promise<void>;
-    };
-  };
+  storage: StandaloneStorage;
   tabs: {
     create: () => Promise<void>;
     query: (queryInfo: any) => Promise<any[]>;
-    sendMessage: (tabId: number, message: any) => Promise<void>;
+    sendMessage: (tabId: number, message: unknown) => Promise<unknown>;
   };
   scripting: {
     executeScript: (details: { target: { tabId: number }, files: string[] }) => Promise<void>;
@@ -63,7 +81,7 @@ export const browser: Browser = {
     }
   },
   runtime: {
-    id: "standalone-extension-id",
+    id: STANDALONE_EXTENSION_ID,
     getURL: (path: string) => path,
     onConnect: {
       addListener: (callback: (port: any) => void) => {
@@ -76,26 +94,20 @@ export const browser: Browser = {
       },
     },
     onMessage: {
-      addListener: (callback: (request: any, sender: any, sendResponse: any) => boolean) => {
-        console.log('Mock browser.runtime.onMessage.addListener called');
+      addListener: (callback) => {
+        messageListeners.add(callback);
       },
+      removeListener: (callback) => {
+        messageListeners.delete(callback);
+      },
+      hasListener: (callback) => messageListeners.has(callback),
     },
     sendMessage: async (data: any, callback?: (response: any) => void) => {
       console.log('Mock browser.runtime.sendMessage called with:', data);
       if (callback) callback({});
     },
   },
-  storage: {
-    local: {
-      get: async () => {
-        console.log('Mock browser.storage.local.get called');
-        return {};
-      },
-      set: async () => {
-        console.log('Mock browser.storage.local.set called');
-      },
-    },
-  },
+  storage: createStandaloneStorage(window.localStorage, window.sessionStorage),
   tabs: {
     create: async () => {
       console.log('Mock browser.tabs.create called');
@@ -104,9 +116,8 @@ export const browser: Browser = {
       console.log('Mock browser.tabs.query called with:', queryInfo);
       return [];
     },
-    sendMessage: async (tabId: number, message: any) => {
-      console.log('Mock browser.tabs.sendMessage called with:', tabId, message);
-    },
+    // Every "tab" is this page
+    sendMessage: (_tabId, message) => deliverToListeners(message),
   },
   scripting: {
     executeScript: async (details: { target: { tabId: number }, files: string[] }) => {

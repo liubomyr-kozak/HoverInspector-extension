@@ -26,12 +26,18 @@ and verification details, those files supersede this summary. Skills: see the en
 
 ```bash
 yarn install   # install (also runs wxt prepare)
-yarn build     # production build -> dist/chrome-mv3/  (must pass before commit)
+yarn build     # tests, then production build -> dist/chrome-mv3/  (must pass before commit)
+yarn build:local  # tests, then unminified build with source maps -> dist/chrome-mv3-staging/
 yarn test      # vitest run                          (must pass before commit)
 yarn verify    # every automatic check on your change (must print "all automatic checks passed")
-yarn dev       # WXT dev browser
-yarn start     # standalone page, http://localhost:4400
+yarn dev       # WXT dev browser, extension in "staging" mode
+yarn start     # standalone page, http://localhost:4400 ("development" mode)
+yarn zip       # build and zip -> archives/<version>-<browser>.zip
 ```
+
+Modes (README, "Modes"): `development` is only the standalone page, where background actions run in
+the page and `browser.storage` is backed by the page's `localStorage`. The extension is never built in
+`development`; `staging` and `production` use the background and extension storage.
 
 **Never** use npm, npx or pnpm in the repo. **Never** create or commit `package-lock.json`. `yarn.lock` is
 the only lockfile. `yarn compile` has existing failures: `yarn compile:diff` (run by `yarn verify`)

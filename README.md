@@ -39,6 +39,25 @@ yarn start
 
 It uses `vite.standalone.config.ts` and `tsconfig.standalone.json`, a less strict TypeScript configuration suitable for development.
 
+### Modes: where the code runs and where the data lives
+
+Same split as the LinguaReef extension. WXT sets `NODE_ENV` to the build mode, and the code switches on it
+(`entrypoints/shared/helpers.ts`, `entrypoints/core/libs/requestProcessing.ts`,
+`entrypoints/core/services/storage/LocalStorage.ts`).
+
+| Command | `NODE_ENV` | Background actions | Data |
+| --- | --- | --- | --- |
+| `yarn start` | `development` | run in the page itself | page `localStorage` (`browser.storage` in `.standalone/polyfills/standaloneStorage.ts` writes there too, so it survives a reload) |
+| `yarn dev`, `yarn build:local` | `staging` | sent to the background service worker | extension storage |
+| `yarn build`, `yarn zip` | `production` | sent to the background service worker | extension storage |
+
+`development` is only for the standalone page. Never run the extension itself in development mode
+(`wxt --mode development`): its content script would then run background actions in the page and keep
+the extension's data in the website's own `localStorage`.
+
+`yarn build:local` is the installed extension as it will ship, but not minified and with source maps, in
+`dist/chrome-mv3-staging/`. Load that folder as an unpacked extension.
+
 ### Tests
 
 ```bash
@@ -60,8 +79,11 @@ The standalone configuration (`tsconfig.standalone.json`) is less strict and inc
 To build the extension for production, use the following commands:
 
 ```bash
-# Build for all browsers
+# Run the tests, then build for production
 yarn build
+
+# Run the tests, then build the local extension (not minified, source maps) -> dist/chrome-mv3-staging/
+yarn build:local
 
 # Build for specific browsers
 yarn build:chrome
@@ -75,8 +97,11 @@ yarn build:safari
 To create a zip file for distribution, use the following commands:
 
 ```bash
-# Create zip for all browsers
+# Build and zip -> archives/<version>-<browser>.zip
 yarn zip
+
+# Before publishing: run the tests, build and zip
+yarn ___pre_publish___
 
 # Create zip for specific browsers
 yarn zip:chrome
