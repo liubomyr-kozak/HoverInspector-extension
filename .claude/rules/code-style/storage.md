@@ -19,6 +19,10 @@ Choose the existing storage owner before adding a write path.
 
 For a tested module, explicitly `import { browser } from "wxt/browser"`; tests do not get WXT auto-imports.
 
+Both paths also work on the standalone page (`yarn start`): there `browser.storage` is
+`.standalone/polyfills/standaloneStorage.ts` (page `localStorage`, with `onChanged`) and background
+actions run in the page. Do not add a separate standalone branch to feature code.
+
 ## Small per-tool preferences
 
 - Use a descriptive key such as `unitConverterHistory`, declared as a constant. Reuse the domain's key

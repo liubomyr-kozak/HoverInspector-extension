@@ -21,7 +21,9 @@ export const isDebug = () => {
   return isDebugValue;
 };
 
-// for webpack... it's not a production
+// The extension built for local testing (`yarn dev`, `yarn build:local`, WXT mode "staging"): same
+// messaging and storage as production. WXT sets NODE_ENV to the build mode, so "development" is left
+// to the standalone page (`yarn start`) only.
 export const isPostProd = () => {
   return process.env.NODE_ENV === "staging";
 };
