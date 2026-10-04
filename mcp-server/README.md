@@ -10,7 +10,7 @@ MCP client ──stdio──▶ mcp-server (Node) ◀──WebSocket 127.0.0.1:1
 
 The MCP client starts the server. The server listens on 127.0.0.1 only and accepts only extension
 origins (`chrome-extension://…`), so a web page can neither pose as the extension nor read the requests.
-The extension connects to it while **Automation Scenarios → Settings → MCP bridge for AI agents** is on
+The extension connects to it while **the toolbar menu (⋮) → Settings → MCP bridge for AI agents** is on
 (off by default) and retries every few seconds while no server runs.
 
 ## Set up

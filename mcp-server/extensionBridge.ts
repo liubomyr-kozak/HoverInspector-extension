@@ -31,7 +31,7 @@ const EXTENSION_ORIGIN = /^(chrome-extension|moz-extension|safari-web-extension)
 const HELLO_TIMEOUT_MS = 5000;
 
 export const NOT_CONNECTED_HINT =
-  "Hover Inspector is not connected. In the browser, open Hover Inspector > Automation Scenarios > Settings and " +
+  "Hover Inspector is not connected. In the browser, open the Hover Inspector toolbar menu (⋮) > Settings and " +
   "turn on \"MCP bridge\" (same port as this server), then try again.";
 
 /**

@@ -25,7 +25,7 @@ import { handleBridgeRequest } from "./handlers";
  * The extension's end of the MCP bridge. The MCP server (mcp-server/, started by the agent's MCP client)
  * listens on 127.0.0.1; while the user has the bridge on, the service worker connects to it, answers
  * its requests and reconnects when the server restarts. Off by default: nothing listens or connects
- * until the user turns it on in the Automation settings.
+ * until the user turns it on in the toolbar menu's Settings.
  */
 
 const RECONNECT_ALARM = "hover-inspector-mcp-bridge";

@@ -7,7 +7,7 @@ import { registerTools } from "./tools";
 
 /**
  * Hover Inspector MCP server. The agent's MCP client starts it (stdio); it listens on 127.0.0.1 for the
- * browser extension, which connects while "MCP bridge" is on in Automation Scenarios > Settings.
+ * browser extension, which connects while "MCP bridge" is on in the toolbar menu (⋮) > Settings.
  *
  * Environment: HOVER_INSPECTOR_MCP_PORT (default 17345, must match the extension), and optionally
  * HOVER_INSPECTOR_EXTENSION_ID to accept only that extension build.
