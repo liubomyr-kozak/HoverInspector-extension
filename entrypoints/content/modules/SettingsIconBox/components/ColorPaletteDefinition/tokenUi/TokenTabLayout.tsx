@@ -39,12 +39,12 @@ export interface TokenGroup {
 }
 
 /** Side by side above this width, otherwise the details open under the group of the selected value */
-const WIDE_MIN = 600;
+export const WIDE_MIN = 600;
 /** The panel body's padding: the tab bar sticks this far above the body's top edge, the card under it */
 const PANEL_PADDING = 16;
-const STICKY_CARD_TOP = `calc(var(${PALETTE_TAB_BAR_HEIGHT_VAR}, 0px) - ${PANEL_PADDING}px)`;
+export const STICKY_CARD_TOP = `calc(var(${PALETTE_TAB_BAR_HEIGHT_VAR}, 0px) - ${PANEL_PADDING}px)`;
 
-const useWidth = (ref: React.RefObject<HTMLElement | null>) => {
+export const useWidth = (ref: React.RefObject<HTMLElement | null>) => {
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -58,7 +58,7 @@ const useWidth = (ref: React.RefObject<HTMLElement | null>) => {
 };
 
 /** Height of the nearest scrolling ancestor (the panel body), so the sticky card fits in what is visible */
-const useScrollParentHeight = (ref: React.RefObject<HTMLElement | null>) => {
+export const useScrollParentHeight = (ref: React.RefObject<HTMLElement | null>) => {
   const [height, setHeight] = useState(0);
   useLayoutEffect(() => {
     let parent = ref.current?.parentElement ?? null;

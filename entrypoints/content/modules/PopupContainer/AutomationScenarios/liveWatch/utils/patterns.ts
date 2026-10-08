@@ -44,9 +44,68 @@ export function eventSignature(event: Pick<WatchEvent, "kind" | "xpath" | "value
 
 /** The signature of a scenario step, or null for steps a user does not perform by hand (wait, code...) */
 export function stepSignature(step: ScenarioStep): string | null {
+  const action = stepAction(step);
+  return action ? eventSignature(action) : null;
+}
+
+/** The parts of an action that say what was done where; a watched event and a scenario step both have them */
+type ActionLike = Pick<WatchEvent, "kind" | "xpath" | "value" | "alternativeXpaths">;
+
+function stepAction(step: ScenarioStep): ActionLike | null {
   const kind = STEP_KIND[step.type];
   if (!kind || !step.xpath) return null;
-  return eventSignature({ kind, xpath: step.xpath, value: step.value });
+  return { kind, xpath: step.xpath, value: step.value, alternativeXpaths: step.alternativeXpaths };
+}
+
+/**
+ * The locators that identify the element of an action. The best locator of an element changes from visit to
+ * visit (a text match becomes ambiguous, an id appears...), so the alternatives count too. A full
+ * /html/body/... path is only kept when it is the primary one: on another page of the site the same path is
+ * often a different element.
+ */
+function actionLocators(action: ActionLike): string[] {
+  const alternatives = (action.alternativeXpaths || []).filter((xpath) => !!xpath && !xpath.startsWith("/html"));
+  const value = action.kind === WatchEventKind.INPUT ? "" : (action.value ?? "");
+  return [action.xpath, ...alternatives].map((xpath) => `${action.kind}${SEP}${xpath}${SEP}${value}`);
+}
+
+/** Whether two actions are the same: same kind and value (except typed text), and a locator in common */
+export function sameAction(a: ActionLike, b: ActionLike): boolean {
+  const locators = new Set(actionLocators(a));
+  return actionLocators(b).some((locator) => locators.has(locator));
+}
+
+/**
+ * Gives every event a number: the same number for the same action, even when its best locator changed
+ * between visits (two events share a number when a chain of shared locators links them)
+ */
+function actionIds(events: WatchEvent[]): number[] {
+  const parent: number[] = events.map((_, index) => index);
+  const root = (index: number): number => {
+    while (parent[index] !== index) {
+      parent[index] = parent[parent[index]];
+      index = parent[index];
+    }
+    return index;
+  };
+  const owner = new Map<string, number>();
+  events.forEach((event, index) => {
+    for (const locator of actionLocators(event)) {
+      const other = owner.get(locator);
+      if (other === undefined) owner.set(locator, index);
+      else parent[root(index)] = root(other);
+    }
+  });
+  const numbers = new Map<number, number>();
+  return events.map((_, index) => {
+    const key = root(index);
+    let id = numbers.get(key);
+    if (id === undefined) {
+      id = numbers.size;
+      numbers.set(key, id);
+    }
+    return id;
+  });
 }
 
 /** Short, stable id for a list of signatures (djb2), used to remember dismissed patterns */
@@ -64,6 +123,12 @@ interface Candidate {
   lastStart: number;
 }
 
+export interface FindPatternsOptions {
+  limit?: number;
+  /** Patterns not to return (dismissed, already saved); they do not count against `limit` */
+  exclude?: (pattern: DetectedPattern) => boolean;
+}
+
 /**
  * Finds action sequences the user repeated. Runs in O(events × MAX_PATTERN_LENGTH) on integer ids, so a full
  * buffer of 1000 events takes a few milliseconds.
@@ -72,23 +137,15 @@ interface Candidate {
  * - a sequence of one repeated action ("Next", "Next"...) is not a pattern
  * - a sequence never spans a pause longer than SESSION_GAP_MS
  * - a pattern contained in a better one (or a rotation of it: ABCABC also holds BCA) is dropped
+ * - the same element counts as the same action even when its best locator changed (see sameAction)
  *
  * @returns the best patterns first
  */
-export function findPatterns(events: WatchEvent[], limit = 5): DetectedPattern[] {
+export function findPatterns(events: WatchEvent[], { limit = 5, exclude }: FindPatternsOptions = {}): DetectedPattern[] {
   const n = events.length;
   if (n < MIN_PATTERN_LENGTH * MIN_OCCURRENCES) return [];
 
-  const signatures = events.map(eventSignature);
-  const intern = new Map<string, number>();
-  const ids = signatures.map((sig) => {
-    let id = intern.get(sig);
-    if (id === undefined) {
-      id = intern.size;
-      intern.set(sig, id);
-    }
-    return id;
-  });
+  const ids = actionIds(events);
 
   // breaksBefore[i]: how many session breaks there are before event i (a window i..j crosses one if the counts differ)
   const breaksBefore = new Array<number>(n).fill(0);
@@ -129,31 +186,33 @@ export function findPatterns(events: WatchEvent[], limit = 5): DetectedPattern[]
       b.length * (b.occurrences - 1) - a.length * (a.occurrences - 1) || b.length - a.length || b.lastStart - a.lastStart,
   );
 
-  const accepted: { candidate: Candidate; idSet: Set<number> }[] = [];
+  // Excluded patterns still cover their parts (a hidden pattern is not offered again piece by piece), but
+  // they do not count against the limit: five hidden patterns must not leave nothing to suggest
+  const covering: Set<number>[] = [];
+  const accepted: DetectedPattern[] = [];
   for (const candidate of candidates) {
     if (accepted.length >= limit) break;
-    const covered = accepted.some(({ idSet }) => candidate.ids.every((id) => idSet.has(id)));
-    if (covered) continue;
-    accepted.push({ candidate, idSet: new Set(candidate.ids) });
-  }
-
-  return accepted.map(({ candidate }) => {
+    if (covering.some((idSet) => candidate.ids.every((id) => idSet.has(id)))) continue;
     const occurrence = events.slice(candidate.lastStart, candidate.lastStart + candidate.length);
-    return {
+    const pattern: DetectedPattern = {
       id: hashSignatures(occurrence.map(eventSignature)),
       events: occurrence,
       occurrences: candidate.occurrences,
       lastEnd: candidate.lastStart + candidate.length,
     };
-  });
+    covering.push(new Set(candidate.ids));
+    if (!exclude?.(pattern)) accepted.push(pattern);
+  }
+
+  return accepted;
 }
 
-/** The longest k (2…) for which the last k signatures equal `sequence[start..start+k)`, or 0 */
-function matchedPrefix(tail: string[], sequence: string[], start: number): number {
-  const most = Math.min(MAX_CONTINUATION_PREFIX, tail.length, sequence.length - start - 1);
+/** The longest k (2…) for which the last k actions are `sequence[0..k)`, or 0 */
+function matchedPrefix(tail: ActionLike[], sequence: ActionLike[]): number {
+  const most = Math.min(MAX_CONTINUATION_PREFIX, tail.length, sequence.length - 1);
   for (let k = most; k >= MIN_CONTINUATION_PREFIX; k--) {
     let same = true;
-    for (let i = 0; i < k && same; i++) same = tail[tail.length - k + i] === sequence[start + i];
+    for (let i = 0; i < k && same; i++) same = sameAction(tail[tail.length - k + i], sequence[i]);
     if (same) return k;
   }
   return 0;
@@ -166,10 +225,10 @@ export function matchPatternContinuation(
   events: WatchEvent[],
   patterns: DetectedPattern[],
 ): { pattern: DetectedPattern; doneCount: number } | null {
-  const tail = events.slice(-MAX_CONTINUATION_PREFIX).map(eventSignature);
+  const tail = events.slice(-MAX_CONTINUATION_PREFIX);
   let best: { pattern: DetectedPattern; doneCount: number } | null = null;
   for (const pattern of patterns) {
-    const done = matchedPrefix(tail, pattern.events.map(eventSignature), 0);
+    const done = matchedPrefix(tail, pattern.events);
     if (!done) continue;
     if (!best || done > best.doneCount || (done === best.doneCount && pattern.events.length > best.pattern.events.length)) {
       best = { pattern, doneCount: done };
@@ -179,11 +238,11 @@ export function matchPatternContinuation(
 }
 
 /** The steps of a scenario a user performs by hand, with their index in the scenario */
-function manualSteps(steps: ScenarioStep[]): { signature: string; index: number }[] {
-  const result: { signature: string; index: number }[] = [];
+function manualSteps(steps: ScenarioStep[]): { action: ActionLike; signature: string; index: number }[] {
+  const result: { action: ActionLike; signature: string; index: number }[] = [];
   steps.forEach((step, index) => {
-    const signature = stepSignature(step);
-    if (signature) result.push({ signature, index });
+    const action = stepAction(step);
+    if (action) result.push({ action, signature: eventSignature(action), index });
   });
   return result;
 }
@@ -192,11 +251,11 @@ function manualSteps(steps: ScenarioStep[]): { signature: string; index: number 
  * Whether the last actions are the first manual steps of a saved scenario: the rest can be played from there
  */
 export function matchScenarioContinuation(events: WatchEvent[], scenarios: ScenarioMap): ScenarioContinuation | null {
-  const tail = events.slice(-MAX_CONTINUATION_PREFIX).map(eventSignature);
+  const tail = events.slice(-MAX_CONTINUATION_PREFIX);
   let best: (ScenarioContinuation & { done: number }) | null = null;
   for (const [scenarioId, scenario] of Object.entries(scenarios)) {
     const manual = manualSteps(scenario.data || []);
-    const done = matchedPrefix(tail, manual.map((step) => step.signature), 0);
+    const done = matchedPrefix(tail, manual.map((step) => step.action));
     if (!done || (best && best.done >= done)) continue;
     best = {
       scenarioId,
