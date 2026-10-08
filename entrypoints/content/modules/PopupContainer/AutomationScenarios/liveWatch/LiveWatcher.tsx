@@ -36,13 +36,13 @@ import { DetectedPattern, LiveWatchSettings, Suggestion, SuggestionKind, WatchEv
 import { RunPhase, usePatternRun } from "./usePatternRun";
 import { elementLabel, isActionableElement, isExtensionTarget, isSensitiveField } from "./utils/dom";
 import {
-  eventSignature,
   eventsToSteps,
   findFieldScenarios,
   findPatterns,
   isPatternSaved,
   matchPatternContinuation,
   matchScenarioContinuation,
+  sameAction,
   WATCH_EVENT_LIMIT,
 } from "./utils/patterns";
 
@@ -139,9 +139,9 @@ export const LiveWatcher: React.FC = () => {
     const events = eventsRef.current.filter((event) => event.origin === origin);
     const { dismissedPatterns } = settingsRef.current;
     const saved = scenariosRef.current || {};
-    const patterns = findPatterns(events).filter(
-      (pattern) => !dismissedPatterns.includes(pattern.id) && !isPatternSaved(pattern, saved),
-    );
+    const patterns = findPatterns(events, {
+      exclude: (pattern) => dismissedPatterns.includes(pattern.id) || isPatternSaved(pattern, saved),
+    });
     patternsRef.current = patterns;
     if (runRef.current) return;
 
@@ -203,6 +203,7 @@ export const LiveWatcher: React.FC = () => {
         alternativeXpaths: alternativeXpaths.slice(0, 3),
         label: elementLabel(element),
         origin: window.location.origin,
+        path: window.location.pathname,
         time: Date.now(),
         ...(value !== undefined ? { value } : {}),
       };
@@ -212,7 +213,7 @@ export const LiveWatcher: React.FC = () => {
       if (currentRun) {
         const expected = currentRun.events[currentRun.index];
         const waiting = currentRun.phase === RunPhase.WAITING_USER || currentRun.phase === RunPhase.WAITING_VALUE;
-        if (waiting && expected && eventSignature(expected) === eventSignature(event)) userDidStep();
+        if (waiting && expected && sameAction(expected, event)) userDidStep();
         return;
       }
 

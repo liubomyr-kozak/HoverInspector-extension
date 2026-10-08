@@ -85,6 +85,37 @@ describe("findPatterns", () => {
     expect(first.id).toBe(second.id);
   });
 
+  it("knows an element whose best locator changed between visits", () => {
+    // First visit: found by its id; later the id is gone and a text locator is the best one
+    const save = (primary: string) => click("save", { xpath: primary, alternativeXpaths: ['//button[.="Save"]'] });
+    const events = [click("new"), fill("title"), save('//*[@id="save"]'), click("x")];
+    events.push(click("new"), fill("title"), save('//button[.="Save"]'));
+    expect(names(findPatterns(events)[0].events)).toEqual(["new", "title", "save"]);
+  });
+
+  it("does not join elements that only share a full /html path", () => {
+    const at = (name: string) => click(name, { alternativeXpaths: ["/html/body/div[2]/button[1]"] });
+    const events = [click("a"), at("save"), click("a"), at("delete"), click("a"), at("save"), click("a"), at("delete")];
+    expect(findPatterns(events).map((pattern) => names(pattern.events))).toEqual([["a", "save", "a", "delete"]]);
+  });
+
+  it("keeps suggesting other patterns when the best ones are excluded", () => {
+    const events: WatchEvent[] = [];
+    for (let set = 0; set < 3; set++) {
+      for (let round = 0; round < 2; round++) events.push(click(`a${set}`), click(`b${set}`), click(`c${set}`));
+      events.push(click(`gap${set}`));
+    }
+    const all = findPatterns(events, { limit: 1 });
+    const rest = findPatterns(events, { limit: 1, exclude: (pattern) => pattern.id === all[0].id });
+    expect(rest).toHaveLength(1);
+    expect(rest[0].id).not.toBe(all[0].id);
+    // A hidden pattern is not offered again piece by piece
+    const parts = findPatterns([click("a"), click("b"), click("c"), click("a"), click("b"), click("c")], {
+      exclude: () => true,
+    });
+    expect(parts).toEqual([]);
+  });
+
   it("handles a full buffer of 1000 events quickly", () => {
     const events: WatchEvent[] = [];
     for (let i = 0; i < 1000; i++) events.push(click(`el${i % 37}`));
@@ -102,6 +133,11 @@ describe("matchPatternContinuation", () => {
     const match = matchPatternContinuation([...events, click("a"), click("b")], patterns);
     expect(match?.doneCount).toBe(2);
     expect(names(match!.pattern.events)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("matches the start of a pattern by any shared locator", () => {
+    const moved = click("a", { xpath: "//main//a[1]", alternativeXpaths: ['//*[@id="a"]'] });
+    expect(matchPatternContinuation([...events, moved, click("b")], patterns)?.doneCount).toBe(2);
   });
 
   it("needs at least two matching actions and a step left", () => {

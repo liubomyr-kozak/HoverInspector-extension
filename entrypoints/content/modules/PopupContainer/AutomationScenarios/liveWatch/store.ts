@@ -58,9 +58,11 @@ function ensureSettingsLoaded() {
         // Our own writes come back here too; skip them when nothing changed
         if (JSON.stringify(next) !== JSON.stringify(settings)) applySettings(next);
       }
-      if (changes[LIVE_WATCH_EVENTS_KEY]) {
-        storedCount = sanitizeEvents(changes[LIVE_WATCH_EVENTS_KEY].newValue).length;
-        countListeners.forEach((listener) => listener());
+      const events = changes[LIVE_WATCH_EVENTS_KEY];
+      if (events) {
+        // Removed: "Clear" in some tab. Else merge: a tab that read the list before our last write landed
+        // writes it back without our events, and our next write puts them back.
+        setStoredEvents(events.newValue === undefined ? [] : mergeEvents(storedEvents, sanitizeEvents(events.newValue)));
       }
     });
   } catch {
@@ -88,6 +90,16 @@ export function dismissPattern(patternId: string) {
   updateLiveWatchSettings({ dismissedPatterns: [...settings.dismissedPatterns.filter((id) => id !== patternId), patternId] });
 }
 
+/** "Show again": the pattern may be suggested again */
+export function restorePattern(patternId: string) {
+  updateLiveWatchSettings({ dismissedPatterns: settings.dismissedPatterns.filter((id) => id !== patternId) });
+}
+
+/** Forgets every "don't suggest again" choice, for patterns and fields */
+export function restoreAllSuggestions() {
+  updateLiveWatchSettings({ dismissedPatterns: [], mutedFields: [] });
+}
+
 export function muteField(xpath: string) {
   updateLiveWatchSettings({ mutedFields: [...settings.mutedFields.filter((id) => id !== xpath), xpath] });
 }
@@ -106,14 +118,34 @@ export function useLiveWatchSettings(): LiveWatchSettings {
 
 let pending: WatchEvent[] = [];
 let flushTimer: number | null = null;
-let storedCount = 0;
-let countLoaded = false;
-const countListeners = new Set<() => void>();
+/** The stored list as last read or written; kept in step with storage by the onChanged listener */
+let storedEvents: WatchEvent[] = [];
+let storedLoaded = false;
+let loading: Promise<void> | null = null;
+const eventListeners = new Set<() => void>();
+
+function setStoredEvents(events: WatchEvent[]) {
+  storedEvents = events;
+  storedLoaded = true;
+  eventListeners.forEach((listener) => listener());
+}
+
+function ensureEventsLoaded(): Promise<void> {
+  ensureSettingsLoaded();
+  if (storedLoaded) return Promise.resolve();
+  loading ??= (storage()?.get(LIVE_WATCH_EVENTS_KEY) ?? Promise.resolve(undefined))
+    .then((stored) => {
+      // A storage change may have been seen first: keep what it brought
+      setStoredEvents(mergeEvents(sanitizeEvents(stored?.[LIVE_WATCH_EVENTS_KEY]), storedLoaded ? storedEvents : []));
+    })
+    .catch(() => undefined);
+  return loading;
+}
 
 /** All stored events (every site), oldest first */
 export async function loadWatchEvents(): Promise<WatchEvent[]> {
-  const stored = await storage()?.get(LIVE_WATCH_EVENTS_KEY);
-  return mergeEvents(sanitizeEvents(stored?.[LIVE_WATCH_EVENTS_KEY]), pending);
+  await ensureEventsLoaded();
+  return mergeEvents(storedEvents, pending);
 }
 
 /** Queues an event; it is written with the next batch */
@@ -122,8 +154,12 @@ export function queueWatchEvent(event: WatchEvent) {
   if (flushTimer === null) flushTimer = window.setTimeout(flushWatchEvents, FLUSH_DELAY_MS);
 }
 
-/** Writes the queued events now (the page is being hidden or closed) */
-export async function flushWatchEvents() {
+/**
+ * Writes the queued events now (the page is being hidden or closed). The write starts synchronously, from the
+ * list kept in memory: a click that opens another page fires `pagehide` right away, and a read before the
+ * write used to finish after the page was gone, so the actions that led to a navigation were lost.
+ */
+export function flushWatchEvents() {
   if (flushTimer !== null) {
     window.clearTimeout(flushTimer);
     flushTimer = null;
@@ -131,11 +167,21 @@ export async function flushWatchEvents() {
   if (!pending.length) return;
   const batch = pending;
   pending = [];
+  if (!storedLoaded) {
+    // Nothing read yet: read first, other tabs add their own events to the same list
+    ensureEventsLoaded().then(() => writeEvents(batch));
+    return;
+  }
+  writeEvents(batch);
+}
+
+function writeEvents(batch: WatchEvent[]) {
+  const events = mergeEvents(storedEvents, batch);
+  setStoredEvents(events);
   try {
-    // Read first: other tabs add their own events to the same list
-    const stored = await storage()?.get(LIVE_WATCH_EVENTS_KEY);
-    const events = mergeEvents(sanitizeEvents(stored?.[LIVE_WATCH_EVENTS_KEY]), batch);
-    await storage()?.set({ [LIVE_WATCH_EVENTS_KEY]: events });
+    storage()
+      ?.set({ [LIVE_WATCH_EVENTS_KEY]: events })
+      .catch(() => undefined);
   } catch {
     // Storage unavailable (extension reloaded): the batch is dropped, watching is best effort
   }
@@ -148,30 +194,24 @@ export async function clearWatchEvents() {
     window.clearTimeout(flushTimer);
     flushTimer = null;
   }
+  setStoredEvents([]);
   await storage()
     ?.remove(LIVE_WATCH_EVENTS_KEY)
     .catch(() => undefined);
-  storedCount = 0;
-  countListeners.forEach((listener) => listener());
 }
 
-const subscribeCount = (listener: () => void) => {
-  ensureSettingsLoaded();
-  if (!countLoaded) {
-    countLoaded = true;
-    storage()
-      ?.get(LIVE_WATCH_EVENTS_KEY)
-      .then((stored) => {
-        storedCount = sanitizeEvents(stored?.[LIVE_WATCH_EVENTS_KEY]).length;
-        countListeners.forEach((l) => l());
-      })
-      .catch(() => undefined);
-  }
-  countListeners.add(listener);
-  return () => countListeners.delete(listener);
+const subscribeEvents = (listener: () => void) => {
+  ensureEventsLoaded();
+  eventListeners.add(listener);
+  return () => eventListeners.delete(listener);
 };
+
+/** The stored events (every site, oldest first), for the log in the settings */
+export function useStoredWatchEvents(): WatchEvent[] {
+  return useSyncExternalStore(subscribeEvents, () => storedEvents);
+}
 
 /** How many events are stored (shown next to the "Clear" action) */
 export function useStoredWatchEventCount(): number {
-  return useSyncExternalStore(subscribeCount, () => storedCount);
+  return useStoredWatchEvents().length;
 }
