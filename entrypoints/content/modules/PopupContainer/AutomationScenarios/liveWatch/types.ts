@@ -25,6 +25,8 @@ export interface WatchEvent {
   label: string;
   /** Page origin: patterns are only looked for among the events of the current site */
   origin: string;
+  /** Page path, shown in the log so the user sees on which page an action was */
+  path?: string;
   time: number;
 }
 
@@ -37,6 +39,15 @@ export interface DetectedPattern {
   occurrences: number;
   /** Index in the event list right after the last occurrence */
   lastEnd: number;
+}
+
+/** What live watching does with a repeated sequence, shown in the log */
+export enum PatternStatus {
+  SUGGESTED = "suggested",
+  /** The user chose "Don't suggest again" */
+  HIDDEN = "hidden",
+  /** A saved scenario already holds it */
+  SAVED = "saved",
 }
 
 /** Why the suggestion card is open */

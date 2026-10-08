@@ -1,10 +1,11 @@
-import React, { useId } from "react";
+import React, { useId, useState } from "react";
 import styled from "styled-components";
 import { Button, Switch } from "antd";
 import { IconEye, IconLock } from "@tabler/icons-react";
 import { tokens } from "@entrypoints/shared/styles/tokens";
 import { clearWatchEvents, setLiveWatchEnabled, useLiveWatchSettings, useStoredWatchEventCount } from "../store";
 import { WATCH_EVENT_LIMIT } from "../utils/patterns";
+import { LiveWatchLog } from "./LiveWatchLog";
 
 interface LiveWatchToggleProps {
   /** One row for the minimized Automation menu: the switch and a one-line hint */
@@ -25,6 +26,7 @@ export const LiveWatchToggle: React.FC<LiveWatchToggleProps> = ({ compact }) => 
   const { enabled } = useLiveWatchSettings();
   const storedCount = useStoredWatchEventCount();
   const labelId = useId();
+  const [logOpen, setLogOpen] = useState(false);
 
   const toggleRow = (
     <div className="flex items-center gap-2">
@@ -61,14 +63,18 @@ export const LiveWatchToggle: React.FC<LiveWatchToggleProps> = ({ compact }) => 
           Password and card fields are never read.
         </span>
       </p>
-      {storedCount > 0 && (
-        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-          <span>{storedCount} actions stored</span>
+      <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+        <span>{storedCount} actions stored</span>
+        <Button type="link" size="small" className="px-0" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)}>
+          {logOpen ? "Hide log" : "Show log"}
+        </Button>
+        {storedCount > 0 && (
           <Button type="link" size="small" className="px-0" onClick={() => clearWatchEvents()}>
             Clear
           </Button>
-        </div>
-      )}
+        )}
+      </div>
+      {logOpen && <LiveWatchLog />}
     </Box>
   );
 };
