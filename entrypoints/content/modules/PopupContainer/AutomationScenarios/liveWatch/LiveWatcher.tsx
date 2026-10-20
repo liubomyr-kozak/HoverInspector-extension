@@ -30,7 +30,6 @@ import {
   findFieldScenarios,
   findPatterns,
   isPatternSaved,
-  matchPatternContinuation,
   matchScenarioContinuation,
   WATCH_EVENT_LIMIT,
 } from "./utils/patterns";
@@ -50,8 +49,6 @@ const suggestionKey = (suggestion: Suggestion): string => {
       return `field:${suggestion.fieldXpath}`;
     case SuggestionKind.CONTINUE_SCENARIO:
       return `scenario:${suggestion.scenarioId}:${suggestion.nextStepIndex}`;
-    case SuggestionKind.CONTINUE_PATTERN:
-      return `continue:${suggestion.pattern.id}`;
     default:
       return `pattern:${suggestion.pattern.id}`;
   }
@@ -66,8 +63,8 @@ const patternTitle = (pattern: DetectedPattern): string => {
 /**
  * Live watching: while it is on (off by default), every action of the user on the page is noted in the watch
  * log (see capture.ts), which the panel shows. From the log it finds sequences the user repeats and offers to
- * replay them or save them as a scenario. It also offers to finish a pattern or a saved scenario the user
- * has started by hand, and lists the scenarios that use a field the user clicks.
+ * replay them or save them as a scenario. It also offers to finish a saved scenario the user has started
+ * by hand, and lists the scenarios that use a field the user clicks.
  *
  * Built for busy pages: passive capture listeners, analysis in idle time, one small storage write per page.
  * Synthetic events (scenario playback, the replays) are never watched: only `isTrusted` events count.
@@ -88,7 +85,9 @@ export const LiveWatcher: React.FC = () => {
   suggestionRef.current = suggestion;
 
   const patternsRef = useRef<DetectedPattern[]>([]);
-  // The whole pattern being replayed (a continuation replays only its rest), for "Save as scenario"
+  // Listed under the watch log, which offers them without a card popping up
+  const [patterns, setPatterns] = useState<DetectedPattern[]>([]);
+  // The pattern being replayed, for "Save as scenario"
   const runPatternRef = useRef<DetectedPattern | null>(null);
   const closedKeysRef = useRef(new Set<string>());
   const shownPatternsRef = useRef(new Set<string>());
@@ -168,14 +167,16 @@ export const LiveWatcher: React.FC = () => {
       (pattern) => !dismissedPatterns.includes(pattern.id) && !isPatternSaved(pattern, saved),
     );
     patternsRef.current = patterns;
+    setPatterns(patterns);
     if (runRef.current) return;
 
     let next: Suggestion | null = null;
     const scenarioMatch = matchScenarioContinuation(events, saved);
-    const patternMatch = matchPatternContinuation(events, patterns);
-    const fresh = patterns.find((pattern) => pattern.lastEnd === events.length && !shownPatternsRef.current.has(pattern.id));
+    // With the watch log open, repeats are listed under it instead of in a card
+    const fresh = settingsRef.current.panel.open
+      ? undefined
+      : patterns.find((pattern) => pattern.lastEnd === events.length && !shownPatternsRef.current.has(pattern.id));
     if (scenarioMatch) next = { kind: SuggestionKind.CONTINUE_SCENARIO, ...scenarioMatch };
-    else if (patternMatch) next = { kind: SuggestionKind.CONTINUE_PATTERN, ...patternMatch };
     else if (fresh) next = { kind: SuggestionKind.PATTERN, pattern: fresh };
     if (next && closedKeysRef.current.has(suggestionKey(next))) next = null;
     if (next?.kind === SuggestionKind.PATTERN) shownPatternsRef.current.add(next.pattern.id);
@@ -183,9 +184,7 @@ export const LiveWatcher: React.FC = () => {
     setSuggestion((previous) => {
       if (next) return next;
       // An offer to continue is stale once the user did something else; other cards stay until closed
-      return previous && previous.kind !== SuggestionKind.CONTINUE_PATTERN && previous.kind !== SuggestionKind.CONTINUE_SCENARIO
-        ? previous
-        : null;
+      return previous && previous.kind !== SuggestionKind.CONTINUE_SCENARIO ? previous : null;
     });
   }, [runRef]);
 
@@ -261,10 +260,7 @@ export const LiveWatcher: React.FC = () => {
     const savePattern = () => {
       const current = suggestionRef.current;
       const pattern =
-        runPatternRef.current ||
-        (current && (current.kind === SuggestionKind.PATTERN || current.kind === SuggestionKind.CONTINUE_PATTERN)
-          ? current.pattern
-          : null);
+        runPatternRef.current || (current?.kind === SuggestionKind.PATTERN ? current.pattern : null);
       if (!pattern) return;
       if (status !== ScenarioStatus.IDLE) {
         toast.error("Finish recording or editing the current scenario first");
@@ -278,7 +274,7 @@ export const LiveWatcher: React.FC = () => {
         repeat: 1,
         data: eventsToSteps(pattern.events, typedValuesRef.current),
       };
-      // Just replayed: keep the text the user gave on the way (a continuation replays only the last steps)
+      // Just replayed: keep the text the user gave on the way
       const runSteps = runPatternRef.current === pattern ? runRef.current?.steps : undefined;
       if (runSteps && runSteps.length <= scenario.data.length) {
         scenario.data.splice(scenario.data.length - runSteps.length, runSteps.length, ...runSteps);
@@ -304,9 +300,8 @@ export const LiveWatcher: React.FC = () => {
       },
       playPattern: (guided: boolean) => {
         const current = suggestionRef.current;
-        if (!current || (current.kind !== SuggestionKind.PATTERN && current.kind !== SuggestionKind.CONTINUE_PATTERN)) return;
-        const events =
-          current.kind === SuggestionKind.CONTINUE_PATTERN ? current.pattern.events.slice(current.doneCount) : current.pattern.events;
+        if (current?.kind !== SuggestionKind.PATTERN) return;
+        const { events } = current.pattern;
         runPatternRef.current = current.pattern;
         setSuggestion(null);
         start(events, eventsToSteps(events, typedValuesRef.current), guided);
@@ -330,8 +325,18 @@ export const LiveWatcher: React.FC = () => {
   if (!enabled) return null;
   return (
     <LiveWatchContext.Provider value={controller}>
-      {settings.panel.open && <WatchLogPanel settings={settings} log={log} watching={active && !executing} />}
-      {active && <SuggestionCard />}
+      {settings.panel.open ? (
+        <WatchLogPanel
+          settings={settings}
+          log={log}
+          watching={active && !executing}
+          patterns={active ? patterns.filter((pattern) => !settings.dismissedPatterns.includes(pattern.id)) : []}
+        >
+          {active && <SuggestionCard docked />}
+        </WatchLogPanel>
+      ) : (
+        active && <SuggestionCard />
+      )}
     </LiveWatchContext.Provider>
   );
 };

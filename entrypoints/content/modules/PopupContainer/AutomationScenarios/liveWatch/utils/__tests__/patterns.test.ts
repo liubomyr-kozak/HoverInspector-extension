@@ -7,7 +7,6 @@ import {
   findFieldScenarios,
   findPatterns,
   isPatternSaved,
-  matchPatternContinuation,
   matchScenarioContinuation,
   sanitizeEvents,
   SESSION_GAP_MS,
@@ -84,28 +83,46 @@ describe("findPatterns", () => {
     expect(first.id).toBe(second.id);
   });
 
+  it("finds a whole round of work when each round opens another row", () => {
+    // Login, open the admin list, open a row (another one each round, by id), edit, close
+    const round = (row: number, guid: string) => [
+      fill("user"),
+      fill("password"),
+      click("sign-in"),
+      click("admin"),
+      click(`row-${row}`, { label: String(row), xpath: `//table/tbody/tr[${row + 1}]/td[1]/a` }),
+      click("org", { label: "Organizations", xpath: `//a[@href="/administration/${guid}/organizations"]` }),
+      click("edit"),
+      fill("name"),
+      click("save"),
+      click("close"),
+    ];
+    const events = [
+      ...round(0, "01a0e93f-a19c-4f1e-9d1b-1c2d3e4f5a6b"),
+      click("other"),
+      ...round(4, "01a0392f-da3e-4b7a-8c9d-0e1f2a3b4c5d"),
+      click("other"),
+      ...round(2, "7f3a92c1-0b4d-4e8f-a1b2-c3d4e5f60718"),
+    ];
+    const [pattern] = findPatterns(events);
+    expect(pattern.events).toHaveLength(10);
+    expect(pattern.occurrences).toBe(3);
+    // The freshest round is played: its row and its link
+    expect(pattern.events[4].label).toBe("2");
+  });
+
+  it("keeps two buttons found by position apart by their names", () => {
+    const nav = (n: number, label: string) => click(label, { label, xpath: `//nav/a[${n}]` });
+    const events = [nav(1, "Admin"), nav(2, "Settings"), click("save"), nav(3, "Reports"), nav(4, "Billing"), click("save")];
+    expect(findPatterns(events)).toEqual([]);
+  });
+
   it("handles a full buffer of 1000 events quickly", () => {
     const events: WatchEvent[] = [];
     for (let i = 0; i < 1000; i++) events.push(click(`el${i % 37}`));
     const start = performance.now();
     findPatterns(events);
     expect(performance.now() - start).toBeLessThan(500);
-  });
-});
-
-describe("matchPatternContinuation", () => {
-  const events = [click("a"), click("b"), click("c"), click("d"), click("a"), click("b"), click("c"), click("d")];
-  const patterns = findPatterns(events);
-
-  it("offers the rest when the last actions start a pattern", () => {
-    const match = matchPatternContinuation([...events, click("a"), click("b")], patterns);
-    expect(match?.doneCount).toBe(2);
-    expect(names(match!.pattern.events)).toEqual(["a", "b", "c", "d"]);
-  });
-
-  it("needs at least two matching actions and a step left", () => {
-    expect(matchPatternContinuation([...events, click("x"), click("a")], patterns)).toBeNull();
-    expect(matchPatternContinuation([click("q"), click("w")], patterns)).toBeNull();
   });
 });
 
