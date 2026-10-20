@@ -70,3 +70,6 @@ export const AUTOMATION_EXECUTION_HISTORY_KEY = (id: string) => {
   }
   return `${AUTOMATION_EXECUTION_HISTORY_PREFIX}${id}`;
 };
+
+/** Live watching preferences (Automation → live watching); the background reads `enabled` */
+export const LIVE_WATCH_SETTINGS_KEY = "automationLiveWatch";

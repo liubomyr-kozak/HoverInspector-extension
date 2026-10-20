@@ -6,6 +6,7 @@ import { actionsContextSlice } from "./store/backgroundSlice.ts";
 import { appBackgroundSlice } from "./store/appBackgroundSlice.ts";
 import { handleAutomationTabPort, registerAutomationTabListeners } from "./automationTabs.ts";
 import { registerFrameAgentRelay } from "./frameAgentRelay.ts";
+import { registerLiveWatchCapture } from "./liveWatchCapture.ts";
 
 let lastBrowserAction;
 
@@ -80,6 +81,7 @@ export default defineBackground({
 
     registerAutomationTabListeners();
     registerFrameAgentRelay();
+    registerLiveWatchCapture();
 
     const debounceMap: Record<number, NodeJS.Timeout> = {};
 

@@ -14,6 +14,7 @@ import {
   IconPointer,
   IconRefresh,
   IconSelector,
+  IconWorld,
   IconX,
 } from "@tabler/icons-react";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
@@ -50,6 +51,7 @@ const KIND_ICONS: Record<WatchEventKind, React.ComponentType> = {
   [WatchEventKind.INPUT]: IconForms,
   [WatchEventKind.SELECT]: IconSelector,
   [WatchEventKind.KEY_PRESS]: IconKeyboard,
+  [WatchEventKind.NAVIGATE]: IconWorld,
 };
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;

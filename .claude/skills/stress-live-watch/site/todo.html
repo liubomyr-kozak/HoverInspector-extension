@@ -1,0 +1,14 @@
+<!doctype html><html><head><title>Todo</title><link rel="stylesheet" href="common.css"></head><body><nav><a href="shop.html">Shop</a><a href="form.html">Form</a><a href="app.html">App</a><a href="todo.html">Todo</a></nav>
+<h1>Todo</h1>
+<label>New todo <input id="new"></label>
+<ul id="list"></ul>
+<button id="counter">Count click</button> <span id="cnt">0</span>
+<script>
+let n=0;
+document.getElementById('new').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value){const li=document.createElement('li');
+const t=e.target.value;li.innerHTML='<label><input type="checkbox"> '+t+'</label> <button class="qr" aria-label="Remove '+t+'">Remove</button>';
+document.getElementById('list').appendChild(li);e.target.value='';}});
+// Removes on mousedown, like many menus and chips do
+document.addEventListener('mousedown',e=>{const b=e.target.closest('.qr');if(b)b.closest('li').remove();});
+document.getElementById('counter').onclick=()=>{document.getElementById('cnt').textContent=++n;};
+</script></body></html>
