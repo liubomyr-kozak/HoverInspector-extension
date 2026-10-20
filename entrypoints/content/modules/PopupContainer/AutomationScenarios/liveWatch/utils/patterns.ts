@@ -2,7 +2,7 @@ import { ScenarioMap, ScenarioStep, StepType } from "../../types";
 import { describeKeyCombo } from "../../utils/keyboardUtils";
 import { DetectedPattern, FieldScenarioMatch, ScenarioContinuation, WatchEvent, WatchEventKind } from "../types";
 
-/** How many events live watching keeps (across all sites) */
+/** How many of the latest actions on a site patterns are looked for in */
 export const WATCH_EVENT_LIMIT = 1000;
 
 /** A pause this long starts a new session: a pattern never spans it */
@@ -31,6 +31,7 @@ const KIND_STEP: Record<WatchEventKind, StepType> = {
   [WatchEventKind.INPUT]: StepType.INPUT,
   [WatchEventKind.SELECT]: StepType.SELECT,
   [WatchEventKind.KEY_PRESS]: StepType.KEY_PRESS,
+  [WatchEventKind.NAVIGATE]: StepType.NAVIGATE,
 };
 
 /**
@@ -250,6 +251,11 @@ export function eventsToSteps(events: WatchEvent[], typedValues: ReadonlyMap<str
       xpath: event.xpath,
       alternativeXpaths: event.alternativeXpaths || [],
     };
+    if (event.kind === WatchEventKind.NAVIGATE) {
+      step.value = event.url;
+      step.enableNavigation = true;
+      return step;
+    }
     const value = event.kind === WatchEventKind.INPUT ? typedValues.get(event.xpath) : event.value;
     if (value !== undefined) step.value = value;
     return step;
@@ -276,6 +282,8 @@ export function describeEventParts(event: Pick<WatchEvent, "kind" | "label" | "v
       return { verb: "Choose", target, ...(event.value ? { detail: event.value } : {}) };
     case WatchEventKind.KEY_PRESS:
       return { verb: "Press", target: describeKeyCombo(event.value) };
+    case WatchEventKind.NAVIGATE:
+      return { verb: "Open", target };
     default:
       return { verb: "", target };
   }
@@ -288,17 +296,6 @@ export function describeEvent(event: Pick<WatchEvent, "kind" | "label" | "value"
   const name = event.label ? `"${target}"` : "the element";
   if (event.kind === WatchEventKind.SELECT) return `${verb} ${detail ? `"${detail}"` : "an option"} in ${name}`;
   return `${verb} ${name}`;
-}
-
-/**
- * Adds new events to the stored ones: no duplicates (several tabs write the same list), oldest first, and
- * only the newest WATCH_EVENT_LIMIT are kept
- */
-export function mergeEvents(stored: WatchEvent[], added: WatchEvent[], limit = WATCH_EVENT_LIMIT): WatchEvent[] {
-  const seen = new Set(stored.map((event) => event.id));
-  const merged = stored.concat(added.filter((event) => !seen.has(event.id)));
-  merged.sort((a, b) => a.time - b.time);
-  return merged.length > limit ? merged.slice(merged.length - limit) : merged;
 }
 
 /** Keeps only well-formed events (the stored list may come from an older version or be damaged) */

@@ -7,6 +7,7 @@ import {
   executeHoverStep,
   executeInputStep,
   executeKeyPressStep,
+  executeNavigateStep,
   executeSelectStep,
 } from "../../utils/stepExecutor.saga";
 
@@ -17,6 +18,7 @@ const EXECUTORS: Partial<Record<StepType, (step: ScenarioStep) => Generator>> = 
   [StepType.INPUT]: executeInputStep,
   [StepType.SELECT]: executeSelectStep,
   [StepType.KEY_PRESS]: executeKeyPressStep,
+  [StepType.NAVIGATE]: executeNavigateStep,
 };
 
 function* playOne(step: ScenarioStep) {

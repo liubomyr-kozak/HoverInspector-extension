@@ -9,7 +9,6 @@ import {
   isPatternSaved,
   matchPatternContinuation,
   matchScenarioContinuation,
-  mergeEvents,
   sanitizeEvents,
   SESSION_GAP_MS,
 } from "../patterns";
@@ -172,15 +171,7 @@ describe("describeEvent", () => {
   });
 });
 
-describe("mergeEvents and sanitizeEvents", () => {
-  it("drops duplicates, sorts by time and keeps the newest", () => {
-    const a = click("a");
-    const b = click("b");
-    const c = click("c");
-    expect(names(mergeEvents([a, c], [b, c], 10))).toEqual(["a", "b", "c"]);
-    expect(names(mergeEvents([a, b], [c], 2))).toEqual(["b", "c"]);
-  });
-
+describe("sanitizeEvents", () => {
   it("keeps only well-formed stored events", () => {
     const good = click("ok");
     expect(sanitizeEvents([good, null, { id: 1 }, { ...good, kind: "scroll" }])).toEqual([good]);
