@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { Button, Switch } from "antd";
 import { IconEye, IconList, IconLock } from "@tabler/icons-react";
 import { tokens } from "@entrypoints/shared/styles/tokens";
-import { setLiveWatchEnabled, updateWatchPanel, useLiveWatchSettings } from "../store";
+import { restoreDismissedPatterns, setLiveWatchEnabled, updateWatchPanel, useLiveWatchSettings } from "../store";
 import { clearWatchLog, useWatchLog } from "../useWatchLog";
 
 interface LiveWatchToggleProps {
@@ -22,7 +22,7 @@ const Box = styled.div`
  * Turns live watching on or off, and says plainly what it keeps and where, so nobody has to guess
  */
 export const LiveWatchToggle: React.FC<LiveWatchToggleProps> = ({ compact }) => {
-  const { enabled, limit, panel } = useLiveWatchSettings();
+  const { enabled, limit, panel, dismissedPatterns } = useLiveWatchSettings();
   const storedCount = useWatchLog().events.length;
   const labelId = useId();
 
@@ -77,6 +77,16 @@ export const LiveWatchToggle: React.FC<LiveWatchToggleProps> = ({ compact }) => 
           <span>{storedCount} actions stored</span>
           <Button type="link" size="small" className="px-0" onClick={() => clearWatchLog()}>
             Clear
+          </Button>
+        </div>
+      )}
+      {dismissedPatterns.length > 0 && (
+        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+          <span>
+            {dismissedPatterns.length} {dismissedPatterns.length === 1 ? "suggestion" : "suggestions"} hidden
+          </span>
+          <Button type="link" size="small" className="px-0" onClick={restoreDismissedPatterns}>
+            Show all again
           </Button>
         </div>
       )}
