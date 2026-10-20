@@ -28,6 +28,7 @@ import {
 import { ICON_ITEMS, POPUP_SUPPORT_TOOLS } from "./LauncherIcons";
 import SortableItem from "@entrypoints/content/modules/Launcher/SortableItem/SortableItem";
 import { Logo } from "@entrypoints/shared/components/Logo/Logo";
+import { McpBridgeSetting } from "./McpBridgeSetting";
 
 const UsefulLinks = ({ category }: { category?: string }) => {
   const links = [
@@ -174,6 +175,12 @@ const Launcher: React.FC = () => {
               </FeaturesGrid>
             </SortableContext>
           </DndContext>
+
+          <Divider />
+
+          {/* Extension-wide settings (not tied to one tool) */}
+          <SectionTitle>Settings</SectionTitle>
+          <McpBridgeSetting />
 
           <Divider />
 

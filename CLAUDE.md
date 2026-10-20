@@ -33,6 +33,7 @@ yarn verify    # every automatic check on your change (must print "all automatic
 yarn dev       # WXT dev browser, extension in "staging" mode
 yarn start     # standalone page, http://localhost:4400 ("development" mode)
 yarn zip       # build and zip -> archives/<version>-<browser>.zip
+yarn mcp:build # MCP server for AI agents -> dist/mcp-server/hover-inspector-mcp.mjs (mcp-server/README.md)
 ```
 
 Modes (README, "Modes"): `development` is only the standalone page, where background actions run in
@@ -80,6 +81,7 @@ entrypoints/
   features/        extension plumbing: messaging protocol, tab sessions
   shared/          reusable UI (components/), tokens (styles/), pure utils (utils/), frameAgent/, hoverCard/, types/
   frame-agent.ts   script injected into cross-origin iframes
+mcp-server/        Node MCP server; talks to background/mcpBridge/ over a 127.0.0.1 WebSocket (see its README)
 docs/CODE_STYLE.md   index of the code style files
 .claude/rules/code-style/  the code style, one file per topic
 .claude/skills/      repo skills

@@ -8,6 +8,7 @@ import {
   DEV_SCRIPT_INJECTED,
   PROD_SCRIPT_INJECTED,
   SCRIPT_INJECTION_ERROR,
+  HOVER_INSPECTOR_MCP_CALL,
 } from "@entrypoints/shared/globalEvents";
 import { isProduction } from "@entrypoints/shared/helpers";
 
@@ -20,6 +21,9 @@ import { setActiveApp, setDisableApp } from "@entrypoints/content/store/app/app.
 import { selectRecording, selectRecordingPaused } from "@entrypoints/content/store/automation/automation.slice.ts";
 import ExtensionStorageManager from "@entrypoints/core/services/storage/ExtensionStorageManager.ts";
 import { injectScript } from "@entrypoints/shared/utils/scriptInjection.ts";
+import { isContentCall } from "@entrypoints/core/mcp/protocol";
+import type { ContentCallResult } from "@entrypoints/core/mcp/types";
+import { handleContentCall } from "./mcp/contentTools";
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -69,6 +73,14 @@ export default defineContentScript({
 
     removeListeners.push(onMessage(PROD_SCRIPT_INJECTED, (message) => {
       return { success: true, mode: "production" };
+    }));
+
+    // An AI agent's request through the MCP bridge, forwarded by our background
+    removeListeners.push(onMessage(HOVER_INSPECTOR_MCP_CALL, async (message): Promise<ContentCallResult> => {
+      if (message.sender.id !== browser.runtime.id || !isContentCall(message.data)) {
+        return { ok: false, error: "Invalid request" };
+      }
+      return handleContentCall(message.data);
     }));
 
     removeListeners.push(onMessage(SCRIPT_INJECTION_ERROR, (message) => {

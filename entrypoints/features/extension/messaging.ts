@@ -6,7 +6,9 @@ import {
   DEV_SCRIPT_INJECTED,
   PROD_SCRIPT_INJECTED,
   SCRIPT_INJECTION_ERROR,
+  HOVER_INSPECTOR_MCP_CALL,
 } from "@entrypoints/shared/globalEvents.ts";
+import type { ContentCall, ContentCallResult } from "@entrypoints/core/mcp/types";
 
 interface ProtocolMap {
   getStringLength(s: string): number;
@@ -28,6 +30,8 @@ interface ProtocolMap {
   };
 
   [SCRIPT_INJECTION_ERROR](data: { error: string; timestamp: number }): { received: boolean };
+
+  [HOVER_INSPECTOR_MCP_CALL](call: ContentCall): ContentCallResult;
 }
 
 export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>();

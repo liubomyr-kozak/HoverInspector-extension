@@ -23,7 +23,7 @@ import { DetectedPattern, LiveWatchSettings, Suggestion, SuggestionKind, WatchEv
 import { RunPhase, usePatternRun } from "./usePatternRun";
 import { setWatchLogLimit, useWatchLog } from "./useWatchLog";
 import { elementLabel, isExtensionTarget } from "./utils/dom";
-import { smartItems } from "./utils/smartLog";
+import { patternActions } from "./utils/smartLog";
 import {
   eventSignature,
   eventsToSteps,
@@ -31,7 +31,6 @@ import {
   findPatterns,
   isPatternSaved,
   matchScenarioContinuation,
-  WATCH_EVENT_LIMIT,
 } from "./utils/patterns";
 
 /** Look for patterns once the page is idle, at most this long after the last action */
@@ -105,14 +104,7 @@ export const LiveWatcher: React.FC = () => {
   const active = enabled && !recording;
 
   // The actions patterns are looked for in: the smart view of this site, without page changes
-  const actions = useMemo(() => {
-    const origin = window.location.origin;
-    const own = log.events.filter((event) => event.origin === origin).slice(-WATCH_EVENT_LIMIT * 2);
-    return smartItems(own)
-      .filter((item) => item.event.kind !== WatchEventKind.NAVIGATE)
-      .flatMap((item) => Array.from({ length: item.repeat }, () => item.event))
-      .slice(-WATCH_EVENT_LIMIT);
-  }, [log.events]);
+  const actions = useMemo(() => patternActions(log.events, window.location.origin), [log.events]);
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
 

@@ -12,11 +12,13 @@ export default defineConfig({
       "Inspector is the tool which mimic display dimension between selected and hover element. It would be good for designers, QA",
     update_url: "https://clients2.google.com/service/update2/crx",
     manifest_version: 3,
-    host_permissions: ["*://*/*"],
+    // <all_urls> rather than *://*/*: chrome.tabs.captureVisibleTab (MCP screenshots) accepts only <all_urls>
+    // or activeTab. Chrome shows the same "all websites" permission for both.
+    host_permissions: ["<all_urls>"],
     action: {
       default_icon: "icon/32.png",
     },
-    permissions: ["activeTab", "scripting", "background", "storage", "unlimitedStorage"],
+    permissions: ["activeTab", "scripting", "background", "storage", "unlimitedStorage", "alarms"],
     browser_specific_settings: {
       gecko: {
         id: "https://liubomyr-kozak.github.io/hover-inspector/",

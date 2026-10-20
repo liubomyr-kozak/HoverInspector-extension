@@ -70,7 +70,9 @@ export const CopyButton: React.FC<CopyButtonProps> = ({
 
   return (
     <Button
-      type={type}
+      // antd has no "ghost" type: it is a separate flag on a default button
+      type={type === "ghost" ? "default" : type}
+      ghost={type === "ghost"}
       size={size}
       icon={buttonIcon}
       onClick={handleCopy}

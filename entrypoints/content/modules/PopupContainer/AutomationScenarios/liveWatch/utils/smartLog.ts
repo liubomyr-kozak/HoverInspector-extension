@@ -1,6 +1,6 @@
 import { ScenarioStep, StepType } from "../../types";
 import { NavigationKind, WatchEvent, WatchEventKind, WatchLogItem, WatchLogMode } from "../types";
-import { eventSignature, eventsToSteps } from "./patterns";
+import { eventSignature, eventsToSteps, WATCH_EVENT_LIMIT } from "./patterns";
 
 /** A page that loads this long after a click or key was opened by it */
 export const NAVIGATION_CAUSE_MS = 4000;
@@ -113,4 +113,13 @@ export function itemsToSteps(items: WatchLogItem[], values: ReadonlyMap<string, 
 /** The ids of every raw event behind the given rows */
 export function sourceIdsOf(items: WatchLogItem[]): string[] {
   return items.flatMap((item) => item.sourceIds);
+}
+
+/** The actions repeats are looked for in: the smart view of one site, without page changes */
+export function patternActions(events: WatchEvent[], origin: string): WatchEvent[] {
+  const own = events.filter((event) => event.origin === origin).slice(-WATCH_EVENT_LIMIT * 2);
+  return smartItems(own)
+    .filter((item) => item.event.kind !== WatchEventKind.NAVIGATE)
+    .flatMap((item) => Array.from({ length: item.repeat }, () => item.event))
+    .slice(-WATCH_EVENT_LIMIT);
 }
