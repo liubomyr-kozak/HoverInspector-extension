@@ -223,3 +223,30 @@ export const ErrorBox = styled.p`
   color: ${tokens.color.danger};
   font-size: ${tokens.font.size.xs}px;
 `;
+
+/** The same card docked at the bottom of the watch log panel, so live watching shows one window */
+export const DockedCard = styled.section`
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  max-height: 55%;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid ${tokens.color.border};
+  background: ${tokens.color.surface};
+  color: ${tokens.color.text};
+  font-size: ${tokens.font.size.sm}px;
+  line-height: 1.45;
+`;
+
+export const DockedHeader = styled.header`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 12px;
+  border-bottom: 1px solid ${tokens.color.border};
+  background: ${tokens.color.primaryBg};
+  color: ${tokens.color.primary};
+  font-size: ${tokens.font.size.xs}px;
+  font-weight: 600;
+`;

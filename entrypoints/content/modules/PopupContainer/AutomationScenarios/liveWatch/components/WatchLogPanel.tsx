@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { Button, Input, Segmented, Select } from "antd";
 import {
   IconDeviceFloppy,
+  IconDownload,
   IconEye,
   IconPlayerPlayFilled,
   IconPlayerSkipForward,
@@ -22,12 +23,14 @@ import { shadowBody } from "@entrypoints/shared/utils/shadowBody";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
 import { Scenario } from "../../types";
 import { updateLiveWatchSettings, updateWatchPanel, WATCH_LIMIT_OPTIONS } from "../store";
-import { LiveWatchSettings, WatchEvent, WatchLogItem, WatchLogMode } from "../types";
+import { DetectedPattern, LiveWatchSettings, WatchEvent, WatchLogItem, WatchLogMode } from "../types";
 import { ReplayPhase, useLogReplay } from "../useLogReplay";
 import { clearWatchLog, deleteWatchEvents, WatchLogSnapshot } from "../useWatchLog";
 import { itemsToSteps, logItems, sourceIdsOf } from "../utils/smartLog";
 import { EMPTY_SELECTION, ListSelection, moveFocus, pruneSelection, selectAll, selectedInOrder, selectRow } from "../utils/selection";
 import { describeEventParts } from "../utils/patterns";
+import { watchLogExport, watchLogFileName } from "../utils/exportLog";
+import { RepeatsStrip } from "./RepeatsStrip";
 import { TargetHighlight } from "./TargetHighlight";
 import { WatchLogRow } from "./WatchLogRow";
 import { Chip, FooterBar, ListViewport, LiveDot, Progress, ReplayBar, ROW_HEIGHT, StatusLine, Toolbar } from "./WatchLogPanel.styled";
@@ -37,6 +40,10 @@ interface WatchLogPanelProps {
   log: WatchLogSnapshot;
   /** Whether this tab is being watched right now (not paused by recording or playback) */
   watching: boolean;
+  /** Chains of steps the user repeats, offered under the list */
+  patterns: DetectedPattern[];
+  /** Docked under the list: the suggestion card, so live watching shows one window */
+  children?: React.ReactNode;
 }
 
 /** Rows rendered above and below the visible ones, so fast scrolling shows no gaps */
@@ -62,7 +69,7 @@ const scenarioTitle = (items: WatchLogItem[]) => {
  * (click, Shift+click, Ctrl/Cmd+click, arrows, Ctrl/Cmd+A) and the selection can be played right away,
  * across page loads, or saved as a scenario.
  */
-export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, watching }) => {
+export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, watching, patterns, children }) => {
   const dispatch = useDispatch();
   const status = useSelector(selectStatus);
   const { replay, play, stop, provideValue, retry, skip, dismiss } = useLogReplay();
@@ -117,7 +124,45 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
     if (playingRowId) scrollToRow(playingRowId);
   }, [playingRowId]);
 
+  // ---- repeated chains: their latest round as log rows
+
+  const rowOfEvent = useMemo(() => {
+    const rows = new Map<string, string>();
+    items.forEach((item) => item.sourceIds.forEach((id) => rows.set(id, item.id)));
+    return rows;
+  }, [items]);
+
+  const patternRows = (pattern: DetectedPattern) => {
+    const rows: string[] = [];
+    pattern.events.forEach((event) => {
+      const row = rowOfEvent.get(event.id);
+      if (row && !rows.includes(row)) rows.push(row);
+    });
+    return rows;
+  };
+
+  const selectPattern = (pattern: DetectedPattern) => {
+    const rows = patternRows(pattern);
+    if (!rows.length) return;
+    setSelection({ selected: new Set(rows), anchor: rows[0], focus: rows[rows.length - 1] });
+    followRef.current = false;
+    scrollToRow(rows[0]);
+  };
+
+  // Only chains still in the log the panel shows
+  const shownPatterns = useMemo(() => patterns.filter((pattern) => patternRows(pattern).length > 0), [patterns, rowOfEvent]);
+
   // ---- actions
+
+  const downloadLog = () => {
+    const json = JSON.stringify(watchLogExport(log.events, log.values), null, 2);
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = watchLogFileName();
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const playSelected = () => {
     if (!selected.length) return;
@@ -227,6 +272,9 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
         Save as scenario
       </Button>
       <span className="ml-auto flex items-center gap-1">
+        <IconButton label="Download all events as JSON" size={26} disabled={!log.events.length} onClick={downloadLog}>
+          <IconDownload size={16} aria-hidden="true" />
+        </IconButton>
         <IconButton label="Delete selected rows" size={26} disabled={!selected.length || busy} onClick={deleteSelected}>
           <IconTrash size={16} aria-hidden="true" />
         </IconButton>
@@ -332,6 +380,8 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
           })}
         </div>
       </ListViewport>
+      <RepeatsStrip patterns={shownPatterns} onSelect={selectPattern} rowCount={(pattern) => patternRows(pattern).length} />
+      {children}
       {replay && (
         <ReplayBar role="status" aria-live="polite">
           <div className="flex items-center gap-2">
