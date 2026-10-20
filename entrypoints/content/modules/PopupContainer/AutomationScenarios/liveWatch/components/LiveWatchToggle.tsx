@@ -1,10 +1,10 @@
 import React, { useId } from "react";
 import styled from "styled-components";
 import { Button, Switch } from "antd";
-import { IconEye, IconLock } from "@tabler/icons-react";
+import { IconEye, IconList, IconLock } from "@tabler/icons-react";
 import { tokens } from "@entrypoints/shared/styles/tokens";
-import { clearWatchEvents, setLiveWatchEnabled, useLiveWatchSettings, useStoredWatchEventCount } from "../store";
-import { WATCH_EVENT_LIMIT } from "../utils/patterns";
+import { setLiveWatchEnabled, updateWatchPanel, useLiveWatchSettings } from "../store";
+import { clearWatchLog, useWatchLog } from "../useWatchLog";
 
 interface LiveWatchToggleProps {
   /** One row for the minimized Automation menu: the switch and a one-line hint */
@@ -22,9 +22,16 @@ const Box = styled.div`
  * Turns live watching on or off, and says plainly what it keeps and where, so nobody has to guess
  */
 export const LiveWatchToggle: React.FC<LiveWatchToggleProps> = ({ compact }) => {
-  const { enabled } = useLiveWatchSettings();
-  const storedCount = useStoredWatchEventCount();
+  const { enabled, limit, panel } = useLiveWatchSettings();
+  const storedCount = useWatchLog().events.length;
   const labelId = useId();
+
+  // Watching continues while the log is hidden: the log can be shown again from here
+  const showLog = enabled && !panel.open && (
+    <Button size="small" type="link" className="px-0" icon={<IconList size={14} />} onClick={() => updateWatchPanel({ open: true })}>
+      Show the log
+    </Button>
+  );
 
   const toggleRow = (
     <div className="flex items-center gap-2">
@@ -40,7 +47,10 @@ export const LiveWatchToggle: React.FC<LiveWatchToggleProps> = ({ compact }) => 
     return (
       <div className="py-1">
         {toggleRow}
-        <p className="m-0 mt-1 text-xs text-gray-500">Suggests repeated steps as scenarios. Data stays in this browser.</p>
+        <p className="m-0 mt-1 text-xs text-gray-500">
+          Logs your clicks, typing and pages, and suggests repeated steps. Data stays in this browser.
+        </p>
+        {showLog}
       </div>
     );
   }
@@ -49,26 +59,28 @@ export const LiveWatchToggle: React.FC<LiveWatchToggleProps> = ({ compact }) => 
     <Box>
       {toggleRow}
       <p className="m-0 mt-1 text-xs text-gray-600">
-        Notices steps you repeat on a site and offers to replay them, do them step by step, or save them as a
-        scenario. It also offers to finish a scenario you started by hand and shows the scenarios that use a field
-        you click. Off by default.
+        Logs every click, typing, choice, key and page change in a panel you can move anywhere. Select steps in the
+        log (Shift+click for a range, Ctrl/Cmd+click to add) to play them again or save them as a scenario. It also
+        notices steps you repeat, offers to finish a scenario you started by hand and shows the scenarios that use a
+        field you click. Off by default.
       </p>
       <p className="m-0 mt-2 flex gap-1 text-xs text-gray-600">
         <IconLock size={14} className="flex-none mt-px" aria-hidden="true" />
         <span>
-          Only your last {WATCH_EVENT_LIMIT} actions are kept, in this browser's extension storage. Nothing is sent
-          anywhere. Typed text is not stored: it stays in memory for the open page, unless you save a scenario with it.
-          Password and card fields are never read.
+          Only your last {limit.toLocaleString()} actions are kept, in this browser's extension storage. Nothing is
+          sent anywhere. Typed text is kept in memory only and is gone when the browser closes, unless you save a
+          scenario with it. Password and card fields are never read.
         </span>
       </p>
       {storedCount > 0 && (
         <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
           <span>{storedCount} actions stored</span>
-          <Button type="link" size="small" className="px-0" onClick={() => clearWatchEvents()}>
+          <Button type="link" size="small" className="px-0" onClick={() => clearWatchLog()}>
             Clear
           </Button>
         </div>
       )}
+      {showLog}
     </Box>
   );
 };

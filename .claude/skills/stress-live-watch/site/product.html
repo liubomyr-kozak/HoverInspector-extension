@@ -1,0 +1,9 @@
+<!doctype html><html><head><title>Product</title><link rel="stylesheet" href="common.css"></head><body><nav><a href="shop.html">Shop</a><a href="form.html">Form</a><a href="app.html">App</a><a href="todo.html">Todo</a></nav>
+<h1 id="h"></h1>
+<label>Quantity <input id="qty" type="number" value="1"></label>
+<label>Size <select id="size"><option>Small</option><option>Medium</option><option>Large</option></select></label>
+<label><input type="checkbox" id="gift"> Gift wrap</label>
+<button id="add">Add to basket</button> <span id="msg"></span>
+<p><a href="shop.html">Back to shop</a></p>
+<script>const id=new URLSearchParams(location.search).get('id');document.getElementById('h').textContent='Product '+id;
+document.getElementById('add').onclick=()=>{document.getElementById('msg').textContent='Added';};</script></body></html>

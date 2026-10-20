@@ -149,3 +149,4 @@ Much old code breaks these rules (hard-coded colours, `any`, Ukrainian comments)
 - `write-code-in-house-style` - short checklist for any code change.
 - `fix-ui-bug` - reproduce in Chromium, fix the root cause, verify at 320/440px.
 - `verify-in-browser` - the Playwright script that opens a tool with the built extension and screenshots it.
+- `stress-live-watch` - 1000-2000 real user actions on a local multi-page site, compared with the watch log per use case.

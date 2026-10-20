@@ -12,7 +12,6 @@ export enum RunPhase {
   WAITING_USER = "waitingUser",
   /** A typing step needs its text */
   WAITING_VALUE = "waitingValue",
-  DONE = "done",
   FAILED = "failed",
 }
 
@@ -95,7 +94,8 @@ export function usePatternRun() {
   useEffect(() => {
     if (!run || run.phase !== RunPhase.PLAYING || playedIndexRef.current === run.index) return;
     if (run.index >= run.steps.length) {
-      setRun({ ...run, phase: RunPhase.DONE });
+      // Done: the card closes, the user goes on with their work (no push to save a scenario)
+      setRun(null);
       return;
     }
     const step = run.steps[run.index];

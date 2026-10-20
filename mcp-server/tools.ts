@@ -287,9 +287,9 @@ export function registerTools(server: McpServer, bridge: ExtensionBridge) {
       title: "Repeated action patterns",
       description:
         "Action sequences the user repeated, found by Automation live watching (it must be on in the extension), " +
-        "each with ready scenario steps and whether it is already saved. A starting point for save_scenario. Typed " +
-        "text is never recorded, so input steps have no value.",
-      inputSchema: { limit: z.number().int().min(1).max(20).optional() },
+        "each with its site, ready scenario steps and whether it is already saved. A starting point for save_scenario. " +
+        "Typed text is not shared, so input steps have no value. origin (e.g. https://example.com) limits it to one site.",
+      inputSchema: { limit: z.number().int().min(1).max(20).optional(), origin: z.string().optional() },
       annotations: readOnly,
     },
     forward(BridgeMethod.GET_LIVE_WATCH_PATTERNS),

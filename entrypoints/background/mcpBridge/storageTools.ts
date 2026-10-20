@@ -2,17 +2,19 @@ import { browser } from "wxt/browser";
 
 import AppStorageService from "@entrypoints/core/services/storage/AppStorageService";
 import { GRID_STORAGE_KEY, THEME_STORAGE_KEY } from "@entrypoints/core/constants/designTheme";
-import { LIVE_WATCH_EVENTS_KEY, LIVE_WATCH_SETTINGS_KEY } from "@entrypoints/core/constants/liveWatch";
+import { LIVE_WATCH_SETTINGS_KEY } from "@entrypoints/core/constants/automation";
 import type { BridgeParams } from "@entrypoints/core/mcp/types";
 import type { CSSSnapshot, SnapshotNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/types";
 import type { Scenario, ScenarioMap } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
+import type { WatchEvent } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/types";
 import {
   describeEvent,
   eventsToSteps,
   findPatterns,
   isPatternSaved,
-  sanitizeEvents,
 } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/utils/patterns";
+import { patternActions } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/utils/smartLog";
+import { loadStoredLog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/watchLogStorage";
 import { isDesignTheme } from "@entrypoints/content/modules/SettingsIconBox/components/ColorPaletteDefinition/utils/themeDiff";
 
 import { optionalBoolean, optionalNumber, optionalString, requireString } from "./params";
@@ -168,7 +170,8 @@ export async function saveScenario(params: BridgeParams) {
 
 export async function getLiveWatchPatterns(params: BridgeParams) {
   const limit = Math.min(Math.max(optionalNumber(params, "limit") ?? 5, 1), 20);
-  const stored = await browser.storage.local.get([LIVE_WATCH_SETTINGS_KEY, LIVE_WATCH_EVENTS_KEY]);
+  const origin = optionalString(params, "origin");
+  const stored = await browser.storage.local.get(LIVE_WATCH_SETTINGS_KEY);
   // Read here rather than through liveWatch/store, which is a React store for the panel
   const settings: unknown = stored[LIVE_WATCH_SETTINGS_KEY];
   const settingsRecord = typeof settings === "object" && settings !== null ? (settings as Record<string, unknown>) : {};
@@ -177,21 +180,31 @@ export async function getLiveWatchPatterns(params: BridgeParams) {
       ? settingsRecord.dismissedPatterns.filter((id): id is string => typeof id === "string")
       : [],
   );
-  const events = sanitizeEvents(stored[LIVE_WATCH_EVENTS_KEY]);
+  const log = await loadStoredLog();
+  const events: WatchEvent[] = [];
+  log.chunks.forEach((list) => list.forEach((event) => !log.hidden.has(event.id) && events.push(event)));
+  events.sort((a, b) => a.time - b.time);
   const scenarios = await readScenarios();
+
+  // Repeats are looked for per site, as the panel does
+  const origins = origin ? [origin] : [...new Set(events.map((event) => event.origin))];
+  const patterns = origins.flatMap((site) =>
+    findPatterns(patternActions(events, site), limit)
+      .filter((pattern) => !dismissed.has(pattern.id))
+      .map((pattern) => ({
+        id: pattern.id,
+        origin: site,
+        occurrences: pattern.occurrences,
+        actions: pattern.events.map(describeEvent),
+        alreadySavedAsScenario: isPatternSaved(pattern, scenarios),
+        // Typed text is not given to agents, so input steps come without a value: ask the user or fill it in
+        steps: eventsToSteps(pattern.events),
+      })),
+  );
 
   return {
     liveWatchEnabled: settingsRecord.enabled === true,
     watchedEvents: events.length,
-    patterns: findPatterns(events, limit)
-      .filter((pattern) => !dismissed.has(pattern.id))
-      .map((pattern) => ({
-        id: pattern.id,
-        occurrences: pattern.occurrences,
-        actions: pattern.events.map(describeEvent),
-        alreadySavedAsScenario: isPatternSaved(pattern, scenarios),
-        // Typed text is never watched, so input steps come without a value: ask the user or fill it in
-        steps: eventsToSteps(pattern.events),
-      })),
+    patterns: patterns.sort((a, b) => b.occurrences - a.occurrences).slice(0, limit),
   };
 }

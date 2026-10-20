@@ -1,0 +1,22 @@
+<!doctype html><html><head><title>App</title><link rel="stylesheet" href="common.css"></head><body><nav><a href="shop.html">Shop</a><a href="form.html">Form</a><a href="app.html">App</a><a href="todo.html">Todo</a></nav>
+<h1>Mail app</h1>
+<div><button data-r="inbox">Inbox</button><button data-r="sent">Sent</button><button data-r="settings">Settings</button>
+<button id="more" aria-haspopup="menu">More actions</button></div>
+<div id="view"></div>
+<script>
+let msgs=Array.from({length:12},(_,i)=>'Message '+(i+1));
+function view(r){const v=document.getElementById('view');
+if(r==='settings'){v.innerHTML='<h2>Settings</h2><button role="switch" aria-checked="false" aria-label="Dark mode">Dark mode</button> <button role="switch" aria-checked="false" aria-label="Sounds">Sounds</button><label>Display name <input id="dn"></label><button id="savedn">Save name</button>';}
+else{v.innerHTML='<h2>'+(r==='sent'?'Sent':'Inbox')+'</h2>'+msgs.map((m,i)=>'<div class="row" data-i="'+i+'"><span>'+(r==='sent'?'Sent ':'')+m+'</span><button aria-label="Archive '+m+'">x</button></div>').join('');}}
+function go(r){history.pushState({r},'','?view='+r);view(r);}
+view(new URLSearchParams(location.search).get('view')||'inbox');
+addEventListener('popstate',e=>view((e.state&&e.state.r)||'inbox'));
+document.addEventListener('click',e=>{
+ const nb=e.target.closest('[data-r]');if(nb)go(nb.dataset.r);
+ const sw=e.target.closest('[role=switch]');if(sw)sw.setAttribute('aria-checked',sw.getAttribute('aria-checked')==='true'?'false':'true');
+ const ar=e.target.closest('button[aria-label^=Archive]');if(ar){const row=ar.closest('.row');msgs.splice(+row.dataset.i,1);if(msgs.length<4)msgs=Array.from({length:12},(_,i)=>'Message '+(i+1));view('inbox');return;}
+ const row=e.target.closest('.row');if(row){row.style.background='#eef';}
+ if(e.target.id==='more'){const m=document.createElement('div');m.className='menu';m.setAttribute('role','menu');m.innerHTML='<div role="menuitem">Rename</div><div role="menuitem">Duplicate</div>';document.body.appendChild(m);m.style.top='120px';m.style.left='600px';return;}
+ const mi=e.target.closest('[role=menuitem]');if(mi){mi.parentElement.remove();}
+});
+</script></body></html>

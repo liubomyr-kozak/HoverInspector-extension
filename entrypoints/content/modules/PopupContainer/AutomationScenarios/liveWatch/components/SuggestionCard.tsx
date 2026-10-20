@@ -14,6 +14,7 @@ import {
   IconPointer,
   IconRefresh,
   IconSelector,
+  IconWorld,
   IconX,
 } from "@tabler/icons-react";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
@@ -28,6 +29,8 @@ import {
   Body,
   Card,
   CountBadge,
+  DockedCard,
+  DockedHeader,
   Dot,
   ErrorBox,
   Footer,
@@ -50,6 +53,7 @@ const KIND_ICONS: Record<WatchEventKind, React.ComponentType> = {
   [WatchEventKind.INPUT]: IconForms,
   [WatchEventKind.SELECT]: IconSelector,
   [WatchEventKind.KEY_PRESS]: IconKeyboard,
+  [WatchEventKind.NAVIGATE]: IconWorld,
 };
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
@@ -179,45 +183,38 @@ const useSuggestionParts = (suggestion: Suggestion, { onHover }: SectionProps): 
     };
   }
 
-  const isContinuation = suggestion.kind === SuggestionKind.CONTINUE_PATTERN;
-  const events = isContinuation ? suggestion.pattern.events.slice(suggestion.doneCount) : suggestion.pattern.events;
+  const { events } = suggestion.pattern;
   const needsText = events.some((event) => event.kind === WatchEventKind.INPUT);
 
   return {
     body: (
       <>
         <Headline>
-          {isContinuation ? "Finish the steps you repeat?" : `You repeat these ${plural(events.length, "step")}`}
-          {!isContinuation && <CountBadge>{suggestion.pattern.occurrences}×</CountBadge>}
+          You repeat these {plural(events.length, "step")}
+          <CountBadge>{suggestion.pattern.occurrences}×</CountBadge>
         </Headline>
-        <Hint>
-          {isContinuation
-            ? `${suggestion.doneCount} of ${suggestion.pattern.events.length} done. Next:`
-            : `Hover a step to see it on the page.${needsText ? " Fields ask for their text." : ""}`}
-        </Hint>
-        <StepList events={events} firstNumber={isContinuation ? suggestion.doneCount + 1 : 1} onHover={onHover} />
+        <Hint>Hover a step to see it on the page.{needsText ? " Fields ask for their text." : ""}</Hint>
+        <StepList events={events} onHover={onHover} />
       </>
     ),
     footer: (
       <>
         <Button size="small" type="primary" icon={buttonIcon(IconPlayerPlayFilled)} onClick={() => playPattern(false)}>
-          {isContinuation ? "Play the rest" : "Play"}
+          Play
         </Button>
         <Button size="small" icon={buttonIcon(IconHandFinger)} onClick={() => playPattern(true)}>
           Step by step
         </Button>
-        {!isContinuation && (
-          <Button size="small" type="text" className="ml-auto" icon={buttonIcon(IconDeviceFloppy)} onClick={savePattern}>
-            Save
-          </Button>
-        )}
+        <Button size="small" type="text" className="ml-auto" icon={buttonIcon(IconDeviceFloppy)} onClick={savePattern}>
+          Save
+        </Button>
       </>
     ),
   };
 };
 
 const useRunParts = (run: PatternRun, { onHover }: SectionProps): CardParts => {
-  const { doStep, skipStep, stopRun, savePattern, typedValue } = useLiveWatch();
+  const { doStep, skipStep, stopRun, typedValue } = useLiveWatch();
   const event = run.events[run.index];
   const [text, setText] = useState("");
   // Long patterns: keep the current step in the listed window
@@ -227,32 +224,6 @@ const useRunParts = (run: PatternRun, { onHover }: SectionProps): CardParts => {
   useEffect(() => {
     if (run.phase === RunPhase.WAITING_VALUE) setText(run.steps[run.index]?.value ?? typedValue(event?.xpath ?? "") ?? "");
   }, [run.phase, run.index]);
-
-  if (run.phase === RunPhase.DONE) {
-    return {
-      body: (
-        <>
-          <Headline>
-            All {plural(run.steps.length, "step")} done
-            <CountBadge>
-              <IconCheck size={12} className="align-[-2px]" aria-hidden="true" />
-            </CountBadge>
-          </Headline>
-          <Hint>Save them as a scenario to run them from the Automation panel, on a schedule or by a trigger.</Hint>
-        </>
-      ),
-      footer: (
-        <>
-          <Button size="small" type="primary" icon={buttonIcon(IconDeviceFloppy)} onClick={savePattern}>
-            Save as scenario
-          </Button>
-          <Button size="small" type="text" onClick={stopRun}>
-            Close
-          </Button>
-        </>
-      ),
-    };
-  }
 
   const waitingForUser = run.phase === RunPhase.WAITING_USER || run.phase === RunPhase.FAILED;
   return {
@@ -343,50 +314,79 @@ const CardSections: React.FC<CardParts> = ({ body, footer }) => (
   </>
 );
 
+interface SuggestionCardProps {
+  /** Inside the watch log panel instead of floating in the corner */
+  docked?: boolean;
+}
+
 /**
- * The live watching card, fixed in the bottom-right corner: a suggestion, or the replay of a pattern.
- * Same anatomy as the tool panel (feature icon and uppercase title, body, muted footer with the actions).
+ * The live watching card: a suggestion, or the replay of a pattern. While the watch log panel is open it
+ * is docked at the panel's bottom; otherwise it floats in the bottom-right corner, built like the tool
+ * panel (feature icon and uppercase title, body, muted footer with the actions).
  */
-export const SuggestionCard: React.FC = () => {
+export const SuggestionCard: React.FC<SuggestionCardProps> = ({ docked = false }) => {
   const { suggestion, run, close, stopRun, dismissForever } = useLiveWatch();
   const [hovered, setHovered] = useState<WatchEvent | null>(null);
 
   useEffect(() => setHovered(null), [suggestion, run?.index]);
 
   if (!suggestion && !run) return null;
+  // The watch log lists repeats itself (see RepeatsStrip)
+  if (docked && !run && suggestion?.kind === SuggestionKind.PATTERN) return null;
 
-  const current = run && run.phase !== RunPhase.DONE ? run.events[run.index] : null;
+  const current = run ? run.events[run.index] : null;
   const outlined = hovered || current;
-  const title = run ? (run.guided ? "Step by step" : "Live watching") : "Live watching";
+  const title = run?.guided ? "Step by step" : docked ? (run ? "Playing the steps you repeat" : "Suggestion") : "Live watching";
   const canDismiss = !run && suggestion && suggestion.kind !== SuggestionKind.CONTINUE_SCENARIO;
+  const buttonSize = docked ? 24 : 28;
+  const actions = (
+    <>
+      {canDismiss && (
+        <IconButton
+          label={suggestion.kind === SuggestionKind.FIELD ? "Don't suggest for this field" : "Don't suggest this again"}
+          size={buttonSize}
+          onClick={dismissForever}
+        >
+          <IconEyeOff />
+        </IconButton>
+      )}
+      <IconButton label={run ? "Stop" : "Close suggestion"} size={buttonSize} onClick={run ? stopRun : close}>
+        <IconX />
+      </IconButton>
+    </>
+  );
+  const content = (
+    <>
+      {run && <Progress $value={run.index / run.steps.length} aria-hidden="true" />}
+      {run ? <RunContent run={run} onHover={setHovered} /> : <SuggestionContent suggestion={suggestion!} onHover={setHovered} />}
+    </>
+  );
 
   return (
     <>
       {outlined && (
         <TargetHighlight xpath={outlined.xpath} alternativeXpaths={outlined.alternativeXpaths} scrollIntoView={!hovered} />
       )}
-      <Card aria-label="Live watching suggestion">
-        <Header>
-          <FeatureTitle>
-            <FeatureIcon icon={IconEye} size={18} />
-            <FeatureTitleText>{title}</FeatureTitleText>
-          </FeatureTitle>
-          {canDismiss && (
-            <IconButton
-              label={suggestion.kind === SuggestionKind.FIELD ? "Don't suggest for this field" : "Don't suggest this again"}
-              size={28}
-              onClick={dismissForever}
-            >
-              <IconEyeOff />
-            </IconButton>
-          )}
-          <IconButton label={run ? "Stop" : "Close suggestion"} size={28} onClick={run ? stopRun : close}>
-            <IconX />
-          </IconButton>
-        </Header>
-        {run && run.phase !== RunPhase.DONE && <Progress $value={run.index / run.steps.length} aria-hidden="true" />}
-        {run ? <RunContent run={run} onHover={setHovered} /> : <SuggestionContent suggestion={suggestion!} onHover={setHovered} />}
-      </Card>
+      {docked ? (
+        <DockedCard aria-label="Live watching suggestion">
+          <DockedHeader>
+            <span className="min-w-0 flex-1 truncate">{title}</span>
+            {actions}
+          </DockedHeader>
+          {content}
+        </DockedCard>
+      ) : (
+        <Card aria-label="Live watching suggestion">
+          <Header>
+            <FeatureTitle>
+              <FeatureIcon icon={IconEye} size={18} />
+              <FeatureTitleText>{title}</FeatureTitleText>
+            </FeatureTitle>
+            {actions}
+          </Header>
+          {content}
+        </Card>
+      )}
     </>
   );
 };

@@ -6,6 +6,7 @@ import { actionsContextSlice } from "./store/backgroundSlice.ts";
 import { appBackgroundSlice } from "./store/appBackgroundSlice.ts";
 import { handleAutomationTabPort, registerAutomationTabListeners } from "./automationTabs.ts";
 import { registerFrameAgentRelay } from "./frameAgentRelay.ts";
+import { registerLiveWatchCapture } from "./liveWatchCapture.ts";
 import { registerMcpBridge } from "./mcpBridge/bridgeConnection";
 
 let lastBrowserAction;
@@ -81,6 +82,7 @@ export default defineBackground({
 
     registerAutomationTabListeners();
     registerFrameAgentRelay();
+    registerLiveWatchCapture();
     registerMcpBridge();
 
     const debounceMap: Record<number, NodeJS.Timeout> = {};

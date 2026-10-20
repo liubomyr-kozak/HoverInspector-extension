@@ -8,6 +8,7 @@ import {
 } from "@entrypoints/shared/globalEvents.ts";
 import { Ext } from "@entrypoints/features/extension/Ext";
 import { sendMessage } from "@entrypoints/features/extension/messaging.ts";
+import { createSerialByKey } from "@entrypoints/shared/utils/serialByKey.ts";
 
 const PATH_TO_JS_FILE = "content-scripts/content.js";
 
@@ -20,6 +21,13 @@ export const Status = {
 export class ExtensionInstanceTabLoader {
   tabId = 0;
   status = Status.INITIAL;
+
+  // executeScript waits until the page is idle, and the content script answers the health check only
+  // after that. A second check in the meantime (the page changed its URL while loading, a click on the
+  // toolbar button) found no answer and injected another copy of the whole content script; the old
+  // copies stayed in memory (about 6 MB each) with their listeners. Checks for one tab now wait for the
+  // previous one, so the second check finds the injected script and only activates it.
+  private serialPerTab = createSerialByKey<number>();
 
   // init = (tabId) => {
   //   this.tabId = tabId;
@@ -58,7 +66,9 @@ export class ExtensionInstanceTabLoader {
     }
   };
 
-  checkScript = async (tabId: number) => {
+  checkScript = (tabId: number) => this.serialPerTab(tabId, () => this.checkScriptNow(tabId));
+
+  private checkScriptNow = async (tabId: number) => {
     let action = "idle";
 
     try {
