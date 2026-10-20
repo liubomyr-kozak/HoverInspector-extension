@@ -1,6 +1,5 @@
 import { defineConfig, UserConfig } from "wxt";
 
-import react from "@vitejs/plugin-react";
 import Svgr from "vite-plugin-svgr";
 
 // See https://wxt.dev/api/config.html
@@ -45,7 +44,9 @@ export default defineConfig({
   // with source maps). "development" belongs to the standalone page; see the scripts in package.json.
   vite: ({ mode }) => ({
     build: mode === "production" ? {} : { minify: false, sourcemap: true },
-    plugins: [react(), Svgr()],
+    // React (and its hot reload) comes from @wxt-dev/module-react; adding react() here too injects the
+    // refresh preamble twice and the dev server fails with "inWebWorker has already been declared".
+    plugins: [Svgr()],
     resolve: {
       // The default react-toastify build injects its stylesheet (and :root variables) into the page's
       // <head>. Our toasts live in the shadow root, which gets the CSS separately (see content/app.tsx).
