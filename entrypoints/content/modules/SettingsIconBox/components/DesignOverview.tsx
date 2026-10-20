@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, ConfigProvider, Radio } from "antd";
 import { LoadingState } from "@entrypoints/shared/components/LoadingState";
 import { toast } from "react-toastify";
@@ -25,7 +25,24 @@ import {
 import { usePalette } from "./ColorPaletteDefinition/PaletteContext";
 import { matchTypeStyle, matchValue, summarize, type ThemeMatch } from "./ColorPaletteDefinition/utils/themeDiff";
 import { MatchBadge } from "./ColorPaletteDefinition/tokenUi/MatchBadge";
-import { shadowLabel, typeStyleLabel } from "./ColorPaletteDefinition/TokenTabs";
+import {
+  shadowLabel,
+  typeStyleLabel,
+  useBordersDetail,
+  useShadowsDetail,
+  useSpacingDetail,
+  useTypeDetail,
+} from "./ColorPaletteDefinition/TokenTabs";
+import { useColorUsageDetail } from "./ColorPaletteDefinition/ColorPaletteDefinition";
+import { PALETTE_TAB_BAR_HEIGHT_VAR, type PaletteTab } from "./ColorPaletteDefinition/PaletteContext";
+import { TokenDetailPanel } from "./ColorPaletteDefinition/tokenUi/TokenDetailPanel";
+import {
+  STICKY_CARD_TOP,
+  useScrollParentHeight,
+  useWidth,
+  WIDE_MIN,
+  type TokenEntry,
+} from "./ColorPaletteDefinition/tokenUi/TokenTabLayout";
 
 /**
  * A design-system style overview of the page (like a Storybook docs page: colours, type scale,
@@ -46,6 +63,21 @@ const CATEGORY_LABEL: Record<IssueCategory, string> = {
   radius: "Radius",
   shadow: "Shadow",
 };
+
+/** The part of the Overview a value was picked in: in a narrow panel its details open right there */
+type OverviewArea = "issues" | "color" | "typography" | "spacing" | "radius" | "shadow";
+
+/** A value picked in the Overview: its details open beside the list instead of in another tab */
+interface OverviewSelection {
+  area: OverviewArea;
+  tab: PaletteTab;
+  entry: TokenEntry;
+  /** Where in the area: the issue card (its id) or the colour group (Text, Background, Border) */
+  group?: string;
+}
+
+const sameSelection = (a: OverviewSelection | null, b: OverviewSelection) =>
+  !!a && a.area === b.area && a.group === b.group && a.entry.id === b.entry.id;
 
 const isColorValue = (value: string) => /^#[0-9A-F]{6,8}$/i.test(value);
 
@@ -160,11 +192,21 @@ const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   </div>
 );
 
-const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: number }> = ({
-  issue,
-  onShow,
-  position,
-}) => {
+const IssueCard: React.FC<{
+  issue: DesignIssue;
+  onShow: () => void;
+  position?: number;
+  /** Opens the value's details and shows its elements; false when the value is not in the scan (then it is copied) */
+  onPick: (value: string) => boolean;
+  selectedValue?: string;
+  /** The details of a value picked in this card (narrow panel) */
+  children?: React.ReactNode;
+}> = ({ issue, onShow, position, onPick, selectedValue, children }) => {
+  const pick = (value: string) => {
+    if (!onPick(value)) copy(value, value);
+  };
+  const chipClass = (value: string) =>
+    value === selectedValue ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-gray-50 hover:bg-gray-100";
   const sev = SEVERITY_STYLE[issue.severity];
   return (
     <div className="border border-gray-200 rounded-md p-2.5 mb-2 bg-white">
@@ -182,10 +224,12 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
             <div className="flex flex-wrap gap-1 mt-1.5">
               {issue.values.slice(0, 12).map((value) => (
                 <button
+                  type="button"
                   key={value}
-                  onClick={() => copy(value, value)}
-                  title={`Copy ${value}`}
-                  className="inline-flex items-center gap-1 text-[11px] font-mono px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700"
+                  onClick={() => pick(value)}
+                  aria-pressed={value === selectedValue}
+                  title={`Show ${value} on the page and its details`}
+                  className={`inline-flex items-center gap-1 text-[11px] font-mono px-1.5 py-0.5 rounded border text-gray-700 ${chipClass(value)}`}
                 >
                   {isColorValue(value) && (
                     <span className="w-3 h-3 rounded-sm border border-gray-300" style={{ background: value }} />
@@ -206,9 +250,11 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
                     <React.Fragment key={value}>
                       {i === 1 && <span className="text-gray-500">≈</span>}
                       <button
-                        onClick={() => copy(value, value)}
-                        title={`Copy ${value}`}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100"
+                        type="button"
+                        onClick={() => pick(value)}
+                        aria-pressed={value === selectedValue}
+                        title={`Show ${value} on the page and its details`}
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border ${chipClass(value)}`}
                       >
                         {isColorValue(value) && (
                           <span className="w-3 h-3 rounded-sm border border-gray-300" style={{ background: value }} />
@@ -234,6 +280,7 @@ const IssueCard: React.FC<{ issue: DesignIssue; onShow: () => void; position?: n
           )}
         </div>
       </div>
+      {children && <div className="mt-2">{children}</div>}
     </div>
   );
 };
@@ -242,38 +289,43 @@ const SwatchGrid: React.FC<{
   audit: DesignAudit;
   colors: ValueUsage[];
   matchOf: (value: string) => ThemeMatch | null;
-  onOpen: (usage: ValueUsage) => void;
-}> = ({ audit, colors, matchOf, onOpen }) => (
+  selectedValue?: string;
+  onPick: (usage: ValueUsage) => void;
+  /** Opens across the grid right after the selected swatch */
+  inlinePanel?: React.ReactNode;
+}> = ({ audit, colors, matchOf, selectedValue, onPick, inlinePanel }) => (
   <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))" }}>
     {colors.map((c) => {
       const source = sourceHint(audit, c);
       const match = matchOf(c.value);
+      const selected = c.value === selectedValue;
       return (
-        <div key={c.value} className="relative rounded-md border border-gray-200 overflow-hidden bg-white">
-          <button
-            className="block w-full h-10"
-            style={{ background: c.value }}
-            onClick={() => onOpen(c)}
-            title={`Details of ${c.value}${source.title ? `\n${source.title}` : ""}`}
-            aria-label={`Details of ${c.value}`}
-          />
+        <React.Fragment key={c.value}>
+        <button
+          type="button"
+          onClick={() => onPick(c)}
+          aria-pressed={selected}
+          title={`Show ${c.value} on the page and its details${source.title ? `\n${source.title}` : ""}`}
+          className={`relative block rounded-md border overflow-hidden text-left ${
+            selected ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-white hover:bg-gray-50"
+          }`}
+        >
+          <span className="block w-full h-10" style={{ background: c.value }} />
           <MatchBadge match={match} className="absolute top-1 right-1" />
-          <button
-            className="w-full px-1.5 py-1 text-left hover:bg-gray-50"
-            onClick={() => copy(c.value, c.value)}
-            title={`Copy ${c.value}${source.title ? `\n${source.title}` : ""}`}
-          >
-            <div className="text-[11px] font-mono text-gray-800 truncate">{c.value}</div>
+          <span className="block px-1.5 py-1">
+            <span className="block text-[11px] font-mono text-gray-800 truncate">{c.value}</span>
             {(match?.status === "match" || source.variables.length > 0) && (
-              <div className="text-[10px] font-mono text-blue-700 truncate">
+              <span className="block text-[10px] font-mono text-blue-700 truncate">
                 {match?.status === "match" ? match.token : source.variables[0]}
-              </div>
+              </span>
             )}
-            <div className="text-[10px] text-gray-600">
+            <span className="block text-[10px] text-gray-600">
               {c.count} {c.count === 1 ? "use" : "uses"}
-            </div>
-          </button>
-        </div>
+            </span>
+          </span>
+        </button>
+        {selected && inlinePanel && <div style={{ gridColumn: "1 / -1" }}>{inlinePanel}</div>}
+        </React.Fragment>
       );
     })}
   </div>
@@ -293,6 +345,18 @@ export const DesignOverview: React.FC = () => {
   } = usePalette();
   const [filter, setFilter] = useState<IssueCategory | "all">("all");
   const cycler = useElementCycler();
+  const highlight = useHighlightOverlay();
+  const [selected, setSelected] = useState<OverviewSelection | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const wide = useWidth(containerRef) >= WIDE_MIN;
+  const scrollerHeight = useScrollParentHeight(containerRef);
+
+  const colorDetail = useColorUsageDetail();
+  const typeDetail = useTypeDetail();
+  const spacingDetail = useSpacingDetail();
+  const bordersDetail = useBordersDetail();
+  const shadowsDetail = useShadowsDetail();
 
   /** Theme status of every value, by kind and value */
   const matches = useMemo(() => {
@@ -313,6 +377,93 @@ export const DesignOverview: React.FC = () => {
     [matches],
   );
 
+  const detailOf = useCallback(
+    (selection: OverviewSelection) => {
+      switch (selection.tab) {
+        case "color-palette":
+          return colorDetail(selection.entry);
+        case "typography":
+          return typeDetail(selection.entry);
+        case "spacing":
+          return spacingDetail(selection.entry);
+        case "borders":
+          return bordersDetail(selection.entry);
+        case "shadows":
+          return shadowsDetail(selection.entry);
+        default:
+          return null;
+      }
+    },
+    [colorDetail, typeDetail, spacingDetail, bordersDetail, shadowsDetail],
+  );
+
+  /** Opens the value's details here and scrolls the page to its first element; a second click closes them */
+  const select = useCallback(
+    (selection: OverviewSelection) => {
+      if (sameSelection(selected, selection)) {
+        setSelected(null);
+        return;
+      }
+      setSelected(selection);
+      const first = detailOf(selection)?.elements.find((element) => element.isConnected);
+      if (first) highlight.startHighlight(highlight.generateXPath(first));
+    },
+    [selected, detailOf, highlight],
+  );
+
+  const entry = (id: string, value: string, label: string, count: number, match: ThemeMatch | null): TokenEntry => ({
+    id,
+    key: value,
+    label,
+    count,
+    match,
+  });
+
+  /** An issue's value as a value of the scan (colour, spacing, radius, font size, shadow), or null */
+  const issueSelection = (group: string, value: string): OverviewSelection | null => {
+    if (!audit) return null;
+    const find = (list: ValueUsage[]) => list.find((usage) => usage.value === value);
+    const colors = [...audit.colors.text, ...audit.colors.background, ...audit.colors.border].filter((c) => c.value === value);
+    if (colors.length) {
+      const count = colors.reduce((sum, c) => sum + c.count, 0);
+      return { area: "issues", group, tab: "color-palette", entry: entry(value, value, value, count, matchOf("color", value)) };
+    }
+    const spacing = find(audit.spacing);
+    if (spacing) return { area: "issues", group, tab: "spacing", entry: entry(value, value, value, spacing.count, matchOf("spacing", value)) };
+    const radius = find(audit.radii);
+    if (radius) {
+      return { area: "issues", group, tab: "borders", entry: entry(`radius:${value}`, value, value, radius.count, matchOf("radius", value)) };
+    }
+    const size = find(audit.fontSizes);
+    if (size) {
+      const match = theme ? matchValue("fontSize", value, theme, { rootFontSize }) : null;
+      return { area: "issues", group, tab: "typography", entry: entry(`size:${value}`, value, value, size.count, match) };
+    }
+    const shadow = find(audit.shadows);
+    if (shadow) return { area: "issues", group, tab: "shadows", entry: entry(value, value, value, shadow.count, matchOf("shadow", value)) };
+    return null;
+  };
+
+  const detail = selected ? detailOf(selected) : null;
+
+  // Bring the details into view when a value is picked; side by side the card is sticky and already in view
+  useEffect(() => {
+    if (!selected || wide) return;
+    const frame = requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+    return () => cancelAnimationFrame(frame);
+  }, [selected, wide]);
+
+  const panel = detail && (
+    <div ref={detailRef} style={{ scrollMarginTop: STICKY_CARD_TOP }}>
+      <TokenDetailPanel detail={detail} themeActive={!!theme} onClose={() => setSelected(null)} />
+    </div>
+  );
+  /** The details under the area the value was picked in (narrow panel only) */
+  const inlinePanel = (area: OverviewArea, group?: string) =>
+    !wide && selected?.area === area && selected.group === group ? panel : null;
+  const selectedIn = (area: OverviewArea, group?: string) =>
+    selected?.area === area && selected.group === group ? selected.entry.key : undefined;
+
   const categories = useMemo(() => {
     if (!audit) return [];
     return [...new Set(audit.issues.map((i) => i.category))];
@@ -320,7 +471,7 @@ export const DesignOverview: React.FC = () => {
 
   if (error) {
     return (
-      <div role="alert" className="flex items-center gap-2 text-sm text-red-700">
+      <div ref={containerRef} role="alert" className="flex items-center gap-2 text-sm text-red-700">
         <IconAlertTriangle size={16} className="shrink-0" />
         <span className="flex-1">{error}</span>
         <Button size="small" onClick={scan}>
@@ -331,7 +482,11 @@ export const DesignOverview: React.FC = () => {
   }
 
   if (!audit) {
-    return <LoadingState inline label="Analysing the page…" progress={progress} progressUnit="elements" />;
+    return (
+      <div ref={containerRef}>
+        <LoadingState inline label="Analysing the page…" progress={progress} progressUnit="elements" />
+      </div>
+    );
   }
 
   const issues = filter === "all" ? audit.issues : audit.issues.filter((i) => i.category === filter);
@@ -341,7 +496,8 @@ export const DesignOverview: React.FC = () => {
   const maxSpacing = Math.max(...audit.spacing.map((s) => s.size ?? 0), 1);
 
   return (
-    <div className="text-gray-800">
+    <div ref={containerRef} className={`text-gray-800 ${wide && panel ? "flex items-start gap-4" : ""}`}>
+      <div className={wide && panel ? "flex-1 min-w-0" : undefined}>
       {/* Summary */}
       <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 mb-3">
         <ScoreBadge score={audit.score} />
@@ -428,7 +584,15 @@ export const DesignOverview: React.FC = () => {
                 issue={issue}
                 position={cycler.position(issue.id)}
                 onShow={() => cycler.show(issue.id, issue.elements)}
-              />
+                onPick={(value) => {
+                  const selection = issueSelection(issue.id, value);
+                  if (selection) select(selection);
+                  return !!selection;
+                }}
+                selectedValue={selectedIn("issues", issue.id)}
+              >
+                {inlinePanel("issues", issue.id)}
+              </IssueCard>
             ))}
           </>
         )}
@@ -455,7 +619,16 @@ export const DesignOverview: React.FC = () => {
                 audit={audit}
                 colors={colors}
                 matchOf={(value) => matchOf("color", value)}
-                onOpen={(c) => openToken("color-palette", c.value)}
+                selectedValue={selectedIn("color", label)}
+                inlinePanel={inlinePanel("color", label)}
+                onPick={(c) =>
+                  select({
+                    area: "color",
+                    group: label,
+                    tab: "color-palette",
+                    entry: entry(c.value, c.value, c.value, c.count, matchOf("color", c.value)),
+                  })
+                }
               />
             </div>
           ) : null,
@@ -473,11 +646,21 @@ export const DesignOverview: React.FC = () => {
           Families: {audit.families.map((f) => `${f.value} (${f.count})`).join(", ") || "none"}
         </div>
         {audit.typography.slice(0, 40).map((t) => (
+          <React.Fragment key={t.key}>
           <button
-            key={t.key}
-            onClick={() => openToken("typography", t.key)}
-            className="w-full text-left border-b border-gray-100 py-2 hover:bg-gray-50 flex items-start gap-2"
-            title="Details of this style"
+            type="button"
+            onClick={() =>
+              select({
+                area: "typography",
+                tab: "typography",
+                entry: entry(`style:${t.key}`, t.key, typeStyleLabel(t), t.count, matchOf("type", t.key)),
+              })
+            }
+            aria-pressed={selectedIn("typography") === t.key}
+            className={`w-full text-left border-b border-gray-100 py-2 flex items-start gap-2 ${
+              selectedIn("typography") === t.key ? "bg-blue-50" : "hover:bg-gray-50"
+            }`}
+            title="Show this style on the page and its details"
           >
             <span className="flex-1 min-w-0">
             <div
@@ -498,6 +681,8 @@ export const DesignOverview: React.FC = () => {
             </span>
             <MatchBadge match={matchOf("type", t.key)} className="mt-1" />
           </button>
+          {selectedIn("typography") === t.key && inlinePanel("typography")}
+          </React.Fragment>
         ))}
         {audit.typography.length > 40 && (
           <p className="text-xs text-gray-500 mt-1">+{audit.typography.length - 40} more styles</p>
@@ -519,11 +704,15 @@ export const DesignOverview: React.FC = () => {
           const off = !isOnGrid(s.size ?? 0, audit.grid);
           const source = sourceHint(audit, s);
           return (
+            <React.Fragment key={s.value}>
             <button
-              key={s.value}
-              onClick={() => openToken("spacing", s.value)}
-              className="w-full flex items-center gap-2 py-0.5 hover:bg-gray-50"
-              title={`Details of ${s.value}${source.title ? `\n${source.title}` : ""}`}
+              type="button"
+              onClick={() =>
+                select({ area: "spacing", tab: "spacing", entry: entry(s.value, s.value, s.value, s.count, matchOf("spacing", s.value)) })
+              }
+              aria-pressed={selectedIn("spacing") === s.value}
+              className={`w-full flex items-center gap-2 py-0.5 ${selectedIn("spacing") === s.value ? "bg-blue-50" : "hover:bg-gray-50"}`}
+              title={`Show ${s.value} on the page and its details${source.title ? `\n${source.title}` : ""}`}
             >
               <span
                 className={`w-14 shrink-0 text-right text-[11px] font-mono ${off ? "text-orange-700" : "text-gray-700"}`}
@@ -548,6 +737,8 @@ export const DesignOverview: React.FC = () => {
                 </span>
               )}
             </button>
+            {selectedIn("spacing") === s.value && inlinePanel("spacing")}
+            </React.Fragment>
           );
         })}
         {!audit.spacing.length && <p className="text-xs text-gray-500">No spacing found.</p>}
@@ -564,10 +755,18 @@ export const DesignOverview: React.FC = () => {
         <div className="flex flex-wrap gap-3">
           {audit.radii.map((r) => (
             <button
+              type="button"
               key={r.value}
-              onClick={() => openToken("borders", r.value)}
-              className="relative text-center"
-              title={`Details of ${r.value}${sourceHint(audit, r).title ? `\n${sourceHint(audit, r).title}` : ""}`}
+              onClick={() =>
+                select({
+                  area: "radius",
+                  tab: "borders",
+                  entry: entry(`radius:${r.value}`, r.value, r.value, r.count, matchOf("radius", r.value)),
+                })
+              }
+              aria-pressed={selectedIn("radius") === r.value}
+              className={`relative text-center rounded p-1 ${selectedIn("radius") === r.value ? "bg-blue-50" : ""}`}
+              title={`Show ${r.value} on the page and its details${sourceHint(audit, r).title ? `\n${sourceHint(audit, r).title}` : ""}`}
             >
               <MatchBadge match={matchOf("radius", r.value)} className="absolute -top-1.5 -right-1.5" />
               <div
@@ -580,6 +779,7 @@ export const DesignOverview: React.FC = () => {
           ))}
           {!audit.radii.length && <p className="text-xs text-gray-500">No rounded corners.</p>}
         </div>
+        {inlinePanel("radius") && <div className="mt-2">{inlinePanel("radius")}</div>}
       </Section>
 
       {/* Shadows */}
@@ -593,10 +793,14 @@ export const DesignOverview: React.FC = () => {
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}>
           {audit.shadows.map((s) => (
             <button
+              type="button"
               key={s.value}
-              onClick={() => openToken("shadows", s.value)}
-              className="relative p-2 text-left"
-              title={`Details of ${s.value}`}
+              onClick={() =>
+                select({ area: "shadow", tab: "shadows", entry: entry(s.value, s.value, s.value, s.count, matchOf("shadow", s.value)) })
+              }
+              aria-pressed={selectedIn("shadow") === s.value}
+              className={`relative p-2 text-left rounded ${selectedIn("shadow") === s.value ? "bg-blue-50" : ""}`}
+              title={`Show this shadow on the page and its details\n${s.value}`}
             >
               <MatchBadge match={matchOf("shadow", s.value)} className="absolute top-0 right-0 z-10" />
               <div className="h-12 rounded-md bg-white" style={{ boxShadow: s.value }} />
@@ -606,11 +810,27 @@ export const DesignOverview: React.FC = () => {
           ))}
           {!audit.shadows.length && <p className="text-xs text-gray-500">No shadows.</p>}
         </div>
+        {inlinePanel("shadow") && <div className="mt-2">{inlinePanel("shadow")}</div>}
       </Section>
 
       {audit.issues.some((i) => i.severity === "high") && (
         <div className="flex items-center gap-1 text-[11px] text-gray-500">
           <IconAlertTriangle size={12} /> Contrast uses WCAG 2.1 AA: 4.5:1, or 3:1 for large text.
+        </div>
+      )}
+      </div>
+      {wide && panel && (
+        // Stays in view under the sticky tab bar while the overview scrolls; scrolls itself when taller
+        <div
+          className="sticky self-start overflow-y-auto"
+          style={{
+            flex: "0 0 300px",
+            maxWidth: "45%",
+            top: STICKY_CARD_TOP,
+            maxHeight: scrollerHeight ? `calc(${scrollerHeight}px - var(${PALETTE_TAB_BAR_HEIGHT_VAR}, 0px))` : undefined,
+          }}
+        >
+          {panel}
         </div>
       )}
     </div>
