@@ -20,9 +20,15 @@ const isEnabled = (raw: unknown) => !!raw && typeof raw === "object" && (raw as 
 // Registration calls must not overlap: two quick toggles would register the script twice and fail
 let registration: Promise<void> = Promise.resolve();
 
-function syncRegistration(enabled: boolean) {
+/**
+ * Makes the registration match the setting. The setting is read inside the queue, not passed in: the read
+ * at startup can resolve after a newer change, and a stale "off" would unregister the script for good.
+ */
+function syncRegistration() {
   registration = registration
     .then(async () => {
+      const stored = await chrome.storage.local.get(LIVE_WATCH_SETTINGS_KEY);
+      const enabled = isEnabled(stored[LIVE_WATCH_SETTINGS_KEY]);
       const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [LIVE_WATCH_CAPTURE_SCRIPT_ID] });
       if (enabled && existing.length === 0) {
         await chrome.scripting.registerContentScripts([
@@ -53,16 +59,13 @@ export function registerLiveWatchCapture() {
     ?.setAccessLevel?.({ accessLevel: "TRUSTED_AND_UNTRUSTED_CONTEXTS" })
     .catch(() => undefined);
 
-  chrome.storage.local
-    .get(LIVE_WATCH_SETTINGS_KEY)
-    .then((stored) => syncRegistration(isEnabled(stored[LIVE_WATCH_SETTINGS_KEY])))
-    .catch(() => undefined);
+  syncRegistration();
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local" || !changes[LIVE_WATCH_SETTINGS_KEY]) return;
     const was = isEnabled(changes[LIVE_WATCH_SETTINGS_KEY].oldValue);
     const now = isEnabled(changes[LIVE_WATCH_SETTINGS_KEY].newValue);
-    if (was !== now) syncRegistration(now);
+    if (was !== now) syncRegistration();
   });
 
   chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {

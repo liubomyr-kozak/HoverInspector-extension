@@ -50,5 +50,7 @@ as the third argument.
 - Navigations are compared by kind only; key presses by the key; checkbox clicks with their state.
 - The comparison uses the raw log without minor events (focus clicks, Tab, arrows), which is what the
   smart view starts from.
+- `captureScript: false` means the page-start capture script was not registered, so the first second of
+  every page is lost (a registration bug once did this to half of a run). Fix that first.
 - `errors` lists page errors and harness failures (a locator that timed out). A harness failure is a
   bug in the test page or the script, not in the extension; fix it before trusting the numbers.

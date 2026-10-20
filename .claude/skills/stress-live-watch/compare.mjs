@@ -2,7 +2,7 @@
 // Usage: node compare.mjs result.json
 import fs from "fs";
 
-const { truth, recorded, segments, total, duration, errors } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const { truth, recorded, segments, total, duration, captureScript, errors } = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 // Navigations match by kind (the harness knows the page, the log the URL); key presses by the key
 const key = (e) =>
   e.kind === "navigate"
@@ -74,6 +74,7 @@ const summary = {
   rate: `${((100 * matchedAll) / expectedAll).toFixed(1)}%`,
   extra: extraAll,
   durationSec: Math.round(duration / 1000),
+  captureScript,
   errors,
 };
 console.log(JSON.stringify({ summary, rows }, null, 1));

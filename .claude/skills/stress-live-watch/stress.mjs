@@ -69,6 +69,9 @@ await sw.evaluate(() =>
   }),
 );
 await new Promise((r) => setTimeout(r, 500));
+// Without the page-start capture script, the first second of every page is lost: say so loudly
+const captureScript = READER === "legacy" || (await sw.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).length > 0));
+if (!captureScript) console.error("WARNING: the live watching capture script is not registered");
 
 async function closeTool() {
   // The Element Inspector opens with the extension and takes the page clicks: close it like a user would
@@ -352,7 +355,7 @@ const recorded = stored
   .map((e) => ({ kind: e.kind, label: e.label, value: e.value, typed: e.typed, time: e.time, url: e.url, navigation: e.navigation }));
 const minor = stored.filter((e) => e.minor).length;
 
-fs.writeFileSync(OUT, JSON.stringify({ total: truth.length, duration, truth, recorded, minor, segments, errors }, null, 1));
+fs.writeFileSync(OUT, JSON.stringify({ total: truth.length, duration, captureScript, truth, recorded, minor, segments, errors }, null, 1));
 console.log(JSON.stringify({ actions: truth.length, recorded: recorded.length, duration, errors: errors.slice(0, 10) }));
 await ctx.close();
 server.close();
