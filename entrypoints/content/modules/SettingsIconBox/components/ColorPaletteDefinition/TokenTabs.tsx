@@ -25,6 +25,38 @@ const round = (n: number, digits = 2) => Math.round(n * 10 ** digits) / 10 ** di
 // Spacing
 // ---------------------------------------------------------------------------------------------
 
+/** Spacing: the detail of one value (the Spacing tab and the Overview open it) */
+export const useSpacingDetail = () => {
+  const { audit, rootFontSize, grid } = usePalette();
+  const spacing = audit?.spacing || [];
+  return useCallback(
+    (entry: TokenEntry): TokenDetail | null => {
+      const s = spacing.find((v) => v.value === entry.key);
+      if (!s) return null;
+      const px = s.size ?? 0;
+      const variables = variableAliases(audit, "spacing", s.value, { rootFontSize });
+      return {
+        preview: <span className="block w-12 h-12 rounded border border-blue-200 bg-blue-50 flex items-center justify-center">
+          <span className="block bg-blue-500" style={{ width: Math.min(px, 40), height: Math.min(px, 40), minWidth: 2, minHeight: 2 }} />
+        </span>,
+        title: s.value,
+        subtitle: secondaryName(variables, entry.match),
+        formats: [...lengthFormats(px, rootFontSize), { label: "Tailwind step", value: `${round(px / 4)}` }],
+        extra: (
+          <>
+            {isOnGrid(px, grid) ? `On the ${grid}px grid.` : `Off the ${grid}px grid.`} Used {s.count}{" "}
+            {s.count === 1 ? "time" : "times"} as a margin, padding or gap.
+          </>
+        ),
+        names: buildNames({ variables, match: entry.match, elements: s.elements }),
+        elements: s.elements,
+        match: entry.match,
+      };
+    },
+    [spacing, audit, rootFontSize, grid],
+  );
+};
+
 export const SpacingTab: React.FC = () => {
   const { audit, theme, rescan, rootFontSize, grid, error, progress } = usePalette();
   const spacing = audit?.spacing || [];
@@ -60,32 +92,7 @@ export const SpacingTab: React.FC = () => {
     ];
   }, [spacing, theme, rootFontSize, grid, audit, max]);
 
-  const getDetail = useCallback(
-    (entry: TokenEntry): TokenDetail | null => {
-      const s = spacing.find((v) => v.value === entry.key);
-      if (!s) return null;
-      const px = s.size ?? 0;
-      const variables = variableAliases(audit, "spacing", s.value, { rootFontSize });
-      return {
-        preview: <span className="block w-12 h-12 rounded border border-blue-200 bg-blue-50 flex items-center justify-center">
-          <span className="block bg-blue-500" style={{ width: Math.min(px, 40), height: Math.min(px, 40), minWidth: 2, minHeight: 2 }} />
-        </span>,
-        title: s.value,
-        subtitle: secondaryName(variables, entry.match),
-        formats: [...lengthFormats(px, rootFontSize), { label: "Tailwind step", value: `${round(px / 4)}` }],
-        extra: (
-          <>
-            {isOnGrid(px, grid) ? `On the ${grid}px grid.` : `Off the ${grid}px grid.`} Used {s.count}{" "}
-            {s.count === 1 ? "time" : "times"} as a margin, padding or gap.
-          </>
-        ),
-        names: buildNames({ variables, match: entry.match, elements: s.elements }),
-        elements: s.elements,
-        match: entry.match,
-      };
-    },
-    [spacing, audit, rootFontSize, grid],
-  );
+  const getDetail = useSpacingDetail();
 
   return (
     <TokenTabLayout
@@ -107,6 +114,57 @@ export const SpacingTab: React.FC = () => {
 // ---------------------------------------------------------------------------------------------
 // Borders: corner radii and border lines
 // ---------------------------------------------------------------------------------------------
+
+/** Radii (id "radius:<value>") and border lines: the detail of one value */
+export const useBordersDetail = () => {
+  const { audit, rootFontSize } = usePalette();
+  const radii = audit?.radii || [];
+  const lines = audit?.borderLines || [];
+  return useCallback(
+    (entry: TokenEntry): TokenDetail | null => {
+      if (entry.id.startsWith("radius:")) {
+        const r = radii.find((v) => v.value === entry.key);
+        if (!r) return null;
+        const variables = variableAliases(audit, "radius", r.value, { rootFontSize });
+        return {
+          preview: (
+            <span className="block w-12 h-12 bg-blue-50 border-2 border-blue-500" style={{ borderRadius: Math.min(r.size ?? 0, 24) }} />
+          ),
+          title: r.value,
+          subtitle: secondaryName(variables, entry.match),
+          formats: [...lengthFormats(r.size ?? 0, rootFontSize), { label: "CSS", value: `border-radius: ${r.value};` }],
+          names: buildNames({ variables, match: entry.match, elements: r.elements }),
+          elements: r.elements,
+          match: entry.match,
+        };
+      }
+      const l = lines.find((v) => v.value === entry.key);
+      if (!l) return null;
+      const [width, style, color] = l.value.split(" ");
+      const parts = parseBorder(l.value);
+      const variables = [
+        ...variableAliases(audit, "border", l.value),
+        ...variableAliases(audit, "color", color).map((v) => v),
+      ];
+      return {
+        preview: <span className="block w-12 h-12 rounded bg-white" style={{ border: l.value }} />,
+        title: l.value,
+        subtitle: secondaryName(variables, entry.match),
+        formats: [
+          { label: "CSS", value: `border: ${l.value};`, wide: true },
+          { label: "Width", value: width },
+          { label: "Style", value: style },
+          { label: "Colour", value: color },
+          ...(parts?.width ? [{ label: "Width (rem)", value: `${round(parts.width / rootFontSize, 4)}rem` }] : []),
+        ],
+        names: buildNames({ variables, match: entry.match, elements: l.elements }),
+        elements: l.elements,
+        match: entry.match,
+      };
+    },
+    [radii, lines, audit, rootFontSize],
+  );
+};
 
 export const BordersTab: React.FC = () => {
   const { audit, theme, rescan, rootFontSize, error, progress } = usePalette();
@@ -160,50 +218,7 @@ export const BordersTab: React.FC = () => {
     [radii, lines, theme, rootFontSize, audit],
   );
 
-  const getDetail = useCallback(
-    (entry: TokenEntry): TokenDetail | null => {
-      if (entry.id.startsWith("radius:")) {
-        const r = radii.find((v) => v.value === entry.key);
-        if (!r) return null;
-        const variables = variableAliases(audit, "radius", r.value, { rootFontSize });
-        return {
-          preview: (
-            <span className="block w-12 h-12 bg-blue-50 border-2 border-blue-500" style={{ borderRadius: Math.min(r.size ?? 0, 24) }} />
-          ),
-          title: r.value,
-          subtitle: secondaryName(variables, entry.match),
-          formats: [...lengthFormats(r.size ?? 0, rootFontSize), { label: "CSS", value: `border-radius: ${r.value};` }],
-          names: buildNames({ variables, match: entry.match, elements: r.elements }),
-          elements: r.elements,
-          match: entry.match,
-        };
-      }
-      const l = lines.find((v) => v.value === entry.key);
-      if (!l) return null;
-      const [width, style, color] = l.value.split(" ");
-      const parts = parseBorder(l.value);
-      const variables = [
-        ...variableAliases(audit, "border", l.value),
-        ...variableAliases(audit, "color", color).map((v) => v),
-      ];
-      return {
-        preview: <span className="block w-12 h-12 rounded bg-white" style={{ border: l.value }} />,
-        title: l.value,
-        subtitle: secondaryName(variables, entry.match),
-        formats: [
-          { label: "CSS", value: `border: ${l.value};`, wide: true },
-          { label: "Width", value: width },
-          { label: "Style", value: style },
-          { label: "Colour", value: color },
-          ...(parts?.width ? [{ label: "Width (rem)", value: `${round(parts.width / rootFontSize, 4)}rem` }] : []),
-        ],
-        names: buildNames({ variables, match: entry.match, elements: l.elements }),
-        elements: l.elements,
-        match: entry.match,
-      };
-    },
-    [radii, lines, audit, rootFontSize],
-  );
+  const getDetail = useBordersDetail();
 
   return (
     <TokenTabLayout
@@ -235,6 +250,39 @@ export const shadowLabel = (value: string) => {
   return `${layers[0].inset ? "inset " : ""}${parts.join(" ")}${layers.length > 1 ? ` +${layers.length - 1}` : ""}`;
 };
 
+/** Shadows: the detail of one value */
+export const useShadowsDetail = () => {
+  const { audit } = usePalette();
+  const shadows = audit?.shadows || [];
+  return useCallback(
+    (entry: TokenEntry): TokenDetail | null => {
+      const s = shadows.find((v) => v.value === entry.key);
+      if (!s) return null;
+      const variables = variableAliases(audit, "shadow", s.value);
+      const layers = parseShadow(s.value) || [];
+      return {
+        preview: <span className="block w-12 h-12 rounded-md bg-white" style={{ boxShadow: s.value }} />,
+        title: shadowLabel(s.value),
+        subtitle: secondaryName(variables, entry.match),
+        formats: [
+          { label: "CSS", value: `box-shadow: ${formatShadow(s.value)};`, wide: true },
+          { label: "Computed value", value: s.value, wide: true },
+          ...layers.map((layer, i) => ({
+            label: layers.length > 1 ? `Layer ${i + 1}: x y blur spread` : "x y blur spread",
+            value: layer.lengths.map((n) => `${round(n)}px`).join(" "),
+            wide: true,
+          })),
+        ],
+        extra: layers.length > 1 ? `${layers.length} layers.` : undefined,
+        names: buildNames({ variables, match: entry.match, elements: s.elements }),
+        elements: s.elements,
+        match: entry.match,
+      };
+    },
+    [shadows, audit],
+  );
+};
+
 export const ShadowsTab: React.FC = () => {
   const { audit, theme, rescan, error, progress } = usePalette();
   const shadows = audit?.shadows || [];
@@ -263,33 +311,7 @@ export const ShadowsTab: React.FC = () => {
     [shadows, theme, audit],
   );
 
-  const getDetail = useCallback(
-    (entry: TokenEntry): TokenDetail | null => {
-      const s = shadows.find((v) => v.value === entry.key);
-      if (!s) return null;
-      const variables = variableAliases(audit, "shadow", s.value);
-      const layers = parseShadow(s.value) || [];
-      return {
-        preview: <span className="block w-12 h-12 rounded-md bg-white" style={{ boxShadow: s.value }} />,
-        title: shadowLabel(s.value),
-        subtitle: secondaryName(variables, entry.match),
-        formats: [
-          { label: "CSS", value: `box-shadow: ${formatShadow(s.value)};`, wide: true },
-          { label: "Computed value", value: s.value, wide: true },
-          ...layers.map((layer, i) => ({
-            label: layers.length > 1 ? `Layer ${i + 1}: x y blur spread` : "x y blur spread",
-            value: layer.lengths.map((n) => `${round(n)}px`).join(" "),
-            wide: true,
-          })),
-        ],
-        extra: layers.length > 1 ? `${layers.length} layers.` : undefined,
-        names: buildNames({ variables, match: entry.match, elements: s.elements }),
-        elements: s.elements,
-        match: entry.match,
-      };
-    },
-    [shadows, audit],
-  );
+  const getDetail = useShadowsDetail();
 
   return (
     <TokenTabLayout
@@ -347,110 +369,25 @@ const aggregate = (styles: TypeStyle[], keyOf: (t: TypeStyle) => string): Aggreg
   return [...map.values()];
 };
 
-export const TypeTab: React.FC = () => {
-  const { audit, theme, rescan, rootFontSize, error, progress } = usePalette();
-  const styles = audit?.typography || [];
+/** The page's type styles and their families, sizes, weights and line heights */
+const useTypeGroups = () => {
+  const { audit } = usePalette();
+  const styles = useMemo(() => audit?.typography || [], [audit]);
   const families = useMemo(() => aggregate(styles, (t) => t.familyName).sort((a, b) => b.count - a.count), [styles]);
   const weights = useMemo(() => aggregate(styles, (t) => t.weight).sort((a, b) => Number(a.value) - Number(b.value)), [styles]);
   const lineHeights = useMemo(
     () => aggregate(styles, (t) => t.lineHeight).sort((a, b) => (parseFloat(a.value) || 0) - (parseFloat(b.value) || 0)),
     [styles],
   );
-  const sizes: ValueUsage[] = audit?.fontSizes || [];
+  const sizes: ValueUsage[] = useMemo(() => audit?.fontSizes || [], [audit]);
+  return { styles, families, sizes, weights, lineHeights };
+};
 
-  const groups = useMemo<TokenGroup[]>(() => {
-    const ctx = { rootFontSize };
-    return [
-      {
-        key: "styles",
-        title: "Type styles",
-        layout: "rows",
-        hint: "Size / line height · weight, largest first.",
-        entries: styles.map((t): TokenEntry => {
-          const match = matchTypeStyle(t, theme, rootFontSize).overall;
-          return {
-            id: `style:${t.key}`,
-            key: t.key,
-            label: typeStyleLabel(t),
-            secondary: t.familyName,
-            count: t.count,
-            match,
-            preview: <Aa family={t.family} size={t.size} weight={t.weight} />,
-          };
-        }),
-      },
-      {
-        key: "families",
-        title: "Font families",
-        layout: "rows",
-        entries: families.map((f): TokenEntry => {
-          const match = matchValue("fontFamily", f.sample.family, theme, ctx);
-          return {
-            id: `family:${f.value}`,
-            key: f.value,
-            label: f.value,
-            secondary: match?.status === "match" ? match.token : undefined,
-            count: f.count,
-            match,
-            preview: <Aa family={f.sample.family} />,
-          };
-        }),
-      },
-      {
-        key: "sizes",
-        title: "Font sizes",
-        layout: "rows",
-        entries: sizes.map((s): TokenEntry => {
-          const match = matchValue("fontSize", s.value, theme, ctx);
-          return {
-            id: `size:${s.value}`,
-            key: s.value,
-            label: s.value,
-            secondary: secondaryName(audit?.variables[s.value] || [], match),
-            count: s.count,
-            match,
-            preview: <Aa size={s.size} />,
-          };
-        }),
-      },
-      {
-        key: "weights",
-        title: "Font weights",
-        layout: "rows",
-        entries: weights.map((w): TokenEntry => {
-          const match = matchValue("fontWeight", w.value, theme, ctx);
-          return {
-            id: `weight:${w.value}`,
-            key: w.value,
-            label: `${w.value}${WEIGHT_NAMES[w.value] ? ` ${WEIGHT_NAMES[w.value]}` : ""}`,
-            secondary: match?.status === "match" ? match.token : undefined,
-            count: w.count,
-            match,
-            preview: <Aa weight={w.value} />,
-          };
-        }),
-      },
-      {
-        key: "lineHeights",
-        title: "Line heights",
-        layout: "rows",
-        entries: lineHeights.map((l): TokenEntry => {
-          const match = matchValue("lineHeight", l.value, theme, { ...ctx, fontSize: l.sample.size });
-          const px = lineHeightPx(l.value, l.sample.size);
-          return {
-            id: `lh:${l.value}`,
-            key: l.value,
-            label: l.value,
-            secondary: match?.status === "match" ? match.token : px ? `${round(px / l.sample.size)}× of ${l.sample.size}px` : undefined,
-            count: l.count,
-            match,
-          };
-        }),
-      },
-    ];
-  }, [styles, families, sizes, weights, lineHeights, theme, rootFontSize, audit]);
-
-  const getDetail = useCallback(
+/** Type: the detail of a style ("style:<key>"), family, size, weight or line height */
+export const useTypeDetail = () => {
+  const { audit, theme, rootFontSize } = usePalette();
+  const { styles, families, sizes, weights, lineHeights } = useTypeGroups();
+  return useCallback(
     (entry: TokenEntry): TokenDetail | null => {
       const [kind] = entry.id.split(":");
       const ctx = { rootFontSize };
@@ -583,6 +520,105 @@ export const TypeTab: React.FC = () => {
     },
     [styles, families, sizes, weights, lineHeights, theme, rootFontSize, audit],
   );
+};
+
+export const TypeTab: React.FC = () => {
+  const { audit, theme, rescan, rootFontSize, error, progress } = usePalette();
+  const { styles, families, sizes, weights, lineHeights } = useTypeGroups();
+
+  const groups = useMemo<TokenGroup[]>(() => {
+    const ctx = { rootFontSize };
+    return [
+      {
+        key: "styles",
+        title: "Type styles",
+        layout: "rows",
+        hint: "Size / line height · weight, largest first.",
+        entries: styles.map((t): TokenEntry => {
+          const match = matchTypeStyle(t, theme, rootFontSize).overall;
+          return {
+            id: `style:${t.key}`,
+            key: t.key,
+            label: typeStyleLabel(t),
+            secondary: t.familyName,
+            count: t.count,
+            match,
+            preview: <Aa family={t.family} size={t.size} weight={t.weight} />,
+          };
+        }),
+      },
+      {
+        key: "families",
+        title: "Font families",
+        layout: "rows",
+        entries: families.map((f): TokenEntry => {
+          const match = matchValue("fontFamily", f.sample.family, theme, ctx);
+          return {
+            id: `family:${f.value}`,
+            key: f.value,
+            label: f.value,
+            secondary: match?.status === "match" ? match.token : undefined,
+            count: f.count,
+            match,
+            preview: <Aa family={f.sample.family} />,
+          };
+        }),
+      },
+      {
+        key: "sizes",
+        title: "Font sizes",
+        layout: "rows",
+        entries: sizes.map((s): TokenEntry => {
+          const match = matchValue("fontSize", s.value, theme, ctx);
+          return {
+            id: `size:${s.value}`,
+            key: s.value,
+            label: s.value,
+            secondary: secondaryName(audit?.variables[s.value] || [], match),
+            count: s.count,
+            match,
+            preview: <Aa size={s.size} />,
+          };
+        }),
+      },
+      {
+        key: "weights",
+        title: "Font weights",
+        layout: "rows",
+        entries: weights.map((w): TokenEntry => {
+          const match = matchValue("fontWeight", w.value, theme, ctx);
+          return {
+            id: `weight:${w.value}`,
+            key: w.value,
+            label: `${w.value}${WEIGHT_NAMES[w.value] ? ` ${WEIGHT_NAMES[w.value]}` : ""}`,
+            secondary: match?.status === "match" ? match.token : undefined,
+            count: w.count,
+            match,
+            preview: <Aa weight={w.value} />,
+          };
+        }),
+      },
+      {
+        key: "lineHeights",
+        title: "Line heights",
+        layout: "rows",
+        entries: lineHeights.map((l): TokenEntry => {
+          const match = matchValue("lineHeight", l.value, theme, { ...ctx, fontSize: l.sample.size });
+          const px = lineHeightPx(l.value, l.sample.size);
+          return {
+            id: `lh:${l.value}`,
+            key: l.value,
+            label: l.value,
+            secondary: match?.status === "match" ? match.token : px ? `${round(px / l.sample.size)}× of ${l.sample.size}px` : undefined,
+            count: l.count,
+            match,
+          };
+        }),
+      },
+    ];
+  }, [styles, families, sizes, weights, lineHeights, theme, rootFontSize, audit]);
+
+  const getDetail = useTypeDetail();
 
   return (
     <TokenTabLayout

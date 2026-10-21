@@ -137,3 +137,57 @@ export const ColorPaletteDefinition: React.FC = () => {
     />
   );
 };
+
+/**
+ * The detail of a colour of the page scan (the Overview opens it in place): every text, background and
+ * border use of the colour together
+ */
+export const useColorUsageDetail = () => {
+  const { audit } = usePalette();
+  return useCallback(
+    (entry: TokenEntry): TokenDetail | null => {
+      if (!audit) return null;
+      const uses = [...audit.colors.text, ...audit.colors.background, ...audit.colors.border].filter((c) => c.value === entry.key);
+      if (!uses.length) return null;
+      const elements = [...new Set(uses.flatMap((c) => c.elements))];
+      const formats = getColorInAllFormats(entry.key);
+      const variables = variableAliases(audit, "color", entry.key);
+      const roles = [
+        audit.colors.text.some((c) => c.value === entry.key) && "Text",
+        audit.colors.background.some((c) => c.value === entry.key) && "Background",
+        audit.colors.border.some((c) => c.value === entry.key) && "Border",
+      ].filter((role): role is string => !!role);
+      return {
+        preview: <div className="w-12 h-12 rounded-md border shadow-inner" style={{ backgroundColor: entry.key }} />,
+        title: entry.key,
+        subtitle: secondaryName(variables, entry.match),
+        formatsTitle: "Color Information",
+        formats: [
+          { label: "HEX", value: formats?.hex || entry.key },
+          { label: "RGB", value: formats?.rgb || "" },
+          { label: "HSL", value: formats?.hsl || "" },
+          { label: "HSV", value: formats?.hsv || "" },
+        ],
+        extra: (
+          <>
+            <p className="m-0 mb-1">
+              <strong>Contrast ratio with white:</strong> {ratio(calculateContrastRatio(entry.key, "#ffffff"))}
+            </p>
+            <p className="m-0">
+              <strong>Contrast ratio with black:</strong> {ratio(calculateContrastRatio(entry.key, "#000000"))}
+            </p>
+          </>
+        ),
+        names: buildNames({
+          variables,
+          match: entry.match,
+          elements,
+          extra: roles.map((role) => ({ kind: "Role", text: role })),
+        }),
+        elements,
+        match: entry.match,
+      };
+    },
+    [audit],
+  );
+};

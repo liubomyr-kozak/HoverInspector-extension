@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { auditPageAsync, regradeAudit, SPACING_GRID, type DesignAudit, type SpacingGrid } from "@entrypoints/shared/utils/designAudit";
+import { GRID_STORAGE_KEY, THEME_STORAGE_KEY } from "@entrypoints/core/constants/designTheme";
 import { isDesignTheme, type DesignTheme } from "./utils/themeDiff";
 
 /**
@@ -34,8 +35,6 @@ interface PaletteContextValue {
 const PaletteContext = createContext<PaletteContextValue | null>(null);
 
 // Extension storage, never the page's localStorage: the theme and grid follow the user across sites
-export const THEME_STORAGE_KEY = "designTheme.active";
-const GRID_STORAGE_KEY = "designOverview.spacingGrid";
 
 const storageGet = async (key: string): Promise<unknown> => {
   try {

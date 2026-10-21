@@ -66,8 +66,6 @@ export interface DetectedPattern {
 export enum SuggestionKind {
   /** A repeated pattern was found */
   PATTERN = "pattern",
-  /** The last actions start a repeated pattern: offer the rest */
-  CONTINUE_PATTERN = "continuePattern",
   /** The last actions start a saved scenario: offer the rest */
   CONTINUE_SCENARIO = "continueScenario",
   /** The clicked field is used by saved scenarios */
@@ -94,7 +92,6 @@ export interface FieldScenarioMatch {
 
 export type Suggestion =
   | { kind: SuggestionKind.PATTERN; pattern: DetectedPattern }
-  | { kind: SuggestionKind.CONTINUE_PATTERN; pattern: DetectedPattern; doneCount: number }
   | ({ kind: SuggestionKind.CONTINUE_SCENARIO } & ScenarioContinuation)
   | { kind: SuggestionKind.FIELD; fieldXpath: string; fieldLabel: string; matches: FieldScenarioMatch[] };
 

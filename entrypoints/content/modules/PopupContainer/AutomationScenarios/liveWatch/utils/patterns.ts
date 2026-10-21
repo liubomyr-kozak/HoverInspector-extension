@@ -9,11 +9,12 @@ export const WATCH_EVENT_LIMIT = 1000;
 export const SESSION_GAP_MS = 30 * 60 * 1000;
 
 const MIN_PATTERN_LENGTH = 2;
-const MAX_PATTERN_LENGTH = 12;
+/** Long enough for a whole round of work (log in, open a list, open an item, edit, save...) */
+const MAX_PATTERN_LENGTH = 30;
 /** Two actions repeated twice is common by chance; ask for a third time before calling it a pattern */
 const MIN_OCCURRENCES_SHORT = 3;
 const MIN_OCCURRENCES = 2;
-/** How many of the last actions must match the start of a pattern or scenario before the rest is offered */
+/** How many of the last actions must match the start of a saved scenario before the rest is offered */
 const MIN_CONTINUATION_PREFIX = 2;
 const MAX_CONTINUATION_PREFIX = 6;
 
@@ -41,6 +42,21 @@ const KIND_STEP: Record<WatchEventKind, StepType> = {
 export function eventSignature(event: Pick<WatchEvent, "kind" | "xpath" | "value">): string {
   const value = event.kind === WatchEventKind.INPUT ? "" : (event.value ?? "");
   return `${event.kind}${SEP}${event.xpath}${SEP}${value}`;
+}
+
+/** Ids and hashes (a GUID, a hex token with a digit) and then any number */
+const ID_TOKEN = /\b(?=[0-9a-f-]*\d)[0-9a-f]{6,}(?:-[0-9a-f]+)*\b/gi;
+const NUMBER = /\d+/g;
+const generalize = (text: string) => text.replace(ID_TOKEN, "#").replace(NUMBER, "#");
+
+/**
+ * What makes two actions "the same step" of repeated work. Each round usually opens another row, so row
+ * numbers, ids and counters in the locator and the label differ: they are ignored. The label is kept, so
+ * two buttons found by position ("Admin", "Settings") stay different.
+ */
+export function patternSignature(event: Pick<WatchEvent, "kind" | "xpath" | "value" | "label">): string {
+  const value = event.kind === WatchEventKind.INPUT ? "" : generalize(event.value ?? "");
+  return `${event.kind}${SEP}${generalize(event.xpath)}${SEP}${generalize(event.label ?? "")}${SEP}${value}`;
 }
 
 /** The signature of a scenario step, or null for steps a user does not perform by hand (wait, code...) */
@@ -80,7 +96,7 @@ export function findPatterns(events: WatchEvent[], limit = 5): DetectedPattern[]
   const n = events.length;
   if (n < MIN_PATTERN_LENGTH * MIN_OCCURRENCES) return [];
 
-  const signatures = events.map(eventSignature);
+  const signatures = events.map(patternSignature);
   const intern = new Map<string, number>();
   const ids = signatures.map((sig) => {
     let id = intern.get(sig);
@@ -141,7 +157,7 @@ export function findPatterns(events: WatchEvent[], limit = 5): DetectedPattern[]
   return accepted.map(({ candidate }) => {
     const occurrence = events.slice(candidate.lastStart, candidate.lastStart + candidate.length);
     return {
-      id: hashSignatures(occurrence.map(eventSignature)),
+      id: hashSignatures(occurrence.map(patternSignature)),
       events: occurrence,
       occurrences: candidate.occurrences,
       lastEnd: candidate.lastStart + candidate.length,
@@ -158,25 +174,6 @@ function matchedPrefix(tail: string[], sequence: string[], start: number): numbe
     if (same) return k;
   }
   return 0;
-}
-
-/**
- * Whether the last actions are the first steps of a known pattern (with at least one step left)
- */
-export function matchPatternContinuation(
-  events: WatchEvent[],
-  patterns: DetectedPattern[],
-): { pattern: DetectedPattern; doneCount: number } | null {
-  const tail = events.slice(-MAX_CONTINUATION_PREFIX).map(eventSignature);
-  let best: { pattern: DetectedPattern; doneCount: number } | null = null;
-  for (const pattern of patterns) {
-    const done = matchedPrefix(tail, pattern.events.map(eventSignature), 0);
-    if (!done) continue;
-    if (!best || done > best.doneCount || (done === best.doneCount && pattern.events.length > best.pattern.events.length)) {
-      best = { pattern, doneCount: done };
-    }
-  }
-  return best;
 }
 
 /** The steps of a scenario a user performs by hand, with their index in the scenario */

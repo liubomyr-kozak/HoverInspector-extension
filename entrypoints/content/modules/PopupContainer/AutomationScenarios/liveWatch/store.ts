@@ -115,6 +115,11 @@ export function dismissPattern(patternId: string) {
   updateLiveWatchSettings({ dismissedPatterns: [...settings.dismissedPatterns.filter((id) => id !== patternId), patternId] });
 }
 
+/** Brings back every suggestion hidden with "Don't suggest again" */
+export function restoreDismissedPatterns() {
+  updateLiveWatchSettings({ dismissedPatterns: [] });
+}
+
 export function muteField(xpath: string) {
   updateLiveWatchSettings({ mutedFields: [...settings.mutedFields.filter((id) => id !== xpath), xpath] });
 }
