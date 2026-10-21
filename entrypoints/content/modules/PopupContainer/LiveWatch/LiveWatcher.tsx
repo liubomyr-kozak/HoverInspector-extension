@@ -33,6 +33,9 @@ import {
   matchScenarioContinuation,
 } from "./utils/patterns";
 
+/** Chains listed under the log, grouped by page: enough for a few pages of one site */
+const REPEATS_LIMIT = 12;
+
 /** Look for patterns once the page is idle, at most this long after the last action */
 const ANALYSIS_TIMEOUT_MS = 1500;
 
@@ -154,7 +157,7 @@ export const LiveWatcher: React.FC = () => {
     const events = actionsRef.current;
     const { dismissedPatterns } = settingsRef.current;
     const saved = scenariosRef.current || {};
-    const patterns = findPatterns(events).filter(
+    const patterns = findPatterns(events, REPEATS_LIMIT).filter(
       (pattern) => !dismissedPatterns.includes(pattern.id) && !isPatternSaved(pattern, saved),
     );
     patternsRef.current = patterns;

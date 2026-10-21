@@ -47,15 +47,66 @@ export const ListViewport = styled.div`
   container-type: inline-size;
 `;
 
-/** Repeats and the suggestion under the log: at most half the panel, scrolling inside past that */
-export const DockArea = styled.div`
-  flex: 0 1 auto;
+/**
+ * Repeats and suggestions under the log. On their own they take at most 40% of the panel; the splitter sets
+ * a height, and "whole panel" lets them fill it. Past that they scroll inside.
+ */
+export const DockArea = styled.div<{ $full: boolean; $height: number }>`
   display: flex;
   flex-direction: column;
-  max-height: 50%;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  ${({ $full, $height }) =>
+    $full
+      ? css`
+          flex: 1 1 auto;
+        `
+      : $height
+        ? css`
+            /* The list gives way, down to its four rows (the splitter keeps the height within that) */
+            flex: none;
+            height: ${$height}px;
+          `
+        : css`
+            flex: 0 1 auto;
+            max-height: 40%;
+          `}
+`;
+
+/** Drag (or arrow keys) to share the panel between the log and the repeats */
+export const Splitter = styled.div`
+  flex: none;
+  position: relative;
+  height: 7px;
+  margin: -3px 0;
+  z-index: 2;
+  cursor: row-resize;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 2px;
+    width: 32px;
+    height: 3px;
+    margin-left: -16px;
+    border-radius: 999px;
+    background: ${tokens.color.borderStrong};
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      transition: none;
+    }
+  }
 `;
 
 export const Row = styled.div<{ $selected: boolean; $playing: boolean; $minor: boolean; $focused: boolean }>`

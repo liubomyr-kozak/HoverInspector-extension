@@ -110,6 +110,10 @@ export interface WatchPanelLayout {
   y: number;
   width: number;
   height: number;
+  /** Height of the repeats under the log, set with the splitter; 0 fits them to their content */
+  dockHeight: number;
+  /** The repeats fill the panel and the log list is not drawn */
+  dockFull: boolean;
 }
 
 /** Live watching preferences, kept in browser.storage.local */
