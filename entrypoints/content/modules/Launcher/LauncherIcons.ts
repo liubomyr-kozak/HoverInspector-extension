@@ -9,6 +9,7 @@ import {
   IconBrush,
   IconNotes,
   IconNotebook,
+  IconRadar,
 } from "@tabler/icons-react";
 
 export const INSPECTOR = {
@@ -83,8 +84,20 @@ export const NOTE_TAKING_TOOLS = {
   multipleView: false,
 };
 
+/**
+ * Not a panel tool: it has no entry in POPUP_SUPPORT_TOOLS or COMPONENT_MAP. It is switched on in its own
+ * settings (LiveWatch/store.ts, shared by every tab) and shows its own floating watch log.
+ */
+export const LIVE_WATCH = {
+  id: "liveWatch",
+  title: "Live Watching",
+  icon: IconRadar,
+  activatable: true,
+  multipleView: true,
+};
+
 // Page Notes and Note Taking Tools are no longer offered (owner's request); their code stays for now
-const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION, CSS_SNAPSHOT];
+const ICON_ITEMS_INITIAL = [INSPECTOR, RULER, PICKER, CONVERT_TOOLS, ANALYZE_PAGE, AUTOMATION, CSS_SNAPSHOT, LIVE_WATCH];
 
 export const POPUP_SUPPORT_TOOLS = [
   INSPECTOR.id,

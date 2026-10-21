@@ -17,7 +17,6 @@ import { useScenarioActions } from "@entrypoints/content/modules/PopupContainer/
 import { FeatureContainer, MainButton, QuickAction, RecordingIndicator } from "../MinimizedLauncher.styled.ts";
 import { Tooltip } from "@entrypoints/shared/components/Tooltip.tsx";
 import { onToggleFeatureMinimized } from "@/entrypoints/content/store/app/saga-action/app.saga.action.ts";
-import { LiveWatchToggle } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/components/LiveWatchToggle";
 
 interface AutomationMinimizedProps {
   featureId: string;
@@ -121,8 +120,6 @@ export const AutomationMinimized: React.FC<AutomationMinimizedProps> = ({ featur
       >
         {isRecording ? "Stop Recording" : "Start Recording"}
       </Button>
-      <Divider style={{ margin: "8px 0" }} />
-      <LiveWatchToggle compact />
     </div>
   );
 

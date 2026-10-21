@@ -9,11 +9,11 @@ import {
   selectStatus,
 } from "@entrypoints/content/store/automation/automation.slice";
 import { loadScenariosWatcher, saveScenarioWatcher } from "@entrypoints/content/store/automation/automation.saga.action";
-import { useScenarioActions } from "../hooks/useScenarioActions";
-import { getActionableTarget, getEditableRoot, isTextEntryElement } from "../utils/recordingUtils";
-import { generateXPaths } from "../utils/xpathUtils";
+import { useScenarioActions } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/hooks/useScenarioActions";
+import { getActionableTarget, getEditableRoot, isTextEntryElement } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/recordingUtils";
+import { generateXPaths } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils";
 import HighlightOverlayManager from "@entrypoints/shared/components/HighlightOverlay/HighlightOverlayManager";
-import { Scenario, ScenarioMap } from "../types";
+import { Scenario, ScenarioMap } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 import { LiveWatchContext, LiveWatchController } from "./LiveWatchContext";
 import { SuggestionCard } from "./components/SuggestionCard";
 import { WatchLogPanel } from "./components/WatchLogPanel";

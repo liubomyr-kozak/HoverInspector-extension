@@ -9,7 +9,7 @@ import { KEY_PRESS_OPTIONS } from "../utils/keyboardUtils";
 import { parseSelectValues } from "../utils/recordingUtils";
 import { getStepIcon } from "../utils/stepIcons";
 import { shadowBody } from "../utils/popupContainer";
-import { findElementByXPaths } from "../liveWatch/utils/dom";
+import { findElementByXPaths } from "@entrypoints/content/modules/PopupContainer/LiveWatch/utils/dom";
 import { ElementField } from "./StepForm/ElementField";
 import { StepFormErrors, validateStep } from "./StepForm/stepValidation";
 import {

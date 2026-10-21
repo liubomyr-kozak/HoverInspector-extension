@@ -1,9 +1,9 @@
 import { browser } from "wxt/browser";
-import { startWatchCapture } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/capture";
+import { startWatchCapture } from "@entrypoints/content/modules/PopupContainer/LiveWatch/capture";
 import {
   isCaptureAnswer,
   LIVE_WATCH_CAPTURE_QUERY,
-} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/captureProtocol";
+} from "@entrypoints/content/modules/PopupContainer/LiveWatch/captureProtocol";
 
 /**
  * Live watching capture, from the very start of every page while live watching is on (the background

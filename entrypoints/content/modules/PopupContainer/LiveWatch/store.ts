@@ -107,6 +107,14 @@ export function setLiveWatchEnabled(enabled: boolean) {
   updateLiveWatchSettings(enabled ? { enabled, panel: { ...settings.panel, open: true } } : { enabled });
 }
 
+/**
+ * The launcher button of the tool: turns watching on, shows a hidden log, or turns watching off
+ */
+export function toggleLiveWatch() {
+  if (!settings.enabled || !settings.panel.open) setLiveWatchEnabled(true);
+  else setLiveWatchEnabled(false);
+}
+
 export function updateWatchPanel(change: Partial<WatchPanelLayout>) {
   updateLiveWatchSettings({ panel: { ...settings.panel, ...change } });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { StepType } from "../../../types";
+import { StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 import { NavigationKind, WatchEvent, WatchEventKind, WatchLogMode } from "../../types";
 import { itemsToSteps, logItems, NAVIGATION_CAUSE_MS, rawItems, smartItems, sourceIdsOf } from "../smartLog";
 

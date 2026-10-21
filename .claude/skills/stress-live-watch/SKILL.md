@@ -1,6 +1,6 @@
 ---
 name: stress-live-watch
-description: Stress test Automation live watching with 1000-2000 real user actions across a local multi-page site and compare what the watch log noted with the ground truth, per use case. Use after any change to the capture, the watch log, its storage or the smart view.
+description: Stress test the Live Watching tool with 1000-2000 real user actions across a local multi-page site and compare what the watch log noted with the ground truth, per use case. Use after any change to the capture, the watch log, its storage or the smart view.
 ---
 
 # Stress test live watching

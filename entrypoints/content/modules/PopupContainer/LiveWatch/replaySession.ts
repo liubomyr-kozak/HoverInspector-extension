@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import { ScenarioStep, StepType } from "../types";
+import { ScenarioStep, StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 
 /**
  * Replay of log rows ("Play" in the watch log). Unlike a scenario run there is no scenario and no history

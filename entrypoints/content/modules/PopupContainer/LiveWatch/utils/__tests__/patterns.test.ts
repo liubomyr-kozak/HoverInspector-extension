@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ScenarioMap, StepType } from "../../../types";
+import { ScenarioMap, StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 import { WatchEvent, WatchEventKind } from "../../types";
 import {
   describeEvent,

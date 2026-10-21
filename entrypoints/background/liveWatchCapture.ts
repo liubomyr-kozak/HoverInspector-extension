@@ -5,7 +5,7 @@ import {
   isCaptureQuery,
   LIVE_WATCH_CAPTURE_SCRIPT_FILE,
   LIVE_WATCH_CAPTURE_SCRIPT_ID,
-} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/captureProtocol.ts";
+} from "@entrypoints/content/modules/PopupContainer/LiveWatch/captureProtocol.ts";
 
 /**
  * Background side of live watching:

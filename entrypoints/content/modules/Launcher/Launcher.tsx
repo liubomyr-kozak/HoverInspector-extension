@@ -25,10 +25,11 @@ import {
   MenuWrapper,
   SectionTitle,
 } from "./Launcher.styled";
-import { ICON_ITEMS, POPUP_SUPPORT_TOOLS } from "./LauncherIcons";
+import { ICON_ITEMS, LIVE_WATCH, POPUP_SUPPORT_TOOLS } from "./LauncherIcons";
 import SortableItem from "@entrypoints/content/modules/Launcher/SortableItem/SortableItem";
 import { Logo } from "@entrypoints/shared/components/Logo/Logo";
 import { McpBridgeSetting } from "./McpBridgeSetting";
+import { toggleLiveWatch, useLiveWatchSettings } from "@entrypoints/content/modules/PopupContainer/LiveWatch/store";
 
 const UsefulLinks = ({ category }: { category?: string }) => {
   const links = [
@@ -58,10 +59,16 @@ const Launcher: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { iconOrder = POPUP_SUPPORT_TOOLS, activeIcons = [] } = useSelector((state: any) => state?.app.launcher);
   const { visibleFeatures = [] } = useSelector((state: any) => state?.app);
+  const liveWatch = useLiveWatchSettings();
 
+  // A saved order from before a tool was added lacks it: the new tool goes at the end
   const normalizedIconOrder = useMemo(() => {
-    return iconOrder.length ? iconOrder : ICON_ITEMS.map((i) => i.id);
+    const order: string[] = iconOrder.length ? iconOrder : ICON_ITEMS.map((i) => i.id);
+    return [...order, ...ICON_ITEMS.map((i) => i.id).filter((id) => !order.includes(id))];
   }, [iconOrder]);
+
+  // Live watching is on in its own settings, not in activeIcons: it keeps watching across pages and tabs
+  const isToolActive = (id: string) => (id === LIVE_WATCH.id ? liveWatch.enabled : activeIcons.includes(id));
 
   // Function to toggle feature visibility using saga callback
   const handleToggleFeatureVisibility = (id: string) => {
@@ -71,6 +78,10 @@ const Launcher: React.FC = () => {
   const toggleFeature = (id: string) => {
     const item = ICON_ITEMS.find((i) => i.id === id);
     if (!item?.activatable) return;
+    if (id === LIVE_WATCH.id) {
+      toggleLiveWatch();
+      return;
+    }
 
     dispatch(
       onChangeLauncherActiveFeature.getPayload({
@@ -88,7 +99,10 @@ const Launcher: React.FC = () => {
     if (!visibleFeatures.includes(id)) {
       dispatch(onToggleFeatureVisibility.getPayload(id));
     }
-    if (!activeIcons.includes(id)) {
+    if (id === LIVE_WATCH.id) {
+      // Opening from the menu never turns watching off; it shows the log if it was hidden
+      if (!liveWatch.enabled || !liveWatch.panel.open) toggleLiveWatch();
+    } else if (!activeIcons.includes(id)) {
       toggleFeature(id);
     }
     setMenuOpen(false);
@@ -166,7 +180,7 @@ const Launcher: React.FC = () => {
                       title={item.title}
                       icon={item.icon}
                       isVisible={isVisible}
-                      isActive={activeIcons.includes(id)}
+                      isActive={isToolActive(id)}
                       onToggleVisibility={handleToggleFeatureVisibility}
                       onOpen={handleOpenFromMenu}
                     />
@@ -245,7 +259,7 @@ const Launcher: React.FC = () => {
             if (!item) return null;
 
             const Icon = item.icon;
-            const isActive = activeIcons.includes(id);
+            const isActive = isToolActive(id);
 
             return (
               <Tooltip key={id} placement="top" title={item.title}>

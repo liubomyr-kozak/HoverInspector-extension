@@ -8,16 +8,6 @@ const pulse = keyframes`
   50% { opacity: 0.35; }
 `;
 
-export const Toolbar = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid ${tokens.color.border};
-  background: ${tokens.color.surfaceMuted};
-`;
-
 export const StatusLine = styled.div`
   display: flex;
   align-items: center;
@@ -64,7 +54,8 @@ export const Row = styled.div<{ $selected: boolean; $playing: boolean; $minor: b
   align-items: center;
   gap: 8px;
   height: ${ROW_HEIGHT}px;
-  padding: 0 12px 0 8px;
+  /* With the 3px playing marker, the number lines up with the header's 12px edge */
+  padding: 0 12px 0 9px;
   border-left: 3px solid transparent;
   color: ${({ $minor }) => ($minor ? tokens.color.textMuted : tokens.color.text)};
   font-size: ${tokens.font.size.sm}px;
@@ -100,9 +91,10 @@ export const Row = styled.div<{ $selected: boolean; $playing: boolean; $minor: b
     `}
 `;
 
+/** As wide as the longest number in the list (set on ListViewport), not a fixed gap before short ones */
 export const RowNumber = styled.span`
   flex: none;
-  width: 34px;
+  min-width: calc(var(--row-number-digits, 2) * 1ch);
   color: ${tokens.color.textMuted};
   font-family: ${tokens.font.mono};
   font-size: 11px;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { StepType } from "../../../types";
+import { StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 import { isReplayFresh, isReplayingIn, isReplayLanding, REPLAY_MAX_AGE_MS, ReplaySession, resumeIndex, sanitizeReplay } from "../../replaySession";
 import { WatchEvent, WatchEventKind } from "../../types";
 import { chunkIdOf, chunkKey, chunksOverLimit, newChunkId, sanitizeHidden, sanitizeValues } from "../../watchLogStorage";
