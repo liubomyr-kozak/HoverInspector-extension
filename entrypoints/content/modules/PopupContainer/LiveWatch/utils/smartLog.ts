@@ -1,4 +1,4 @@
-import { ScenarioStep, StepType } from "../../types";
+import { ScenarioStep, StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 import { NavigationKind, WatchEvent, WatchEventKind, WatchLogItem, WatchLogMode } from "../types";
 import { eventSignature, eventsToSteps, WATCH_EVENT_LIMIT } from "./patterns";
 

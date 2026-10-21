@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "react-redux";
-import { ScenarioStep, StepType } from "../types";
+import { ScenarioStep, StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 import { WatchEvent } from "./types";
 import { playStep } from "./utils/playStep";
 

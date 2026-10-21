@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import { formatKeyCombo, shouldRecordKeyPress } from "../utils/keyboardUtils";
+import { formatKeyCombo, shouldRecordKeyPress } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/keyboardUtils";
 import {
   getActionableTarget,
   getCheckboxTargetState,
@@ -7,8 +7,8 @@ import {
   getSelectValue,
   getTypedValue,
   isTextEntryElement,
-} from "../utils/recordingUtils";
-import { generateXPaths } from "../utils/xpathUtils";
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/recordingUtils";
+import { generateXPaths } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/xpathUtils";
 import { isReplayingIn, isReplayLanding, LIVE_WATCH_REPLAY_KEY, ReplaySession, sanitizeReplay } from "./replaySession";
 import { NavigationKind, WatchEvent, WatchEventKind } from "./types";
 import { elementLabel, isActionableElement, isExtensionTarget, isSensitiveField } from "./utils/dom";

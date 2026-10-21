@@ -6,15 +6,15 @@ import { LIVE_WATCH_SETTINGS_KEY } from "@entrypoints/core/constants/automation"
 import type { BridgeParams } from "@entrypoints/core/mcp/types";
 import type { CSSSnapshot, SnapshotNode } from "@entrypoints/content/modules/PopupContainer/CSSSnapshotInspector/types";
 import type { Scenario, ScenarioMap } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
-import type { WatchEvent } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/types";
+import type { WatchEvent } from "@entrypoints/content/modules/PopupContainer/LiveWatch/types";
 import {
   describeEvent,
   eventsToSteps,
   findPatterns,
   isPatternSaved,
-} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/utils/patterns";
-import { patternActions } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/utils/smartLog";
-import { loadStoredLog } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/liveWatch/watchLogStorage";
+} from "@entrypoints/content/modules/PopupContainer/LiveWatch/utils/patterns";
+import { patternActions } from "@entrypoints/content/modules/PopupContainer/LiveWatch/utils/smartLog";
+import { loadStoredLog } from "@entrypoints/content/modules/PopupContainer/LiveWatch/watchLogStorage";
 import { isDesignTheme } from "@entrypoints/content/modules/SettingsIconBox/components/ColorPaletteDefinition/utils/themeDiff";
 
 import { optionalBoolean, optionalNumber, optionalString, requireString } from "./params";

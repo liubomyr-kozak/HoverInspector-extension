@@ -53,13 +53,14 @@ export const McpBridgeSetting: React.FC = () => {
           aria-describedby={hintId}
         />
       </div>
-      <p id={hintId} className="m-0 mt-1 text-xs text-gray-600">
-        Lets an AI agent on this computer read palettes, snapshots and scenarios, take screenshots and run
-        scenarios. Connects only to 127.0.0.1. Off by default.
+      {/* Under the label, not under the switch, and narrow: the menu is wide and a full-width line is hard to read */}
+      <p id={hintId} className="m-0 mt-0.5 max-w-[52ch] pl-6 text-xs leading-snug text-gray-500">
+        Lets AI agents on this computer use palettes, snapshots, screenshots and scenarios. Local only
+        (127.0.0.1), off by default.
       </p>
 
       {settings.enabled && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-gray-600">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 pl-6 text-xs text-gray-600">
           <span className="flex min-w-0 items-center gap-1" role="status">
             <StatusDot $connected={connected} aria-hidden="true" />
             {connected ? "Connected to the MCP server" : "Waiting for the MCP server to start"}

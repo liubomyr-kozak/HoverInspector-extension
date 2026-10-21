@@ -1,11 +1,10 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { Button, Input, Segmented, Select } from "antd";
+import { Button, Input } from "antd";
 import {
   IconDeviceFloppy,
-  IconDownload,
-  IconEye,
+  IconListCheck,
   IconPlayerPlayFilled,
   IconPlayerSkipForward,
   IconPlayerStopFilled,
@@ -19,10 +18,10 @@ import { ResizableModal } from "@entrypoints/shared/components/FloatingModal/Res
 import { FeatureIcon } from "@entrypoints/shared/components/FeatureIcon";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { EmptyState } from "@entrypoints/shared/components/EmptyState";
-import { shadowBody } from "@entrypoints/shared/utils/shadowBody";
 import { FeatureTitle, FeatureTitleText } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled";
-import { Scenario } from "../../types";
-import { updateLiveWatchSettings, updateWatchPanel, WATCH_LIMIT_OPTIONS } from "../store";
+import { Scenario } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
+import { LIVE_WATCH } from "@entrypoints/content/modules/Launcher/LauncherIcons";
+import { setLiveWatchEnabled, updateWatchPanel } from "../store";
 import { DetectedPattern, LiveWatchSettings, WatchEvent, WatchLogItem, WatchLogMode } from "../types";
 import { ReplayPhase, useLogReplay } from "../useLogReplay";
 import { clearWatchLog, deleteWatchEvents, WatchLogSnapshot } from "../useWatchLog";
@@ -32,8 +31,9 @@ import { describeEventParts } from "../utils/patterns";
 import { watchLogExport, watchLogFileName } from "../utils/exportLog";
 import { RepeatsStrip } from "./RepeatsStrip";
 import { TargetHighlight } from "./TargetHighlight";
+import { WatchLogSettings } from "./WatchLogSettings";
 import { WatchLogRow } from "./WatchLogRow";
-import { Chip, FooterBar, ListViewport, LiveDot, Progress, ReplayBar, ROW_HEIGHT, StatusLine, Toolbar } from "./WatchLogPanel.styled";
+import { Chip, FooterBar, ListViewport, LiveDot, Progress, ReplayBar, ROW_HEIGHT, StatusLine } from "./WatchLogPanel.styled";
 
 interface WatchLogPanelProps {
   settings: LiveWatchSettings;
@@ -85,6 +85,14 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
 
   const selected = useMemo(() => selectedInOrder(items, selection), [items, selection]);
 
+  // "Review": the list shows only the selected rows, in the order they will play
+  const [reviewing, setReviewing] = useState(false);
+  useEffect(() => {
+    if (!selected.length) setReviewing(false);
+  }, [selected.length]);
+  const shownItems = reviewing ? selected : items;
+  const shownIds = useMemo(() => shownItems.map((item) => item.id), [shownItems]);
+
   // ---- windowed list
 
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -105,14 +113,14 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (viewport && followRef.current) viewport.scrollTop = viewport.scrollHeight;
-  }, [items.length, viewportHeight]);
+  }, [shownItems.length, viewportHeight]);
 
   const first = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
-  const last = Math.min(items.length, Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN);
+  const last = Math.min(shownItems.length, Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN);
 
   const scrollToRow = (id: string) => {
     const viewport = viewportRef.current;
-    const index = ids.indexOf(id);
+    const index = shownIds.indexOf(id);
     if (!viewport || index < 0) return;
     const top = index * ROW_HEIGHT;
     if (top < viewport.scrollTop) viewport.scrollTop = top;
@@ -164,6 +172,8 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const busy = !!replay && replay.phase !== ReplayPhase.DONE;
+
   const playSelected = () => {
     if (!selected.length) return;
     const rowIds: string[] = [];
@@ -203,27 +213,32 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
     setSelection(EMPTY_SELECTION);
   };
 
+  // Closing the tool stops watching; the log stays for the next time
   const close = () => {
     stop();
-    updateWatchPanel({ open: false });
+    setLiveWatchEnabled(false);
   };
 
   const onRowClick = (event: React.MouseEvent, id: string) => {
     viewportRef.current?.focus();
-    setSelection((current) => selectRow(current, ids, id, { range: event.shiftKey, toggle: event.ctrlKey || event.metaKey }));
+    setSelection((current) => selectRow(current, shownIds, id, { range: event.shiftKey, toggle: event.ctrlKey || event.metaKey }));
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     const toggle = event.ctrlKey || event.metaKey;
     let next: ListSelection | null = null;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      next = moveFocus(selection, ids, event.key === "ArrowDown" ? 1 : -1, event.shiftKey);
+      next = moveFocus(selection, shownIds, event.key === "ArrowDown" ? 1 : -1, event.shiftKey);
     } else if (event.key === "Home" || event.key === "End") {
-      next = moveFocus(selection, ids, event.key === "End" ? ids.length : -ids.length, event.shiftKey);
+      next = moveFocus(selection, shownIds, event.key === "End" ? shownIds.length : -shownIds.length, event.shiftKey);
     } else if (toggle && event.key.toLowerCase() === "a") {
-      next = selectAll(ids);
+      next = selectAll(shownIds);
+    } else if (event.key === "Escape" && selection.selected.size) {
+      // Handled here, so the global Esc shortcut doesn't switch the extension off
+      event.stopPropagation();
+      next = EMPTY_SELECTION;
     } else if (event.key === " " && selection.focus) {
-      next = selectRow(selection, ids, selection.focus, { toggle: true });
+      next = selectRow(selection, shownIds, selection.focus, { toggle: true });
     } else if (event.key === "Enter") {
       playSelected();
     } else if (event.key === "Delete" || event.key === "Backspace") {
@@ -245,41 +260,54 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
 
   const title = (
     <FeatureTitle className="flex-1 min-w-0">
-      <FeatureIcon icon={IconEye} size={18} />
-      <FeatureTitleText>Live watching</FeatureTitleText>
-      <Chip $tone="muted" className="ml-1 normal-case">
+      <FeatureIcon icon={LIVE_WATCH.icon} size={18} />
+      <FeatureTitleText title={LIVE_WATCH.title}>{LIVE_WATCH.title}</FeatureTitleText>
+      <LiveDot $on={watching} role="img" aria-label={watching ? "Watching this tab" : "Paused"} title={watching ? "Watching this tab" : "Paused"} />
+      <Chip $tone="muted" className="ml-auto normal-case">
         {plural(settings.mode === WatchLogMode.RAW ? events.length : items.length, settings.mode === WatchLogMode.RAW ? "event" : "step")}
       </Chip>
+      <WatchLogSettings settings={settings} hasEvents={log.events.length > 0} busy={busy} onDownload={downloadLog} onClear={() => clearWatchLog()} />
     </FeatureTitle>
   );
 
-  const busy = !!replay && replay.phase !== ReplayPhase.DONE;
   const current = replay ? replay.steps[replay.index] : undefined;
   const currentItem = playingRowId ? items.find((item) => item.id === playingRowId) : undefined;
 
-  const footer = (
+  // Actions only for a selection; without one the footer says how to make one
+  const footer = selected.length ? (
     <FooterBar>
+      <span className="mr-auto whitespace-nowrap text-xs font-medium text-gray-600">{selected.length.toLocaleString()} selected</span>
+      <IconButton
+        label={reviewing ? "Show the whole log" : "Review the selected steps in play order"}
+        size={26}
+        active={reviewing}
+        onClick={() => setReviewing(!reviewing)}
+      >
+        <IconListCheck size={16} aria-hidden="true" />
+      </IconButton>
+      <IconButton label="Delete the selected steps" size={26} disabled={busy} onClick={deleteSelected}>
+        <IconTrash size={16} aria-hidden="true" />
+      </IconButton>
       <Button
         size="small"
-        type="primary"
-        icon={buttonIcon(IconPlayerPlayFilled)}
-        disabled={!selected.length || busy}
-        onClick={playSelected}
+        icon={buttonIcon(IconDeviceFloppy)}
+        disabled={busy}
+        onClick={saveSelected}
+        title="Save as scenario"
+        aria-label="Save as scenario"
       >
-        {selected.length ? `Play ${selected.length}` : "Play"}
+        Save
       </Button>
-      <Button size="small" icon={buttonIcon(IconDeviceFloppy)} disabled={!selected.length || busy} onClick={saveSelected}>
-        Save as scenario
+      <Button size="small" type="primary" icon={buttonIcon(IconPlayerPlayFilled)} disabled={busy} onClick={playSelected}>
+        Play
       </Button>
-      <span className="ml-auto flex items-center gap-1">
-        <IconButton label="Download all events as JSON" size={26} disabled={!log.events.length} onClick={downloadLog}>
-          <IconDownload size={16} aria-hidden="true" />
-        </IconButton>
-        <IconButton label="Delete selected rows" size={26} disabled={!selected.length || busy} onClick={deleteSelected}>
-          <IconTrash size={16} aria-hidden="true" />
-        </IconButton>
-      </span>
     </FooterBar>
+  ) : (
+    items.length > 0 && (
+      <FooterBar>
+        <span className="text-xs text-gray-500">Select steps to play or save them · Shift+click for a range</span>
+      </FooterBar>
+    )
   );
 
   return (
@@ -299,45 +327,21 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
       {hovered && hovered.origin === window.location.origin && hovered.xpath && (
         <TargetHighlight xpath={hovered.xpath} alternativeXpaths={hovered.alternativeXpaths} />
       )}
-      <Toolbar>
-        <Segmented
-          size="small"
-          value={settings.mode}
-          onChange={(mode) => updateLiveWatchSettings({ mode: mode as WatchLogMode })}
-          options={[
-            { value: WatchLogMode.SMART, label: "Smart" },
-            { value: WatchLogMode.RAW, label: "Raw" },
-          ]}
-          aria-label="How the log lists actions"
-        />
-        <Select
-          size="small"
-          value={settings.limit}
-          onChange={(limit) => updateLiveWatchSettings({ limit })}
-          options={WATCH_LIMIT_OPTIONS.map((value) => ({ value, label: `Keep ${value.toLocaleString()}` }))}
-          getPopupContainer={shadowBody}
-          aria-label="How many actions the log keeps"
-          popupMatchSelectWidth={false}
-        />
-        <Button size="small" type="text" className="ml-auto" disabled={!log.events.length || busy} onClick={() => clearWatchLog()}>
-          Clear
-        </Button>
-      </Toolbar>
-      <StatusLine role="status">
-        <LiveDot $on={watching} aria-hidden="true" />
-        <span className="min-w-0 truncate">
-          {selected.length
-            ? `${plural(selected.length, "row")} selected · Shift+click for a range, Ctrl/Cmd+click to add`
-            : watching
-              ? "Watching this tab · click a row, Shift+click for a range"
-              : "Paused while a scenario records or plays"}
-        </span>
-        {selected.length > 0 && (
-          <IconButton label="Clear the selection" size={24} className="ml-auto" onClick={() => setSelection(EMPTY_SELECTION)}>
-            <IconX size={14} aria-hidden="true" />
-          </IconButton>
-        )}
-      </StatusLine>
+      {reviewing && (
+        <StatusLine role="status">
+          <IconListCheck size={14} className="flex-none text-blue-600" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate">Selected steps, in play order</span>
+          <Button size="small" type="link" className="px-0" onClick={() => setReviewing(false)}>
+            Show all
+          </Button>
+        </StatusLine>
+      )}
+      {!watching && (
+        <StatusLine role="status">
+          <LiveDot $on={false} aria-hidden="true" />
+          <span className="min-w-0 truncate">Paused while a scenario records or plays</span>
+        </StatusLine>
+      )}
       <ListViewport
         ref={viewportRef}
         role="listbox"
@@ -345,6 +349,7 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
         aria-label="Watched actions"
         aria-activedescendant={selection.focus ? `hi-watch-row-${selection.focus}` : undefined}
         tabIndex={0}
+        style={{ "--row-number-digits": String(shownItems.length).length } as React.CSSProperties}
         onKeyDown={onKeyDown}
         onScroll={(event) => {
           const viewport = event.currentTarget;
@@ -355,14 +360,14 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
       >
         {!items.length && log.loaded && (
           <EmptyState
-            icon={<IconEye size={28} aria-hidden="true" />}
+            icon={<LIVE_WATCH.icon size={28} aria-hidden="true" />}
             title="Nothing watched yet"
             description="Click, type and move between pages: every action shows up here."
             className="py-8"
           />
         )}
-        <div style={{ height: items.length * ROW_HEIGHT }} aria-hidden={!items.length}>
-          {items.slice(first, last).map((item, offset) => {
+        <div style={{ height: shownItems.length * ROW_HEIGHT }} aria-hidden={!shownItems.length}>
+          {shownItems.slice(first, last).map((item, offset) => {
             const index = first + offset;
             return (
               <WatchLogRow

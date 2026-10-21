@@ -2,8 +2,9 @@
 
 Browser extension (Chrome MV3; Firefox, Edge, Safari builds) for designers and QA. It measures distances
 between page elements and offers tools in one floating panel: Element Inspector, Page Ruler, Color
-Picker, Unit Converter, Color Palette & Typography, Automation Scenarios, CSS Snapshot Inspector (Page
-Notes and Note Taking Tools are no longer in the launcher). The whole UI lives in the open shadow root of a `<hover-inspector>` element on
+Picker, Unit Converter, Color Palette & Typography, Automation Scenarios, CSS Snapshot Inspector and Live
+Watching, which has its own floating watch log (`PopupContainer/LiveWatch/`). Page Notes and Note
+Taking Tools are no longer in the launcher. The whole UI lives in the open shadow root of a `<hover-inspector>` element on
 the user's page.
 
 Code style: `.claude/rules/code-style/` (index: `docs/CODE_STYLE.md`). Claude Code loads `core.md`,

@@ -1,5 +1,5 @@
-import { ScenarioMap, ScenarioStep, StepType } from "../../types";
-import { describeKeyCombo } from "../../utils/keyboardUtils";
+import { ScenarioMap, ScenarioStep, StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
+import { describeKeyCombo } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/keyboardUtils";
 import { DetectedPattern, FieldScenarioMatch, ScenarioContinuation, WatchEvent, WatchEventKind } from "../types";
 
 /** How many of the latest actions on a site patterns are looked for in */

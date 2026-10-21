@@ -1,7 +1,7 @@
 import { runSaga, Saga } from "redux-saga";
 import { call } from "redux-saga/effects";
 import { Store } from "@reduxjs/toolkit";
-import { ScenarioStep, StepType } from "../../types";
+import { ScenarioStep, StepType } from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/types";
 import {
   executeClickStep,
   executeHoverStep,
@@ -9,7 +9,7 @@ import {
   executeKeyPressStep,
   executeNavigateStep,
   executeSelectStep,
-} from "../../utils/stepExecutor.saga";
+} from "@entrypoints/content/modules/PopupContainer/AutomationScenarios/utils/stepExecutor.saga";
 
 /** The step types live watching produces, played by the same code as saved scenarios */
 const EXECUTORS: Partial<Record<StepType, (step: ScenarioStep) => Generator>> = {
