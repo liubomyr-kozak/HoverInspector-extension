@@ -123,6 +123,8 @@ export interface LiveWatchSettings {
   mode: WatchLogMode;
   /** How many events the log keeps (across all sites); the oldest are forgotten first */
   limit: number;
+  /** The log lists every site, not only the one the tab is on */
+  allSites: boolean;
   panel: WatchPanelLayout;
 }
 

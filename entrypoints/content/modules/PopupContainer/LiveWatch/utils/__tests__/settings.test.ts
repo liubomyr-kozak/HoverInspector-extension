@@ -10,9 +10,12 @@ describe("normalizeSettings", () => {
       mutedFields: [],
       mode: WatchLogMode.SMART,
       limit: DEFAULT_WATCH_LIMIT,
+      allSites: false,
       panel: DEFAULT_PANEL,
     });
     expect(normalizeSettings("on").enabled).toBe(false);
+    expect(normalizeSettings({ allSites: "yes" }).allSites).toBe(false);
+    expect(normalizeSettings({ allSites: true }).allSites).toBe(true);
     expect(normalizeSettings({ enabled: "yes" }).enabled).toBe(false);
   });
 

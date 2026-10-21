@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { Button } from "antd";
 import { IconChevronDown, IconChevronUp, IconEyeOff, IconRepeat } from "@tabler/icons-react";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { dismissPattern } from "../store";
 import { DetectedPattern } from "../types";
 import { Chip } from "./WatchLogPanel.styled";
-import { RepeatRow, RepeatsHeader, RepeatsSection } from "./RepeatsStrip.styled";
+import { RepeatButton, RepeatRow, RepeatsHeader, RepeatsSection } from "./RepeatsStrip.styled";
 
 interface RepeatsStripProps {
   patterns: DetectedPattern[];
@@ -16,7 +15,7 @@ interface RepeatsStripProps {
 }
 
 /** Collapsed, only the best chain is listed */
-const SHOWN_EXPANDED = 4;
+const SHOWN_EXPANDED = 5;
 
 const chainText = (pattern: DetectedPattern) => {
   const labels = pattern.events.map((event) => event.label).filter(Boolean);
@@ -25,8 +24,8 @@ const chainText = (pattern: DetectedPattern) => {
 };
 
 /**
- * The chains of steps the user repeats, under the log. Nothing pops up: "Select" selects the latest round
- * in the log, and the panel's own Play or Save as scenario does the rest, if the user wants it.
+ * The chains of steps the user repeats, under the log. Nothing pops up: clicking a chain selects its latest
+ * round in the log, and the panel's own Play or Save as scenario does the rest, if the user wants it.
  */
 export const RepeatsStrip: React.FC<RepeatsStripProps> = ({ patterns, onSelect, rowCount }) => {
   const [expanded, setExpanded] = useState(false);
@@ -48,14 +47,15 @@ export const RepeatsStrip: React.FC<RepeatsStripProps> = ({ patterns, onSelect, 
       </RepeatsHeader>
       {shown.map((pattern) => (
         <RepeatRow key={pattern.id}>
-          <Chip>{rowCount(pattern)} steps</Chip>
-          <Chip $tone="muted">×{pattern.occurrences}</Chip>
-          <span className="min-w-0 flex-1 truncate" title={pattern.events.map((event) => event.label).join(" → ")}>
-            {chainText(pattern)}
-          </span>
-          <Button size="small" onClick={() => onSelect(pattern)}>
-            Select
-          </Button>
+          <RepeatButton
+            type="button"
+            onClick={() => onSelect(pattern)}
+            title={`Select: ${pattern.events.map((event) => event.label).join(" → ")}`}
+          >
+            <Chip>{rowCount(pattern)} steps</Chip>
+            <Chip $tone="muted">×{pattern.occurrences}</Chip>
+            <span className="min-w-0 flex-1 truncate">{chainText(pattern)}</span>
+          </RepeatButton>
           <IconButton label="Don't suggest this chain again" size={24} onClick={() => dismissPattern(pattern.id)}>
             <IconEyeOff size={14} />
           </IconButton>

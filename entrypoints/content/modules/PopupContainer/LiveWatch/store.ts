@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS: LiveWatchSettings = {
   mutedFields: [],
   mode: WatchLogMode.SMART,
   limit: DEFAULT_WATCH_LIMIT,
+  allSites: false,
   panel: DEFAULT_PANEL,
 };
 
@@ -56,6 +57,7 @@ export function normalizeSettings(raw: unknown): LiveWatchSettings {
     mutedFields: stringList(value.mutedFields),
     mode: value.mode === WatchLogMode.RAW ? WatchLogMode.RAW : WatchLogMode.SMART,
     limit: WATCH_LIMIT_OPTIONS.includes(value.limit as number) ? (value.limit as number) : DEFAULT_WATCH_LIMIT,
+    allSites: value.allSites === true,
     panel: normalizePanel(value.panel),
   };
 }

@@ -33,7 +33,7 @@ import { RepeatsStrip } from "./RepeatsStrip";
 import { TargetHighlight } from "./TargetHighlight";
 import { WatchLogSettings } from "./WatchLogSettings";
 import { WatchLogRow } from "./WatchLogRow";
-import { Chip, FooterBar, ListViewport, LiveDot, Progress, ReplayBar, ROW_HEIGHT, StatusLine } from "./WatchLogPanel.styled";
+import { Chip, DockArea, FooterBar, ListViewport, LiveDot, Progress, ReplayBar, ROW_HEIGHT, StatusLine } from "./WatchLogPanel.styled";
 
 interface WatchLogPanelProps {
   settings: LiveWatchSettings;
@@ -74,7 +74,11 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
   const status = useSelector(selectStatus);
   const { replay, play, stop, provideValue, retry, skip, dismiss } = useLogReplay();
 
-  const events = useMemo(() => log.events.slice(-settings.limit), [log.events, settings.limit]);
+  // This site's actions only, unless the user asked for every site: work on one site is what gets repeated
+  const events = useMemo(() => {
+    const kept = log.events.slice(-settings.limit);
+    return settings.allSites ? kept : kept.filter((event) => event.origin === window.location.origin);
+  }, [log.events, settings.limit, settings.allSites]);
   const items = useMemo(() => logItems(events, settings.mode), [events, settings.mode]);
   const ids = useMemo(() => items.map((item) => item.id), [items]);
   const [selection, setSelection] = useState<ListSelection>(EMPTY_SELECTION);
@@ -153,6 +157,8 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
     const rows = patternRows(pattern);
     if (!rows.length) return;
     setSelection({ selected: new Set(rows), anchor: rows[0], focus: rows[rows.length - 1] });
+    // On to the list: Enter plays the chain, Esc lets it go
+    viewportRef.current?.focus();
     followRef.current = false;
     scrollToRow(rows[0]);
   };
@@ -361,8 +367,9 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
         {!items.length && log.loaded && (
           <EmptyState
             icon={<LIVE_WATCH.icon size={28} aria-hidden="true" />}
-            title="Nothing watched yet"
-            description="Click, type and move between pages: every action shows up here."
+            {...(log.events.length && !settings.allSites
+              ? { title: "Nothing on this site yet", description: "Other sites' actions are kept: Show every site in the settings lists them." }
+              : { title: "Nothing watched yet", description: "Click, type and move between pages: every action shows up here." })}
             className="py-8"
           />
         )}
@@ -385,8 +392,10 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
           })}
         </div>
       </ListViewport>
-      <RepeatsStrip patterns={shownPatterns} onSelect={selectPattern} rowCount={(pattern) => patternRows(pattern).length} />
-      {children}
+      <DockArea>
+        <RepeatsStrip patterns={shownPatterns} onSelect={selectPattern} rowCount={(pattern) => patternRows(pattern).length} />
+        {children}
+      </DockArea>
       {replay && (
         <ReplayBar role="status" aria-live="polite">
           <div className="flex items-center gap-2">

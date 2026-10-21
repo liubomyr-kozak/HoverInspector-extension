@@ -1,5 +1,5 @@
 import React, { useId, useState } from "react";
-import { Button, Popover, Segmented, Select } from "antd";
+import { Button, Popover, Segmented, Select, Switch } from "antd";
 import { IconDownload, IconLock, IconSettings, IconTrash } from "@tabler/icons-react";
 import { IconButton } from "@entrypoints/shared/components/IconButton";
 import { shadowBody } from "@entrypoints/shared/utils/shadowBody";
@@ -60,6 +60,14 @@ export const WatchLogSettings: React.FC<WatchLogSettingsProps> = ({ settings, ha
           popupMatchSelectWidth={false}
         />
       </div>
+      <label className="flex items-center justify-between gap-2">
+        <span>Show every site</span>
+        <Switch
+          size="small"
+          checked={settings.allSites}
+          onChange={(allSites) => updateLiveWatchSettings({ allSites })}
+        />
+      </label>
       <div className="flex flex-wrap gap-2 border-0 border-t border-solid border-gray-200 pt-3">
         <Button size="small" icon={<IconDownload size={14} />} disabled={!hasEvents} onClick={onDownload}>
           Download JSON

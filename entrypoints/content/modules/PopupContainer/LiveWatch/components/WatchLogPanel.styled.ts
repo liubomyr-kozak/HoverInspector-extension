@@ -39,11 +39,23 @@ export const LiveDot = styled.span<{ $on: boolean }>`
 export const ListViewport = styled.div`
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
+  /* Repeats and suggestions under it never squeeze the log shut */
+  min-height: ${ROW_HEIGHT * 4}px;
   overflow-y: auto;
   overscroll-behavior: contain;
   /* Rows drop the time when the panel is narrow, so the action keeps its room */
   container-type: inline-size;
+`;
+
+/** Repeats and the suggestion under the log: at most half the panel, scrolling inside past that */
+export const DockArea = styled.div`
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 50%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 `;
 
 export const Row = styled.div<{ $selected: boolean; $playing: boolean; $minor: boolean; $focused: boolean }>`
