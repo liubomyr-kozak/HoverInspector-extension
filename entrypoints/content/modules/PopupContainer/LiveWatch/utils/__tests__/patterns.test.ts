@@ -117,6 +117,55 @@ describe("findPatterns", () => {
     expect(findPatterns(events)).toEqual([]);
   });
 
+  it("treats the same named step reached another way as one step", () => {
+    // "Admin" from the menu or the breadcrumb, a table cell found as the <td> or the <div> inside it
+    const round = (admin: string, cell: string, count: number) => [
+      click("Admin", { label: "Admin", xpath: admin }),
+      click(`cell-${count}`, { label: String(count), xpath: `${cell}[normalize-space(.)="${count}"]` }),
+      click("venue"),
+      click("manage"),
+    ];
+    const events = [
+      ...round('//a[normalize-space(.)="Admin"]', "//td", 5),
+      ...round('//ul[@class="breadcrumb"]//a[normalize-space(.)="Admin"]', "//div", 13),
+      ...round('//a[normalize-space(.)="Admin"]', "//div", 11),
+    ];
+    const [pattern] = findPatterns(events);
+    expect(names(pattern.events)).toEqual(["Admin", "11", "venue", "manage"]);
+    expect(pattern.occurrences).toBe(3);
+  });
+
+  it("counts rounds with a step more, less or another as the same chain", () => {
+    const round = (...extra: WatchEvent[][]) => [
+      click("admin"),
+      click("org"),
+      click("venue"),
+      click("manage"),
+      click("create"),
+      ...(extra[0] ?? [click("best-available")]),
+      click("cancel"),
+      click("home"),
+    ];
+    const events = [
+      ...round(),
+      ...round([click("pick-a-seat")]),
+      ...round([click("best-available"), click("details")]),
+      ...round(),
+    ];
+    const patterns = findPatterns(events);
+    expect(patterns).toHaveLength(1);
+    expect(patterns[0].occurrences).toBe(4);
+    expect(names(patterns[0].events)).toEqual(["admin", "org", "venue", "manage", "create", "best-available", "cancel", "home"]);
+  });
+
+  it("does not offer a chain that only joins the end of one round to the start of the next", () => {
+    const round = (row: string) => [click("admin"), click(row, { label: row }), click("venue"), click("manage")];
+    const events = [...round("5"), click("cancel"), ...round("13"), click("cancel"), ...round("2"), ...round("11")];
+    const patterns = findPatterns(events);
+    expect(patterns).toHaveLength(1);
+    expect(names(patterns[0].events)[0]).toBe("admin");
+  });
+
   it("handles a full buffer of 1000 events quickly", () => {
     const events: WatchEvent[] = [];
     for (let i = 0; i < 1000; i++) events.push(click(`el${i % 37}`));

@@ -50,13 +50,15 @@ const NUMBER = /\d+/g;
 const generalize = (text: string) => text.replace(ID_TOKEN, "#").replace(NUMBER, "#");
 
 /**
- * What makes two actions "the same step" of repeated work. Each round usually opens another row, so row
- * numbers, ids and counters in the locator and the label differ: they are ignored. The label is kept, so
- * two buttons found by position ("Admin", "Settings") stay different.
+ * What makes two actions "the same step" of repeated work: what the user sees, the kind and the label.
+ * Each round usually opens another row, so row numbers, ids and counters are ignored. The locator is not
+ * compared when there is a label: the same "Admin" is reached from the menu or the breadcrumb, and the same
+ * table cell is found as a <td> or the <div> inside it. Without a label, the locator decides.
  */
 export function patternSignature(event: Pick<WatchEvent, "kind" | "xpath" | "value" | "label">): string {
   const value = event.kind === WatchEventKind.INPUT ? "" : generalize(event.value ?? "");
-  return `${event.kind}${SEP}${generalize(event.xpath)}${SEP}${generalize(event.label ?? "")}${SEP}${value}`;
+  const label = generalize((event.label ?? "").trim());
+  return `${event.kind}${SEP}${label || generalize(event.xpath)}${SEP}${value}`;
 }
 
 /** The signature of a scenario step, or null for steps a user does not perform by hand (wait, code...) */
@@ -79,6 +81,67 @@ interface Candidate {
   length: number;
   occurrences: number;
   lastStart: number;
+  /** Length of the last occurrence: a round with an extra or a missing step differs from `length` */
+  lastLength: number;
+}
+
+/** Chains this long or longer also count rounds that differ a little (a step more, less or another) */
+const FUZZY_MIN_LENGTH = 6;
+/** Share of a chain's steps already in better chains that makes it a repeat of them */
+const MOSTLY_OFFERED = 0.75;
+/** How many exact chains are checked for rounds that differ a little, best first */
+const FUZZY_CANDIDATES = 12;
+
+/** Length of the longest common subsequence of two id lists */
+function commonLength(a: number[], b: number[]): number {
+  let previous = new Array<number>(b.length + 1).fill(0);
+  for (let i = 1; i <= a.length; i++) {
+    const row = new Array<number>(b.length + 1).fill(0);
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = a[i - 1] === b[j - 1] ? previous[j - 1] + 1 : Math.max(previous[j], row[j - 1]);
+    }
+    previous = row;
+  }
+  return previous[b.length];
+}
+
+/**
+ * Counts the rounds of a chain, letting a round differ from it by about a quarter of its steps (a dialog
+ * opened once, another menu item, a double click). A round starts with the chain's first step, never spans
+ * a long pause, and rounds don't overlap.
+ */
+function fuzzyRounds(ids: number[], template: number[], breaksBefore: number[]): { count: number; lastStart: number; lastLength: number } {
+  const length = template.length;
+  const tolerance = Math.floor(length / 4);
+  let count = 0;
+  let lastStart = -1;
+  let lastLength = length;
+  for (let i = 0; i < ids.length; ) {
+    if (ids[i] !== template[0]) {
+      i++;
+      continue;
+    }
+    let best = 0;
+    let bestLength = 0;
+    for (let w = length - tolerance; w <= length + tolerance && i + w <= ids.length; w++) {
+      if (breaksBefore[i] !== breaksBefore[i + w - 1]) break;
+      const common = commonLength(template, ids.slice(i, i + w));
+      // The closest round: most steps in common, then the length nearest the chain's
+      if (common > best || (common === best && Math.abs(w - length) < Math.abs(bestLength - length))) {
+        best = common;
+        bestLength = w;
+      }
+    }
+    if (best >= length - tolerance && best - (bestLength - best) >= length - 2 * tolerance) {
+      count++;
+      lastStart = i;
+      lastLength = bestLength;
+      i += bestLength;
+    } else {
+      i++;
+    }
+  }
+  return { count, lastStart, lastLength };
 }
 
 /**
@@ -136,31 +199,51 @@ export function findPatterns(events: WatchEvent[], limit = 5): DetectedPattern[]
         occurrences++;
         lastStart = start;
       }
-      if (occurrences >= needed) candidates.push({ ids: windowIds, length, occurrences, lastStart });
+      if (occurrences >= needed) candidates.push({ ids: windowIds, length, occurrences, lastStart, lastLength: length });
     });
   }
 
-  // More repeated work first: a long sequence done twice beats two clicks done three times
-  candidates.sort(
-    (a, b) =>
-      b.length * (b.occurrences - 1) - a.length * (a.occurrences - 1) || b.length - a.length || b.lastStart - a.lastStart,
-  );
+  // The same work done again rarely repeats exactly: count the rounds that differ a little too
+  const byScore = (a: Candidate, b: Candidate) =>
+    b.length * (b.occurrences - 1) - a.length * (a.occurrences - 1) || b.length - a.length || b.lastStart - a.lastStart;
+  candidates.sort(byScore);
+  candidates
+    .filter((candidate) => candidate.length >= FUZZY_MIN_LENGTH)
+    .slice(0, FUZZY_CANDIDATES)
+    .forEach((candidate) => {
+      const rounds = fuzzyRounds(ids, candidate.ids, breaksBefore);
+      if (rounds.count <= candidate.occurrences) return;
+      candidate.occurrences = rounds.count;
+      candidate.lastStart = rounds.lastStart;
+      candidate.lastLength = rounds.lastLength;
+    });
 
-  const accepted: { candidate: Candidate; idSet: Set<number> }[] = [];
+  // More repeated work first: a long sequence done twice beats two clicks done three times
+  candidates.sort(byScore);
+
+  // A chain made mostly of steps already offered (a part of a better chain, a rotation of it, two chains
+  // glued together) is the same work seen from another step: offered once
+  const accepted: Candidate[] = [];
+  const offered = new Set<number>();
   for (const candidate of candidates) {
     if (accepted.length >= limit) break;
-    const covered = accepted.some(({ idSet }) => candidate.ids.every((id) => idSet.has(id)));
-    if (covered) continue;
-    accepted.push({ candidate, idSet: new Set(candidate.ids) });
+    const steps = new Set(candidate.ids);
+    const known = [...steps].filter((id) => offered.has(id)).length;
+    // One new step is not new work (often the step between two rounds), a quarter of them is not either
+    if (steps.size - known <= Math.max(1, steps.size * (1 - MOSTLY_OFFERED))) continue;
+    accepted.push(candidate);
+    steps.forEach((id) => offered.add(id));
   }
 
-  return accepted.map(({ candidate }) => {
-    const occurrence = events.slice(candidate.lastStart, candidate.lastStart + candidate.length);
+  return accepted.map((candidate) => {
+    // The id comes from the chain, the steps from its latest round, as the user last did them
+    const template = events.slice(candidate.lastStart, candidate.lastStart + candidate.lastLength);
+    const signatures = [...intern.keys()];
     return {
-      id: hashSignatures(occurrence.map(patternSignature)),
-      events: occurrence,
+      id: hashSignatures(candidate.ids.map((id) => signatures[id])),
+      events: template,
       occurrences: candidate.occurrences,
-      lastEnd: candidate.lastStart + candidate.length,
+      lastEnd: candidate.lastStart + candidate.lastLength,
     };
   });
 }

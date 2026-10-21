@@ -33,7 +33,7 @@ import { RepeatsStrip } from "./RepeatsStrip";
 import { TargetHighlight } from "./TargetHighlight";
 import { WatchLogSettings } from "./WatchLogSettings";
 import { WatchLogRow } from "./WatchLogRow";
-import { Chip, FooterBar, ListViewport, LiveDot, Progress, ReplayBar, ROW_HEIGHT, StatusLine } from "./WatchLogPanel.styled";
+import { Chip, DockArea, FooterBar, ListViewport, Splitter, LiveDot, Progress, ReplayBar, ROW_HEIGHT, StatusLine } from "./WatchLogPanel.styled";
 
 interface WatchLogPanelProps {
   settings: LiveWatchSettings;
@@ -74,7 +74,11 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
   const status = useSelector(selectStatus);
   const { replay, play, stop, provideValue, retry, skip, dismiss } = useLogReplay();
 
-  const events = useMemo(() => log.events.slice(-settings.limit), [log.events, settings.limit]);
+  // This site's actions only, unless the user asked for every site: work on one site is what gets repeated
+  const events = useMemo(() => {
+    const kept = log.events.slice(-settings.limit);
+    return settings.allSites ? kept : kept.filter((event) => event.origin === window.location.origin);
+  }, [log.events, settings.limit, settings.allSites]);
   const items = useMemo(() => logItems(events, settings.mode), [events, settings.mode]);
   const ids = useMemo(() => items.map((item) => item.id), [items]);
   const [selection, setSelection] = useState<ListSelection>(EMPTY_SELECTION);
@@ -91,6 +95,9 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
     if (!selected.length) setReviewing(false);
   }, [selected.length]);
   const shownItems = reviewing ? selected : items;
+
+  // The repeats on the whole panel: the list is not drawn (watching goes on). Reviewing brings it back.
+  const full = settings.panel.dockFull && !reviewing && patterns.length > 0;
   const shownIds = useMemo(() => shownItems.map((item) => item.id), [shownItems]);
 
   // ---- windowed list
@@ -101,6 +108,7 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
   // Follow new rows while the list is scrolled to the end
   const followRef = useRef(true);
 
+  // The list is drawn again after the repeats had the whole panel: observe the new one
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -108,7 +116,7 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
     observer.observe(viewport);
     setViewportHeight(viewport.clientHeight);
     return () => observer.disconnect();
-  }, []);
+  }, [full]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -153,12 +161,59 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
     const rows = patternRows(pattern);
     if (!rows.length) return;
     setSelection({ selected: new Set(rows), anchor: rows[0], focus: rows[rows.length - 1] });
+    // On to the list: Enter plays the chain, Esc lets it go
+    viewportRef.current?.focus();
     followRef.current = false;
     scrollToRow(rows[0]);
   };
 
   // Only chains still in the log the panel shows
   const shownPatterns = useMemo(() => patterns.filter((pattern) => patternRows(pattern).length > 0), [patterns, rowOfEvent]);
+
+  // ---- splitter between the log and the repeats
+
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [dragHeight, setDragHeight] = useState<number | null>(null);
+  const dockHeight = dragHeight ?? settings.panel.dockHeight;
+
+  /** The tallest the repeats may get: the log keeps four rows */
+  const maxDockHeight = () => (dockRef.current?.offsetHeight ?? 0) + (viewportRef.current?.clientHeight ?? 0) - ROW_HEIGHT * 4;
+  const clampDock = (height: number) => Math.round(Math.max(ROW_HEIGHT * 2, Math.min(maxDockHeight(), height)));
+
+  const onSplitterPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !dockRef.current) return;
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = dockRef.current.offsetHeight;
+    const limit = maxDockHeight();
+    const splitter = event.currentTarget;
+    splitter.setPointerCapture(event.pointerId);
+    let height = startHeight;
+    const onMove = (move: PointerEvent) => {
+      height = Math.round(Math.max(ROW_HEIGHT * 2, Math.min(limit, startHeight - (move.clientY - startY))));
+      setDragHeight(height);
+    };
+    const onUp = () => {
+      splitter.removeEventListener("pointermove", onMove);
+      splitter.removeEventListener("pointerup", onUp);
+      splitter.removeEventListener("pointercancel", onUp);
+      updateWatchPanel({ dockHeight: height });
+      setDragHeight(null);
+    };
+    splitter.addEventListener("pointermove", onMove);
+    splitter.addEventListener("pointerup", onUp);
+    splitter.addEventListener("pointercancel", onUp);
+  };
+
+  const onSplitterKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? ROW_HEIGHT * 3 : ROW_HEIGHT;
+    const current = dockRef.current?.offsetHeight ?? 0;
+    if (event.key === "ArrowUp") updateWatchPanel({ dockHeight: clampDock(current + step) });
+    else if (event.key === "ArrowDown") updateWatchPanel({ dockHeight: clampDock(current - step) });
+    else if (event.key === "Enter") updateWatchPanel({ dockFull: true });
+    else return;
+    event.preventDefault();
+  };
 
   // ---- actions
 
@@ -342,6 +397,7 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
           <span className="min-w-0 truncate">Paused while a scenario records or plays</span>
         </StatusLine>
       )}
+      {!full && (
       <ListViewport
         ref={viewportRef}
         role="listbox"
@@ -361,8 +417,9 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
         {!items.length && log.loaded && (
           <EmptyState
             icon={<LIVE_WATCH.icon size={28} aria-hidden="true" />}
-            title="Nothing watched yet"
-            description="Click, type and move between pages: every action shows up here."
+            {...(log.events.length && !settings.allSites
+              ? { title: "Nothing on this site yet", description: "Other sites' actions are kept: Show every site in the settings lists them." }
+              : { title: "Nothing watched yet", description: "Click, type and move between pages: every action shows up here." })}
             className="py-8"
           />
         )}
@@ -385,8 +442,28 @@ export const WatchLogPanel: React.FC<WatchLogPanelProps> = ({ settings, log, wat
           })}
         </div>
       </ListViewport>
-      <RepeatsStrip patterns={shownPatterns} onSelect={selectPattern} rowCount={(pattern) => patternRows(pattern).length} />
-      {children}
+      )}
+      {!full && shownPatterns.length > 0 && (
+        <Splitter
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize the repeats: arrow keys, Enter for the whole panel"
+          tabIndex={0}
+          onPointerDown={onSplitterPointerDown}
+          onKeyDown={onSplitterKeyDown}
+          onDoubleClick={() => updateWatchPanel({ dockFull: true })}
+        />
+      )}
+      <DockArea ref={dockRef} $full={full} $height={dockHeight}>
+        <RepeatsStrip
+          patterns={shownPatterns}
+          onSelect={selectPattern}
+          rowCount={(pattern) => patternRows(pattern).length}
+          full={full}
+          onToggleFull={() => updateWatchPanel({ dockFull: !full })}
+        />
+        {children}
+      </DockArea>
       {replay && (
         <ReplayBar role="status" aria-live="polite">
           <div className="flex items-center gap-2">

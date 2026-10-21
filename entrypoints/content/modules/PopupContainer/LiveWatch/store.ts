@@ -17,7 +17,7 @@ const DISMISSED_LIMIT = 200;
 export const WATCH_LIMIT_OPTIONS = [100, 250, 500, 1000, 2000, 5000];
 export const DEFAULT_WATCH_LIMIT = 1000;
 
-export const DEFAULT_PANEL: WatchPanelLayout = { open: true, x: 16, y: 96, width: 360, height: 460 };
+export const DEFAULT_PANEL: WatchPanelLayout = { open: true, x: 16, y: 96, width: 360, height: 460, dockHeight: 0, dockFull: false };
 
 const DEFAULT_SETTINGS: LiveWatchSettings = {
   enabled: false,
@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS: LiveWatchSettings = {
   mutedFields: [],
   mode: WatchLogMode.SMART,
   limit: DEFAULT_WATCH_LIMIT,
+  allSites: false,
   panel: DEFAULT_PANEL,
 };
 
@@ -44,6 +45,8 @@ function normalizePanel(raw: unknown): WatchPanelLayout {
     y: Math.max(0, finite(value.y, DEFAULT_PANEL.y)),
     width: Math.max(280, finite(value.width, DEFAULT_PANEL.width)),
     height: Math.max(240, finite(value.height, DEFAULT_PANEL.height)),
+    dockHeight: Math.max(0, finite(value.dockHeight, DEFAULT_PANEL.dockHeight)),
+    dockFull: value.dockFull === true,
   };
 }
 
@@ -56,6 +59,7 @@ export function normalizeSettings(raw: unknown): LiveWatchSettings {
     mutedFields: stringList(value.mutedFields),
     mode: value.mode === WatchLogMode.RAW ? WatchLogMode.RAW : WatchLogMode.SMART,
     limit: WATCH_LIMIT_OPTIONS.includes(value.limit as number) ? (value.limit as number) : DEFAULT_WATCH_LIMIT,
+    allSites: value.allSites === true,
     panel: normalizePanel(value.panel),
   };
 }

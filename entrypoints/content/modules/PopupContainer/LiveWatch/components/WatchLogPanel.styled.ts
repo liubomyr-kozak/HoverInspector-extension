@@ -39,11 +39,74 @@ export const LiveDot = styled.span<{ $on: boolean }>`
 export const ListViewport = styled.div`
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
+  /* Repeats and suggestions under it never squeeze the log shut */
+  min-height: ${ROW_HEIGHT * 4}px;
   overflow-y: auto;
   overscroll-behavior: contain;
   /* Rows drop the time when the panel is narrow, so the action keeps its room */
   container-type: inline-size;
+`;
+
+/**
+ * Repeats and suggestions under the log. On their own they take at most 40% of the panel; the splitter sets
+ * a height, and "whole panel" lets them fill it. Past that they scroll inside.
+ */
+export const DockArea = styled.div<{ $full: boolean; $height: number }>`
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  ${({ $full, $height }) =>
+    $full
+      ? css`
+          flex: 1 1 auto;
+        `
+      : $height
+        ? css`
+            /* The list gives way, down to its four rows (the splitter keeps the height within that) */
+            flex: none;
+            height: ${$height}px;
+          `
+        : css`
+            flex: 0 1 auto;
+            max-height: 40%;
+          `}
+`;
+
+/** Drag (or arrow keys) to share the panel between the log and the repeats */
+export const Splitter = styled.div`
+  flex: none;
+  position: relative;
+  height: 7px;
+  margin: -3px 0;
+  z-index: 2;
+  cursor: row-resize;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 2px;
+    width: 32px;
+    height: 3px;
+    margin-left: -16px;
+    border-radius: 999px;
+    background: ${tokens.color.borderStrong};
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      transition: none;
+    }
+  }
 `;
 
 export const Row = styled.div<{ $selected: boolean; $playing: boolean; $minor: boolean; $focused: boolean }>`

@@ -110,6 +110,10 @@ export interface WatchPanelLayout {
   y: number;
   width: number;
   height: number;
+  /** Height of the repeats under the log, set with the splitter; 0 fits them to their content */
+  dockHeight: number;
+  /** The repeats fill the panel and the log list is not drawn */
+  dockFull: boolean;
 }
 
 /** Live watching preferences, kept in browser.storage.local */
@@ -123,6 +127,8 @@ export interface LiveWatchSettings {
   mode: WatchLogMode;
   /** How many events the log keeps (across all sites); the oldest are forgotten first */
   limit: number;
+  /** The log lists every site, not only the one the tab is on */
+  allSites: boolean;
   panel: WatchPanelLayout;
 }
 

@@ -33,6 +33,9 @@ import {
   matchScenarioContinuation,
 } from "./utils/patterns";
 
+/** Chains listed under the log, grouped by page: enough for a few pages of one site */
+const REPEATS_LIMIT = 12;
+
 /** Look for patterns once the page is idle, at most this long after the last action */
 const ANALYSIS_TIMEOUT_MS = 1500;
 
@@ -89,7 +92,6 @@ export const LiveWatcher: React.FC = () => {
   // The pattern being replayed, for "Save as scenario"
   const runPatternRef = useRef<DetectedPattern | null>(null);
   const closedKeysRef = useRef(new Set<string>());
-  const shownPatternsRef = useRef(new Set<string>());
 
   const settingsRef = useRef<LiveWatchSettings>(settings);
   settingsRef.current = settings;
@@ -155,7 +157,7 @@ export const LiveWatcher: React.FC = () => {
     const events = actionsRef.current;
     const { dismissedPatterns } = settingsRef.current;
     const saved = scenariosRef.current || {};
-    const patterns = findPatterns(events).filter(
+    const patterns = findPatterns(events, REPEATS_LIMIT).filter(
       (pattern) => !dismissedPatterns.includes(pattern.id) && !isPatternSaved(pattern, saved),
     );
     patternsRef.current = patterns;
@@ -164,14 +166,9 @@ export const LiveWatcher: React.FC = () => {
 
     let next: Suggestion | null = null;
     const scenarioMatch = matchScenarioContinuation(events, saved);
-    // With the watch log open, repeats are listed under it instead of in a card
-    const fresh = settingsRef.current.panel.open
-      ? undefined
-      : patterns.find((pattern) => pattern.lastEnd === events.length && !shownPatternsRef.current.has(pattern.id));
+    // Repeats are listed under the watch log, not offered in a card
     if (scenarioMatch) next = { kind: SuggestionKind.CONTINUE_SCENARIO, ...scenarioMatch };
-    else if (fresh) next = { kind: SuggestionKind.PATTERN, pattern: fresh };
     if (next && closedKeysRef.current.has(suggestionKey(next))) next = null;
-    if (next?.kind === SuggestionKind.PATTERN) shownPatternsRef.current.add(next.pattern.id);
 
     setSuggestion((previous) => {
       if (next) return next;
@@ -317,18 +314,15 @@ export const LiveWatcher: React.FC = () => {
   if (!enabled) return null;
   return (
     <LiveWatchContext.Provider value={controller}>
-      {settings.panel.open ? (
-        <WatchLogPanel
-          settings={settings}
-          log={log}
-          watching={active && !executing}
-          patterns={active ? patterns.filter((pattern) => !settings.dismissedPatterns.includes(pattern.id)) : []}
-        >
-          {active && <SuggestionCard docked />}
-        </WatchLogPanel>
-      ) : (
-        active && <SuggestionCard />
-      )}
+      {/* One window: suggestions dock inside the log, which can be moved; turning the tool off closes both */}
+      <WatchLogPanel
+        settings={settings}
+        log={log}
+        watching={active && !executing}
+        patterns={active ? patterns.filter((pattern) => !settings.dismissedPatterns.includes(pattern.id)) : []}
+      >
+        {active && <SuggestionCard docked />}
+      </WatchLogPanel>
     </LiveWatchContext.Provider>
   );
 };

@@ -10,9 +10,12 @@ describe("normalizeSettings", () => {
       mutedFields: [],
       mode: WatchLogMode.SMART,
       limit: DEFAULT_WATCH_LIMIT,
+      allSites: false,
       panel: DEFAULT_PANEL,
     });
     expect(normalizeSettings("on").enabled).toBe(false);
+    expect(normalizeSettings({ allSites: "yes" }).allSites).toBe(false);
+    expect(normalizeSettings({ allSites: true }).allSites).toBe(true);
     expect(normalizeSettings({ enabled: "yes" }).enabled).toBe(false);
   });
 
@@ -38,6 +41,8 @@ describe("normalizeSettings", () => {
     expect(normalizeSettings({ mode: "raw" }).mode).toBe(WatchLogMode.RAW);
     expect(normalizeSettings({ mode: "loud" }).mode).toBe(WatchLogMode.SMART);
     const panel = normalizeSettings({ panel: { open: false, x: -40, y: "top", width: 10, height: 900 } }).panel;
-    expect(panel).toEqual({ open: false, x: 0, y: DEFAULT_PANEL.y, width: 280, height: 900 });
+    expect(panel).toEqual({ open: false, x: 0, y: DEFAULT_PANEL.y, width: 280, height: 900, dockHeight: 0, dockFull: false });
+    const dock = normalizeSettings({ panel: { dockHeight: 180, dockFull: true } }).panel;
+    expect([dock.dockHeight, dock.dockFull]).toEqual([180, true]);
   });
 });
