@@ -94,8 +94,8 @@ const generateStars = (count = 20) => {
     // const left = 50 - (Math.random() * 300) / window.innerWidth * 100 + '%';
 
     const delay = Math.random() * 10 + "s";
-    const top = `${Math.random() * 60 + 20}%`; // тільки 20%-80%
-    const left = `${Math.random() * 50}%`; // тільки зліва
+    const top = `${Math.random() * 60 + 20}%`; // 20%-80% only
+    const left = `${Math.random() * 50}%`; // left side only
 
     return (
       <ShootingStar

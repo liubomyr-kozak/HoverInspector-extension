@@ -70,9 +70,9 @@ const onRemoteSelect = (node: RemoteFrameNode, dispatch: any) => {
   dispatch(onUserEventSelectWatcher.getPayload());
 };
 
-// // Функція повертає ще одну функцію (це важливо!)
+// // The function returns another function (this matters!)
 // const onHandlerClick = (e: any) => () => {
-// // e - подія кліку (click event), яка передана як параметр зовнішньої функції.
+// // e is the click event passed to the outer function.
 const onHandlerClick = (e: any) => {
   if (PopupSettingModel.preventDefault && !hasAppClass(e.target)) {
     e.preventDefault();
@@ -111,8 +111,8 @@ const onHandlerMouseDown = (e: any, dispatch: any) => {
     return true;
   }
 
-  // схоже що не потрібно перевіряти на клас.. так як додакто знаходиться в shadowRoot цього достатньо
-  // candidateToSelectedElement завжди буде вказувати на shadowRoot
+  // No class check seems to be needed: the app lives in a shadow root, which is enough,
+  // because candidateToSelectedElement always points to the shadow root
   if (candidateToSelectedElement?.localName === "hover-inspector") {
     return true;
   }

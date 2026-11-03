@@ -1,7 +1,7 @@
-// Створюємо глобальний Set для зберігання унікальних ідентифікаторів
+// Global Set of unique saga identifiers
 const uniqueKeys = new Set<string>();
 
-type SagaFunction<P = unknown> = (action: { type: string; payload: P }) => void; // Тип для саґи
+type SagaFunction<P = unknown> = (action: { type: string; payload: P }) => void; // Saga type
 
 interface EnhancedSaga<P = unknown> extends SagaFunction<P> {
   actionType: string;
@@ -11,13 +11,13 @@ interface EnhancedSaga<P = unknown> extends SagaFunction<P> {
 export const sagaEnhancer = <P = unknown>(sagaFn: SagaFunction<P>): EnhancedSaga<P> => {
   let sagaName = sagaFn.name;
 
-  // Якщо у sagaFn немає імені, генеруємо унікальний ключ
+  // If sagaFn has no name, generate a unique key
   if (!sagaName) {
     do {
       sagaName = Math.random().toString(36).substring(7);
-    } while (uniqueKeys.has(sagaName)); // Перевіряємо, чи ключ унікальний
+    } while (uniqueKeys.has(sagaName)); // Make sure the key is unique
 
-    // Додаємо новий унікальний ключ до Set
+    // Add the new unique key to the Set
     uniqueKeys.add(sagaName);
   }
 

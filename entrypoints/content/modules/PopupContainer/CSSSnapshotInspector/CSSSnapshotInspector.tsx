@@ -92,11 +92,11 @@ const ContentWrapper = styled.div`
 `;
 
 /**
- * Головний компонент CSS Snapshot Inspector з оптимізацією продуктивності
+ * Main CSS Snapshot Inspector component, optimised for performance
  */
 export const CSSSnapshotInspector: React.FC = () => {
   const dispatch = useDispatch();
-  // Використовуємо оптимізовані хуки
+  // Optimised hooks
 
   const {
     snapshots,
@@ -113,7 +113,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     error,
   } = useSnapshots();
 
-  // Хук для фільтрації з дебаунсом
+  // Debounced filtering hook
   const { filter, setFilter, filteredSnapshots } = useSnapshotFilter(snapshots);
 
   // State for search visibility
@@ -128,7 +128,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     },
   });
 
-  // Хук для управління режимами перегляду
+  // View mode hook
   const { viewMode, setViewMode, canCompare, canViewDetails, viewSnapshot, startComparison, backToList } = useViewMode(
     selectedSnapshot,
     compareSnapshots,
@@ -147,7 +147,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     backToList();
   }, [compareSnapshots, snapshots, clearCompare, backToList]);
 
-  // Обробник для перегляду знімка
+  // Handler for viewing a snapshot
   const handleViewSnapshot = (snapshot: typeof selectedSnapshot) => {
     if (snapshot) {
       selectSnapshot(snapshot);
@@ -198,7 +198,7 @@ export const CSSSnapshotInspector: React.FC = () => {
     }
   };
 
-  // Обробник для початку порівняння
+  // Handler for starting a comparison
   const handleStartComparison = () => {
     if (canCompare) {
       // Every new comparison opens on the diff, not on whichever view the last one was left in
@@ -207,13 +207,13 @@ export const CSSSnapshotInspector: React.FC = () => {
     }
   };
 
-  // Обробник для захоплення знімка з обробкою помилок
+  // Handler for capturing a snapshot, with error handling
   const handleCaptureSnapshot = async () => {
     try {
       await captureSnapshot();
     } catch (err) {
       console.error("Failed to capture snapshot:", err);
-      // Помилка вже обробляється в хуці
+      // The hook already handles the error
     }
   };
 

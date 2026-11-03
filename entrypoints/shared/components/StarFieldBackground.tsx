@@ -1,7 +1,7 @@
 import React from "react";
 import styled, { keyframes } from "styled-components";
 
-// Генеруємо box-shadow зі 1000+ точок для кожного шару зірок
+// Generate a box-shadow with 1000+ dots for each star layer
 const generateBoxShadows = (count) => {
   const shadows = Array.from({ length: count })
     .map(() => `${Math.floor(Math.random() * 2000)}px ${Math.floor(Math.random() * 2000)}px #FFF`)

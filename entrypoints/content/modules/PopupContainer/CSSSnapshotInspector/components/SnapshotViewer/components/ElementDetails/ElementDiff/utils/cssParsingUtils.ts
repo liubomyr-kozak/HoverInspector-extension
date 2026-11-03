@@ -1,18 +1,18 @@
 /**
- * Утиліти для парсингу CSS
+ * CSS parsing utilities
  * 
- * Декларативні функції для обробки та парсингу CSS тексту.
- * Використовуються для витягування CSS властивостей з згенерованого коду.
+ * Declarative functions for processing and parsing CSS text.
+ * Used to extract CSS properties from generated code.
  */
 
 /**
- * Парсить CSS текст та витягує властивості
+ * Parses CSS text and extracts its properties
  * 
- * Декларативна функція для розбору CSS тексту на окремі властивості.
- * Обробляє стандартний формат CSS з правилами "властивість: значення;"
+ * Declarative function that splits CSS text into separate properties.
+ * Handles the standard CSS format with "property: value;" rules
  * 
- * @param cssText - CSS текст для парсингу
- * @returns Об'єкт з CSS властивостями як ключі та значення
+ * @param cssText - CSS text to parse
+ * @returns Object with CSS properties as keys and values
  * 
  * @example
  * parseCSS('color: red; font-size: 14px;')
@@ -25,13 +25,13 @@ export const parseCSS = (cssText: string): Record<string, string> => {
         return properties;
     }
 
-    // Витягуємо CSS властивості з згенерованого CSS тексту
+    // Extract CSS properties from the generated CSS text
     const cssLines = cssText.split("\n");
     
     for (const line of cssLines) {
         const trimmed = line.trim();
         
-        // Перевіряємо чи є це валідна CSS властивість
+        // Check whether this is a valid CSS property
         if (trimmed && trimmed.includes(":") && trimmed.endsWith(";")) {
             const colonIndex = trimmed.indexOf(":");
             const property = trimmed.substring(0, colonIndex).trim();
@@ -47,14 +47,14 @@ export const parseCSS = (cssText: string): Record<string, string> => {
 };
 
 /**
- * Об'єднує інлайн стилі з властивостями класів
+ * Merges inline styles with class properties
  * 
- * Декларативна функція для злиття CSS властивостей з різних джерел.
- * Пріоритет надається інлайн стилям над властивостями класів.
+ * Declarative function that merges CSS properties from different sources.
+ * Inline styles take priority over class properties.
  * 
- * @param inlineStyles - Об'єкт з інлайн стилями
- * @param classProperties - Об'єкт з властивостями класів
- * @returns Об'єднаний об'єкт властивостей
+ * @param inlineStyles - Object with inline styles
+ * @param classProperties - Object with class properties
+ * @returns Merged properties object
  */
 export const mergeStyleProperties = (
     inlineStyles: Record<string, string> | undefined,

@@ -1,5 +1,5 @@
 /**
- * Оптимізована утиліта для побудови знімків CSS
+ * Optimised CSS snapshot builder
  *
  * OPTIMIZATION (August 2025):
  * This module now implements an advanced optimization approach that significantly
@@ -33,12 +33,12 @@ import { getSnapshotLocation, getSnapshotName } from "./snapshotLabels";
 // No baseline cache needed when diffing strictly against UA defaults
 
 /**
- * Перевіряє, чи слід пропускати елемент
+ * Checks whether an element should be skipped
  */
 const shouldSkipElement = (element: Element): boolean => {
   const tag = element.tagName.toLowerCase();
 
-  // Пропускаємо meta елементи
+  // Skip meta elements
   if (["meta", "link", "style", "script", "title"].includes(tag)) {
     return true;
   }
@@ -56,13 +56,13 @@ const shouldSkipElement = (element: Element): boolean => {
     return true;
   }
 
-  // Пропускаємо невидимі елементи з нульовими розмірами
+  // Skip invisible zero-size elements
   const rect = element.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) {
     return true;
   }
 
-  // Пропускаємо елементи з display: none
+  // Skip elements with display: none
   const computedStyle = window.getComputedStyle(element);
   if (computedStyle.display === "none" || computedStyle.visibility === "hidden") {
     return true;
@@ -72,7 +72,7 @@ const shouldSkipElement = (element: Element): boolean => {
 };
 
 /**
- * Отримує індекс елемента серед сібінгів з тим же тегом
+ * Index of the element among siblings with the same tag
  */
 const getElementIndex = (element: Element): number => {
   let index = 0;
@@ -91,7 +91,7 @@ const getElementIndex = (element: Element): number => {
 // Baseline node generation removed; diffs are computed against UA defaults
 
 /**
- * Витягує релевантні стилі з computed style, порівнюючи з базовим станом
+ * Extracts relevant computed styles by comparing them with the baseline
  */
 const extractStyles = (
   element: Element,
@@ -106,27 +106,27 @@ const extractStyles = (
   for (let i = 0; i < computedStyle.length; i++) {
     const property = computedStyle[i];
 
-    // Пропускаємо непотрібні властивості
+    // Skip irrelevant properties
     // if (shouldSkipProperty(property)) {
     //   continue;
     // }
 
     const value = computedStyle.getPropertyValue(property);
 
-    //   // Пропускаємо значення за замовчуванням
+    //   // Skip default values
     //   if (isDefaultValue(value)) {
     //     continue;
     //   }
     //
 
-    // Пропускаємо значення, які є стандартними для даного тегу (UA defaults)
+    // Skip values that are the tag's user-agent defaults
     if (defaultStyles[property] === value) {
       continue;
     }
 
     // Diff strictly against UA defaults only (baseline comparison removed)
 
-    // Застосовуємо кастомний фільтр
+    // Apply the custom filter
     if (filter && !filter(property, value)) {
       continue;
     }
@@ -138,7 +138,7 @@ const extractStyles = (
 };
 
 /**
- * Витягує inline стилі з атрибута style елемента
+ * Extracts inline styles from the element's style attribute
  */
 const extractInlineStyles = (element: Element): Record<string, string> => {
   const inlineStyles: Record<string, string> = {};
@@ -148,7 +148,7 @@ const extractInlineStyles = (element: Element): Record<string, string> => {
     return inlineStyles;
   }
 
-  // Перебираємо всі inline стилі
+  // Go through all inline styles
   for (let i = 0; i < htmlElement.style.length; i++) {
     const property = htmlElement.style[i];
     const value = htmlElement.style.getPropertyValue(property);
@@ -241,7 +241,7 @@ export const getPageClasses = (element: Element): string[] =>
   Array.from(element.classList).filter((className) => !EXTENSION_CLASS.test(className));
 
 /**
- * Будує вузол знімка для елемента, зберігаючи лише зміни відносно базового стану
+ * Builds a snapshot node for an element, keeping only changes from the baseline
  */
 const buildSnapshotNode = (
   element: Element,
@@ -250,7 +250,7 @@ const buildSnapshotNode = (
   stats: { processed: number; skipped: number },
   classRuleIndex: ClassRuleIndex,
 ): SnapshotNode | null => {
-  // Перевіряємо ліміти
+  // Check the limits
   if (stats.processed >= (options.maxElements || PERFORMANCE_LIMITS.MAX_ELEMENTS)) {
     stats.skipped++;
     return null;
@@ -268,20 +268,20 @@ const buildSnapshotNode = (
   const elementPath = [...path, `${tagName}[${index}]`];
   const key = createElementId(element, index);
 
-  // Отримуємо основні властивості
+  // Basic properties
   const id = element.id || undefined;
   const xpath = generateXPathVariants(element);
   const classes = getPageClasses(element);
   const attributes: Record<string, string> = {};
 
-  // Збираємо атрибути (окрім id та class)
+  // Collect attributes (except id and class)
   for (const attr of element.attributes) {
     if (attr.name !== "id" && attr.name !== "class") {
       attributes[attr.name] = attr.value;
     }
   }
 
-  // Отримуємо розміри (document coordinates, so they don't depend on the scroll position)
+  // Size (document coordinates, so they don't depend on the scroll position)
   const rect = element.getBoundingClientRect();
   const bounds = {
     top: Math.round(rect.top + window.scrollY),
@@ -290,26 +290,26 @@ const buildSnapshotNode = (
     height: Math.round(rect.height),
   };
 
-  // Отримуємо стилі, порівнюючи з базовим станом
+  // Styles, compared with the baseline
   const computedStyle = window.getComputedStyle(element);
   const styles = extractStyles(element, computedStyle, options.styleFilter);
 
-  // Отримуємо inline стилі з атрибута style
+  // Inline styles from the style attribute
   const inlineStyles = extractInlineStyles(element);
 
-  // Отримуємо CSS правила для класів елемента
+  // CSS rules for the element's classes
   const classRules = extractClassRules(element, classRuleIndex);
 
-  // Отримуємо текстовий контент для листових вузлів
+  // Text content for leaf nodes
   const text =
     options.includeText && element.children.length === 0 ? element.textContent?.trim() || undefined : undefined;
 
-  // Рекурсивно обробляємо дочірні елементи
+  // Process children recursively
   const children: SnapshotNode[] = [];
   for (const child of Array.from(element.children)) {
     const childNode = buildSnapshotNode(child as Element, elementPath, options, stats, classRuleIndex);
     if (childNode) {
-      // Додаємо дочірній вузол лише якщо він має стилі або дочірні елементи
+      // Add a child node only if it has styles or children
       if (
         Object.keys(childNode.styles).length > 0 ||
         Object.keys(childNode.inlineStyles).length > 0 ||
@@ -317,18 +317,18 @@ const buildSnapshotNode = (
       ) {
         children.push(childNode);
       } else {
-        // Якщо вузол не має змін, пропускаємо його, але враховуємо в статистиці
+        // A node without changes is skipped but counted in the stats
         stats.skipped++;
       }
     }
   }
 
-  // Перевіряємо, чи є зміни в стилях або дочірніх елементах
+  // Are there changes in styles or children?
   const hasStyleChanges = Object.keys(styles).length > 0;
   const hasInlineStyleChanges = Object.keys(inlineStyles).length > 0;
   const hasChildren = children.length > 0;
 
-  // Якщо немає змін і немає дочірніх елементів, повертаємо null
+  // No changes and no children: return null
   if (!hasStyleChanges && !hasInlineStyleChanges && !hasChildren && !options.includeUnchanged) {
     return null;
   }
@@ -351,7 +351,7 @@ const buildSnapshotNode = (
 };
 
 /**
- * Будує дерево знімка з кореневого елемента
+ * Builds the snapshot tree from the root element
  */
 export const buildSnapshotTree = (
   root: Element = document.body,
@@ -379,20 +379,20 @@ export const buildSnapshotTree = (
 };
 
 /**
- * Створює оптимізований знімок CSS, зберігаючи лише зміни
+ * Creates an optimised CSS snapshot that keeps only changes
  */
 export const createCSSSnapshot = async (title?: string, options: SnapshotOptions = {}): Promise<CSSSnapshot> => {
 
-  // Встановлюємо опції за замовчуванням
+  // Default options
   const snapshotOptions: SnapshotOptions = {
     maxElements: PERFORMANCE_LIMITS.MAX_ELEMENTS,
     skipInvisible: true,
     includeText: true,
-    includeUnchanged: false, // За замовчуванням не включаємо елементи без змін
+    includeUnchanged: false, // Unchanged elements are left out by default
     ...options,
   };
 
-  // Будуємо дерево знімка, зберігаючи лише зміни
+  // Build the snapshot tree, keeping only changes
   const { tree, stats } = buildSnapshotTree(document.body, snapshotOptions);
 
 
@@ -411,7 +411,7 @@ export const createCSSSnapshot = async (title?: string, options: SnapshotOptions
         height: window.innerHeight,
       },
       colorScheme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
-      optimized: true, // Позначаємо, що знімок створено з оптимізацією
+      optimized: true, // Mark the snapshot as optimised
     },
   };
 

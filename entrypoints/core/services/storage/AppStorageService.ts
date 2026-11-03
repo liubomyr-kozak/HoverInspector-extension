@@ -24,9 +24,9 @@ import {
 import { NOTEFORM_PANEL_POSITION_KEY, NOTES_STORAGE_KEY } from "@entrypoints/core/constants/notes.ts";
 
 class AppStorageService {
-  // незалежно від того чи юзер залогінений чи ні,
-  // я завжди повертаю сетінги з локалстореджа
-  // тут не має бути сайд ефекту який робить бере сетінги з сервера
+  // Whether or not the user is signed in,
+  // settings always come from local storage;
+  // there must be no side effect here that fetches settings from a server
   getAppState = async () => {
     return await AppLocalStorage.getAppState();
   };

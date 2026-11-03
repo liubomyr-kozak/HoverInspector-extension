@@ -116,19 +116,18 @@ docs/CODE_STYLE.md   index of the code style files
 15. Prefer local state and explicit props. Add context/Redux for actual sharing needs, not a depth limit.
     Extract meaningful or reused pure logic for testing; keep trivial expressions local.
 
-Much old code breaks these rules (hard-coded colours, `any`, Ukrainian comments). Do not copy it; see
+Much old code breaks these rules (hard-coded colours, `any`). Do not copy it; see
 `.claude/rules/code-style/legacy.md`. Use its named references and inspect current APIs, not commit recency.
 
-## Owner guidelines (`guidelines.md`)
+## Owner guidelines
 
 - Descriptive interfaces, types and enums in separate files; group many types in a folder.
 - When you write a `switch`, check whether an enum makes sense.
 - Use Tailwind for styling (antd and tokens-based styled-components as described above).
 - Avoid unnecessary prop relaying within the task scope; do not refactor unrelated code.
 - Ask a question when you are not sure about something.
-- `guidelines.md` asks for documentation and analysis in Ukrainian. The owner later asked for agent
-  instruction files (`CLAUDE.md`, `docs/CODE_STYLE.md`, `.claude/rules/**`, `.claude/skills/**`) in
-  English. Write those in English.
+- Write code comments, documentation and agent instruction files (`CLAUDE.md`, `docs/CODE_STYLE.md`,
+  `.claude/rules/**`, `.claude/skills/**`) in English: the repository is public.
 
 ## Git
 

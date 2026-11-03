@@ -4,14 +4,14 @@ import { clamp } from "./clamp.ts";
 import { EDGE_PADDING, MIN_HEIGHT, MIN_WIDTH } from "@entrypoints/shared/components/FloatingModal/constant.ts";
 import { ZINDEX_MODAL } from "@entrypoints/shared/constant/zIndex.ts";
 
-// Ініціалізація стану
+// Initial state
 const initialState = {
   maxZIndex: ZINDEX_MODAL,
   windowSize: getWindowSize(),
   modals: {},
 };
 
-// Типи даних
+// Data types
 export type ModalID = string;
 
 export interface ModalState {
@@ -34,7 +34,7 @@ export interface ModalsState {
   };
 }
 
-// Утиліти
+// Utilities
 const getNextZIndex = (state: ModalsState, id: string): number =>
   state.modals[id]?.zIndex === state.maxZIndex ? state.maxZIndex : state.maxZIndex + 1;
 

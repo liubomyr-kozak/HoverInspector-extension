@@ -2,7 +2,7 @@
 import React from "react";
 import styled, { keyframes } from "styled-components";
 
-// Анімація для стрибка стовпчика
+// Bar bounce animation
 const bounce = keyframes`
     0%, 100% {
         transform: scaleY(1);
@@ -12,7 +12,7 @@ const bounce = keyframes`
     }
 `;
 
-// Анімація для зміни кольору (блакитний → жовтий → чорний → червоний)
+// Colour change animation (blue → yellow → black → red)
 const colorChange = keyframes`
     0% {
         background: #1890ff;
@@ -44,11 +44,11 @@ const Bar = styled.div<{ delay: number }>`
     height: 100%;
     margin: 0 4px;
     border-radius: 4px;
-    // Дві анімації: bounce (стрибок) та colorChange (зміна кольору)
-    animation: ${bounce} 0.4s infinite, // стрибкова анімація, швидко повторюється
-    ${colorChange} 1.5s infinite; // анімація зміни кольору, цикл триває 1.5 секунди
-    animation-delay: ${props => props.delay}s, // індивідуальна затримка для bounce, щоб хвиля була "живою"
-    ${props => props.delay * 1.4}s; // більша затримка для colorChange, щоб кольори не збігалися
+    // Two animations: bounce and colorChange
+    animation: ${bounce} 0.4s infinite, // bounce, repeats quickly
+    ${colorChange} 1.5s infinite; // colour change, 1.5 s cycle
+    animation-delay: ${props => props.delay}s, // per-bar delay for bounce, so the wave looks alive
+    ${props => props.delay * 1.4}s; // longer delay for colorChange, so the colours don't line up
 `;
 
 const Loader: React.FC = () => (

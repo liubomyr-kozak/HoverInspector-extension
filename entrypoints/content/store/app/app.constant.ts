@@ -1,7 +1,7 @@
 export const SET_DICTIONARY = "SET_DICTIONARY";
 
-// разом з бібліотекою обновляється і state....
-// зробив це для того щоб розлілити логіку чисту
+// The state is updated together with the library;
+// this keeps the pure logic separate.
 export const UPDATE_DICTIONARY_STATE = "UPDATE_DICTIONARY_STATE";
 export const UPDATE_USER_VOCAB = "UPDATE_USER_VOCAB";
 

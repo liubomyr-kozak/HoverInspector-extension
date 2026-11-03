@@ -28,7 +28,7 @@ import {
 } from "@entrypoints/background/services/notes.ts";
 
 const notesInitialState: NotesState & { version: number } = {
-  version: 1, // версія slice
+  version: 1, // slice version
   notes: [],
   groups: [],
   searchQuery: "",

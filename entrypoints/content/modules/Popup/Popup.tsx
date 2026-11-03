@@ -14,10 +14,10 @@ const ARROW_HEIGHT = 8;
 const CURSOR_OFFSET = 16;
 
 
-// // Додаю виправлення без зміни стилю функції
+// // Fix applied without changing the style of the function
 // const getPopupPosition = (hoverNodeParams, popupRef) => {
 //     const clientRectHoveredNode = DomNodeManager.getBoundingClientRec("hoverElement");
-//     if (!clientRectHoveredNode) return {isVisible: false}; // 1. Перевірка
+//     if (!clientRectHoveredNode) return {isVisible: false}; // 1. Check
 //
 //     const {width} = hoverNodeParams || {};
 //     const {top = 0, bottom = 0, left = 0} = clientRectHoveredNode || {};
@@ -48,11 +48,11 @@ const CURSOR_OFFSET = 16;
 //         data: null
 //     };
 //
-//     // 2. Виправлена перевірка на топ/боттом
+//     // 2. Fixed top/bottom check
 //     result.visibleIn.top = popupTopPosition >= 0;
 //     result.visibleIn.bottom = (popupBottomPosition + popupHeight) <= clientWindow.bottom;
 //
-//     // 3. Визначення топу
+//     // 3. Work out top
 //     const topPositionProposal = result.visibleIn.bottom
 //         ? popupBottomPosition
 //         : result.visibleIn.top
@@ -61,7 +61,7 @@ const CURSOR_OFFSET = 16;
 //
 //     let leftProposal = left - marginLeft;
 //
-//     // 4. Виправлення left (правий край viewport)
+//     // 4. Fix left (right edge of the viewport)
 //     if (leftProposal + popupWidth > clientWindow.right) {
 //         leftProposal = Math.max(10, clientWindow.right - popupWidth - 10);
 //     }
@@ -79,7 +79,7 @@ const CURSOR_OFFSET = 16;
 //         hovered: {paddingLeft, marginLeft, paddingRight, width},
 //     });
 //
-//     // 5. Якщо вилізає знизу або справа, фолбек
+//     // 5. Fallback if it overflows at the bottom or right
 //     if (
 //         result.css.left + popupWidth > clientWindow.right ||
 //         result.css.top + popupHeight > clientWindow.bottom
@@ -94,7 +94,7 @@ const CURSOR_OFFSET = 16;
 // };
 
 const getPopupPosition = (hoverNodeParams, popupRef) => {
-  // Отримуємо координати елемента, над яким наводимо
+  // Coordinates of the hovered element
   const clientRectHoveredNode = DomNodeManager.getBoundingClientRec("hoverElement");
   if (!clientRectHoveredNode)
     return {
@@ -107,18 +107,18 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   const { width } = hoverNodeParams || {};
   const { top = 0, bottom = 0, left = 0 } = clientRectHoveredNode || {};
 
-  // Парсимо відступи і падінги
+  // Parse margins and paddings
   const marginBottom = cutPx(hoverNodeParams?.["margin-bottom"]);
   const marginTop = cutPx(hoverNodeParams?.["margin-top"]);
   const marginLeft = cutPx(hoverNodeParams?.["margin-left"]);
   const paddingLeft = cutPx(hoverNodeParams?.["padding-left"]);
   const paddingRight = cutPx(hoverNodeParams?.["padding-right"]);
 
-  // Визначаємо розміри попапа
+  // Popup size
   const popupHeight = popupRef.current ? popupRef.current.offsetHeight : 0;
   const popupWidth = popupRef.current ? popupRef.current.offsetWidth : 0;
 
-  // Межі вікна
+  // Window bounds
   const clientWindow = {
     bottom: window.innerHeight || document.documentElement.clientHeight,
     right: window.innerWidth || document.documentElement.clientWidth,
@@ -126,19 +126,19 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
     left: 0,
   };
 
-  // Визначаємо бажану позицію — спочатку знизу, якщо не влазить — зверху
+  // Preferred position: below first, above if it doesn't fit
   const popupBottomPosition = bottom + ARROW_HEIGHT + marginBottom;
   const popupTopPosition = top - popupHeight - marginTop - ARROW_HEIGHT;
 
-  // Чи вміщається попап знизу?
+  // Does the popup fit below?
   const canShowBottom = popupBottomPosition + popupHeight <= clientWindow.bottom;
-  // Чи вміщається зверху?
+  // Does it fit above?
   const canShowTop = popupTopPosition >= clientWindow.top;
 
-  // Видимість у кожній позиції
+  // Visibility in each position
   let visibleIn = { top: canShowTop, bottom: canShowBottom };
 
-  // Визначаємо top
+  // Work out top
   let topPositionProposal;
   if (canShowBottom) {
     topPositionProposal = popupBottomPosition;
@@ -169,15 +169,15 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   // console.group()
   // console.groupEnd()
 
-  // Визначаємо left
+  // Work out left
   // Align with the element itself: centred blocks (margin: auto) have huge left margins that
   // pushed the card to the far left, under the docked panel
   let leftProposal = left;
 
-  // Якщо права межа попапа (leftProposal + ширина попапа) виходить за межу viewport (clientWindow.right)
-  // То переміщаємо попап вліво так, щоб він повністю помістився у вікно,
-  // але не ближче ніж на 10px до правого краю.
-  // Math.max(10, ...) гарантує, що попап не піде далі 10px від лівого краю viewport.
+  // If the popup's right edge (leftProposal + popup width) goes past the viewport (clientWindow.right),
+  // move the popup left so that it fits in the window,
+  // but no closer than 10px to the right edge.
+  // Math.max(10, ...) keeps the popup at least 10px from the left edge of the viewport.
   if (leftProposal + popupWidth > clientWindow.right) {
     leftProposal = Math.max(10, clientWindow.right - popupWidth - 10);
   }
@@ -198,7 +198,7 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
     }
   }
 
-  // Обраховуємо фінальний left через getLeftPosition, якщо він є
+  // Final left from getLeftPosition, if it is available
   let finalLeft =
     typeof getLeftPosition === "function"
       ? getLeftPosition({
@@ -213,10 +213,10 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
         })
       : leftProposal;
 
-  // Додаткова перевірка, щоб не вилізти за межі вікна
+  // Extra check so the popup stays inside the window
   let finalTop = topPositionProposal;
   if (finalLeft + popupWidth > clientWindow.right) {
-    // Якщо вилізає справа — пересуваємо лівіше
+    // Overflows on the right: move it left
     finalLeft = Math.max(10, clientWindow.right - popupWidth - 10);
   }
   if (finalLeft <= 0) finalLeft = 10;
@@ -241,7 +241,7 @@ const getPopupPosition = (hoverNodeParams, popupRef) => {
   //     canShowBottom
   // });
 
-  // Повертаємо результат у потрібному форматі
+  // Return the result in the expected shape
   return {
     css: {
       top: finalTop,
@@ -288,7 +288,7 @@ const Popup = React.memo(() => {
 
     lockRerender.current = true;
 
-    // Затримка 0, щоб оновився DOM (рівень next tick)
+    // Zero delay so the DOM updates (next tick)
     setTimeout(() => {
       const position = getPopupPosition(hoverNodeParams, popupRef);
 
@@ -299,7 +299,7 @@ const Popup = React.memo(() => {
         data: data as any,
       }));
 
-      // Розблокуємо ререндер через ще одну "подію"
+      // Unblock the re-render with one more "event"
       setTimeout(() => {
         lockRerender.current = false;
 

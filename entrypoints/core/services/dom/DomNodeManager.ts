@@ -17,7 +17,7 @@ class DomNodeManager {
         }
         this.subscribers[key].add(callback);
 
-        // одразу викликаємо callback з поточним значенням
+        // call the callback with the current value right away
         callback(this.nodes[key] || null);
 
         return () => {

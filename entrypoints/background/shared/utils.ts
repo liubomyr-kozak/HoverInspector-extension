@@ -3,7 +3,7 @@ import browserApi from "@entrypoints/core/services/api/BrowserApi.ts";
 
 export const tabStatus = {
   TAB_LOAD_COMPLETE: "complete",
-  TAB_LOAD_LOADING: "loading", // перезапуск сторінки
+  TAB_LOAD_LOADING: "loading", // page reload
 };
 export const newTabUrl = "chrome://newtab/";
 

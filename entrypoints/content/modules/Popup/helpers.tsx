@@ -94,32 +94,32 @@ export function rgbToHex(r, g, b) {
 // }
 
 export function targetColorStringToHex(value) {
-  // 1. Якщо value порожнє — повертаємо порожній рядок
+  // 1. Empty value: return an empty string
   if (!value) return "";
 
-  // 2. Якщо це вже HEX (короткий або повний)
+  // 2. Already HEX (short or full)
   if (/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value.trim())) {
     return value;
   }
 
-  // 3. Якщо це rgb або rgba
+  // 3. rgb or rgba
   const rgbMatch = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)/i);
   if (rgbMatch) {
     const r = Number(rgbMatch[1]);
     const g = Number(rgbMatch[2]);
     const b = Number(rgbMatch[3]);
-    // Альфа-канал можна врахувати, якщо треба
+    // The alpha channel could be taken into account if needed
     // const a = rgbMatch[4] !== undefined ? Number(rgbMatch[4]) : 1;
     return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
   }
 
-  // 4. Якщо це hsl або hsla — треба конвертувати у rgb, а потім у hex
+  // 4. hsl or hsla: convert to rgb, then to hex
   const hslMatch = value.match(/hsla?\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%(?:[,\s/]+([\d.]+))?\s*\)/i);
   if (hslMatch) {
     const h = Number(hslMatch[1]);
     const s = Number(hslMatch[2]) / 100;
     const l = Number(hslMatch[3]) / 100;
-    // Переводимо hsl у rgb:
+    // hsl to rgb:
     const a = hslMatch[4] !== undefined ? Number(hslMatch[4]) : 1;
     let r, g, b;
 
@@ -148,32 +148,32 @@ export function targetColorStringToHex(value) {
     );
   }
 
-  // 5. color(srgb ...) і color(display-p3 ...)
+  // 5. color(srgb ...) and color(display-p3 ...)
   const colorMatch = value.match(/color\((srgb|display-p3)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/i);
   if (colorMatch) {
     const r = Math.round(Number(colorMatch[2]) * 255);
     const g = Math.round(Number(colorMatch[3]) * 255);
     const b = Math.round(Number(colorMatch[4]) * 255);
-    // альфа-канал — colorMatch[5], якщо потрібно
+    // the alpha channel is colorMatch[5], if needed
     return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
   }
 
-  // 6. Імена кольорів або щось інше — можна скористатись браузером
-  // Працює тільки у браузері:
+  // 6. Colour names or anything else: let the browser resolve it
+  // Works only in a browser:
   if (typeof window !== "undefined" && window.document) {
     const d = document.createElement("div");
     d.style.color = value;
-    // браузер перетворює відоме ім'я на rgb(...), якщо це колір
+    // the browser turns a known name into rgb(...) if it is a colour
     document.body.appendChild(d);
     const computed = getComputedStyle(d).color;
     document.body.removeChild(d);
-    // Далі рекурсивно парсимо отриманий рядок
+    // then parse the resulting string recursively
     if (computed && computed !== value) {
       return targetColorStringToHex(computed);
     }
   }
 
-  // 7. Якщо нічого не спрацювало — повертаємо як є
+  // 7. Nothing matched: return the value as is
   return value;
 }
 

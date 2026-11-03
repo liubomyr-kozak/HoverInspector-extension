@@ -10,7 +10,7 @@ export class IconActivate {
       },
     } as any;
 
-    // з цією мовою іконка буде мінятись тільки на певній табі, в інших вона буде дефолтною
+    // with this option the icon changes only on the given tab; other tabs keep the default icon
     if (tabId) {
       setting.tabId = tabId;
     }

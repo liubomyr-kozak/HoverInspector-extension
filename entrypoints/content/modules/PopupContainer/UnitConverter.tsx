@@ -99,34 +99,34 @@ export const UnitConverter: React.FC = () => {
   }, [inputValue, inputUnit, outputUnit, baseSize]);
 
   const convert = (value: number, from: string, to: string) => {
-    // Якщо одиниці співпадають — повертаємо значення без змін
+    // Same units: return the value unchanged
     if (from === to) return value;
 
-    // Конвертуємо початкове значення у пікселі
+    // Convert the source value to pixels
     const pxValue = (() => {
       switch (from) {
         case "px":
-          // Якщо вихідне значення в пікселях — повертаємо як є
+          // Source value already in pixels: keep it
           return value;
         case "rem":
         case "em":
-          // rem/em множимо на базовий розмір шрифту
+          // rem/em: multiply by the base font size
           return value * baseSize;
         case "%":
-          // % — частка від базового розміру (для шрифту, а не viewport!)
+          // %: share of the base size (font size, not the viewport!)
           return (value / 100) * baseSize;
         case "vw":
-          // vw — % від ширини viewport
+          // vw: % of the viewport width
           return (viewport.width * value) / 100;
         case "vh":
-          // vh — % від висоти viewport
+          // vh: % of the viewport height
           return (viewport.height * value) / 100;
         default:
           return value;
       }
     })();
 
-    // Тепер конвертуємо з пікселів у цільову одиницю
+    // Now convert from pixels to the target unit
     const result = (() => {
       switch (to) {
         case "px":
@@ -135,10 +135,10 @@ export const UnitConverter: React.FC = () => {
         case "em":
           return pxValue / baseSize;
         case "%":
-          // % повертається як відношення до baseSize, тільки якщо мова про шрифт
+          // % is returned relative to baseSize, only for font sizes
           return (pxValue / baseSize) * 100;
         case "vw":
-          // Для vw рахуємо, скільки це від ширини viewport
+          // For vw, work out the share of the viewport width
           return (pxValue / viewport.width) * 100;
         case "vh":
           return (pxValue / viewport.height) * 100;
@@ -166,12 +166,12 @@ export const UnitConverter: React.FC = () => {
 
     // Check if this is just a case change from the last history item
     setHistory((prevHistory) => {
-      // Якщо історія порожня → додаємо новий елемент
+      // Empty history: add the new entry
       if (prevHistory.length === 0) {
         return [newHistoryItem];
       }
 
-      // Знаходимо індекс дубліката (порівнюємо всі важливі поля)
+      // Find a duplicate (compare all relevant fields)
       const duplicateIndex = prevHistory.findIndex(
         (item) =>
           item.inputValue === newHistoryItem.inputValue &&
@@ -181,18 +181,18 @@ export const UnitConverter: React.FC = () => {
           item.baseSize === newHistoryItem.baseSize,
       );
 
-      // Якщо дубліката нема → додаємо новий елемент в початок
+      // No duplicate: add the new entry at the start
       if (duplicateIndex === -1) {
         return [newHistoryItem, ...prevHistory].slice(0, 20);
       }
 
-      // Якщо дублікат вже на початку → нічого не змінюємо
+      // Duplicate already first: change nothing
       if (duplicateIndex === 0) {
         return prevHistory;
       }
 
-      // Якщо дублікат є, але не на початку →
-      // видаляємо його зі старої позиції і переносимо на початок
+      // Duplicate elsewhere:
+      // remove it from its old position and move it to the start
       const updatedHistory = [newHistoryItem, ...prevHistory.filter((_, idx) => idx !== duplicateIndex)].slice(0, 20);
 
       return updatedHistory;

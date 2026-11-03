@@ -8,7 +8,7 @@ export default {
     },
   },
   test: {
-    environment: "jsdom", // <- додає window, document і т.д.
+    environment: "jsdom", // provides window, document, etc.
     // Vendored react-rnd tests are written for AVA + Enzyme (React 16) and can't run on React 19
     exclude: ["**/node_modules/**", "**/dist/**", "**/.output/**", "entrypoints/shared/components/ReactRnd/index.test.tsx"],
   },

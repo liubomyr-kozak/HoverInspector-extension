@@ -1,5 +1,5 @@
 /**
- * Оптимізовані хуки для управління CSS знімками
+ * Optimised hooks for managing CSS snapshots
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -44,7 +44,7 @@ interface UseSnapshotsReturn {
 }
 
 /**
- * Основний хук для управління знімками з оптимізацією продуктивності
+ * Main snapshot management hook, optimised for performance
  */
 export const useSnapshots = (): UseSnapshotsReturn => {
   const dispatch = useDispatch();
@@ -56,7 +56,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
   const [selectedSnapshot, setSelectedSnapshot] = useState<CSSSnapshot | null>(null);
   const [compareSnapshots, setCompareSnapshots] = useState<CSSSnapshot[]>([]);
 
-  // Завантажуємо знімки при ініціалізації
+  // Load snapshots on init
   useEffect(() => {
     let mounted = true;
 
@@ -66,7 +66,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
         const loadedSnapshots = await loadSnapshots();
 
         if (mounted) {
-          // Обмежуємо кількість знімків у пам'яті
+          // Limit the number of snapshots kept in memory
           const limitedSnapshots = loadedSnapshots.slice(-PERFORMANCE_LIMITS.MAX_SNAPSHOTS_MEMORY);
           dispatch(setSnapshots(limitedSnapshots));
           dispatch(setError(null));
@@ -89,7 +89,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     };
   }, []);
 
-  // Захоплення нового знімка
+  // Capture a new snapshot
   const captureSnapshot = useCallback(
     async (title?: string, options?: SnapshotOptions): Promise<CSSSnapshot> => {
       if (isCapturing) {
@@ -112,7 +112,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
           await trimAndSaveSnapshots([...snapshots, snapshot]);
         } catch (saveError) {
           console.warn("Failed to save snapshots to storage:", saveError);
-          // Продовжуємо з знімком у пам'яті навіть якщо збереження не вдалося
+          // Keep the in-memory snapshot even if saving failed
           dispatch(setError("Snapshot captured but could not be saved to extension storage"));
         }
 
@@ -128,7 +128,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     [snapshots, isCapturing, dispatch],
   );
 
-  // Видалення знімка
+  // Delete a snapshot
   const deleteSnapshot = useCallback(
     async (id: string): Promise<void> => {
       try {
@@ -136,12 +136,12 @@ export const useSnapshots = (): UseSnapshotsReturn => {
 
         dispatch(removeSnapshot(id));
 
-        // Скидаємо вибраний знімок якщо він був видалений
+        // Clear the selection if the selected snapshot was deleted
         if (selectedSnapshot?.id === id) {
           setSelectedSnapshot(null);
         }
 
-        // Видаляємо зі списку порівняння
+        // Remove it from the comparison list
         setCompareSnapshots((prev) => prev.filter((snapshot) => snapshot.id !== id));
 
         dispatch(setError(null));
@@ -178,7 +178,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     [snapshots, dispatch],
   );
 
-  // Імпорт знімка з файлу
+  // Import a snapshot from a file
   const importSnapshot = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
@@ -193,16 +193,16 @@ export const useSnapshots = (): UseSnapshotsReturn => {
         const text = await file.text();
         const parsed: unknown = JSON.parse(text);
 
-        // Валідуємо структуру знімка
+        // Validate the snapshot structure
         if (!isValidSnapshot(parsed)) {
           throw new Error("Invalid snapshot format");
         }
         let snapshot: CSSSnapshot = parsed;
 
-        // Перевіряємо чи знімок вже існує
+        // Check whether the snapshot already exists
         const existingIds = snapshots.map((s) => s.id);
         if (existingIds.includes(snapshot.id)) {
-          // Створюємо новий знімок з новим ID
+          // Create a new snapshot with a new ID
           snapshot = {
             ...snapshot,
             id: `${snapshot.id}-imported-${Date.now()}`,
@@ -226,7 +226,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     input.click();
   }, [snapshots, dispatch]);
 
-  // Вибір знімка
+  // Select a snapshot
   const selectSnapshot = useCallback(
     (snapshot: CSSSnapshot | null) => {
       setSelectedSnapshot(snapshot);
@@ -235,7 +235,7 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     [dispatch],
   );
 
-  // Переключення знімка для порівняння
+  // Toggle a snapshot for comparison
   const toggleCompare = useCallback((snapshot: CSSSnapshot) => {
     setCompareSnapshots((prev) => {
       const exists = prev.some((s) => s.id === snapshot.id);
@@ -243,11 +243,11 @@ export const useSnapshots = (): UseSnapshotsReturn => {
       if (exists) {
         return prev.filter((s) => s.id !== snapshot.id);
       } else {
-        // Дозволяємо максимум 2 знімки для порівняння
+        // Allow at most 2 snapshots in a comparison
         if (prev.length < 2) {
           return [...prev, snapshot];
         } else {
-          // Замінюємо перший знімок
+          // Replace the first snapshot
           return [prev[1], snapshot];
         }
       }
@@ -255,13 +255,13 @@ export const useSnapshots = (): UseSnapshotsReturn => {
     dispatch(setError(null));
   }, [dispatch]);
 
-  // Очищення списку порівняння
+  // Clear the comparison list
   const clearCompare = useCallback(() => {
     setCompareSnapshots([]);
     dispatch(setError(null));
   }, [dispatch]);
 
-  // Додавання знімка напряму в стейт (для element selection)
+  // Add a snapshot straight to state (for element selection)
   const addSnapshot = useCallback(
     async (snapshot: CSSSnapshot) => {
       try {
@@ -306,13 +306,13 @@ interface UseSnapshotFilterReturn {
 }
 
 /**
- * Хук для фільтрації знімків з дебаунсом
+ * Debounced snapshot filtering hook
  */
 export const useSnapshotFilter = (snapshots: readonly CSSSnapshot[]): UseSnapshotFilterReturn => {
   const [filter, setFilter] = useState("");
   const [debouncedFilter, setDebouncedFilter] = useState("");
 
-  // Дебаунс для фільтра
+  // Debounce the filter
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedFilter(filter);
@@ -321,7 +321,7 @@ export const useSnapshotFilter = (snapshots: readonly CSSSnapshot[]): UseSnapsho
     return () => clearTimeout(timer);
   }, [filter]);
 
-  // Мемоізовані відфільтровані знімки
+  // Memoised filtered snapshots
   const filteredSnapshots = useMemo(() => {
     if (!debouncedFilter) return snapshots;
 

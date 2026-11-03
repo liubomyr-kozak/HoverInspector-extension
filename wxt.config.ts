@@ -9,6 +9,7 @@ export default defineConfig({
     short_name: "Inspector",
     description:
       "Inspector is the tool which mimic display dimension between selected and hover element. It would be good for designers, QA",
+    homepage_url: "https://github.com/liubomyr-kozak/HoverInspector-extension",
     update_url: "https://clients2.google.com/service/update2/crx",
     manifest_version: 3,
     // <all_urls> rather than *://*/*: chrome.tabs.captureVisibleTab (MCP screenshots) accepts only <all_urls>
@@ -27,7 +28,7 @@ export default defineConfig({
   manifestVersion: 3,
   modules: ["@wxt-dev/module-react"],
   outDir: "dist",
-  // Release zips are kept next to the earlier ones in archives/, named by version like in LinguaReef
+  // Release zips go to archives/ (git-ignored), named by version
   zip: {
     artifactTemplate: "../archives/{{packageVersion}}-{{browser}}.zip",
   },
@@ -41,9 +42,8 @@ export default defineConfig({
     "@modules": "./modules",
     "@utils": "./utils",
   },
-  // Same modes as LinguaReef. WXT sets NODE_ENV to the mode: "production" is the store build,
-  // "staging" is the local build of the installed extension (LinguaReef's local-prod: not minified,
-  // with source maps). "development" belongs to the standalone page; see the scripts in package.json.
+  // WXT sets NODE_ENV to the mode: "production" is the store build, "staging" is the local build of
+  // the installed extension (not minified, with source maps). "development" belongs to the standalone page; see the scripts in package.json.
   vite: ({ mode }) => ({
     build: mode === "production" ? {} : { minify: false, sourcemap: true },
     // React (and its hot reload) comes from @wxt-dev/module-react; adding react() here too injects the
@@ -56,6 +56,6 @@ export default defineConfig({
     },
   }),
   test: {
-    environment: "jsdom", // <- додає window, document і т.д.
+    environment: "jsdom", // provides window, document, etc.
   },
 } as UserConfig);

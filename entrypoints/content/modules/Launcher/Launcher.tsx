@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
+import { IconBrandGithub, IconBrandSlack, IconDotsVertical, IconExternalLink, IconMailFilled } from "@tabler/icons-react";
 import { Popover } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -30,27 +30,6 @@ import SortableItem from "@entrypoints/content/modules/Launcher/SortableItem/Sor
 import { Logo } from "@entrypoints/shared/components/Logo/Logo";
 import { McpBridgeSetting } from "./McpBridgeSetting";
 import { toggleLiveWatch, useLiveWatchSettings } from "@entrypoints/content/modules/PopupContainer/LiveWatch/store";
-
-const UsefulLinks = ({ category }: { category?: string }) => {
-  const links = [
-    { label: "Open Source Design", url: "https://opensourcedesign.net/" },
-    { label: "Frontend Checklist", url: "https://frontendchecklist.io/" },
-    { label: "Non-Commercial AI Tools", url: "https://thereisafuckingtoolforeverything.com/" },
-    { label: "GitHub Trending", url: "https://github.com/trending" },
-  ];
-
-  return (
-    <ul style={{ padding: "0 16px", listStyle: "none" }}>
-      {links.map((link, index) => (
-        <li key={index} style={{ marginBottom: 8 }}>
-          <a href={link.url} target="_blank" rel="noopener noreferrer">
-            🔗 {link.label}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-};
 
 const Launcher: React.FC = () => {
   const dispatch = useDispatch();
@@ -142,7 +121,7 @@ const Launcher: React.FC = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // мінімізує випадкові перетягування
+        distance: 5, // reduces accidental drags
       },
     }),
   );
@@ -208,6 +187,18 @@ const Launcher: React.FC = () => {
               <IconExternalLink className="h-[20px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-auto" />
             </a>
           </MenuItem>
+          <MenuItem>
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://github.com/liubomyr-kozak/HoverInspector-extension"
+              className="flex items-center gap-1 group"
+            >
+              <IconBrandGithub size={16} aria-hidden="true" />
+              Source code on GitHub
+              <IconExternalLink className="h-[20px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-auto" />
+            </a>
+          </MenuItem>
           <MenuItemText className="flex">
             Feedback
             <span className="flex ml-auto">
@@ -230,19 +221,6 @@ const Launcher: React.FC = () => {
             </span>
           </MenuItemText>
         </LeftColumn>
-        {/*<RightColumn>*/}
-        {/*    <Tabs tabPosition="left" style={{height: '100%'}}>*/}
-        {/*        <TabPane tab="🔗 Resources" key="1">*/}
-        {/*            <UsefulLinks/>*/}
-        {/*        </TabPane>*/}
-        {/*        <TabPane tab="🧪 Labs" key="2">*/}
-        {/*            <UsefulLinks category="labs"/>*/}
-        {/*        </TabPane>*/}
-        {/*        <TabPane tab="🌍 Non-Commercial" key="3">*/}
-        {/*            <UsefulLinks category="non-commercial"/>*/}
-        {/*        </TabPane>*/}
-        {/*    </Tabs>*/}
-        {/*</RightColumn>*/}
       </MenuWrapper>
     </MenuContainer>
   );

@@ -205,7 +205,7 @@ describe("validateDomainPattern", () => {
   describe("non-exact match with path", () => {
     it("should ignore path and match by hostname only", () => {
       const result = validateDomainPattern("example.com/path", IS_NOT_REGEX, NON_EXACT_MATCH);
-      expect(result).toBeNull(); // path відкидається, збігається лише host
+      expect(result).toBeNull(); // the path is dropped, only the host matches
     });
   });
 

@@ -11,8 +11,8 @@ export const Tooltip: React.FC<{
   onOpen?: () => void;
   onClose?: () => void;
 }> = ({ title, content, clickTile, placement, children, onOpen, onClose }) => {
-  // TROUBLESHOOTING прийщлося додати цю умову, томущо пілся того як додається слово.. відбувається рендер і тултіп завісає,
-  // ізза того що він був відкритий іншою іконкою, а вона вже змістилась, або може зникнути
+  // TROUBLESHOOTING: this condition is needed because adding a word triggers a render and the tooltip gets stuck,
+  // since another icon opened it and that icon has moved or may disappear
   const [open, setOpen] = useState(false);
   const [tooltipTitle, setTooltipTitle] = useState(title || content);
 

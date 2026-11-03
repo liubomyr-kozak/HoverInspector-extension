@@ -17,22 +17,22 @@ import {
 } from "./components/subcomponents.tsx";
 
 /**
- * Порівняння елементів в одній колонці
+ * Single-column element comparison
  * 
- * Декларативний React компонент для відображення різниці між CSS властивостями
- * двох станів DOM елементу в єдиній колонці з кольоровим кодуванням змін.
+ * Declarative React component that shows the difference between the CSS properties
+ * of two states of a DOM element in one column, with colour-coded changes.
  * 
- * Компонент автоматично:
- * - Категоризує CSS властивості за типами
- * - Консолідує скорочені CSS правила
- * - Порівнює атрибути та класи елементів
- * - Забезпечує інтерактивне розгортання деталей
- * - Підтримує пошук по властивостях
+ * The component automatically:
+ * - Groups CSS properties by category
+ * - Consolidates shorthand CSS rules
+ * - Compares element attributes and classes
+ * - Lets the user expand details
+ * - Supports searching properties
  * 
- * @param props - Властивості компонента
- * @param props.left - Лівий стан елементу для порівняння
- * @param props.right - Правий стан елементу для порівняння
- * @returns JSX елемент з візуалізацією різниці
+ * @param props - Component props
+ * @param props.left - Left element state to compare
+ * @param props.right - Right element state to compare
+ * @returns JSX element that visualises the difference
  */
 export const ElementDiffSingleColumn: React.FC<ElementDiffSingleColumnProps> = ({ left, right, selector }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,33 +40,33 @@ export const ElementDiffSingleColumn: React.FC<ElementDiffSingleColumnProps> = (
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["boxModel", "typography"]));
   const [expandedShorthands, setExpandedShorthands] = useState<Record<string, boolean>>({});
 
-  // Категоризація CSS властивостей з порівнянням
+  // Categorise CSS properties with the comparison
   const categories = useMemo(() => {
-    // Генеруємо CSS для класів використовуючи cssGenerators
+    // Generate CSS for the classes with cssGenerators
     const classCSS = generateClassCSS(left, right);
 
-    // Парсимо згенерований CSS для витягування властивостей
+    // Parse the generated CSS to extract properties
     const leftClassProperties = parseCSS(classCSS.left);
     const rightClassProperties = parseCSS(classCSS.right);
 
-    // Об'єднуємо інлайн стилі з властивостями класів
+    // Merge inline styles with class properties
     const mergedLeft = mergeStyleProperties(left.styles, leftClassProperties);
     const mergedRight = mergeStyleProperties(right.styles, rightClassProperties);
 
     return categorizePropertiesWithDiff(mergedLeft, mergedRight);
   }, [left, right]);
 
-  // Порівняння атрибутів та класів елементів
+  // Compare element attributes and classes
   const { attributeChanges, classChanges } = useMemo(() => {
     const attrs = compareAttributes(left.attributes, right.attributes);
     const classes = compareClasses(left.classes, right.classes);
     return { attributeChanges: attrs, classChanges: classes };
   }, [left, right]);
 
-  // Перемикання відображення пошуку
+  // Toggle the search field
   const toggleSearch = () => setShowSearch(!showSearch);
 
-  // Перемикання розгорнутого стану категорії
+  // Toggle a category's expanded state
   const toggleCategory = (categoryName: string) => {
     setExpandedCategories((prev) => {
       const newSet = new Set(prev);
@@ -79,7 +79,7 @@ export const ElementDiffSingleColumn: React.FC<ElementDiffSingleColumnProps> = (
     });
   };
 
-  // Перемикання розгорнутого стану скороченої властивості
+  // Toggle a shorthand property's expanded state
   const toggleShorthand = (shorthand: string) => {
     setExpandedShorthands((prev) => ({
       ...prev,

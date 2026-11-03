@@ -89,8 +89,8 @@ export default defineBackground({
 
     /**
      * Listener for tab updates, specifically when a tab begins loading.
-     * Слухаємо обновлення вкладок, зокрема коли вкладка починає завантажуватись.
-     * Або користувач перезавантажив сторінку cmd+r.
+     * Listens for tab updates, in particular when a tab starts loading
+     * or the user reloads the page (Cmd+R).
      *
      * @param tabId - The ID of the updated tab.
      * @param changeInfo - An object containing information about the tab update.
@@ -108,9 +108,9 @@ export default defineBackground({
           if (Ext.session.isActive(tabId)) {
             Ext.session.activate(tabId);
           }
-          // наче цього часу має бути достатньо, так як  статус loading може виникати декілька раз
-          // інжект скрипту правцє з цим таймаутом нормально, так як перший скрипт встигає ініціалізуватись
-          // і другий раз вже код не вставляється
+          // This delay seems to be enough: the "loading" status can fire several times.
+          // With this timeout the injection works, because the first script has time to initialise
+          // and the code is not injected a second time.
         }, 700);
       }
     });

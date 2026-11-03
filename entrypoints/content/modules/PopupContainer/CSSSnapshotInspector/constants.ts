@@ -1,23 +1,23 @@
 /**
- * Константи для CSS Snapshot Inspector модуля
+ * Constants for the CSS Snapshot Inspector
  */
 
 /**
- * Список стандартних стилів, які слід пропускати при захопленні та порівнянні
+ * Standard styles to skip when capturing and comparing
  */
 export const DEFAULT_STYLES_TO_SKIP = [
-  // Анімації та переходи
+  // Animations and transitions
   "animation", "transition", 
   "animation-delay", "animation-direction", "animation-duration",
   "animation-fill-mode", "animation-iteration-count", "animation-name",
   "animation-play-state", "animation-timing-function",
   "transition-delay", "transition-duration", "transition-property", "transition-timing-function",
   
-  // Властивості блочної моделі
+  // Box model properties
   "margin-block", "margin-inline", "padding-block", "padding-inline",
   "inset-block", "inset-inline", "block-size", "inline-size",
   
-  // Браузер-специфічні властивості
+  // Browser-specific properties
   "text-rendering", "appearance", "-webkit-appearance", "-moz-appearance",
   "user-select", "-webkit-user-select", "-moz-user-select", "-ms-user-select",
   "backface-visibility", "perspective", "perspective-origin", "transform-style",
@@ -26,7 +26,7 @@ export const DEFAULT_STYLES_TO_SKIP = [
 ] as const;
 
 /**
- * Значення за замовчуванням, які слід пропускати
+ * Default values to skip
  */
 export const DEFAULT_VALUES_TO_SKIP = [
   "none", "normal", "auto", "0px", "0", "medium", "inherit", 
@@ -35,7 +35,7 @@ export const DEFAULT_VALUES_TO_SKIP = [
 ] as const;
 
 /**
- * Категорії CSS властивостей
+ * CSS property categories
  */
 export enum PropertyCategory {
   LAYOUT = "Layout",
@@ -49,7 +49,7 @@ export enum PropertyCategory {
 }
 
 /**
- * Кольори категорій для UI
+ * Category colours for the UI
  */
 export const CATEGORY_COLORS: Readonly<Record<PropertyCategory, string>> = {
   [PropertyCategory.LAYOUT]: "#4285f4",
@@ -63,10 +63,10 @@ export const CATEGORY_COLORS: Readonly<Record<PropertyCategory, string>> = {
 } as const;
 
 /**
- * Мапа CSS властивостей до категорій
+ * Map of CSS properties to categories
  */
 export const PROPERTY_CATEGORIES: Readonly<Record<string, PropertyCategory>> = {
-  // Макет
+  // Layout
   display: PropertyCategory.LAYOUT,
   flex: PropertyCategory.LAYOUT,
   grid: PropertyCategory.LAYOUT,
@@ -76,7 +76,7 @@ export const PROPERTY_CATEGORIES: Readonly<Record<string, PropertyCategory>> = {
   padding: PropertyCategory.LAYOUT,
   "box-sizing": PropertyCategory.LAYOUT,
   
-  // Позиціонування
+  // Positioning
   position: PropertyCategory.POSITION,
   top: PropertyCategory.POSITION,
   right: PropertyCategory.POSITION,
@@ -84,7 +84,7 @@ export const PROPERTY_CATEGORIES: Readonly<Record<string, PropertyCategory>> = {
   left: PropertyCategory.POSITION,
   "z-index": PropertyCategory.POSITION,
   
-  // Типографіка
+  // Typography
   font: PropertyCategory.TYPOGRAPHY,
   "font-family": PropertyCategory.TYPOGRAPHY,
   "font-size": PropertyCategory.TYPOGRAPHY,
@@ -93,21 +93,21 @@ export const PROPERTY_CATEGORIES: Readonly<Record<string, PropertyCategory>> = {
   "text-align": PropertyCategory.TYPOGRAPHY,
   color: PropertyCategory.TYPOGRAPHY,
   
-  // Візуальне оформлення
+  // Visual styling
   background: PropertyCategory.VISUAL,
   "background-color": PropertyCategory.VISUAL,
   border: PropertyCategory.VISUAL,
   "border-radius": PropertyCategory.VISUAL,
   opacity: PropertyCategory.VISUAL,
   
-  // Ефекти
+  // Effects
   "box-shadow": PropertyCategory.EFFECTS,
   transform: PropertyCategory.EFFECTS,
   filter: PropertyCategory.EFFECTS,
 } as const;
 
 /**
- * Налаштування продуктивності
+ * Performance settings
  */
 export const PERFORMANCE_LIMITS = {
   MAX_ELEMENTS: 1000,
@@ -117,7 +117,7 @@ export const PERFORMANCE_LIMITS = {
 } as const;
 
 /**
- * Режими перегляду
+ * View modes
  */
 export enum ViewMode {
   LIST = "list",
@@ -127,7 +127,7 @@ export enum ViewMode {
 }
 
 /**
- * Типи змін
+ * Change types
  */
 export enum ChangeType {
   ADDED = "added",
