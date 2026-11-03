@@ -1,6 +1,6 @@
 class PopupSettingModel {
     preventDefault = false;
-    // це значення привязане до попапу інспектора елементів, якщо попап відкритий то тоді я відслідковую елемент
+    // Tied to the Element Inspector popup: while the popup is open, the element is tracked
     isHandleDomInspector = false;
     isSingleSelect = false;
     showAllBorders = false;

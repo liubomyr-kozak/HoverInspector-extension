@@ -45,7 +45,7 @@ export default defineConfig({
     host: true,
   },
   optimizeDeps: {
-    // As in LinguaReef: rebuild the dependency cache on every start. The polyfills in .standalone/ are
+    // Rebuild the dependency cache on every start. The polyfills in .standalone/ are
     // bundled into that cache (through the webextension-polyfill alias), and Vite does not notice when
     // they change, so without this a `git pull` keeps running the old polyfills.
     force: true,
@@ -71,7 +71,7 @@ export default defineConfig({
   // or by importing the polyfills in the main entry
   define: {
     "process.env.NODE_ENV": JSON.stringify("development"),
-    // Виключаємо webextension-polyfill в standalone режимі
+    // Exclude webextension-polyfill in standalone mode
     "webextension-polyfill": "undefined",
     Browser: "undefined",
   },

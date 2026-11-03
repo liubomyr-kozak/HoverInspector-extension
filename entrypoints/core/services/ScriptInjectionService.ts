@@ -32,7 +32,7 @@ function createInlineScript(content: string, filename: string, downloadUrl: stri
 
   // const script = document.createElement("script");
   // script.setAttribute("data-hover-inspector", filename);
-  // script.src = chrome.runtime.getURL(downloadUrl); // або будь-який локальний шлях
+  // script.src = chrome.runtime.getURL(downloadUrl); // or any local path
   // document.documentElement.appendChild(script);
 
 

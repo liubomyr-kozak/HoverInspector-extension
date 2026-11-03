@@ -43,7 +43,7 @@ export const StyledRobot = styled.svg<{ $status: ExecutionStatus; $variant: numb
       case ExecutionStatus.ERROR:
         return css`
           .hover-inspector-eye {
-            display: none; /* сховати кружки */
+            display: none; /* hide the circles */
           }
           .hover-inspector-error-eye {
             stroke: red;

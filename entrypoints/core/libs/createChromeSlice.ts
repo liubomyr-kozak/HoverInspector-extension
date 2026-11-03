@@ -21,7 +21,7 @@ type SliceDefinition<T extends Record<string, LocalExecFn>> = {
   initialState: any;
   version?: number;
   actions: T;
-  storage?: StorageType; // localStorage або sessionStorage
+  storage?: StorageType; // localStorage or sessionStorage
 };
 
 const chromeStorageStrategies: Record<StorageType, StorageStrategy> = {
@@ -49,10 +49,10 @@ export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config:
   const { name = "__global__", initialState, version = 1, storage = "localStorage" } = config;
   const storageStrategy = chromeStorageStrategies[storage];
 
-  // Локальний state завжди синхронний
+  // Local state is always synchronous
   let state = { ...initialState, version };
 
-  // Асинхронне завантаження persistedState з Chrome storage.
+  // Load persistedState from Chrome storage asynchronously.
   // Every action awaits `ready`, so nothing reads the empty initial state (or
   // overwrites storage with it) before the persisted state has been loaded.
   const ready: Promise<void> = Promise.resolve()
@@ -73,7 +73,7 @@ export const createChromeSlice = <T extends Record<string, LocalExecFn>>(config:
 
   const getState = () => state;
 
-  // setState оновлює локальний state синхронно і відправляє асинхронно у storage
+  // setState updates local state synchronously and writes to storage asynchronously
   const setState = (newState: Partial<typeof state>) => {
     state = { ...state, ...newState };
     storageStrategy.set(name, state).catch(console.error);

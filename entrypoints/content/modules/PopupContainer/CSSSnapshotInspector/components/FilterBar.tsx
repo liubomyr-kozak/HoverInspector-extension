@@ -1,5 +1,5 @@
 /**
- * Оптимізований компонент панелі фільтрів для CSS Snapshot Inspector
+ * Optimised filter bar for the CSS Snapshot Inspector
  */
 import React, { memo } from 'react';
 import { FilterContainer, FilterInput } from '../CSSSnapshotInspector.styled';
@@ -11,7 +11,7 @@ interface FilterBarProps {
 }
 
 /**
- * Мемоізований компонент панелі фільтрів
+ * Memoised filter bar
  */
 export const FilterBar = memo<FilterBarProps>(({
   value,

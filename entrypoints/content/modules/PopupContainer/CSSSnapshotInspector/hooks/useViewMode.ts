@@ -1,5 +1,5 @@
 /**
- * Оптимізований хук для управління режимами перегляду
+ * Optimised view mode hook
  */
 import { useState, useCallback } from 'react';
 import { ViewMode } from '../constants';
@@ -17,7 +17,7 @@ interface UseViewModeReturn {
 }
 
 /**
- * Хук для управління режимами перегляду з валідацією
+ * View mode hook with validation
  */
 export const useViewMode = (
   selectedSnapshot: CSSSnapshot | null,
@@ -25,30 +25,30 @@ export const useViewMode = (
 ): UseViewModeReturn => {
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.LIST);
 
-  // Перевіряємо чи можна порівнювати
+  // Can we compare?
   const canCompare = compareSnapshots.length === 2;
   
-  // Перевіряємо чи можна переглядати деталі
+  // Can we show details?
   const canViewDetails = selectedSnapshot !== null;
 
-  // Показати деталі знімка
+  // Show snapshot details
   const viewSnapshot = useCallback((snapshot: CSSSnapshot) => {
     setViewMode(ViewMode.DETAIL);
   }, []);
 
-  // Показати порівняння
+  // Show the comparison
   const startComparison = useCallback((force = false) => {
     if (force || canCompare) {
       setViewMode(ViewMode.COMPARE);
     }
   }, [canCompare]);
 
-  // Повернутися до списку
+  // Back to the list
   const backToList = useCallback(() => {
     setViewMode(ViewMode.LIST);
   }, []);
 
-  // Валідуємо поточний режим перегляду
+  // Validate the current view mode
   const validatedSetViewMode = useCallback((mode: ViewMode) => {
     switch (mode) {
       case ViewMode.DETAIL:

@@ -97,13 +97,13 @@ function parseCssLineContent(lineValue) {
     /(linear-gradient\([^)]+\)|radial-gradient\([^)]+\)|repeating-linear-gradient\([^)]+\)|repeating-radial-gradient\([^)]+\)|#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|\b(?:transparent|currentColor|inherit|initial|unset|[a-z]{3,})\b|color\(.*?\)|lab\(.*?\)|lch\(.*?\)|oklab\(.*?\)|oklch\(.*?\))/g;
 
   while ((matchColor = COLOR_GRADIENT_REGEX.exec(value)) !== null) {
-    // Перед кольором/градієнтом — звичайний текст
+    // Plain text before a colour/gradient
     if (matchColor.index > lastIndex) {
       const text = value.slice(lastIndex, matchColor.index);
       if (text) tokens.push({ type: "text", value: text });
     }
     const colorValue = matchColor[0];
-    // Який це тип — вирішуємо динамічно
+    // Decide the type dynamically
     if (isGradientValue(colorValue)) {
       tokens.push({ type: "gradient", value: colorValue });
     } else if (isColorValue(colorValue)) {
@@ -114,7 +114,7 @@ function parseCssLineContent(lineValue) {
 
     lastIndex = matchColor.index + colorValue.length;
   }
-  // Якщо щось залишилось в кінці
+  // Anything left at the end
   if (lastIndex < value.length) {
     tokens.push({ type: "text", value: value.slice(lastIndex) });
   }
@@ -124,7 +124,7 @@ function parseCssLineContent(lineValue) {
   return mergeTextTokens(tokens);
 }
 
-// Рендеринг по токенах
+// Render token by token
 const renderToken = (token, idx) => {
   switch (token.type) {
     case "property":
@@ -136,7 +136,7 @@ const renderToken = (token, idx) => {
     case "colon":
       return token.value; // ":"
     case "space":
-      return token.value; // пробіл (може бути "\t" чи декілька пробілів)
+      return token.value; // whitespace (may be "\t" or several spaces)
     case "semicolon":
       return token.value; // ";"
     case "gradient":
@@ -291,7 +291,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
         if (!section.length) return [];
 
         return [
-          // добавляю /* Box Model */,   /* Typography */ або інші заголовки
+          // adds /* Box Model */, /* Typography */ or other headings
           { type: "comment", value: `/* ${group} */` },
           ...section.filter(isValid),
         ];
@@ -392,7 +392,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
           className="bg-gray-50 text-xs font-mono p-2 rounded border border-gray-100 whitespace-pre-wrap break-words [&_[data-copied]]:!bg-green-100"
         >
           {processedLines.map((line, i) => {
-            // Для shorthand (мають prop) рендеримо заголовок з кнопкою expand
+            // Shorthands (they have prop) get a heading with an expand button
             if (line.type === "shorthand" && line.prop) {
               return (
                 <div
@@ -422,7 +422,7 @@ const PopupStyleInspector = ({ selectedElementType }) => {
               );
             }
 
-            // Для detail рендеримо тільки якщо expanded[prop]
+            // Details render only when expanded[prop]
             if (line.type === "detail" && line.prop && expanded[line.prop]) {
               return (
                 <div

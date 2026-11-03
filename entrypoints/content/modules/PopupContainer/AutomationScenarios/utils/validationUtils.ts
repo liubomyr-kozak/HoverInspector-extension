@@ -65,7 +65,7 @@ export const validateDomainPattern = (
     const u = new URL(normalizedPattern.includes("://") ? normalizedPattern : `http://${normalizedPattern}`);
     patternHostPort = u.host; // host includes port
   } catch {
-    // залишаємо raw host
+    // keep the raw host
   }
 
   let [patternHost, patternPort] = patternHostPort.split(":");

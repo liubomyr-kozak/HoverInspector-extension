@@ -1,5 +1,5 @@
 /**
- * Утиліти для зберігання CSS знімків
+ * CSS snapshot storage utilities
  */
 import { CSSSnapshot } from '../types';
 import ExtensionStorageManager from '@entrypoints/core/services/storage/ExtensionStorageManager';
@@ -8,7 +8,7 @@ import { store } from '@entrypoints/content/store/createStore';
 import { setSnapshots } from '@entrypoints/content/store/snapshot/snapshotSlice';
 
 /**
- * Завантажує всі знімки зі сховища
+ * Loads all snapshots from storage
  */
 export const loadSnapshots = async (): Promise<CSSSnapshot[]> => {
   try {
@@ -18,7 +18,7 @@ export const loadSnapshots = async (): Promise<CSSSnapshot[]> => {
       return [];
     }
     
-    // Завантажуємо знімки паралельно для кращої продуктивності
+    // Load snapshots in parallel for better performance
     const loadPromises = snapshotIds.map(async (id: string) => {
       try {
         const snapshot = await ExtensionStorageManager.getCSSSnapshot(id);
@@ -64,10 +64,10 @@ export const saveSnapshot = async (snapshot: CSSSnapshot): Promise<void> => {
 };
 
 /**
- * Зберігає знімки у сховище
+ * Saves snapshots to storage
  */
 export const saveSnapshots = async (snapshots: CSSSnapshot[]): Promise<void> => {
-  // Оптимізуємо знімки перед збереженням
+  // Optimise snapshots before saving
   const optimizedSnapshots = snapshots.map(optimizeSnapshot);
 
   // Keep the in-memory list in sync even if persisting fails, so a freshly
@@ -76,7 +76,7 @@ export const saveSnapshots = async (snapshots: CSSSnapshot[]): Promise<void> => 
 
   const failed: string[] = [];
 
-  // Зберігаємо кожен знімок окремо
+  // Save each snapshot separately
   for (const snapshot of optimizedSnapshots) {
     if (await trySaveSnapshot(snapshot)) continue;
 
@@ -114,7 +114,7 @@ export const trimAndSaveSnapshots = async (snapshots: CSSSnapshot[]): Promise<CS
 };
 
 /**
- * Видаляє знімок зі сховища
+ * Deletes a snapshot from storage
  */
 export const deleteSnapshot = async (id: string): Promise<void> => {
   try {
@@ -126,7 +126,7 @@ export const deleteSnapshot = async (id: string): Promise<void> => {
 };
 
 /**
- * Експортує знімок у JSON файл
+ * Exports a snapshot to a JSON file
  */
 export const exportSnapshot = (snapshot: CSSSnapshot): void => {
   const dataStr = JSON.stringify(snapshot, null, 2);
@@ -173,10 +173,10 @@ export const isValidSnapshot = (value: unknown): value is CSSSnapshot => {
 };
 
 /**
- * Оптимізує знімок для зберігання
+ * Optimises a snapshot for storage
  */
 const optimizeSnapshot = (snapshot: CSSSnapshot): CSSSnapshot => {
-  // Обрізаємо дуже великі дерева
+  // Trim very large trees
   const optimizedRoot = optimizeNode(snapshot.root, PERFORMANCE_LIMITS.MAX_ELEMENTS);
   
   return {
@@ -187,7 +187,7 @@ const optimizeSnapshot = (snapshot: CSSSnapshot): CSSSnapshot => {
 };
 
 /**
- * Оптимізує вузол дерева рекурсивно
+ * Optimises a tree node recursively
  */
 const optimizeNode = (node: CSSSnapshot['root'], maxNodes: number, processed = { count: 0 }): CSSSnapshot['root'] => {
   if (processed.count >= maxNodes) {
@@ -199,7 +199,7 @@ const optimizeNode = (node: CSSSnapshot['root'], maxNodes: number, processed = {
   
   processed.count++;
   
-  // Обмежуємо кількість дочірніх елементів
+  // Limit the number of children
   const maxChildren = Math.floor(maxNodes / 10);
   const limitedChildren = node.children.slice(0, maxChildren);
   
@@ -214,7 +214,7 @@ const optimizeNode = (node: CSSSnapshot['root'], maxNodes: number, processed = {
 };
 
 /**
- * Створює мінімальну версію знімка
+ * Creates a minimal version of a snapshot
  */
 const createMinimalSnapshot = (snapshot: CSSSnapshot): CSSSnapshot => {
   return {

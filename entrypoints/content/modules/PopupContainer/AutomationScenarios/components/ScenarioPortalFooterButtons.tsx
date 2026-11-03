@@ -18,7 +18,7 @@ export const ScenarioPortalFooterButtons: React.FC<{
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    // Знаходимо shadowRoot
+    // Find the shadow root
     const shadowRoot = document.querySelector("hover-inspector")?.shadowRoot as ShadowRoot | null;
 
     if (shadowRoot) {
@@ -38,7 +38,7 @@ export const ScenarioPortalFooterButtons: React.FC<{
 
         // Create a new portal element if it doesn't exist
         const portalElement = document.createElement("div");
-        portalElement.dataset.portalId = portalId; // Для ідентифікації
+        portalElement.dataset.portalId = portalId; // For identification
         portalElement.className = "w-full";
         container.appendChild(portalElement);
         setPortalContainer(portalElement);
@@ -56,9 +56,9 @@ export const ScenarioPortalFooterButtons: React.FC<{
     return () => {};
   }, [portalId]);
 
-  // Поки контейнер не готовий — нічого не рендеримо
+  // Render nothing until the container is ready
   if (!portalContainer) return null;
 
-  // Рендеримо дітей у портал
+  // Render the children into the portal
   return createPortal(children, portalContainer);
 };

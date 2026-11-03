@@ -94,7 +94,7 @@ TypeScript and text [typescript.md]
 - Errors: `console.error("Failed to …", error)` for developers, `toast.error("…")` for users,
   `.catch(() => undefined)` only for best-effort writes whose silent loss is acceptable.
 
-Do not copy legacy code [legacy.md]: hard-coded hex colours, `state: any`, Ukrainian comments, `dark:`,
+Do not copy legacy code [legacy.md]: hard-coded hex colours, `state: any`, `dark:`,
 `focus:ring-*`, Title Case labels, absolute-`div` dropdowns, `alert()`, files under
 `git-diff-view/`, `ReactRnd/` and `Note Taking Tools/`.
 

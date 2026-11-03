@@ -56,7 +56,7 @@ export interface XPathVariants {
 }
 
 /**
- * Оптимізована структура вузла знімка
+ * Optimised snapshot node structure
  */
 export interface SnapshotNode extends BaseElementNode {
   /** Unique quick key for internal operations (hash-based) */
@@ -91,7 +91,7 @@ export interface SnapshotNode extends BaseElementNode {
 }
 
 /**
- * Основна структура CSS знімка
+ * Main CSS snapshot structure
  */
 export interface CSSSnapshot {
   readonly id: string;
@@ -109,7 +109,7 @@ export interface CSSSnapshot {
 }
 
 /**
- * Результат побудови дерева знімка
+ * Result of building the snapshot tree
  */
 export interface SnapshotBuildResult {
   readonly tree: SnapshotNode;
@@ -121,7 +121,7 @@ export interface SnapshotBuildResult {
 }
 
 /**
- * Зміна у позиції елемента
+ * Change in an element's position
  */
 export interface PositionChange {
   readonly property: "top" | "left" | "width" | "height";
@@ -132,7 +132,7 @@ export interface PositionChange {
 }
 
 /**
- * Тип зміни при порівнянні
+ * Change type in a comparison
  */
 export enum ChangeType {
   ADDED = "added",
@@ -142,7 +142,7 @@ export enum ChangeType {
 }
 
 /**
- * Зміна у властивості CSS
+ * Change in a CSS property
  */
 export interface StyleChange {
   readonly property: string;
@@ -152,7 +152,7 @@ export interface StyleChange {
 }
 
 /**
- * Порівняння елементів
+ * Element comparison
  */
 export interface ElementComparison {
   readonly path: string;
@@ -163,7 +163,7 @@ export interface ElementComparison {
 }
 
 /**
- * Результат порівняння знімків
+ * Snapshot comparison result
  */
 export interface ComparisonResult {
   readonly elements: readonly ElementComparison[];
@@ -176,25 +176,25 @@ export interface ComparisonResult {
 }
 
 /**
- * Опції для побудови знімка
+ * Snapshot build options
  */
 export interface SnapshotOptions {
   readonly maxElements?: number;
   readonly skipInvisible?: boolean;
   readonly includeText?: boolean;
-  readonly includeUnchanged?: boolean; // Включати елементи без змін
+  readonly includeUnchanged?: boolean; // Include unchanged elements
   readonly styleFilter?: (property: string, value: string) => boolean;
 }
 
 /**
- * Перевіряє, чи слід пропустити властивість
+ * Checks whether a property should be skipped
  */
 export const shouldSkipProperty = (property: string): boolean => {
   return DEFAULT_STYLES_TO_SKIP.some((skip) => property.includes(skip));
 };
 
 /**
- * Перевіряє, чи є значення значенням за замовчуванням
+ * Checks whether a value is a default value
  */
 export const isDefaultValue = (value: string | null): boolean => {
   if (!value) return true;
@@ -202,7 +202,7 @@ export const isDefaultValue = (value: string | null): boolean => {
 };
 
 /**
- * Створює стабільний ID для елемента
+ * Creates a stable ID for an element
  */
 export const createElementId = (element: Element, index: number): string => {
   const parts = [

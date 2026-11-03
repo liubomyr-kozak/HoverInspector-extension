@@ -15,7 +15,7 @@ export const requestProcessing: RequestProcessing = (data, callback, localExecFn
   };
 
   if (isProduction() || isPostProd()) {
-    // додав для випадку коли використовується всторому коді, який не має доступу до chrome.runtime
+    // for code that runs where chrome.runtime is unavailable
     if (!chrome?.runtime?.id) {
       if (onError) onError(new Error("Extension context is not available"));
       return;

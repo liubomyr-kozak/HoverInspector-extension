@@ -10,13 +10,13 @@ const onReady = async (callback: any) => {
 };
 
 const init = async () => {
-  // тут не можна скидувати всі параметри, тому що браузер можна закрити
-  // і відкрити через деякий час, і ініціалізація буде відбуватись повторно
-  // тому тут важливо працювати з локалсториджом і їхніми значеннями
-  // iconActivateInstance.idleIcon(); // !!!! це мабуть прийдеться видалити бо блимає іконка час від часу, мабуть браузер перезапускає сам цей файл
+  // Do not reset all parameters here: the browser can be closed
+  // and reopened later, and initialisation runs again,
+  // so it is important to work with the stored values here.
+  // iconActivateInstance.idleIcon(); // probably to be removed: the icon blinks from time to time, likely because the browser restarts this file
 
   initializationDeferred.resolve();
-  // відмовився бо без цього працює
+  // Dropped: works without it
   // await loadStrategy.firstInitAppSendEventToInitSettings();
 };
 

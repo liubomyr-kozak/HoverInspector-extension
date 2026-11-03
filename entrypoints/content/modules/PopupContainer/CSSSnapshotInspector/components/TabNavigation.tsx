@@ -1,5 +1,5 @@
 /**
- * Оптимізований компонент навігації по вкладках для CSS Snapshot Inspector
+ * Optimised tab navigation for the CSS Snapshot Inspector
  */
 import React, { memo } from 'react';
 import { Tabs, Tab } from '../CSSSnapshotInspector.styled';
@@ -14,7 +14,7 @@ interface TabNavigationProps {
 }
 
 /**
- * Мемоізований компонент навігації по вкладках
+ * Memoised tab navigation
  */
 export const TabNavigation = memo<TabNavigationProps>(({
   viewMode,

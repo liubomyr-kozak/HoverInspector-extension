@@ -77,10 +77,10 @@ export class ExtensionInstanceTabLoader {
       action = response?.checkAppHealth !== true ? "inject" : "activate";
     } catch (error) {
       const isActive = Ext.session.isActive(tabId);
-      // я додаю скрипт при загрузці сторнки по дефолту (мабуть це було одне із ріщень де я раніше бачив
-      // але якщо виникла якась помилка і бекграунд скрипт не має звязка з сторінкою то він отримає помилку
-      // для цього ми ручками че раз вставляємо скрипт
-      // але при умові що екстеншен [активний]
+      // The script is added on page load by default. If something fails and the background script
+      // has no connection to the page, it gets an error,
+      // so the script is injected again manually,
+      // but only while the extension is active.
       if (isActive) {
         action = "inject";
       }

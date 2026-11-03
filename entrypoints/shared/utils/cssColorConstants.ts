@@ -1,11 +1,11 @@
 /**
- * Константи CSS кольорів
+ * CSS colour constants
  * 
- * Містить всі стандартні CSS ключові слова для кольорів згідно зі специфікацією W3C.
- * Використовується для визначення чи є значення кольором у функції isColorValue.
+ * All standard CSS colour keywords from the W3C specification.
+ * Used by isColorValue to tell whether a value is a colour.
  */
 
-/** CSS ключові слова для системних та спеціальних кольорів */
+/** CSS keywords for system and special colours */
 export const CSS_SYSTEM_KEYWORDS = [
   'transparent', 
   'currentColor', 
@@ -15,7 +15,7 @@ export const CSS_SYSTEM_KEYWORDS = [
   'revert'
 ] as const;
 
-/** Стандартні іменовані кольори CSS */
+/** Standard CSS named colours */
 export const CSS_NAMED_COLORS = [
   'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 
   'bisque', 'black', 'blanchedalmond', 'blue', 'blueviolet', 'brown', 
@@ -46,23 +46,23 @@ export const CSS_NAMED_COLORS = [
   'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen'
 ] as const;
 
-/** Всі CSS кольорові ключові слова */
+/** All CSS colour keywords */
 export const CSS_COLOR_KEYWORDS = [
   ...CSS_SYSTEM_KEYWORDS,
   ...CSS_NAMED_COLORS
 ] as const;
 
-/** Регулярні вирази для розпізнавання кольорових форматів */
+/** Regular expressions that recognise colour formats */
 export const COLOR_REGEX_PATTERNS = {
-  /** HEX кольори: #RGB, #RRGGBB, #RGBA, #RRGGBBAA */
+  /** HEX colours: #RGB, #RRGGBB, #RGBA, #RRGGBBAA */
   hex: /^#[0-9a-fA-F]{3,8}$/,
   
-  /** RGB/RGBA функції з гнучким форматуванням */
+  /** RGB/RGBA functions with flexible formatting */
   rgb: /^rgba?\s*\([^)]+\)$/i,
   
-  /** HSL/HSLA функції з гнучким форматуванням */
+  /** HSL/HSLA functions with flexible formatting */
   hsl: /^hsla?\s*\([^)]+\)$/i,
   
-  /** Сучасні CSS кольорові функції */
+  /** Modern CSS colour functions */
   modernCSS: /^(color|lab|lch|oklab|oklch)\s*\([^)]+\)$/i
 } as const;

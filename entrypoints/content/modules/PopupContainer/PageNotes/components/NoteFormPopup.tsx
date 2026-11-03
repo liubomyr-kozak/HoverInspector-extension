@@ -8,7 +8,7 @@ import { NoteForm } from "./NoteForm";
 
 // Tailwind refactor: Removed styled-components in favor of utility classes
 
-// шляпа зі стилями.. він не шарить що в мене shadow DOM
+// Styling workaround: the library does not know it runs inside a shadow DOM
 import NoteFormPopupStyles from "./NoteFormPopup.css?inline";
 import { ButtonsContainer } from "@entrypoints/content/modules/PopupContainer/PopupContainer.styled.ts";
 import { ModalOverlayModal } from "@entrypoints/shared/components/FloatingModal/FloatingModal.styled.ts";

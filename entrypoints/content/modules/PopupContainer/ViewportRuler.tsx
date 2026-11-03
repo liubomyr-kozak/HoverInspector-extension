@@ -4,17 +4,17 @@ import ExtensionStorageManager from "@entrypoints/core/services/storage/Extensio
 import { ZINDEX_RULER_WRAPPER, ZINDEX_RULER_WRAPPER_LABEL } from "@entrypoints/shared/constant/zIndex.ts";
 
 export const breakpoints = [
-  { label: "📱 Small phone (240px)", value: 240 }, // Початок шкали
-  { label: "📱 Phone (320px)", value: 320 }, // Відповідає першій великій мітці
-  { label: "📱 Phone (360px)", value: 360 }, // Часто використовується як стандарт Android
-  { label: "📱 Large phone (425px)", value: 425 }, // Сучасні великі телефони
-  { label: "📱📟 Foldable / Small tablet (600px)", value: 600 }, // Помітка є на шкалі
-  { label: "📟 Tablet (768px)", value: 768 }, // Дуже розповсюджене значення
-  { label: "💻 Small laptop (1024px)", value: 1024 }, // Початок ноутбуків
-  { label: "💻 Laptop (1280px)", value: 1280 }, // Частий breakpoint для десктопів
-  { label: "💻 Large desktop (1366px)", value: 1366 }, // Часта роздільна здатність ноутбуків
-  { label: "🖥️ Desktop HD (1600px)", value: 1600 }, // Закінчується шкала на зображенні
-  // Додаткові, які виходять за межі зображення:
+  { label: "📱 Small phone (240px)", value: 240 }, // Start of the scale
+  { label: "📱 Phone (320px)", value: 320 }, // Matches the first major tick
+  { label: "📱 Phone (360px)", value: 360 }, // Common Android baseline
+  { label: "📱 Large phone (425px)", value: 425 }, // Modern large phones
+  { label: "📱📟 Foldable / Small tablet (600px)", value: 600 }, // Marked on the scale
+  { label: "📟 Tablet (768px)", value: 768 }, // Very common value
+  { label: "💻 Small laptop (1024px)", value: 1024 }, // Smallest laptops
+  { label: "💻 Laptop (1280px)", value: 1280 }, // Common desktop breakpoint
+  { label: "💻 Large desktop (1366px)", value: 1366 }, // Common laptop resolution
+  { label: "🖥️ Desktop HD (1600px)", value: 1600 }, // End of the scale in the image
+  // Extra sizes beyond the image:
   { label: "🖥️ Full HD (1920px)", value: 1920 },
   { label: "🖥️ WQHD / 2K (2560px)", value: 2560 },
 ];
@@ -92,7 +92,7 @@ const TooltipLabel = styled.button<{ $x: number }>`
     transform: translateX(-50%);
     border-width: 4px;
     border-style: solid;
-    border-color: transparent transparent #000 transparent; /* нижній край кольоровий */
+    border-color: transparent transparent #000 transparent; /* coloured bottom edge */
     transition: border-color 0.2s ease;
   }
 

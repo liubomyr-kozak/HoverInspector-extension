@@ -1,53 +1,60 @@
-# Hover Inspector Extension
+# Hover Inspector
 
-A browser extension that mimics display dimensions between selected and hover elements. Useful for designers and QA engineers.
+A browser extension for designers, front-end developers and QA engineers. Hover over any element on a
+page to see its size and the distances to the element you selected, and open more inspection tools from
+one floating panel.
 
-## Project Structure
+Chrome (Manifest V3) is the main target; Firefox, Edge and Safari builds are produced from the same code.
 
-This project is a browser extension built with:
-- React 19
-- TypeScript
-- Tailwind CSS
-- WXT (WebExtension Tools)
+## Tools
+
+| Tool | What it does |
+| --- | --- |
+| Element Inspector | Size, spacing and styles of the hovered element, and its distances to the selected one |
+| Page Ruler | The viewport size against common device widths and CSS framework breakpoints |
+| Color Picker | Pick solid colours and gradients and copy them as HEX or rgba() |
+| Unit Converter | Convert between px, rem, em, %, vw and vh |
+| Color Palette & Typography | The page's colours, type scale, spacing, radii and shadows, compared with a design theme |
+| Automation Scenarios | Record, edit and replay step-by-step scenarios on a page |
+| CSS Snapshot Inspector | Capture the CSS of a page or element and diff two snapshots |
+| Live Watching | Note your actions across pages in a floating watch log and turn repeated ones into scenarios |
+
+The whole UI runs in a shadow root on the page, so it does not change the page's own styles.
+
+## Install from source
+
+You need a current Node.js LTS release and [Yarn 1](https://classic.yarnpkg.com/). This project uses Yarn only;
+`yarn.lock` is the only lockfile.
+
+```bash
+git clone https://github.com/liubomyr-kozak/HoverInspector-extension.git
+cd HoverInspector-extension
+yarn install
+yarn build
+```
+
+Then open `chrome://extensions`, turn on **Developer mode**, choose **Load unpacked** and select
+`dist/chrome-mv3`. Click the extension's toolbar button on any page to turn it on.
 
 ## Development
 
-The project uses **Yarn 1** (`packageManager` in `package.json`); `yarn.lock` is the only lockfile.
-
 ```bash
-yarn install   # also runs `wxt prepare`
+yarn dev          # WXT dev browser with the extension loaded ("staging" mode)
+yarn dev:firefox  # the same in Firefox (also dev:chrome, dev:edge)
+yarn start        # standalone page at http://localhost:4400, no extension needed
+yarn test         # unit tests (vitest + jsdom)
+yarn test:watch   # unit tests in watch mode
+yarn verify       # pattern checks, TypeScript diff against master, tests and build
 ```
 
-### Extension Development
+### Modes
 
-```bash
-# Start development server for all browsers
-yarn dev
-
-# Start development server for specific browsers
-yarn dev:chrome
-yarn dev:firefox
-yarn dev:edge
-```
-
-### Standalone Development
-
-```bash
-# Start the standalone page with Vite (http://localhost:4400)
-yarn start
-```
-
-It uses `vite.standalone.config.ts` and `tsconfig.standalone.json`, a less strict TypeScript configuration suitable for development.
-
-### Modes: where the code runs and where the data lives
-
-Same split as the LinguaReef extension. WXT sets `NODE_ENV` to the build mode, and the code switches on it
-(`entrypoints/shared/helpers.ts`, `entrypoints/core/libs/requestProcessing.ts`,
-`entrypoints/core/services/storage/LocalStorage.ts`).
+WXT sets `NODE_ENV` to the build mode, and the code switches on it (`entrypoints/shared/helpers.ts`,
+`entrypoints/core/libs/requestProcessing.ts`, `entrypoints/core/services/storage/LocalStorage.ts`).
 
 | Command | `NODE_ENV` | Background actions | Data |
 | --- | --- | --- | --- |
-| `yarn start` | `development` | run in the page itself | page `localStorage` (`browser.storage` in `.standalone/polyfills/standaloneStorage.ts` writes there too, so it survives a reload) |
+| `yarn start` | `development` | run in the page itself | the page's `localStorage` (see `.standalone/polyfills/standaloneStorage.ts`) |
 | `yarn dev`, `yarn build:local` | `staging` | sent to the background service worker | extension storage |
 | `yarn build`, `yarn zip` | `production` | sent to the background service worker | extension storage |
 
@@ -55,75 +62,55 @@ Same split as the LinguaReef extension. WXT sets `NODE_ENV` to the build mode, a
 (`wxt --mode development`): its content script would then run background actions in the page and keep
 the extension's data in the website's own `localStorage`.
 
-`yarn build:local` is the installed extension as it will ship, but not minified and with source maps, in
-`dist/chrome-mv3-staging/`. Load that folder as an unpacked extension.
+`yarn build:local` builds the extension as it ships, but not minified and with source maps, into
+`dist/chrome-mv3-staging/`.
 
-### Tests
-
-```bash
-yarn test         # run once
-yarn test:watch   # watch mode
-```
-
-## TypeScript Configuration
-
-The project uses different TypeScript configurations for different environments:
-
-- `tsconfig.json` - Used for the main extension build with WXT
-- `tsconfig.standalone.json` - Used for standalone development with both Webpack and Vite
-
-The standalone configuration (`tsconfig.standalone.json`) is less strict and includes specific settings for the standalone development environment.
-
-## Building
-
-To build the extension for production, use the following commands:
+### Build and package
 
 ```bash
-# Run the tests, then build for production
-yarn build
-
-# Run the tests, then build the local extension (not minified, source maps) -> dist/chrome-mv3-staging/
-yarn build:local
-
-# Build for specific browsers
-yarn build:chrome
-yarn build:firefox
-yarn build:edge
-yarn build:safari
+yarn build          # tests, then production build -> dist/chrome-mv3/
+yarn build:firefox  # also build:chrome, build:edge, build:safari
+yarn zip            # build and zip -> archives/<version>-<browser>.zip
+yarn zip:firefox    # also zip:chrome, zip:edge
 ```
 
-## Packaging
+## Project structure
 
-To create a zip file for distribution, use the following commands:
-
-```bash
-# Build and zip -> archives/<version>-<browser>.zip
-yarn zip
-
-# Before publishing: run the tests, build and zip
-yarn ___pre_publish___
-
-# Create zip for specific browsers
-yarn zip:chrome
-yarn zip:firefox
-yarn zip:edge
+```
+entrypoints/
+  background/    service worker: toolbar button, tabs, frame relay, MCP bridge
+  content/       content script: shadow-root UI, Redux store, the panel and every tool
+  core/          storage services and other infrastructure without UI
+  features/      messaging protocol and tab sessions
+  shared/        shared components, design tokens and helpers
+mcp-server/      optional MCP server that lets AI agents use the extension
+.standalone/     polyfills for the standalone development page
 ```
 
-## Design Guidelines
+## MCP server for AI agents
 
-The project follows a set of design guidelines and best practices to ensure consistency across the codebase and provide a better user experience. These guidelines cover:
+An optional local MCP server lets AI agents (Claude Code, Cursor, Codex and other MCP clients) read a
+page's palette and type scale, take CSS snapshots and screenshots, and run automation scenarios through
+the extension. It listens on `127.0.0.1` only and is off until you turn it on in the extension's menu.
+See [mcp-server/README.md](mcp-server/README.md).
 
-- UI/UX Principles
-- Component Design Standards
-- Styling Guidelines
-- Code Style and Patterns
-- Accessibility Considerations
-- Performance Optimization
+## Privacy
 
-For detailed information, please refer to the [Design Guidelines](./DESIGN_GUIDELINES.md) document.
+The extension keeps its data (settings, scenarios, snapshots, watch log) in the browser's extension
+storage on your computer. It has no analytics or tracking. It sends data only where you point it: the
+MCP bridge, when you turn it on, talks only to a server on your own machine, and Automation Scenarios
+can sync with a server only if you enter its address in the scenario settings.
 
-## Notes
+## Contributing
 
-- The manifest.json file can be manually modified and won't be changed in the next build.
-- The standalone development server is useful for testing the extension's functionality without having to load it into a browser.
-- The Vite configuration is based on the Webpack configuration and provides the same functionality.
+Issues and pull requests are welcome. Before you open a pull request, run `yarn verify` and check UI
+changes in Chromium at 320px and 440px panel width. The code style and architecture guide starts at
+[docs/CODE_STYLE.md](docs/CODE_STYLE.md); [CLAUDE.md](CLAUDE.md) is the short version for AI coding agents.
+
+## License
+
+[MIT](LICENSE) © Liubomyr Kozak
+
+`entrypoints/shared/components/git-diff-view/` contains a copy of
+[git-diff-view](https://github.com/MrWangJustToDo/git-diff-view) under its own MIT license
+([LICENSE](entrypoints/shared/components/git-diff-view/react/LICENSE)).

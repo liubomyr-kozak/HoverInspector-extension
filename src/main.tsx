@@ -10,7 +10,7 @@ class HoverInspector extends HTMLElement {
   constructor() {
     super();
 
-    // Додаємо потрібні атрибути й стилі самому <hover-inspector>
+    // Add the required attributes and styles to <hover-inspector> itself
     this.setAttribute("data-wxt-shadow-root", "");
     this.style.zIndex = "2147483646";
     this.style.overflow = "visible";
@@ -21,10 +21,10 @@ class HoverInspector extends HTMLElement {
     this.style.height = "0px";
     this.style.display = "block";
 
-    // Створюємо Shadow DOM
+    // Create the Shadow DOM
     const shadow = this.attachShadow({ mode: "open" });
 
-    // Створюємо <html>
+    // Create <html>
     const html = document.createElement("html");
     // html.style.position = "absolute";
     // html.style.top = "0px";
@@ -38,11 +38,11 @@ class HoverInspector extends HTMLElement {
     // Add Tailwind classes to body
     body.classList.add("bg-transparent");
 
-    // Вставляємо елементи
+    // Insert the elements
     html.appendChild(head);
     html.appendChild(body);
 
-    // Створюємо <style> для Tailwind та інших стилів
+    // Create <style> for Tailwind and other styles
     const style = document.createElement("style");
 
     // Inject Tailwind base styles
@@ -52,7 +52,7 @@ class HoverInspector extends HTMLElement {
             @tailwind utilities;
         `;
 
-    // Додаємо все в shadow root
+    // Add everything to the shadow root
     shadow.appendChild(html);
     shadow.appendChild(style);
 

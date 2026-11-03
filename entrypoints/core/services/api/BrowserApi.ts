@@ -1,7 +1,7 @@
 let browserApi;
 
 try {
-    // Спроба імпортувати `webextension-polyfill`
+    // Try to import `webextension-polyfill`
     browserApi = require("webextension-polyfill");
 } catch (error) {
     console.info("webextension-polyfill not found, using mock.");

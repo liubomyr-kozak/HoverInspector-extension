@@ -1,4 +1,4 @@
 export function remove(tabId: number) {
-    // Тут твоя логіка видалення табу з мапи/стану
-    // Наприклад, tabs.delete(tabId) або просто консоль
+    // Remove the tab from the map/state here,
+    // e.g. tabs.delete(tabId), or just log it
 }

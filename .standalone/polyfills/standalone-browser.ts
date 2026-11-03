@@ -8,7 +8,7 @@ import { createStandaloneStorage, StandaloneStorage } from './standaloneStorage'
 
 type MessageListener = (message: unknown, sender: { id: string }, sendResponse: (response?: unknown) => void) => unknown;
 
-// Same in-page message bus as LinguaReef's BrowserApi mock: background code runs in the page, so a
+// In-page message bus: background code runs in the page, so a
 // message "to a tab" goes straight to the listeners the content code registered here.
 const messageListeners = new Set<MessageListener>();
 const STANDALONE_EXTENSION_ID = "standalone-extension-id";

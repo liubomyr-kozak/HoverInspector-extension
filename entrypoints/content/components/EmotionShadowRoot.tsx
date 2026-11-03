@@ -8,13 +8,13 @@ interface EmotionShadowRootProps {
 }
 
 /**
- * Провайдер для Emotion, який інжектить стилі у Shadow DOM
+ * Emotion provider that injects styles into the Shadow DOM
  */
 export const EmotionShadowRoot: React.FC<EmotionShadowRootProps> = ({ shadowRoot, children }) => {
   const cacheRef = useRef<ReturnType<typeof createCache> | null>(null);
 
   if (!cacheRef.current) {
-    // Контейнер для стилів усередині Shadow DOM
+    // Style container inside the Shadow DOM
     const styleContainer = document.createElement("div");
     styleContainer.setAttribute("data-emotion-container", "");
     shadowRoot.appendChild(styleContainer);
@@ -22,7 +22,7 @@ export const EmotionShadowRoot: React.FC<EmotionShadowRootProps> = ({ shadowRoot
     cacheRef.current = createCache({
       key: "emotion-shadow-root",
       container: styleContainer,
-      prepend: true, // щоб стилі були на початку контейнера
+      prepend: true, // so the styles go at the start of the container
     });
   }
 

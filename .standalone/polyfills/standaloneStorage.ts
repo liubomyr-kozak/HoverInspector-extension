@@ -1,7 +1,7 @@
 /**
  * `browser.storage` for the standalone page (`yarn start`).
  *
- * Same split as LinguaReef's LocalStorage: the extension keeps its data in extension storage, the
+ * The extension keeps its data in extension storage, the
  * standalone page has no extension, so it keeps the data in the page's own storage. Each key holds
  * the JSON of its value, the format `core/services/storage/LocalStorage.ts` already uses in
  * development, so both paths read the same data and survive a reload.

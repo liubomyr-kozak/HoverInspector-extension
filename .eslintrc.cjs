@@ -18,13 +18,13 @@ module.exports = {
         "react"
     ],
     "globals": {
-        "chrome": "readonly" // Додаємо chrome як глобальну змінну (тільки для читання)
+        "chrome": "readonly" // Declare chrome as a read-only global
     },
     "rules": {
         "react/prop-types": 0,
         "react/jsx-no-target-blank": 0,
         "no-unused-vars": 0,
-        "no-debugger": 0, // Вимикаємо правило, що забороняє debugger
-        "no-undef": 0 // Вимикаємо правило, що забороняє неоголошені змінні
+        "no-debugger": 0, // Turn off the rule that forbids debugger
+        "no-undef": 0 // Turn off the rule that forbids undeclared variables
     }
 };
